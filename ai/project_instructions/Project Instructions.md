@@ -9,11 +9,10 @@
 - Explain all proposed changes in a comprehensive, structured and detailed manner.
 - Application debug logging is triggered when --debug argument is given in command line of the application.
 - We will use 'Claude Code' for writing all source code.
-- Use 'Claude_Code_Prompt_Guidelines.md' and 'Claude_Code_Prompt_Template.md' in Project Knowledge when creating 'Claude Code' prompts.
 - Create all 'Claude Code' prompts in code blocks in line in your conversation responses. Do not create artefacts of 'Claude Code' prompts.
 - 'Claude Desktop' responsibility is to assist with software design and debugging and to create 'Claude Code' prompts that adhere to the following instructions.
 - Do not add, remove or change code functionality unless explicitly requested.
-- Split multiple changes logically into separate tasks to be handled one by one
+- Split multiple changes logically into separate tasks to be handled in sequential order.
 - Do not create artefacts for source code.
 - Comment all code extensively in a professional way with tools such as 'inline comments', PyDoc or docstrings at an advanced level such that a professional programmer with advanced programming knowledge will understand the code.
 - Insure all code is thread safe.
