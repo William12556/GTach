@@ -96,6 +96,9 @@ All documentation must adhere to CommonMark specifications to ensure consistent 
 ### Code Block Enhancement
 Code blocks must include language specifications for syntax highlighting and should contain complete, executable examples where possible. Incomplete code snippets must be clearly marked as partial implementations with explanatory context.
 
+**Claude Code Prompt Documentation**:
+All archived Claude Code prompt documents must include the actual prompt as a copyable code block to enable direct copy-paste execution. The code block must contain the complete structured prompt without modification or summarization.
+
 ### Table Standards
 Tables must use standard markdown table syntax with proper column alignment indicators. Complex data presentations should be supplemented with explanatory text to ensure accessibility and comprehension.
 

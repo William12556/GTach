@@ -57,6 +57,9 @@ All Claude Code prompts must follow a standardized template structure that scale
 ITERATION: [000]
 TASK: [Brief Description]
 CONTEXT: [Development Context and Background]
+PROTOCOL REVIEW REQUIRED:
+- Review relevant project protocols from doc/protocol/
+- Apply protocol requirements throughout implementation
 ISSUE DESCRIPTION: [Detailed Problem Statement]
 SOLUTION STRATEGY: [High-Level Approach]
 IMPLEMENTATION PLAN: [Step-by-Step Implementation Details]
@@ -116,24 +119,34 @@ Every Claude Code prompt must be systematically archived in the project's prompt
 
 **Archiving Procedure**:
 1. Create prompt file in `doc/prompts/` directory using standard naming convention
-2. Include complete prompt text with all context and requirements
-3. Validate document creation timestamp using `get_file_info` command and correct header if necessary
-4. Add metadata including creation date, iteration number, and task classification
-5. Cross-reference related implementation files and documentation
-6. Update prompt effectiveness tracking based on execution results
-7. Archive AI coordination context in enhanced `ai/project_knowledge/` structure for future reference
-8. Update session management materials in `ai/sessions/` per Protocol 11 session continuity procedures
-9. Update conversation synopsis in `ai/synopses/` for iteration continuity
+2. Include complete prompt documentation with metadata and analysis
+3. Embed actual Claude Code prompt as copyable code block within document
+4. Validate document creation timestamp using `get_file_info` command and correct header if necessary
+5. Add metadata including creation date, iteration number, and task classification
+6. Cross-reference related implementation files and documentation
+7. Update prompt effectiveness tracking based on execution results
+8. Archive AI coordination context in enhanced `ai/project_knowledge/` structure for future reference
+9. Update session management materials in `ai/sessions/` per Protocol 11 session continuity procedures
+10. Update conversation synopsis in `ai/synopses/` for iteration continuity
+
+**Code Block Requirement**:
+Each archived prompt document must contain the actual Claude Code prompt in a copyable code block format to enable direct copy-paste execution in Claude Code environment. This ensures immediate usability and eliminates transcription errors during prompt execution.
 
 ### Prompt Quality Standards
 All prompts must meet comprehensive quality requirements to ensure effective task execution and minimize iteration cycles between Claude Desktop and Claude Code.
 
 **Content Requirements**:
 - Complete context provision including relevant file contents where necessary
+- Mandatory protocol review section specifying relevant protocols for Claude Code examination
 - Clear and unambiguous task descriptions with specific deliverables
 - Detailed success criteria that enable objective completion validation
 - Comprehensive error handling and edge case consideration
 - Thread safety requirements explicitly stated for concurrent operations
+
+**Documentation Requirements**:
+- Actual Claude Code prompt embedded as copyable code block within archived document
+- Prompt formatted for direct copy-paste execution in Claude Code
+- Complete prompt context preserved in both inline and archived formats
 
 ## Integration Workflow Procedures
 

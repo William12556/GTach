@@ -122,6 +122,23 @@
 ### Verification Method
 [How to confirm the implementation works correctly]
 
+## Claude Code Prompt
+
+```
+[Insert complete Claude Code prompt here - copy-paste ready format]
+ITERATION: [000]
+TASK: [Brief Description]
+CONTEXT: [Development Context and Background]
+PROTOCOL REVIEW REQUIRED:
+- Review relevant project protocols from doc/protocol/
+- Apply protocol requirements throughout implementation
+ISSUE DESCRIPTION: [Detailed Problem Statement]
+SOLUTION STRATEGY: [High-Level Approach]
+IMPLEMENTATION PLAN: [Step-by-Step Implementation Details]
+SUCCESS CRITERIA: [Measurable Completion Requirements]
+DEPENDENCIES: [Related Files, Protocols, or Previous Implementations]
+```
+
 ## Additional Notes
 
 [Any special considerations, related issues, or context that doesn't fit elsewhere]

@@ -1,0 +1,43 @@
+port: AUTO
+baudrate: 38400
+timeout: 1.0
+reconnect_attempts: 3
+fast_mode: true
+bluetooth:
+  saved_devices: []
+  auto_connect: true
+  last_device: null
+  scan_duration: 8.0
+  retry_limit: 3
+  retry_delay: 3.0
+  timeout: 2.0
+  bleak_timeout: 10.0
+  service_discovery_timeout: 5.0
+  notification_timeout: 1.0
+  keepalive_interval: 5.0
+  device_filter:
+  - OBD
+  - ELM
+  - OBDII
+  elm327_timeout: 2.5
+  elm327_retries: 2
+  elm327_init_delay: 1.0
+display:
+  mode: DIGITAL
+  rpm_warning: 6500
+  rpm_danger: 7000
+  fps_limit: 60
+  touch_long_press: 1.0
+  splash:
+    enabled: true
+    duration: 4.0
+    graphics_mode: automotive
+    animation_speed: 1.0
+session:
+  retention_days: 7
+  enable_archival: false
+  max_archived_sessions: 20
+  archive_compression: true
+debug_logging: false
+data_log_enabled: false
+data_log_path: null

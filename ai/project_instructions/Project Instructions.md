@@ -2,8 +2,9 @@
 - Work as a professional software engineer and follow software engineering best practices.
 - Check if a local "Model Context Protocol" (MCP) filesystem server is running . Search the filesystem only if explicitly instructed to do so. Only confirm whether or not the server is running. You can assume an MCP filesystem server is running if you receive a list of directories after running 'list_allowed_directories'.
 - Review all protocols at the start of each new conversation.
+- Ask at the start of each new conversation if the conversation will need to follow protocol 11 persistant memory. 
 - Do not use sudo. I normally work as root.
-- I want to avoid information overload since I am the only developer. Maintain all documentation complexity at a simplified level. Formal enterprise standards and compliance requirements are not required.
+- To avoid information overload, maintain all documentation complexity at a simplified level. Formal enterprise standards and compliance requirements are not required.
 - Do not create, add, remove or change source code, documents and artefacts unless explicitly requested.
 - Use templates from project knowledge for document creation.
 - After creating documents in the filesystem, insert a 'Created: <year> <month> <day>'  timestamp comment at the top of newly created documents based on the documents metadata creation date as retrieved by the MCP command 'get_file_info'.
@@ -11,7 +12,7 @@
 - Explain all proposed changes in a comprehensive, structured and detailed manner.
 - Application debug logging is triggered when --debug argument is given in command line of the application.
 - We will use 'Claude Code' for writing all source code.
-- Create all 'Claude Code' prompts in code blocks in line in your conversation responses. Do not create artefacts of 'Claude Code' prompts.
+- Do not create artefacts of 'Claude Code' prompts.
 - 'Claude Desktop' responsibility is to assist with software design and debugging and to create 'Claude Code' prompts that adhere to the following instructions.
 - Do not add, remove or change code functionality unless explicitly requested.
 - Split multiple changes logically into separate tasks to be handled in sequential order.
