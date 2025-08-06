@@ -1,0 +1,11 @@
+# GTach Application Dependencies
+
+# Core dependencies
+# (Will be added as components are implemented)
+
+# Development dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Platform-specific dependencies (Pi only)
+# RPi.GPIO>=0.7.0  # Uncomment for Pi deployment
