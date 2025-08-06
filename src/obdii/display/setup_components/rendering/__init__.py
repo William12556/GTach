@@ -1,0 +1,1 @@
+"""Device surface rendering components for setup mode."""

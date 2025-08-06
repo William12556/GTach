@@ -1,0 +1,1 @@
+"""Bluetooth interface components for setup mode."""

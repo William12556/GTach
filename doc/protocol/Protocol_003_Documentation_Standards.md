@@ -1,7 +1,7 @@
 # Protocol 3: Documentation Standards
 
 **Created**: 2025 01 06  
-**Version**: 1.0  
+**Version**: 1.2  
 **Status**: Active  
 
 ## Purpose
@@ -17,9 +17,14 @@ All documentation must use forward slash (/) path separators regardless of the a
 Documentation must reference all project files using relative paths from the project root directory. Absolute paths are prohibited except when referencing external resources or system-specific configurations that cannot be expressed relatively.
 
 **Standard Format Examples**:
-- Source code reference: `src/gpio_controller.py`
+- Root-level module: `src/main_controller.py`
+- Functional domain module: `src/display/manager.py`
+- Component category module: `src/display/input/touch_handler.py`
+- Specific implementation: `src/display/setup_components/bluetooth/interface.py`
+- Core system module: `src/core/thread_manager.py`
+- Communication module: `src/comm/bluetooth_handler.py`
 - Documentation reference: `doc/protocol/Protocol_001_Project_Structure_Standards.md`
-- Test file reference: `src/tests/test_gpio_controller.py`
+- Test file reference: `src/tests/test_display_manager.py`
 - Template reference: `doc/templates/Template_Design_Document.md`
 - Hardware reference: `doc/hardware/gpio_pin_specifications.md`
 - AI knowledge reference: `ai/project_knowledge/cross_platform_testing_paradigm.md`
@@ -38,8 +43,9 @@ When referencing source code within documentation, the following format must be 
 
 **Examples**:
 ```
-File: src/gpio_controller.py | Date: 20250106 | Code: initialize_gpio_pins()
-File: src/config/platform_config.py | Date: 20250106 | Code: detect_platform()
+File: src/core/gpio_controller.py | Date: 20250106 | Code: initialize_gpio_pins()
+File: src/utils/platform_config.py | Date: 20250106 | Code: detect_platform()
+File: src/display/components/factory.py | Date: 20250106 | Code: create_component()
 File: src/tests/test_gpio_controller.py | Date: 20250106 | Code: class TestGPIOController
 ```
 
@@ -61,10 +67,20 @@ Line numbers must not be included in code references due to the maintenance burd
 
 ### Mandatory Header Information
 Every documentation file must include a standardized header containing:
-- **Created**: Timestamp in YYYY MM DD format
+- **Created**: Timestamp in YYYY MM DD format verified against file metadata using `get_file_info` command
 - **Version**: Semantic versioning for protocol documents, iteration numbering for implementation documents
 - **Status**: Active, Draft, Deprecated, or Archived
 - **Dependencies**: References to related protocols or documents where applicable
+
+### Document Creation Timestamp Validation
+All newly created documents must undergo timestamp verification to ensure accuracy between document headers and actual file creation metadata. This validation process requires the following procedure:
+
+1. Execute `get_file_info` command on the newly created document to retrieve file metadata including creation timestamp
+2. Compare the document header Created field with the file creation metadata timestamp
+3. Correct any discrepancies by updating the document header to reflect the actual file creation date
+4. Document the correction in the development workflow if timestamp modifications are required
+
+This validation ensures consistency between document headers and file system metadata while preventing temporal inconsistencies that could compromise document tracking and version control accuracy.
 
 ### Section Organization Requirements
 Documentation must follow a logical hierarchical structure using markdown heading levels appropriately. Primary sections use level 2 headings (##), subsections use level 3 headings (###), and detailed specifications use level 4 headings (####). Level 1 headings are reserved for document titles.
@@ -142,4 +158,4 @@ Documentation standards must evolve based on usage patterns, tool capabilities, 
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow)  
-**Related Protocols**: Protocol 4 (Claude Integration), Protocol 7 (Obsidian Integration)
+**Related Protocols**: Protocol 4 (Claude Integration), Protocol 7 (Obsidian Integration), Protocol 11 (Enhanced AI Memory and Session Management)

@@ -1,0 +1,2 @@
+[console_scripts]
+obdii = obdii.main:main

@@ -48,12 +48,12 @@
 ## Implementation Plan
 
 ### Primary Changes
-1. **File**: `[src/file1.py]`
+1. **File**: `[src/domain/category/component.py]`
    - **Function/Class**: `[name()]`
    - **Change**: [Specific modification]
    - **Lines**: [Approximate line numbers]
 
-2. **File**: `[src/file2.py]`
+2. **File**: `[src/utils/helper_module.py]`
    - **Function/Class**: `[name()]`
    - **Change**: [Specific modification]
    - **Lines**: [Approximate line numbers]

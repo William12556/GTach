@@ -1,7 +1,7 @@
 # Protocol 5: GitHub Desktop Workflow Integration
 
 **Created**: 2025 01 06  
-**Version**: 1.0  
+**Version**: 1.1  
 **Status**: Active  
 
 ## Purpose
@@ -175,14 +175,16 @@ Repository management must account for cross-platform development workflows incl
 - Platform-specific configuration management without repository conflicts
 - Development tool configuration exclusion from version control
 
-### Enhanced Git Sync Workflow
-Advanced synchronization procedures must support complex cross-platform development and deployment scenarios while maintaining repository integrity.
+### Enhanced Deployment Workflow
+Advanced deployment procedures must support complex cross-platform development and deployment scenarios while maintaining repository integrity and production environment reliability.
 
-**Enhanced Sync Components**:
-- Pre-flight testing on Mac development environment before repository commits
-- Automated deployment synchronization with Raspberry Pi production environment
-- Cross-platform validation before remote repository synchronization
-- Production environment rollback coordination with repository state management
+**Enhanced Deployment Components**:
+- Pre-flight testing on Mac development environment before deployment package creation
+- Deployment tar archive creation with version manifest and dependency specifications
+- Secure SCP transfer to Raspberry Pi production environment
+- setup.py installation/update execution on target platform
+- Cross-platform validation before deployment finalization
+- Production environment rollback coordination with previous version restoration
 
 ## Quality Assurance and Monitoring
 
@@ -228,4 +230,4 @@ Complete disaster recovery capabilities must be established and tested to ensure
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow), Protocol 4 (Claude Integration)  
-**Related Protocols**: Protocol 6 (Cross-Platform Development), Protocol 3 (Documentation Standards)
+**Related Protocols**: Protocol 6 (Cross-Platform Development), Protocol 3 (Documentation Standards), Protocol 11 (Enhanced AI Memory and Session Management)

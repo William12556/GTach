@@ -1,7 +1,7 @@
 # Protocol 6: Cross-Platform Development Standards
 
 **Created**: 2025 01 06  
-**Version**: 1.0  
+**Version**: 1.2  
 **Status**: Active  
 
 ## Purpose
@@ -176,10 +176,10 @@ All code must implement robust exception handling with comprehensive traceback l
 - Recovery procedure execution and validation logging
 - Performance impact minimization for production environments
 
-## Enhanced Git Sync Workflow
+## Enhanced Deployment Workflow
 
 ### Automated Pre-Flight Testing
-Before any code synchronization between development and deployment environments, comprehensive pre-flight testing must be executed to ensure compatibility and prevent deployment failures.
+Before deployment package creation and transfer, comprehensive pre-flight testing must be executed to ensure compatibility and prevent deployment failures.
 
 **Pre-Flight Testing Sequence**:
 1. Complete unit test suite execution with 100% pass rate on Mac development environment
@@ -189,23 +189,26 @@ Before any code synchronization between development and deployment environments,
 5. Documentation completeness verification and cross-reference validation
 6. AI coordination materials synchronization and integrity verification
 
-### Cross-Platform Deployment Validation
-Deployment procedures must include comprehensive validation on target Raspberry Pi hardware to ensure operational readiness and identify any platform-specific issues.
+### Deployment Package Creation and Transfer
+Deployment procedures use secure package transfer and installation methods to ensure reliable deployment to target Raspberry Pi hardware.
 
-**Deployment Validation Sequence**:
-1. Automated synchronization of code and configuration to Raspberry Pi environment
-2. Platform interface test execution using real Pi hardware implementations
-3. Hardware integration test suite execution with comprehensive coverage
-4. Performance benchmarking and resource utilization validation
-5. Production environment operational readiness confirmation
+**Deployment Package Sequence**:
+1. Tar archive creation with source code, configuration, and dependency manifest
+2. Version metadata inclusion with iteration information and deployment timestamp
+3. Secure SCP transfer to Raspberry Pi deployment environment
+4. Package extraction and setup.py execution for installation/update
+5. Platform interface test execution using real Pi hardware implementations
+6. Hardware integration test suite execution with comprehensive coverage
+7. Performance benchmarking and resource utilization validation
+8. Production environment operational readiness confirmation
 
 ### Rollback and Recovery Procedures
 Comprehensive rollback procedures must be available for both development and deployment environments to enable rapid recovery from problematic deployments or environmental issues.
 
 **Rollback Strategy Components**:
-- Immediate rollback capability to previous stable iteration
-- Platform-specific rollback procedures for development and deployment environments
-- Configuration rollback coordination with code rollback operations
+- Previous version package preservation for immediate rollback capability
+- Platform-specific rollback procedures using archived deployment packages
+- Configuration rollback coordination with package version restoration
 - Validation procedures to confirm successful rollback completion
 - Recovery testing to ensure system operational readiness post-rollback
 
@@ -255,4 +258,4 @@ Regular analysis of cross-platform development effectiveness must drive improvem
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow), Protocol 4 (Claude Integration)  
-**Related Protocols**: Protocol 5 (GitHub Workflow), Protocol 8 (Logging and Debug Standards)
+**Related Protocols**: Protocol 5 (GitHub Workflow), Protocol 8 (Logging and Debug Standards), Protocol 11 (Enhanced AI Memory and Session Management)

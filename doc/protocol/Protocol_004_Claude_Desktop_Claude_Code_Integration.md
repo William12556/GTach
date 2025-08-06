@@ -117,11 +117,13 @@ Every Claude Code prompt must be systematically archived in the project's prompt
 **Archiving Procedure**:
 1. Create prompt file in `doc/prompts/` directory using standard naming convention
 2. Include complete prompt text with all context and requirements
-3. Add metadata including creation date, iteration number, and task classification
-4. Cross-reference related implementation files and documentation
-5. Update prompt effectiveness tracking based on execution results
-6. Archive AI coordination context in `ai/project_knowledge/` for future reference
-7. Update conversation synopsis in `ai/synopses/` for iteration continuity
+3. Validate document creation timestamp using `get_file_info` command and correct header if necessary
+4. Add metadata including creation date, iteration number, and task classification
+5. Cross-reference related implementation files and documentation
+6. Update prompt effectiveness tracking based on execution results
+7. Archive AI coordination context in enhanced `ai/project_knowledge/` structure for future reference
+8. Update session management materials in `ai/sessions/` per Protocol 11 session continuity procedures
+9. Update conversation synopsis in `ai/synopses/` for iteration continuity
 
 ### Prompt Quality Standards
 All prompts must meet comprehensive quality requirements to ensure effective task execution and minimize iteration cycles between Claude Desktop and Claude Code.
@@ -212,4 +214,4 @@ Regular analysis of prompt effectiveness data must inform improvements to prompt
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow), Protocol 3 (Documentation Standards)  
-**Related Protocols**: Protocol 6 (Cross-Platform Development), Protocol 8 (Logging and Debug Standards)
+**Related Protocols**: Protocol 6 (Cross-Platform Development), Protocol 8 (Logging and Debug Standards), Protocol 11 (Enhanced AI Memory and Session Management)

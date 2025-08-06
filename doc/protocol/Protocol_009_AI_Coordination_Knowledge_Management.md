@@ -11,14 +11,29 @@ Establish comprehensive standards for AI coordination materials management, conv
 ## AI Directory Architecture Framework
 
 ### Hierarchical AI Materials Organization
-The AI coordination system implements a specialized directory structure independent of project documentation that supports persistent knowledge management, conversation continuity, and cross-iteration context preservation.
+The AI coordination system implements a specialized directory structure independent of project documentation that supports persistent knowledge management, conversation continuity, and cross-iteration context preservation. This system is enhanced by Protocol 11's advanced session management and systematic knowledge evolution capabilities.
 
 **AI Directory Structure**:
 ```
 ai/
+├── sessions/                 # Session-based conversation continuity (Protocol 11)
+│   ├── session_[YYYYMMDD]/  # Daily session organization with enhanced state management
+│   └── active_session/      # Current session working state
 ├── project_knowledge/        # Persistent technical knowledge and reference materials
+│   ├── architecture/         # System architecture knowledge (Protocol 11 enhancement)
+│   ├── patterns/             # Implementation patterns and standards
+│   ├── decisions/            # Architectural decision records
+│   ├── lessons_learned/      # Experience-based knowledge
+│   └── cross_platform/       # Platform-specific knowledge
 ├── project_instructions/     # AI tool instructions and workflow guidance
-└── synopses/                # Conversation summaries and session continuity materials
+│   ├── session_management/   # Session continuity procedures (Protocol 11)
+│   ├── analysis_frameworks/  # Systematic analysis approaches
+│   ├── prompt_evolution/     # Prompt improvement tracking
+│   └── workflow_optimization/ # Workflow enhancement patterns
+└── synopses/                 # Conversation summaries and session continuity materials
+    ├── active/               # Current iteration synopsis materials
+    ├── completed/            # Completed iteration records
+    └── analysis/             # Cross-session analysis and insights (Protocol 11)
 ```
 
 ### Separation from Core Documentation
@@ -97,9 +112,9 @@ Integration includes systematic validation that AI-generated materials comply wi
 All AI-generated materials including prompts, technical analysis, and implementation guidance must undergo systematic quality assurance that ensures accuracy, completeness, and alignment with project technical standards and development objectives.
 
 **Quality Assurance Framework**:
-Quality assurance procedures include technical accuracy validation, completeness verification against project requirements, consistency checking with established technical approaches, and alignment confirmation with project objectives and constraints. These procedures ensure that AI-generated materials meet professional development standards.
+Quality assurance procedures include technical accuracy validation, completeness verification against project requirements, consistency checking with established technical approaches, and alignment confirmation with project objectives and constraints. Additionally, all AI-generated documents must undergo timestamp validation using the `get_file_info` command to ensure creation date accuracy in document headers. These procedures ensure that AI-generated materials meet professional development standards.
 
-The quality framework includes regular review of AI tool effectiveness, identification of areas requiring improved guidance or constraint specification, and systematic enhancement of AI coordination procedures based on quality assessment results and development experience.
+The quality framework includes regular review of AI tool effectiveness, identification of areas requiring improved guidance or constraint specification, systematic enhancement of AI coordination procedures based on quality assessment results and development experience, and verification of document metadata consistency across all AI coordination materials.
 
 ## Version Control and AI Materials Management
 
@@ -141,4 +156,4 @@ The evolution strategy ensures that AI coordination capabilities improve continu
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow), Protocol 4 (Claude Integration)  
-**Related Protocols**: Protocol 3 (Documentation Standards), Protocol 5 (GitHub Workflow), Protocol 8 (Logging Standards)
+**Related Protocols**: Protocol 3 (Documentation Standards), Protocol 5 (GitHub Workflow), Protocol 8 (Logging Standards), Protocol 11 (Enhanced AI Memory and Session Management)

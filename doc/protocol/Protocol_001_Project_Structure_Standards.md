@@ -1,7 +1,7 @@
 # Protocol 1: Project Structure Standards
 
 **Created**: 2025 01 06  
-**Version**: 1.0  
+**Version**: 3.0  
 **Status**: Active  
 
 ## Purpose
@@ -19,7 +19,12 @@ Establish standardized directory structure and file organization principles for 
 ├── license.md                 # Project licensing information
 ├── setup.py                   # Python package setup configuration
 ├── pyproject.toml            # Modern Python project configuration
-├── src/                      # Source code directory (flat structure)
+├── src/                      # Source code directory (organized functional hierarchy)
+│   ├── [module_files].py     # Root-level modules
+│   ├── functional_domain/    # Functional grouping (level 1)
+│   │   ├── [component].py    # Domain components (level 2)
+│   │   └── component_group/  # Component categories (level 2)
+│   │       └── [impl].py     # Specific implementations (level 3 maximum)
 │   └── tests/                # Test files only
 ├── doc/                      # Project documentation (Obsidian managed)
 │   ├── protocol/             # Development protocols
@@ -31,24 +36,49 @@ Establish standardized directory structure and file organization principles for 
 │   ├── issues/               # Issue tracking
 │   └── templates/            # Document templates
 └── ai/                       # AI coordination materials (separate hierarchy)
+    ├── sessions/             # Session-based conversation continuity (Protocol 11)
+    │   ├── session_[YYYYMMDD]/ # Daily session organization
+    │   └── active_session/   # Current session working state
     ├── project_knowledge/    # Persistent technical knowledge and reference materials
+    │   ├── architecture/     # System architecture knowledge
+    │   ├── patterns/         # Implementation patterns and standards
+    │   ├── decisions/        # Architectural decision records
+    │   ├── lessons_learned/  # Experience-based knowledge
+    │   └── cross_platform/   # Platform-specific knowledge
     ├── project_instructions/ # AI tool instructions and workflow guidance
+    │   ├── session_management/ # Session continuity procedures
+    │   ├── analysis_frameworks/ # Systematic analysis approaches
+    │   ├── prompt_evolution/ # Prompt improvement tracking
+    │   └── workflow_optimization/ # Workflow enhancement patterns
     └── synopses/             # Conversation summaries and session continuity
+        ├── active/           # Current iteration synopsis materials
+        ├── completed/        # Completed iteration records
+        └── analysis/         # Cross-session analysis and insights
 ```
 
 ### Source Code Organization
 
 #### Primary Principles
-- **Flat Structure**: Maximum one level of subdirectories within src/
+- **Three-Level Maximum**: Maximum three levels of nesting within src/ for complex embedded systems
+- **Functional Hierarchy**: Organize by functional domain → component category → specific implementation
 - **Single Responsibility**: Each module focuses on specific functionality
 - **Clear Naming**: Descriptive file and directory names using snake_case
 - **Test Isolation**: All test files contained within src/tests/ directory
 
-#### Subdirectory Guidelines
-- Platform-specific modules may have single-level subdirectories (src/platform/)
-- Configuration modules may be grouped (src/config/)
-- Utility functions should remain in root src/ level
-- No nested subdirectories beyond one level
+#### Directory Organization Guidelines
+- **Root Level**: Core application modules and simple utilities
+- **Level 1 - Functional Domains**: Related modules grouped by primary function (comm/, display/, core/)
+- **Level 2 - Component Categories**: Logical groupings within domains (components/, input/, rendering/)
+- **Level 3 - Specific Implementations**: Concrete implementations (bluetooth/, layout/, state/)
+- **Maximum Nesting**: Three levels maximum (src/domain/category/implementation.py)
+- **Domain Examples**: comm/, display/, core/, utils/, config/
+
+#### Complexity-Based Structure
+- **Simple Projects**: Flat structure with root-level modules only
+- **Intermediate Systems**: Functional domains with direct components
+- **Complex Embedded Systems**: Full three-level hierarchy for sophisticated architectures
+- **Domain Boundaries**: Clear separation of concerns between functional areas
+- **Migration Path**: Start flat, organize into domains, add categories as complexity grows
 
 ### Documentation Architecture
 
@@ -71,15 +101,16 @@ Establish standardized directory structure and file organization principles for 
 ### AI Coordination Architecture
 
 #### AI Materials Organization
-- **project_knowledge/**: Technical knowledge repository for cross-iteration reference
-- **project_instructions/**: AI tool coordination procedures and workflow guidance
-- **synopses/**: Conversation continuity materials and session summaries
+- **sessions/**: Session-based conversation continuity with daily organization and active session management (Protocol 11)
+- **project_knowledge/**: Enhanced technical knowledge repository with specialized subsections for architecture, patterns, decisions, lessons learned, and cross-platform knowledge
+- **project_instructions/**: AI tool coordination procedures with session management, analysis frameworks, prompt evolution, and workflow optimization capabilities
+- **synopses/**: Conversation continuity materials organized into active, completed, and analysis categories for comprehensive session management
 
 #### Separation from Project Documentation
-- AI coordination materials maintained independently of project documentation hierarchy
-- AI directory structure excluded from core project deliverables
-- Clear boundaries between development support materials and project artifacts
-- Integration capabilities preserved while maintaining organizational separation
+- AI coordination materials maintained independently of project documentation hierarchy while providing enhanced session continuity and knowledge evolution capabilities
+- AI directory structure excluded from core project deliverables but supports sophisticated multi-session development workflows
+- Clear boundaries between development support materials and project artifacts while enabling systematic knowledge accumulation and pattern recognition
+- Integration capabilities preserved while maintaining organizational separation and enabling advanced session management features
 
 ## File Naming Conventions
 
@@ -129,7 +160,8 @@ Establish standardized directory structure and file organization principles for 
 
 ### Structure Compliance
 - All directories must exist before code implementation begins
-- No deviation from flat source structure without documented justification
+- Functional domain organization must align with system architecture
+- No nesting beyond three levels without protocol revision
 - Documentation directories must be populated with appropriate templates
 
 ### File Organization

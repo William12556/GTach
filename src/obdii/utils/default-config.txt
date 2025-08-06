@@ -1,0 +1,30 @@
+# OBDII RPM Display Application Configuration
+
+# OBD Connection Settings
+port: "AUTO"
+baudrate: 38400
+timeout: 1.0
+reconnect_attempts: 3
+fast_mode: true
+
+# Bluetooth Settings
+bluetooth:
+  saved_devices: []  # Devices will be added as they are discovered and connected
+  auto_connect: true
+  last_device: null
+  scan_duration: 8
+  retry_limit: 3
+  retry_delay: 3.0
+
+# Display Settings
+display:
+  mode: "DIGITAL"  # DIGITAL or GAUGE
+  rpm_warning: 6500
+  rpm_danger: 7000
+  fps_limit: 60
+  touch_long_press: 1.0  # seconds
+
+# General Settings
+debug_logging: false
+data_log_enabled: false
+data_log_path: null

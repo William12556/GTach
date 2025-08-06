@@ -1,0 +1,1 @@
+"""Layout positioning components for setup mode."""

@@ -1,0 +1,1 @@
+"""State coordination components for setup mode."""

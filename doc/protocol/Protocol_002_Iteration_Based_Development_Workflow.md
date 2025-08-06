@@ -1,7 +1,7 @@
 # Protocol 2: Iteration-Based Development Workflow
 
 **Created**: 2025 01 06  
-**Version**: 1.0  
+**Version**: 1.1  
 **Status**: Active  
 
 ## Purpose
@@ -121,7 +121,8 @@ Layer 4: Hardware Integration Tests (Pi Only)
 
 **Activities**:
 - Git integration with single commit per iteration
-- Deployment to target platform (Raspberry Pi)
+- Deployment package creation and transfer to target platform (Raspberry Pi)
+- Package installation/update via setup.py on target platform
 - Integration testing in production environment
 - Rollback procedure validation
 - Stakeholder communication and approval
@@ -206,11 +207,13 @@ Before commit execution, the following validations must be completed:
 - Automated deployment and testing pipeline between platforms
 - Platform-specific performance and resource optimization
 
-### Enhanced Git Sync Workflow
+### Enhanced Deployment Workflow
 - **Mac Pre-flight Testing**: Complete test suite execution before Pi deployment
-- **Automated Deployment**: Git-based synchronization with Pi environment
+- **Package Creation**: Tar archive creation with deployment manifest
+- **Secure Transfer**: SCP-based package transfer to Pi environment
+- **Installation/Update**: setup.py execution for package installation or update
 - **Production Validation**: Hardware integration testing on target platform
-- **Rollback Capability**: Immediate reversion procedures for failed deployments
+- **Rollback Capability**: Previous version restoration procedures for failed deployments
 
 ## Quality Assurance Integration
 
@@ -257,4 +260,4 @@ Each iteration must define measurable success criteria including:
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure)  
-**Related Protocols**: Protocol 3 (Documentation Standards), Protocol 4 (Claude Integration), Protocol 6 (Cross-Platform Development)
+**Related Protocols**: Protocol 3 (Documentation Standards), Protocol 4 (Claude Integration), Protocol 6 (Cross-Platform Development), Protocol 11 (Enhanced AI Memory and Session Management)

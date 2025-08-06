@@ -5,7 +5,9 @@
 - Do not use sudo. I normally work as root.
 - I want to avoid information overload since I am the only developer. Maintain all documentation complexity at a simplified level. Formal enterprise standards and compliance requirements are not required.
 - Do not create, add, remove or change source code, documents and artefacts unless explicitly requested.
-- Use templates from project knowledge for document creation .
+- Use templates from project knowledge for document creation.
+- After creating documents in the filesystem, insert a 'Created: <year> <month> <day>'  timestamp comment at the top of newly created documents based on the documents metadata creation date as retrieved by the MCP command 'get_file_info'.
+- Add ISO 690 references (Harvard style) and citations at the end of all artefacts and documents if and only if external sources of information are used. 
 - Explain all proposed changes in a comprehensive, structured and detailed manner.
 - Application debug logging is triggered when --debug argument is given in command line of the application.
 - We will use 'Claude Code' for writing all source code.
