@@ -13,8 +13,8 @@ setup(
     description="GTach Embedded Application System",
     author="William Watson",
     author_email="william.watson@example.com",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_packages(where="src") + ["provisioning"],
+    package_dir={"": "src", "provisioning": "src/provisioning"},
     python_requires=">=3.9",
     install_requires=[
         # Core dependencies will be added as needed

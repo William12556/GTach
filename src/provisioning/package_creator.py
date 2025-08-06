@@ -643,7 +643,7 @@ if __name__ == "__main__":
             dependencies=dependencies
         )
         
-        # Save manifest to workspace
+        # Save manifest to workspace immediately (without checksum)
         manifest_path = self.workspace_dir / 'manifest.json'
         with open(manifest_path, 'w') as f:
             json.dump(manifest.to_dict(), f, indent=2)
@@ -687,19 +687,21 @@ if __name__ == "__main__":
         self.logger.debug(f"Creating archive: {archive_path}")
         
         with tarfile.open(archive_path, 'w:gz', compresslevel=config.compression_level) as tar:
-            # Add all files from workspace
+            # Add all files from workspace (including manifest.json)
             for item in self.workspace_dir.rglob('*'):
                 if item.is_file():
                     # Calculate archive name (relative to workspace)
                     arcname = item.relative_to(self.workspace_dir)
                     tar.add(item, arcname=arcname)
-                    
-        # Calculate and update checksum
-        checksum = self._calculate_file_checksum(archive_path)
-        manifest.checksum = checksum
         
-        # Update manifest in archive
-        self._update_manifest_in_archive(archive_path, manifest)
+        # Calculate final checksum after complete archive creation
+        checksum = self._calculate_file_checksum(archive_path)
+        
+        # Update manifest object with checksum (for return value only, not archived file)
+        # Note: The manifest.json inside the archive will not contain the checksum since
+        # it was written before the archive was completed. The checksum is available
+        # in the returned manifest object for use by the caller.
+        manifest.checksum = checksum
         
         archive_size = archive_path.stat().st_size
         self.logger.info(f"Archive created: {archive_path} ({archive_size:,} bytes, checksum: {checksum[:16]}...)")
@@ -724,26 +726,6 @@ if __name__ == "__main__":
                 
         return sha256_hash.hexdigest()
     
-    def _update_manifest_in_archive(self, archive_path: Path, manifest: PackageManifest) -> None:
-        """
-        Update manifest file in existing archive.
-        
-        Args:
-            archive_path: Path to archive file
-            manifest: Updated manifest
-        """
-        # Create temporary manifest file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as temp_file:
-            json.dump(manifest.to_dict(), temp_file, indent=2)
-            temp_path = Path(temp_file.name)
-            
-        try:
-            # Update archive with new manifest
-            with tarfile.open(archive_path, 'a') as tar:
-                tar.add(temp_path, arcname='manifest.json')
-        finally:
-            # Clean up temporary file
-            temp_path.unlink()
     
     def _verify_package_integrity(self, package_path: Path, manifest: PackageManifest) -> None:
         """

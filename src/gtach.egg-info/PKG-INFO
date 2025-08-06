@@ -1,0 +1,27 @@
+Metadata-Version: 2.4
+Name: gtach
+Version: 1.0.0
+Summary: GTach Embedded Application System
+Author: William Watson
+Author-email: william.watson@example.com
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: MacOS :: MacOS X
+Requires-Python: >=3.9
+License-File: LICENSE
+Provides-Extra: pi
+Requires-Dist: RPi.GPIO>=0.7.0; extra == "pi"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: license-file
+Dynamic: provides-extra
+Dynamic: requires-python
+Dynamic: summary
