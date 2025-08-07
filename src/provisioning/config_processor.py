@@ -393,6 +393,36 @@ class ConfigProcessor:
             
         return variables
     
+    def _prepare_json_variables(self, template_vars: Dict[str, Any]) -> Dict[str, str]:
+        """
+        Prepare template variables for JSON substitution.
+        
+        Converts Python types to JSON-compatible string representations.
+        
+        Args:
+            template_vars: Template variables dictionary
+            
+        Returns:
+            Dictionary with JSON-compatible string values
+        """
+        json_vars = {}
+        
+        for key, value in template_vars.items():
+            if isinstance(value, bool):
+                # Convert Python bool to JSON bool
+                json_vars[key] = 'true' if value else 'false'
+            elif isinstance(value, (int, float)):
+                # Convert numbers to strings (but without quotes in JSON)
+                json_vars[key] = str(value)
+            elif value is None:
+                # Convert None to JSON null
+                json_vars[key] = 'null'
+            else:
+                # All other values as strings
+                json_vars[key] = str(value)
+                
+        return json_vars
+    
     def _process_single_template(self,
                                template_file: Path,
                                output_dir: Path, 
@@ -514,9 +544,12 @@ class ConfigProcessor:
         with open(template_file, 'r') as f:
             template_content = f.read()
             
+        # Convert variables to JSON-compatible format
+        json_vars = self._prepare_json_variables(template_vars)
+        
         # Substitute variables
         template = Template(template_content)
-        processed_content = template.safe_substitute(template_vars)
+        processed_content = template.safe_substitute(json_vars)
         
         # Parse and validate JSON
         try:
@@ -528,6 +561,7 @@ class ConfigProcessor:
                 
         except json.JSONDecodeError as e:
             self.logger.error(f"JSON processing error in {template_file}: {e}")
+            self.logger.debug(f"Processed content that failed JSON parsing: {processed_content}")
             # Fallback to text processing
             with open(output_path, 'w') as f:
                 f.write(processed_content)

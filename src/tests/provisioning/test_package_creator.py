@@ -110,7 +110,8 @@ class TestPackageCreator(unittest.TestCase):
         try:
             os.chdir(nested_dir)
             creator = PackageCreator()
-            self.assertEqual(creator.project_root, self.project_root)
+            # Resolve both paths to handle symlinks in temp directories
+            self.assertEqual(creator.project_root.resolve(), self.project_root.resolve())
         finally:
             os.chdir(original_cwd)
     

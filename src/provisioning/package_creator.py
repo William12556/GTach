@@ -152,15 +152,7 @@ class PackageCreator:
         
         # Project structure setup per Protocol 1
         if project_root is None:
-            # Auto-detect project root by finding src directory
-            current_path = Path(__file__).parent
-            while current_path != current_path.parent:
-                if (current_path / 'src').exists():
-                    self.project_root = current_path
-                    break
-                current_path = current_path.parent
-            else:
-                raise RuntimeError("Could not auto-detect project root directory")
+            self.project_root = self._auto_detect_project_root()
         else:
             self.project_root = Path(project_root)
             
@@ -186,6 +178,59 @@ class PackageCreator:
         
         self.logger.info(f"PackageCreator initialized - Project root: {self.project_root}")
         self.logger.debug(f"Source platform detected: {self.source_platform.name}")
+    
+    def _auto_detect_project_root(self) -> Path:
+        """
+        Auto-detect project root directory.
+        
+        Uses enhanced algorithm that supports test environments by:
+        1. Checking current working directory and parents (for test environments)
+        2. Falling back to module location search (for production)
+        
+        Returns:
+            Path to detected project root
+            
+        Raises:
+            RuntimeError: If project root cannot be detected
+        """
+        # Strategy 1: Check current working directory and walk up
+        # This handles test environments where we change to a nested test directory
+        current_path = Path.cwd()
+        while current_path != current_path.parent:
+            if (current_path / 'src').exists():
+                self.logger.debug(f"Project root detected from CWD: {current_path}")
+                return current_path
+            current_path = current_path.parent
+        
+        # Strategy 2: Check from module location and walk up
+        # This handles production environments and development
+        current_path = Path(__file__).parent
+        while current_path != current_path.parent:
+            if (current_path / 'src').exists():
+                self.logger.debug(f"Project root detected from module location: {current_path}")
+                return current_path
+            current_path = current_path.parent
+        
+        # Strategy 3: Look for specific GTach project markers
+        # Check for common GTach project structure markers
+        current_path = Path.cwd()
+        while current_path != current_path.parent:
+            # Look for GTach-specific markers
+            gtach_markers = [
+                'src/obdii',           # Main application directory
+                'src/provisioning',    # Provisioning directory  
+                'doc/protocol',        # Protocol documentation
+                'pyproject.toml',      # Python project config
+                'requirements.txt'     # Python dependencies
+            ]
+            
+            marker_count = sum(1 for marker in gtach_markers if (current_path / marker).exists())
+            if marker_count >= 2:  # At least 2 markers present
+                self.logger.debug(f"Project root detected from GTach markers: {current_path}")
+                return current_path
+            current_path = current_path.parent
+        
+        raise RuntimeError("Could not auto-detect project root directory. Please specify project_root explicitly.")
     
     def create_package(self, 
                       package_config: Optional[PackageConfig] = None,

@@ -26,6 +26,7 @@ import logging
 import threading
 import tempfile
 import shutil
+import fnmatch
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union, Tuple, Callable
 from dataclasses import dataclass, field
@@ -395,9 +396,18 @@ class ArchiveManager:
         Returns:
             True if file should be excluded
         """
+        filename = file_path.name
+        file_str = str(file_path)
+        
         for pattern in exclude_patterns:
-            if pattern in file_path.name or pattern in str(file_path):
-                return True
+            # Handle glob-style patterns (e.g., *.pyc, __pycache__)
+            if '*' in pattern or '?' in pattern:
+                if fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(file_str, pattern):
+                    return True
+            else:
+                # Handle literal substring patterns
+                if pattern in filename or pattern in file_str:
+                    return True
         return False
     
     def _create_tar_archive(self,

@@ -272,7 +272,7 @@ GPIO_AVAILABLE=${gpio_available}
     def test_process_text_template(self):
         """Test text template processing"""
         template_file = self.template_dir / "environment.template"
-        output_file = self.output_dir / "environment"
+        output_file = self.output_dir / ".env"
         
         variables = {
             'app_dir': '/opt/gtach',
@@ -320,7 +320,7 @@ GPIO_AVAILABLE=${gpio_available}
         self.assertTrue(len(processed_files) > 0)
         
         # Check specific files were created
-        expected_files = ['config.yaml', 'gtach.service', 'environment']
+        expected_files = ['config.yaml', 'gtach.service', '.env']
         
         for expected_file in expected_files:
             file_path = self.output_dir / expected_file
