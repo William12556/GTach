@@ -35,11 +35,14 @@ try:
     # Try relative import first
     from ..obdii.utils.platform import get_platform_type, PlatformType
     from ..obdii.utils.config import ConfigManager
+    from .version_manager import VersionManager, Version
 except ImportError:
     # Fallback for development/testing
     sys.path.append(str(Path(__file__).parent.parent))
     from obdii.utils.platform import get_platform_type, PlatformType
     from obdii.utils.config import ConfigManager
+    sys.path.append(str(Path(__file__).parent))
+    from version_manager import VersionManager, Version
 
 
 @dataclass
@@ -169,6 +172,9 @@ class PackageCreator:
         
         # Configuration manager integration
         self.config_manager = ConfigManager()
+        
+        # Version manager integration
+        self.version_manager = VersionManager()
         
         # Default package configuration
         self.default_config = PackageConfig()
@@ -319,6 +325,12 @@ class PackageCreator:
             
         if not config.version:
             raise ValueError("Package version cannot be empty")
+            
+        # Validate version format using SemVer
+        try:
+            self.version_manager.parse_version(config.version)
+        except ValueError as e:
+            raise ValueError(f"Invalid semantic version '{config.version}': {e}") from e
             
         # Validate source directories exist
         for source_dir in config.source_dirs:
@@ -771,6 +783,74 @@ if __name__ == "__main__":
                 
         return sha256_hash.hexdigest()
     
+    def validate_package_version(self, version_string: str) -> Version:
+        """
+        Validate and parse package version string.
+        
+        Args:
+            version_string: Version string to validate
+            
+        Returns:
+            Parsed Version object
+            
+        Raises:
+            ValueError: If version is invalid
+        """
+        return self.version_manager.parse_version(version_string)
+    
+    def check_version_compatibility(self, version1: str, version2: str) -> str:
+        """
+        Check compatibility between two package versions.
+        
+        Args:
+            version1: First version to compare
+            version2: Second version to compare
+            
+        Returns:
+            Compatibility level as string
+        """
+        compatibility = self.version_manager.check_compatibility(version1, version2)
+        return compatibility.name.lower().replace('_', ' ')
+    
+    def resolve_package_dependencies(self, dependencies: Dict[str, str]) -> Dict[str, str]:
+        """
+        Resolve package dependencies using version constraints.
+        
+        Args:
+            dependencies: Dict mapping package names to version constraints
+            
+        Returns:
+            Dict mapping package names to resolved version strings
+        """
+        resolved_versions = self.version_manager.resolve_dependencies(dependencies)
+        return {name: str(version) for name, version in resolved_versions.items()}
+    
+    def get_next_version(self, current_version: str, bump_type: str = "patch") -> str:
+        """
+        Get next version based on bump type.
+        
+        Args:
+            current_version: Current version string
+            bump_type: Type of version bump (major, minor, patch)
+            
+        Returns:
+            Next version string
+            
+        Raises:
+            ValueError: If current version is invalid or bump_type is unsupported
+        """
+        version = self.version_manager.parse_version(current_version)
+        
+        if bump_type == "major":
+            next_version = version.bump_major()
+        elif bump_type == "minor":
+            next_version = version.bump_minor()
+        elif bump_type == "patch":
+            next_version = version.bump_patch()
+        else:
+            raise ValueError(f"Unsupported bump type: {bump_type}. Use 'major', 'minor', or 'patch'")
+        
+        return str(next_version)
     
     def _verify_package_integrity(self, package_path: Path, manifest: PackageManifest) -> None:
         """
@@ -820,8 +900,14 @@ if __name__ == "__main__":
             Dictionary with statistics
         """
         with self._stats_lock:
-            return {
+            stats = {
                 'operation_count': self._operation_count,
                 'project_root': str(self.project_root),
                 'source_platform': self.source_platform.name
             }
+            
+            # Include version manager stats
+            version_stats = self.version_manager.get_stats()
+            stats['version_manager'] = version_stats
+            
+            return stats

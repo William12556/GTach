@@ -358,7 +358,90 @@ class TestPackageCreator(unittest.TestCase):
         self.assertIn('operation_count', stats)
         self.assertIn('project_root', stats)
         self.assertIn('source_platform', stats)
+        self.assertIn('version_manager', stats)
         self.assertIsInstance(stats['operation_count'], int)
+        self.assertIsInstance(stats['version_manager'], dict)
+    
+    def test_validate_package_version(self):
+        """Test package version validation"""
+        # Valid versions
+        valid_versions = ["1.0.0", "2.1.3", "1.0.0-alpha", "1.0.0+build1"]
+        for version_str in valid_versions:
+            with self.subTest(version=version_str):
+                version = self.creator.validate_package_version(version_str)
+                self.assertEqual(str(version), version_str)
+        
+        # Invalid versions
+        invalid_versions = ["1", "1.2", "invalid"]
+        for version_str in invalid_versions:
+            with self.subTest(version=version_str):
+                with self.assertRaises(ValueError):
+                    self.creator.validate_package_version(version_str)
+    
+    def test_check_version_compatibility(self):
+        """Test version compatibility checking"""
+        test_cases = [
+            ("1.0.0", "1.0.1", "compatible"),
+            ("1.0.0", "1.1.0", "minor breaking"),
+            ("1.0.0", "2.0.0", "major breaking")
+        ]
+        
+        for version1, version2, expected in test_cases:
+            with self.subTest(v1=version1, v2=version2):
+                result = self.creator.check_version_compatibility(version1, version2)
+                self.assertEqual(result, expected)
+    
+    def test_resolve_package_dependencies(self):
+        """Test package dependency resolution"""
+        dependencies = {
+            "package-a": ">=1.0.0",
+            "package-b": "^2.1.0"
+        }
+        
+        resolved = self.creator.resolve_package_dependencies(dependencies)
+        
+        self.assertEqual(len(resolved), 2)
+        self.assertIn("package-a", resolved)
+        self.assertIn("package-b", resolved)
+        self.assertEqual(resolved["package-a"], "1.0.0")
+        self.assertEqual(resolved["package-b"], "2.1.0")
+    
+    def test_get_next_version(self):
+        """Test version bumping"""
+        current_version = "1.2.3"
+        
+        # Test patch bump
+        patch_version = self.creator.get_next_version(current_version, "patch")
+        self.assertEqual(patch_version, "1.2.4")
+        
+        # Test minor bump
+        minor_version = self.creator.get_next_version(current_version, "minor")
+        self.assertEqual(minor_version, "1.3.0")
+        
+        # Test major bump
+        major_version = self.creator.get_next_version(current_version, "major")
+        self.assertEqual(major_version, "2.0.0")
+        
+        # Test invalid bump type
+        with self.assertRaises(ValueError):
+            self.creator.get_next_version(current_version, "invalid")
+        
+        # Test invalid version
+        with self.assertRaises(ValueError):
+            self.creator.get_next_version("invalid-version", "patch")
+    
+    def test_validate_config_invalid_version(self):
+        """Test configuration validation with invalid semantic version"""
+        config = PackageConfig(
+            package_name="test-package",
+            version="invalid.version",  # Invalid SemVer
+            source_dirs=["src/obdii"]
+        )
+        
+        with self.assertRaises(ValueError) as context:
+            self.creator._validate_config(config)
+        
+        self.assertIn("Invalid semantic version", str(context.exception))
 
 
 class TestPackageManifest(unittest.TestCase):
