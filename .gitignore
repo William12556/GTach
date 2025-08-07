@@ -4,3 +4,4 @@
 *.log
 10000
 **/logs
+.zsh_history
