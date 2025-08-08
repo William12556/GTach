@@ -137,6 +137,8 @@ Each iteration must produce the following documentation set:
 - Architecture decision records
 - Interface definitions and contracts
 - Performance and scalability considerations
+- Visual documentation per Protocol 12 standards including system architecture diagrams, component interaction diagrams, and cross-platform architecture visualizations
+- Master document validation and subsidiary diagram coordination where system-level changes are involved
 
 **Implementation Documentation**:
 - Claude Code prompt archive with complete context
@@ -260,4 +262,4 @@ Each iteration must define measurable success criteria including:
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure)  
-**Related Protocols**: Protocol 3 (Documentation Standards), Protocol 4 (Claude Integration), Protocol 6 (Cross-Platform Development), Protocol 11 (Enhanced AI Memory and Session Management)
+**Related Protocols**: Protocol 3 (Documentation Standards), Protocol 4 (Claude Integration), Protocol 6 (Cross-Platform Development), Protocol 11 (Enhanced AI Memory and Session Management), Protocol 12 (Visual Documentation Standards)

@@ -46,6 +46,13 @@
 ### System Overview
 [High-level system architecture description]
 
+### Visual Documentation Requirements
+- **System Architecture Diagrams**: High-level system structure and component relationships per Protocol 12
+- **Component Interaction Diagrams**: Data flow and interface specifications between components
+- **Hardware Interface Diagrams**: GPIO and physical connection specifications where applicable
+- **Cross-Platform Architecture**: Platform abstraction and compatibility layer visualizations
+- **Mermaid Syntax**: All diagrams must use Mermaid syntax for version control compatibility
+
 ### Component Architecture
 ```
 [Component diagram or description]

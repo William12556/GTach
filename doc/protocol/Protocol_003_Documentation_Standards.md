@@ -91,10 +91,10 @@ Technical documentation must maintain professional formatting with consistent us
 ## Markdown Syntax Requirements
 
 ### Standard Markdown Compliance
-All documentation must adhere to CommonMark specifications to ensure consistent rendering across different markdown processors. This includes proper escaping of special characters, consistent list formatting, and standard table syntax where applicable.
+All documentation must adhere to CommonMark specifications to ensure consistent rendering across different markdown processors. This includes proper escaping of special characters, consistent list formatting, standard table syntax where applicable, and Mermaid diagram syntax integration per Protocol 12 visual documentation standards.
 
 ### Code Block Enhancement
-Code blocks must include language specifications for syntax highlighting and should contain complete, executable examples where possible. Incomplete code snippets must be clearly marked as partial implementations with explanatory context.
+Code blocks must include language specifications for syntax highlighting and should contain complete, executable examples where possible. Incomplete code snippets must be clearly marked as partial implementations with explanatory context. Mermaid diagram blocks must use proper syntax specification and follow Protocol 12 diagram creation standards.
 
 **Claude Code Prompt Documentation**:
 All archived Claude Code prompt documents must include the actual prompt as a copyable code block to enable direct copy-paste execution. The code block must contain the complete structured prompt without modification or summarization.
@@ -119,7 +119,7 @@ Documentation must support the Claude Code workflow by providing clear context a
 Documentation consistency must be validated before each iteration commit. This includes verifying path references, checking cross-reference accuracy, and ensuring adherence to formatting standards.
 
 ### Completeness Requirements
-Each iteration must produce complete documentation covering design decisions, implementation details, testing procedures, and integration requirements. Incomplete documentation prevents iteration completion and code commits.
+Each iteration must produce complete documentation covering design decisions, implementation details, testing procedures, and integration requirements including visual documentation per Protocol 12 standards where system architecture, component relationships, or hardware interfaces are involved. Master document coordination and subsidiary diagram validation required for system-level changes. Incomplete documentation prevents iteration completion and code commits.
 
 ### Review and Approval Process
 All documentation modifications must undergo review for technical accuracy, clarity, and adherence to standards. Critical protocol documents require approval before implementation, while implementation documentation requires validation before commit.
@@ -161,4 +161,4 @@ Documentation standards must evolve based on usage patterns, tool capabilities, 
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow)  
-**Related Protocols**: Protocol 4 (Claude Integration), Protocol 7 (Obsidian Integration), Protocol 11 (Enhanced AI Memory and Session Management)
+**Related Protocols**: Protocol 4 (Claude Integration), Protocol 7 (Obsidian Integration), Protocol 11 (Enhanced AI Memory and Session Management), Protocol 12 (Visual Documentation Standards)

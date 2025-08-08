@@ -473,5 +473,261 @@ class TestArchiveConfig(unittest.TestCase):
         self.assertEqual(config.max_file_size, 50 * 1024 * 1024)
 
 
+class TestArchiveManagerParallelProcessing(unittest.TestCase):
+    """Test ArchiveManager parallel processing functionality"""
+    
+    def setUp(self):
+        """Setup test environment with many files for parallel processing"""
+        self.temp_dir = Path(tempfile.mkdtemp())
+        self.source_dir = self.temp_dir / "source"
+        self.archive_dir = self.temp_dir / "archives"
+        
+        # Create directories
+        self.source_dir.mkdir(parents=True)
+        self.archive_dir.mkdir(parents=True)
+        
+        # Create many test files to trigger parallel processing
+        self._create_many_test_files(50)  # Above default threshold of 20
+        
+        self.archive_manager = ArchiveManager()
+    
+    def tearDown(self):
+        """Cleanup test environment"""
+        if self.temp_dir.exists():
+            shutil.rmtree(self.temp_dir)
+        
+        # Cleanup thread pool
+        self.archive_manager.cleanup_thread_pool()
+    
+    def _create_many_test_files(self, count: int):
+        """Create many test files for parallel processing tests"""
+        for i in range(count):
+            # Create nested directory structure
+            subdir = self.source_dir / f"subdir_{i % 5}"
+            subdir.mkdir(exist_ok=True)
+            
+            # Create test file
+            test_file = subdir / f"test_file_{i}.txt"
+            test_file.write_text(f"Test content for file {i}\nLine 2\nLine 3\n")
+        
+        # Add some files that should be excluded
+        (self.source_dir / "test.pyc").write_bytes(b"compiled python")
+        (self.source_dir / ".DS_Store").write_bytes(b"macos metadata")
+    
+    def test_parallel_file_collection_enabled(self):
+        """Test parallel file collection when enabled and above threshold"""
+        config = ArchiveConfig(
+            enable_parallel_processing=True,
+            parallel_threshold=20,
+            thread_pool_size=4,
+            exclude_patterns=['.DS_Store', 'Thumbs.db', '*.pyc']  # Include .pyc exclusion
+        )
+        
+        files = self.archive_manager._collect_files(self.source_dir, config)
+        
+        # Should find 50 files (excluding .pyc and .DS_Store)
+        self.assertEqual(len(files), 50)
+        
+        # Check stats
+        stats = self.archive_manager.get_stats()
+        self.assertEqual(stats['parallel_operations'], 1)
+        self.assertEqual(stats['sequential_operations'], 0)
+        self.assertGreater(len(stats['timing_stats']['file_collection']), 0)
+    
+    def test_parallel_file_collection_disabled(self):
+        """Test file collection falls back to sequential when disabled"""
+        config = ArchiveConfig(
+            enable_parallel_processing=False,
+            thread_pool_size=4,
+            exclude_patterns=['.DS_Store', 'Thumbs.db', '*.pyc']  # Include .pyc exclusion
+        )
+        
+        files = self.archive_manager._collect_files(self.source_dir, config)
+        
+        # Should still find 50 files
+        self.assertEqual(len(files), 50)
+        
+        # Check stats - should use sequential processing
+        stats = self.archive_manager.get_stats()
+        self.assertEqual(stats['parallel_operations'], 0)
+        self.assertEqual(stats['sequential_operations'], 1)
+    
+    def test_parallel_file_collection_below_threshold(self):
+        """Test file collection uses sequential processing below threshold"""
+        # Create fewer files
+        small_source = self.temp_dir / "small_source"
+        small_source.mkdir()
+        for i in range(10):  # Below default threshold of 20
+            (small_source / f"file_{i}.txt").write_text(f"content {i}")
+        
+        config = ArchiveConfig(
+            enable_parallel_processing=True,
+            parallel_threshold=20,
+            thread_pool_size=4
+        )
+        
+        files = self.archive_manager._collect_files(small_source, config)
+        
+        self.assertEqual(len(files), 10)
+        
+        # Should use sequential processing due to file count
+        stats = self.archive_manager.get_stats()
+        self.assertEqual(stats['sequential_operations'], 1)
+    
+    def test_parallel_checksum_calculation(self):
+        """Test parallel checksum calculation for multiple files"""
+        files = [f for f in self.source_dir.rglob('*') if f.is_file() and f.suffix == '.txt']
+        
+        config = ArchiveConfig(
+            enable_parallel_processing=True,
+            parallel_threshold=20,
+            thread_pool_size=4
+        )
+        
+        checksums = self.archive_manager._calculate_multiple_checksums_parallel(files, config)
+        
+        self.assertEqual(len(checksums), 50)
+        
+        # Verify checksum format (sha256, md5 tuple)
+        for file_path, (sha256, md5) in checksums.items():
+            self.assertEqual(len(sha256), 64)  # SHA256 hex length
+            self.assertEqual(len(md5), 32)     # MD5 hex length
+            self.assertTrue(file_path.exists())
+    
+    def test_parallel_archive_creation_performance(self):
+        """Test that parallel processing improves performance"""
+        archive_path = self.archive_dir / "parallel_test.tar.gz"
+        
+        config = ArchiveConfig(
+            enable_parallel_processing=True,
+            parallel_threshold=20,
+            thread_pool_size=4,
+            exclude_patterns=['.DS_Store', 'Thumbs.db', '*.pyc']  # Include .pyc exclusion
+        )
+        
+        # Create archive with timing
+        import time
+        start_time = time.perf_counter()
+        metadata = self.archive_manager.create_archive(self.source_dir, archive_path, config)
+        elapsed = time.perf_counter() - start_time
+        
+        # Verify archive was created successfully
+        self.assertTrue(archive_path.exists())
+        self.assertEqual(metadata.file_count, 50)
+        
+        # Check that parallel operations were used
+        stats = self.archive_manager.get_stats()
+        self.assertGreater(stats['parallel_operations'], 0)
+        
+        # Verify timing stats were recorded
+        timing_stats = stats['timing_stats']
+        self.assertGreater(timing_stats['file_collection']['count'], 0)
+        self.assertGreater(timing_stats['archive_creation']['count'], 0)
+    
+    def test_thread_pool_management(self):
+        """Test thread pool lifecycle management"""
+        # Initially no thread pool
+        stats = self.archive_manager.get_stats()
+        self.assertFalse(stats['thread_pool_active'])
+        
+        # Trigger parallel operation to create thread pool
+        config = ArchiveConfig(
+            enable_parallel_processing=True,
+            parallel_threshold=10,  # Lower threshold
+            thread_pool_size=2
+        )
+        
+        files = self.archive_manager._collect_files(self.source_dir, config)
+        self.assertGreater(len(files), 0)
+        
+        # Thread pool should be active
+        stats = self.archive_manager.get_stats()
+        self.assertTrue(stats['thread_pool_active'])
+        
+        # Cleanup thread pool
+        self.archive_manager.cleanup_thread_pool()
+        
+        # Thread pool should be inactive
+        stats = self.archive_manager.get_stats()
+        self.assertFalse(stats['thread_pool_active'])
+    
+    def test_parallel_processing_error_handling(self):
+        """Test error handling in parallel processing"""
+        # Create some files that will cause errors
+        error_dir = self.temp_dir / "error_source"
+        error_dir.mkdir()
+        
+        # Create normal files
+        for i in range(25):
+            (error_dir / f"good_{i}.txt").write_text(f"content {i}")
+        
+        # Create a directory that looks like a file (will cause stat errors)
+        problematic_path = error_dir / "looks_like_file.txt"
+        problematic_path.mkdir()  # This is actually a directory
+        
+        config = ArchiveConfig(
+            enable_parallel_processing=True,
+            parallel_threshold=20,
+            thread_pool_size=4
+        )
+        
+        # Should handle errors gracefully and continue processing
+        files = self.archive_manager._collect_files(error_dir, config)
+        
+        # Should get the good files despite the error
+        self.assertEqual(len(files), 25)
+    
+    def test_progress_callback_with_parallel_processing(self):
+        """Test progress callbacks work correctly with parallel processing"""
+        progress_calls = []
+        
+        def progress_callback(current: int, total: int):
+            progress_calls.append((current, total))
+        
+        config = ArchiveConfig(
+            enable_parallel_processing=True,
+            parallel_threshold=20,
+            thread_pool_size=4,
+            progress_callback=progress_callback
+        )
+        
+        files = self.archive_manager._collect_files(self.source_dir, config)
+        
+        # Should have received progress callbacks
+        self.assertGreater(len(progress_calls), 0)
+        
+        # Verify progress values make sense
+        for current, total in progress_calls:
+            self.assertGreaterEqual(current, 0)
+            self.assertGreaterEqual(total, current)
+    
+    def test_timing_statistics_collection(self):
+        """Test that timing statistics are collected correctly"""
+        config = ArchiveConfig(
+            enable_parallel_processing=True,
+            parallel_threshold=20,
+            thread_pool_size=4
+        )
+        
+        # Perform multiple operations
+        files = self.archive_manager._collect_files(self.source_dir, config)
+        checksums = self.archive_manager._calculate_multiple_checksums_parallel(files[:10], config)
+        
+        stats = self.archive_manager.get_stats()
+        timing_stats = stats['timing_stats']
+        
+        # File collection timing should be recorded
+        self.assertGreater(timing_stats['file_collection']['count'], 0)
+        self.assertGreater(timing_stats['file_collection']['total_time'], 0)
+        self.assertGreater(timing_stats['file_collection']['avg_time'], 0)
+        
+        # Each timing stat should have reasonable values
+        for operation, times in timing_stats.items():
+            if times['count'] > 0:
+                self.assertGreaterEqual(times['min_time'], 0)
+                self.assertGreaterEqual(times['max_time'], times['min_time'])
+                self.assertGreaterEqual(times['avg_time'], 0)
+
+
 if __name__ == '__main__':
     unittest.main()

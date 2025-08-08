@@ -32,7 +32,22 @@ Establish standardized directory structure and file organization principles for 
 │   ├── change/               # Change documentation
 │   ├── audits/               # Code and process audits
 │   ├── design/               # Design documents
+│   │   ├── diagrams/         # Visual documentation (Protocol 12)
+│   │   │   ├── master/       # Master document hierarchy
+│   │   │   │   ├── system_architecture.md    # Master System Architecture
+│   │   │   │   ├── component_interaction.md  # Master Component Interaction
+│   │   │   │   ├── cross_platform.md        # Master Cross-Platform Architecture
+│   │   │   │   ├── hardware_interface.md    # Master Hardware Interface
+│   │   │   │   └── data_flow.md             # Master Data Flow
+│   │   │   ├── architecture/ # System architecture diagrams (subsidiary)
+│   │   │   ├── components/   # Component interaction diagrams (subsidiary)
+│   │   │   ├── hardware/     # Hardware interface diagrams (subsidiary)
+│   │   │   ├── cross_platform/ # Cross-platform architecture diagrams (subsidiary)
+│   │   │   └── data_flow/    # Data flow and process diagrams (subsidiary)
+│   │   └── [design_docs]     # Design documents
 │   ├── hardware/             # Hardware documentation and specifications
+│   │   ├── diagrams/         # Hardware-specific visual documentation (subsidiary)
+│   │   └── [hardware_docs]   # Hardware specifications
 │   ├── issues/               # Issue tracking
 │   └── templates/            # Document templates
 └── ai/                       # AI coordination materials (separate hierarchy)
@@ -87,8 +102,11 @@ Establish standardized directory structure and file organization principles for 
 - **prompts/**: Archive of all Claude Code prompts organized by iteration
 - **change/**: Change requests, impact assessments, and implementation records
 - **audits/**: Code reviews, security assessments, and compliance checks
-- **design/**: Architecture decisions, technical specifications, and design patterns
-- **hardware/**: Hardware specifications, integration procedures, and testing documentation
+- **design/**: Architecture decisions, technical specifications, and design patterns including visual documentation through Protocol 12 diagram standards
+  - **design/diagrams/**: Visual documentation organized by master documents and subsidiary categories
+  - **design/diagrams/master/**: Master document hierarchy providing authoritative single sources of truth
+- **hardware/**: Hardware specifications, integration procedures, and testing documentation with visual documentation support
+  - **hardware/diagrams/**: Hardware-specific visual documentation including GPIO interfaces and physical connection specifications (subsidiary)
 - **issues/**: Bug reports, feature requests, and problem tracking
 - **templates/**: Standardized document formats for consistent documentation
 
@@ -198,4 +216,4 @@ Establish standardized directory structure and file organization principles for 
 
 **Implementation Priority**: Immediate  
 **Dependencies**: None  
-**Related Protocols**: Protocol 2 (Iteration Workflow), Protocol 3 (Documentation Standards)
+**Related Protocols**: Protocol 2 (Iteration Workflow), Protocol 3 (Documentation Standards), Protocol 12 (Visual Documentation Standards)

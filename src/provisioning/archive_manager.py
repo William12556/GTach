@@ -27,6 +27,8 @@ import threading
 import tempfile
 import shutil
 import fnmatch
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union, Tuple, Callable
 from dataclasses import dataclass, field
@@ -125,6 +127,12 @@ class ArchiveConfig:
     progress_callback: Optional[Callable[[int, int], None]] = None
     exclude_patterns: List[str] = field(default_factory=lambda: ['.DS_Store', 'Thumbs.db'])
     max_file_size: int = 100 * 1024 * 1024  # 100MB default limit
+    
+    # Parallel processing configuration
+    thread_pool_size: int = 4  # Number of threads for parallel operations
+    enable_parallel_processing: bool = True  # Enable/disable parallelization
+    parallel_batch_size: int = 50  # Files per batch for parallel processing
+    parallel_threshold: int = 20  # Minimum files to trigger parallel processing
 
 
 class ArchiveManager:
@@ -143,18 +151,93 @@ class ArchiveManager:
         # Thread safety
         self._operation_lock = threading.RLock()
         self._stats_lock = threading.Lock()
+        self._progress_lock = threading.Lock()
         
         # Statistics tracking
         self._operation_count = 0
         self._bytes_processed = 0
         self._archives_created = 0
         self._archives_extracted = 0
+        self._parallel_operations = 0
+        self._sequential_operations = 0
+        
+        # Performance tracking
+        self._timing_stats = {
+            'file_collection': [],
+            'checksum_calculation': [],
+            'archive_creation': [],
+            'archive_extraction': []
+        }
         
         # Platform detection
         self.platform = get_platform_type()
         
+        # Thread pool (will be created when needed)
+        self._thread_pool = None
+        self._thread_pool_lock = threading.Lock()
+        
         self.logger.info("ArchiveManager initialized")
         self.logger.debug(f"Platform: {self.platform.name}")
+    
+    @contextmanager
+    def _get_thread_pool(self, thread_count: int):
+        """
+        Get or create thread pool for parallel operations.
+        
+        Args:
+            thread_count: Number of threads in pool
+            
+        Yields:
+            ThreadPoolExecutor instance
+        """
+        with self._thread_pool_lock:
+            if self._thread_pool is None:
+                self._thread_pool = ThreadPoolExecutor(max_workers=thread_count)
+                self.logger.debug(f"Created thread pool with {thread_count} workers")
+            
+            try:
+                yield self._thread_pool
+            finally:
+                # Pool cleanup handled in destructor or explicit cleanup
+                pass
+    
+    def _timing_decorator(self, operation_name: str):
+        """
+        Decorator to time operations and record statistics.
+        
+        Args:
+            operation_name: Name of operation for timing stats
+        """
+        def decorator(func):
+            def wrapper(*args, **kwargs):
+                start_time = time.perf_counter()
+                try:
+                    result = func(*args, **kwargs)
+                    return result
+                finally:
+                    elapsed = time.perf_counter() - start_time
+                    with self._stats_lock:
+                        if operation_name in self._timing_stats:
+                            self._timing_stats[operation_name].append(elapsed)
+                    self.logger.debug(f"{operation_name} completed in {elapsed:.3f}s")
+            return wrapper
+        return decorator
+    
+    def cleanup_thread_pool(self):
+        """Clean up thread pool resources"""
+        with self._thread_pool_lock:
+            if self._thread_pool is not None:
+                self._thread_pool.shutdown(wait=True)
+                self._thread_pool = None
+                self.logger.debug("Thread pool cleaned up")
+    
+    def __del__(self):
+        """Cleanup resources on deletion"""
+        try:
+            self.cleanup_thread_pool()
+        except Exception:
+            # Ignore cleanup errors during destruction
+            pass
     
     def create_archive(self,
                       source_dir: Union[str, Path],
@@ -193,6 +276,9 @@ class ArchiveManager:
             format_type = CompressionFormat.from_extension(archive_path.name)
             
             try:
+                # Record timing for the entire archive creation process
+                archive_start_time = time.perf_counter()
+                
                 # Collect files to archive
                 files_to_archive = self._collect_files(source_dir, config)
                 total_files = len(files_to_archive)
@@ -217,13 +303,19 @@ class ArchiveManager:
                 if config.include_metadata:
                     self._save_metadata(archive_path, metadata)
                 
+                # Record archive creation timing
+                archive_elapsed = time.perf_counter() - archive_start_time
+                with self._stats_lock:
+                    self._timing_stats['archive_creation'].append(archive_elapsed)
+                
                 # Update statistics
                 with self._stats_lock:
                     self._archives_created += 1
                     self._bytes_processed += metadata.compressed_size
                 
                 self.logger.info(f"Archive created: {archive_path.name} "
-                               f"({metadata.file_count} files, {metadata.compressed_size:,} bytes)")
+                               f"({metadata.file_count} files, {metadata.compressed_size:,} bytes) "
+                               f"in {archive_elapsed:.3f}s")
                 
                 return metadata
                 
@@ -353,7 +445,7 @@ class ArchiveManager:
     
     def _collect_files(self, source_dir: Path, config: ArchiveConfig) -> List[Path]:
         """
-        Collect files to archive based on configuration.
+        Collect files to archive based on configuration with parallel processing.
         
         Args:
             source_dir: Source directory
@@ -362,28 +454,155 @@ class ArchiveManager:
         Returns:
             List of files to archive
         """
-        files_to_archive = []
-        total_size = 0
+        start_time = time.perf_counter()
         
-        for file_path in source_dir.rglob('*'):
-            if not file_path.is_file():
-                continue
+        # Get all potential files first (fast operation)
+        all_files = [f for f in source_dir.rglob('*') if f.is_file()]
+        total_files = len(all_files)
+        
+        self.logger.debug(f"Found {total_files} potential files for processing")
+        
+        # Use parallel processing if enabled and above threshold
+        if (config.enable_parallel_processing and 
+            total_files >= config.parallel_threshold):
             
+            files_to_archive = self._collect_files_parallel(all_files, config)
+            with self._stats_lock:
+                self._parallel_operations += 1
+        else:
+            files_to_archive = self._collect_files_sequential(all_files, config)
+            with self._stats_lock:
+                self._sequential_operations += 1
+        
+        total_size = sum(f.stat().st_size for f in files_to_archive)
+        elapsed = time.perf_counter() - start_time
+        
+        with self._stats_lock:
+            self._timing_stats['file_collection'].append(elapsed)
+        
+        self.logger.debug(f"Collected {len(files_to_archive)} files ({total_size:,} bytes) in {elapsed:.3f}s")
+        return files_to_archive
+    
+    def _collect_files_parallel(self, all_files: List[Path], config: ArchiveConfig) -> List[Path]:
+        """
+        Parallel file collection with batched processing.
+        
+        Args:
+            all_files: All potential files to process
+            config: Archive configuration
+            
+        Returns:
+            List of files to archive
+        """
+        files_to_archive = []
+        batch_size = config.parallel_batch_size
+        
+        # Split files into batches for parallel processing
+        file_batches = [
+            all_files[i:i + batch_size] 
+            for i in range(0, len(all_files), batch_size)
+        ]
+        
+        self.logger.debug(f"Processing {len(file_batches)} batches with {config.thread_pool_size} threads")
+        
+        with self._get_thread_pool(config.thread_pool_size) as executor:
+            # Submit all batches for processing
+            future_to_batch = {
+                executor.submit(self._process_file_batch, batch, config): batch_idx
+                for batch_idx, batch in enumerate(file_batches)
+            }
+            
+            # Collect results as they complete
+            processed_files = 0
+            for future in as_completed(future_to_batch):
+                batch_idx = future_to_batch[future]
+                try:
+                    batch_results = future.result()
+                    files_to_archive.extend(batch_results)
+                    processed_files += len(file_batches[batch_idx])
+                    
+                    # Report progress
+                    if config.progress_callback:
+                        with self._progress_lock:
+                            config.progress_callback(processed_files, len(all_files))
+                            
+                except Exception as e:
+                    self.logger.error(f"Error processing batch {batch_idx}: {e}")
+                    # Continue with other batches
+        
+        return files_to_archive
+    
+    def _collect_files_sequential(self, all_files: List[Path], config: ArchiveConfig) -> List[Path]:
+        """
+        Sequential file collection (fallback/small file sets).
+        
+        Args:
+            all_files: All potential files to process
+            config: Archive configuration
+            
+        Returns:
+            List of files to archive
+        """
+        files_to_archive = []
+        
+        for i, file_path in enumerate(all_files):
             # Check exclude patterns
             if self._should_exclude_file(file_path, config.exclude_patterns):
                 continue
             
             # Check file size limit
-            file_size = file_path.stat().st_size
-            if file_size > config.max_file_size:
-                self.logger.warning(f"Skipping large file: {file_path} ({file_size:,} bytes)")
+            try:
+                file_size = file_path.stat().st_size
+                if file_size > config.max_file_size:
+                    self.logger.warning(f"Skipping large file: {file_path} ({file_size:,} bytes)")
+                    continue
+                
+                files_to_archive.append(file_path)
+                
+                # Report progress
+                if config.progress_callback and i % 100 == 0:
+                    config.progress_callback(i + 1, len(all_files))
+                    
+            except OSError as e:
+                self.logger.warning(f"Error accessing file {file_path}: {e}")
                 continue
-            
-            files_to_archive.append(file_path)
-            total_size += file_size
         
-        self.logger.debug(f"Collected {len(files_to_archive)} files ({total_size:,} bytes)")
         return files_to_archive
+    
+    def _process_file_batch(self, file_batch: List[Path], config: ArchiveConfig) -> List[Path]:
+        """
+        Process a batch of files for inclusion in archive.
+        
+        Args:
+            file_batch: Batch of files to process
+            config: Archive configuration
+            
+        Returns:
+            List of files that should be included
+        """
+        valid_files = []
+        
+        for file_path in file_batch:
+            try:
+                # Check exclude patterns
+                if self._should_exclude_file(file_path, config.exclude_patterns):
+                    continue
+                
+                # Check file size limit
+                file_size = file_path.stat().st_size
+                if file_size > config.max_file_size:
+                    # Log warning in thread-safe manner
+                    self.logger.warning(f"Skipping large file: {file_path} ({file_size:,} bytes)")
+                    continue
+                
+                valid_files.append(file_path)
+                
+            except OSError as e:
+                # Log error in thread-safe manner
+                self.logger.warning(f"Error processing file {file_path}: {e}")
+                continue
+        
+        return valid_files
     
     def _should_exclude_file(self, file_path: Path, exclude_patterns: List[str]) -> bool:
         """
@@ -697,12 +916,16 @@ class ArchiveManager:
     
     def _calculate_checksums(self, archive_path: Path, metadata: ArchiveMetadata) -> None:
         """
-        Calculate checksums for archive file.
+        Calculate checksums for archive file with optional parallel processing.
         
         Args:
             archive_path: Archive file
             metadata: Metadata to update with checksums
         """
+        start_time = time.perf_counter()
+        
+        # For single file checksum calculation, we still do it sequentially
+        # but track timing for performance measurement
         sha256_hash = hashlib.sha256()
         md5_hash = hashlib.md5()
         
@@ -714,7 +937,114 @@ class ArchiveManager:
         metadata.checksum_sha256 = sha256_hash.hexdigest()
         metadata.checksum_md5 = md5_hash.hexdigest()
         
-        self.logger.debug(f"Calculated checksums: SHA256={metadata.checksum_sha256[:16]}...")
+        elapsed = time.perf_counter() - start_time
+        with self._stats_lock:
+            self._timing_stats['checksum_calculation'].append(elapsed)
+        
+        self.logger.debug(f"Calculated checksums in {elapsed:.3f}s: SHA256={metadata.checksum_sha256[:16]}...")
+    
+    def _calculate_multiple_checksums_parallel(self, file_paths: List[Path], config: ArchiveConfig) -> Dict[Path, Tuple[str, str]]:
+        """
+        Calculate checksums for multiple files in parallel.
+        
+        Args:
+            file_paths: List of files to process
+            config: Archive configuration
+            
+        Returns:
+            Dictionary mapping file paths to (sha256, md5) tuples
+        """
+        if not config.enable_parallel_processing or len(file_paths) < config.parallel_threshold:
+            return self._calculate_multiple_checksums_sequential(file_paths)
+        
+        checksums = {}
+        batch_size = config.parallel_batch_size
+        
+        # Split files into batches
+        file_batches = [
+            file_paths[i:i + batch_size] 
+            for i in range(0, len(file_paths), batch_size)
+        ]
+        
+        self.logger.debug(f"Calculating checksums for {len(file_paths)} files using {config.thread_pool_size} threads")
+        
+        with self._get_thread_pool(config.thread_pool_size) as executor:
+            # Submit batch processing jobs
+            future_to_batch = {
+                executor.submit(self._calculate_checksum_batch, batch): batch_idx
+                for batch_idx, batch in enumerate(file_batches)
+            }
+            
+            # Collect results
+            for future in as_completed(future_to_batch):
+                batch_idx = future_to_batch[future]
+                try:
+                    batch_checksums = future.result()
+                    checksums.update(batch_checksums)
+                except Exception as e:
+                    self.logger.error(f"Error calculating checksums for batch {batch_idx}: {e}")
+        
+        return checksums
+    
+    def _calculate_multiple_checksums_sequential(self, file_paths: List[Path]) -> Dict[Path, Tuple[str, str]]:
+        """
+        Calculate checksums for multiple files sequentially.
+        
+        Args:
+            file_paths: List of files to process
+            
+        Returns:
+            Dictionary mapping file paths to (sha256, md5) tuples
+        """
+        checksums = {}
+        
+        for file_path in file_paths:
+            try:
+                sha256_hash = hashlib.sha256()
+                md5_hash = hashlib.md5()
+                
+                with open(file_path, 'rb') as f:
+                    while chunk := f.read(8192):
+                        sha256_hash.update(chunk)
+                        md5_hash.update(chunk)
+                
+                checksums[file_path] = (sha256_hash.hexdigest(), md5_hash.hexdigest())
+                
+            except OSError as e:
+                self.logger.warning(f"Error calculating checksum for {file_path}: {e}")
+                continue
+        
+        return checksums
+    
+    def _calculate_checksum_batch(self, file_batch: List[Path]) -> Dict[Path, Tuple[str, str]]:
+        """
+        Calculate checksums for a batch of files.
+        
+        Args:
+            file_batch: Batch of files to process
+            
+        Returns:
+            Dictionary mapping file paths to (sha256, md5) tuples
+        """
+        batch_checksums = {}
+        
+        for file_path in file_batch:
+            try:
+                sha256_hash = hashlib.sha256()
+                md5_hash = hashlib.md5()
+                
+                with open(file_path, 'rb') as f:
+                    while chunk := f.read(8192):
+                        sha256_hash.update(chunk)
+                        md5_hash.update(chunk)
+                
+                batch_checksums[file_path] = (sha256_hash.hexdigest(), md5_hash.hexdigest())
+                
+            except OSError as e:
+                self.logger.warning(f"Error calculating checksum for {file_path}: {e}")
+                continue
+        
+        return batch_checksums
     
     def _save_metadata(self, archive_path: Path, metadata: ArchiveMetadata) -> None:
         """
@@ -762,16 +1092,43 @@ class ArchiveManager:
     
     def get_stats(self) -> Dict[str, Any]:
         """
-        Get archive manager statistics.
+        Get archive manager statistics including parallel operation metrics.
         
         Returns:
-            Dictionary with statistics
+            Dictionary with comprehensive statistics
         """
         with self._stats_lock:
+            # Calculate timing statistics
+            timing_summary = {}
+            for operation, times in self._timing_stats.items():
+                if times:
+                    timing_summary[operation] = {
+                        'count': len(times),
+                        'total_time': sum(times),
+                        'avg_time': sum(times) / len(times),
+                        'min_time': min(times),
+                        'max_time': max(times)
+                    }
+                else:
+                    timing_summary[operation] = {
+                        'count': 0,
+                        'total_time': 0,
+                        'avg_time': 0,
+                        'min_time': 0,
+                        'max_time': 0
+                    }
+            
             return {
                 'operation_count': self._operation_count,
                 'bytes_processed': self._bytes_processed,
                 'archives_created': self._archives_created,
                 'archives_extracted': self._archives_extracted,
-                'platform': self.platform.name
+                'parallel_operations': self._parallel_operations,
+                'sequential_operations': self._sequential_operations,
+                'parallel_efficiency': (
+                    self._parallel_operations / max(1, self._parallel_operations + self._sequential_operations)
+                ),
+                'platform': self.platform.name,
+                'timing_stats': timing_summary,
+                'thread_pool_active': self._thread_pool is not None
             }

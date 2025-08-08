@@ -142,6 +142,8 @@ All prompts must meet comprehensive quality requirements to ensure effective tas
 - Detailed success criteria that enable objective completion validation
 - Comprehensive error handling and edge case consideration
 - Thread safety requirements explicitly stated for concurrent operations
+- Visual documentation requirements per Protocol 12 standards where system architecture, component relationships, or hardware interfaces are involved in implementation
+- Master document coordination requirements where system-level changes affect authoritative architectural documentation
 
 **Documentation Requirements**:
 - Actual Claude Code prompt embedded as copyable code block within archived document
@@ -227,4 +229,4 @@ Regular analysis of prompt effectiveness data must inform improvements to prompt
 
 **Implementation Priority**: Immediate  
 **Dependencies**: Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow), Protocol 3 (Documentation Standards)  
-**Related Protocols**: Protocol 6 (Cross-Platform Development), Protocol 8 (Logging and Debug Standards), Protocol 11 (Enhanced AI Memory and Session Management)
+**Related Protocols**: Protocol 6 (Cross-Platform Development), Protocol 8 (Logging and Debug Standards), Protocol 11 (Enhanced AI Memory and Session Management), Protocol 12 (Visual Documentation Standards)
