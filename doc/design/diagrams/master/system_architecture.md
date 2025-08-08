@@ -43,38 +43,210 @@ All subsidiary architecture diagrams must maintain consistency with this master 
 
 ### Primary Master Diagram
 ```mermaid
-%% To be developed: Master system architecture diagram
-%% This will show the complete GTach system structure
 flowchart TD
-    subgraph "Development Environment (Mac)"
-        DevEnv[Development Environment]
+    subgraph "Development Environment (Mac Mini M4)"
+        subgraph "Provisioning Development"
+            PackageCreator[Package Creator]
+            VersionMgr[Version Manager]
+            RepoMgr[Repository Manager]
+        end
+        
+        subgraph "Display Development"
+            DisplayMock[Display Manager Mock]
+            TouchMock[Touch Handler Mock]
+            RenderDev[Render Engine Dev]
+        end
+        
+        subgraph "Communication Development"
+            BluetoothMock[Bluetooth Mock]
+            OBDMock[OBD Handler Mock]
+            DeviceStoreDev[Device Store Dev]
+        end
+        
+        subgraph "Core Development"
+            ThreadMgrDev[Thread Manager Dev]
+            ConfigMgrDev[Config Manager Dev]
+            WatchdogDev[Watchdog Dev]
+        end
     end
     
-    subgraph "Deployment Environment (Pi)"
-        ProdEnv[Production Environment]
+    subgraph "Platform Abstraction Layer"
+        PlatformDetect[Platform Detection]
+        ConfigAbstract[Configuration Abstraction]
+        InterfaceAbstract[Interface Abstraction]
+        HardwareAbstract[Hardware Abstraction]
     end
     
-    subgraph "System Core"
-        Core[Core System Components]
+    subgraph "Distribution Layer"
+        PackageDist[Package Distribution]
+        SecureTransfer[Secure Transfer]
+        IntegrityVerify[Integrity Verification]
     end
     
-    DevEnv --> Core
-    Core --> ProdEnv
+    subgraph "Deployment Environment (Raspberry Pi)"
+        subgraph "Provisioning Production"
+            Installer[Package Installer]
+            UpdateMgr[Update Manager]
+            RollbackMgr[Rollback Manager]
+        end
+        
+        subgraph "Display Production"
+            DisplayMgr[Display Manager]
+            TouchHandler[Touch Handler]
+            RenderEngine[Render Engine]
+        end
+        
+        subgraph "Communication Production"
+            BluetoothMgr[Bluetooth Manager]
+            OBDHandler[OBD Handler]
+            DeviceStore[Device Store]
+        end
+        
+        subgraph "Core Production"
+            ThreadMgr[Thread Manager]
+            ConfigMgr[Config Manager]
+            Watchdog[Watchdog]
+        end
+        
+        subgraph "Hardware Interfaces"
+            GPIO[GPIO Controller]
+            Display[Display Hardware]
+            Input[Input Devices]
+        end
+    end
+    
+    %% Development to Abstraction
+    PackageCreator --> PlatformDetect
+    VersionMgr --> ConfigAbstract
+    RepoMgr --> InterfaceAbstract
+    DisplayMock --> HardwareAbstract
+    TouchMock --> HardwareAbstract
+    BluetoothMock --> InterfaceAbstract
+    OBDMock --> InterfaceAbstract
+    ThreadMgrDev --> ConfigAbstract
+    ConfigMgrDev --> PlatformDetect
+    
+    %% Abstraction to Distribution
+    PlatformDetect --> PackageDist
+    ConfigAbstract --> SecureTransfer
+    InterfaceAbstract --> IntegrityVerify
+    
+    %% Distribution to Production
+    PackageDist --> Installer
+    SecureTransfer --> UpdateMgr
+    IntegrityVerify --> RollbackMgr
+    
+    %% Platform Abstraction to Production
+    HardwareAbstract --> DisplayMgr
+    HardwareAbstract --> TouchHandler
+    InterfaceAbstract --> BluetoothMgr
+    InterfaceAbstract --> OBDHandler
+    ConfigAbstract --> ThreadMgr
+    ConfigAbstract --> ConfigMgr
+    
+    %% Production to Hardware
+    DisplayMgr --> Display
+    TouchHandler --> Input
+    BluetoothMgr --> GPIO
+    OBDHandler --> GPIO
+    ThreadMgr --> GPIO
+    ConfigMgr --> GPIO
+    
+    %% Cross-cutting Integration
+    Installer --> DisplayMgr
+    Installer --> BluetoothMgr
+    Installer --> ThreadMgr
+    UpdateMgr --> ConfigMgr
+    RollbackMgr --> Watchdog
 ```
 
 ### Supporting Master Views
-[Additional master-level diagrams as system architecture develops]
+
+#### Cross-Platform Abstraction View
+```mermaid
+flowchart LR
+    subgraph "Development Interfaces"
+        MockGPIO[Mock GPIO]
+        MockDisplay[Mock Display]
+        MockInput[Mock Input]
+        DevConfig[Dev Configuration]
+    end
+    
+    subgraph "Abstraction Layer"
+        CommonAPI[Common API]
+        PlatformFactory[Platform Factory]
+        ConfigLoader[Config Loader]
+        InterfaceAdapter[Interface Adapter]
+    end
+    
+    subgraph "Production Interfaces"
+        RealGPIO[Real GPIO]
+        RealDisplay[Real Display]
+        RealInput[Real Input]
+        ProdConfig[Prod Configuration]
+    end
+    
+    MockGPIO --> CommonAPI
+    MockDisplay --> CommonAPI
+    MockInput --> CommonAPI
+    DevConfig --> ConfigLoader
+    
+    CommonAPI --> InterfaceAdapter
+    PlatformFactory --> InterfaceAdapter
+    ConfigLoader --> InterfaceAdapter
+    
+    InterfaceAdapter --> RealGPIO
+    InterfaceAdapter --> RealDisplay
+    InterfaceAdapter --> RealInput
+    InterfaceAdapter --> ProdConfig
+```
+
+#### Provisioning Integration View
+```mermaid
+flowchart TD
+    subgraph "Development Workflow"
+        DevCode[Development Code]
+        GitCommit[Git Commit]
+        Package[Package Creation]
+    end
+    
+    subgraph "Provisioning Pipeline"
+        Version[Version Management]
+        Repo[Repository Storage]
+        Dist[Distribution]
+    end
+    
+    subgraph "Deployment Workflow"
+        Install[Installation]
+        Validate[Validation]
+        Operate[Operation]
+    end
+    
+    DevCode --> GitCommit
+    GitCommit --> Package
+    Package --> Version
+    Version --> Repo
+    Repo --> Dist
+    Dist --> Install
+    Install --> Validate
+    Validate --> Operate
+```
 
 ### Master Legend and Notation
-- **Functional Domain**: [Major system functional areas]
-- **Platform Abstraction**: [Cross-platform compatibility layers]
-- **Integration Point**: [Critical system integration boundaries]
-- **Authority Level**: [Master document authoritative elements]
+- **Functional Domain**: Provisioning, Display, Communication, Core system areas
+- **Platform Abstraction**: Cross-platform compatibility layers enabling Mac-to-Pi deployment
+- **Integration Point**: Critical boundaries between development, abstraction, distribution, and production
+- **Authority Level**: Master document authoritative elements governing system architecture
 
 ## Subsidiary Document Governance
 
 ### Subsidiary Document Registry
-[To be populated as subsidiary architecture diagrams are created]
+- **Master_Provisioning_System_Architecture_GTach**: Detailed provisioning system architecture
+- **Provisioning_Component_Interaction_GTach**: Component interfaces and data flows
+- **Provisioning_Data_Flow_GTach**: Comprehensive workflow visualization
+- **Display_Domain_Architecture** (Future): Display management and rendering
+- **Communication_Domain_Architecture** (Future): Bluetooth and OBD interfaces
+- **Core_Services_Architecture** (Future): Thread management and system services
 
 ### Abstraction Level Management
 All subsidiary architecture diagrams must maintain consistent abstraction levels that provide detailed views of components shown at high level in this master document.
@@ -93,16 +265,20 @@ Changes to this master document require:
 - Coordination with cross-platform development requirements
 - Integration with hardware interface specifications
 
-## Cross-Platform Master Specifications
+### Cross-Platform Master Specifications
 
-### Development Environment Authority
-[To be developed: Authoritative specification of Mac development environment architecture]
+#### Development Environment Authority
+**Mac Mini M4 Architecture**: Complete development infrastructure including package creation tools, mock hardware interfaces, version management systems, and repository operations supporting full provisioning system development and testing.
 
-### Deployment Environment Authority
-[To be developed: Authoritative specification of Raspberry Pi deployment environment architecture]
+**Development Integration**: Seamless integration with Claude Desktop strategic planning, Claude Code tactical implementation, GitHub Desktop version control, and Obsidian documentation management per established protocols.
 
-### Platform Abstraction Definition
-[To be developed: Definitive specification of cross-platform abstraction layers and compatibility mechanisms]
+#### Deployment Environment Authority
+**Raspberry Pi Architecture**: Production embedded system implementing real hardware interfaces, GPIO control, display management, communication protocols, and system services with optimized resource utilization.
+
+**Production Integration**: Hardware-specific implementations including GPIO interfaces per Protocol 10 specifications, display subsystems, input devices, and communication protocols validated through comprehensive testing procedures.
+
+#### Platform Abstraction Definition
+**Abstraction Layer**: Comprehensive platform abstraction enabling identical application logic across development and deployment environments through common APIs, configuration management, and interface standardization.
 
 ## Integration with Project Architecture
 
@@ -201,7 +377,7 @@ Master document completeness is ensured through:
 
 ---
 
-**Master Document Status**: Draft - Requires Development
+**Master Document Status**: Active - Provisioning System Integrated
 **Authority Verification Date**: 2025-08-08
 **Next Master Review**: 2025-09-08
-**Subsidiary Coordination Status**: No subsidiaries yet created
+**Subsidiary Coordination Status**: Provisioning subsidiaries created and coordinated
