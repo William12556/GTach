@@ -25,7 +25,7 @@ The project follows Protocol 1 standards with a hierarchical organization suppor
 ### Key Features
 
 - **Hyperpixel Integration**: Native support for Pimoroni Hyperpixel 2.1" Round display
-- **Cross-Platform Development**: Mac Mini M4 development with Raspberry Pi Zero deployment
+- **Cross-Platform Development**: Mac Mini M4 (macOS) development with Raspberry Pi Zero (Linux) deployment
 - **Touch Interface**: Capacitive touchscreen support with gesture recognition
 - **Circular UI Design**: Interface optimized for 480x480 round display geometry
 - **Documentation**: Protocol-driven documentation with visual diagram support
@@ -34,16 +34,16 @@ The project follows Protocol 1 standards with a hierarchical organization suppor
 
 ## Development Environment Setup
 
-### Mac Development Environment
+### Mac Development Environment (macOS)
 
 1. **Prerequisites**: Python 3.9+, Git, development dependencies
 2. **Installation**: Clone repository and install development dependencies
-3. **Configuration**: Platform detection automatically configures Mac development with Hyperpixel mocking
+3. **Configuration**: Platform detection automatically configures Mac Mini M4 (macOS) development with Hyperpixel mocking
 4. **Testing**: Multi-layer testing architecture supports development validation including display simulation
 
-### Raspberry Pi Zero Deployment Environment
+### Raspberry Pi Zero Deployment Environment (Linux)
 
-1. **Platform**: Raspberry Pi Zero/Zero W with Hyperpixel 2.1" Round display
+1. **Platform**: Raspberry Pi Zero/Zero W (Linux) with Hyperpixel 2.1" Round display
 2. **Display Drivers**: Built-in kernel drivers with `dtoverlay=vc4-kms-dpi-hyperpixel2r`
 3. **Touch Support**: Python touch driver for capacitive touchscreen functionality
 4. **Installation**: Deployment package transfer and setup.py execution
@@ -51,7 +51,7 @@ The project follows Protocol 1 standards with a hierarchical organization suppor
 
 ## Hyperpixel Display Configuration
 
-### Display Driver Setup
+### Display Driver Setup (Linux/Raspberry Pi Zero)
 ```bash
 # Add to /boot/firmware/config.txt
 dtoverlay=vc4-kms-dpi-hyperpixel2r
@@ -60,7 +60,7 @@ dtoverlay=vc4-kms-dpi-hyperpixel2r
 sudo raspi-config nonint do_i2c 1
 ```
 
-### Touch Driver Installation
+### Touch Driver Installation (Linux/Raspberry Pi Zero)
 ```bash
 # Install Python touch library
 pip3 install hyperpixel2r
@@ -73,7 +73,7 @@ sudo ./install.sh
 
 ## Usage Examples
 
-### Development Environment
+### Development Environment (macOS/Mac Mini M4)
 ```bash
 # Install development environment
 python setup.py develop
@@ -85,9 +85,9 @@ python -m gtach.main --debug --simulate-display
 python -m pytest src/tests/
 ```
 
-### Production Environment (Raspberry Pi Zero)
+### Production Environment (Linux/Raspberry Pi Zero)
 ```bash
-# Deploy package (from development environment)
+# Deploy package (from macOS development environment)
 scp deployment_package.tar.gz pi@pi-zero:/tmp/
 ssh pi@pi-zero "cd /tmp && tar -xzf deployment_package.tar.gz && python setup.py install"
 
@@ -108,10 +108,10 @@ Documentation follows Protocol 3 standards with Obsidian integration and visual 
 
 Multi-layer testing architecture per Protocol 6 with Hyperpixel-specific considerations:
 
-- **Layer 1**: Unit Tests (Mac Compatible) - Individual function validation with display mocking
-- **Layer 2**: Business Logic Tests (Mac Compatible) - Component integration testing with UI simulation
-- **Layer 3**: Platform Interface Tests (Mock Mac/Real Pi) - Display and touch interface validation
-- **Layer 4**: Hardware Integration Tests (Pi Only) - Hyperpixel display and touch validation
+- **Layer 1**: Unit Tests (macOS Compatible) - Individual function validation with display mocking
+- **Layer 2**: Business Logic Tests (macOS Compatible) - Component integration testing with UI simulation
+- **Layer 3**: Platform Interface Tests (Mock macOS/Real Linux) - Display and touch interface validation
+- **Layer 4**: Hardware Integration Tests (Linux Only) - Hyperpixel display and touch validation
 
 ## Circular UI Design Considerations
 
@@ -137,8 +137,8 @@ Development follows protocols with AI coordination support:
 
 The application supports operation across development and deployment environments:
 
-- **Development**: Mac Mini M4 with Hyperpixel mocking and testing capabilities
-- **Deployment**: Raspberry Pi Zero with Hyperpixel 2.1" Round display integration
+- **Development**: Mac Mini M4 (macOS) with Hyperpixel mocking and testing capabilities
+- **Deployment**: Raspberry Pi Zero (Linux) with Hyperpixel 2.1" Round display integration
 - **Configuration**: JSON-based platform detection and display configuration management
 - **Testing**: Validation across both environments including display simulation
 
@@ -148,13 +148,13 @@ The application supports operation across development and deployment environment
 
 ## Technical Requirements
 
-### Development Environment
+### Development Environment (macOS)
 - Mac Mini M4 (macOS)
 - Python 3.9+
 - Development dependencies per requirements.txt
 - Hyperpixel display simulation capabilities for development testing
 
-### Deployment Environment
+### Deployment Environment (Linux)
 - Raspberry Pi Zero/Zero W (Linux)
 - Pimoroni Hyperpixel 2.1" Round display (480x480 pixels)
 - Hyperpixel display drivers (built-in kernel support)
@@ -179,5 +179,5 @@ The application supports operation across development and deployment environment
 **Project Status**: Active Development  
 **Protocol Compliance**: All protocols implemented and maintained  
 **Hardware Platform**: Raspberry Pi Zero with Hyperpixel 2.1" Round Display  
-**Cross-Platform Status**: Mac development and Pi Zero deployment validated  
+**Cross-Platform Status**: macOS development and Linux deployment validated  
 **Documentation Status**: Documentation with visual diagram support
