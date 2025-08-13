@@ -54,13 +54,33 @@ The project follows Protocol 1 standards with a hierarchical organization suppor
 ## Hyperpixel Display Configuration
 
 ### Display Driver Setup (Linux/Raspberry Pi)
-```bash
-# Add to /boot/firmware/config.txt
-dtoverlay=vc4-kms-dpi-hyperpixel2r
 
-# Disable I2C for display compatibility
-sudo raspi-config nonint do_i2c 1
+Complete `/boot/firmware/config.txt` configuration for Hyperpixel 2.1" Round display:
+
+```bash
+# System Architecture
+arm_64bit=1
+boot_delay=0              
+initial_turbo=30 
+arm_boost=1    
+avoid_warnings=1
+disable_splash=1
+gpu_mem=128
+
+hdmi_force_hotplug=1
+hdmi_mode=1
+hdmi_group=1
+
+dtoverlay=hyperpixel2r:disable-touch
+enable_dpi_lcd=1
+dpi_group=2
+dpi_mode=87
+dpi_output_format=0x7f216
+dpi_timings=480 0 10 16 55 480 0 15 60 15 0 0 0 60 0 19200000 6
+dtparam=i2c_arm=on
 ```
+
+**Configuration Reference**: Complete configuration available at `doc/hardware/deployment/raspberry_pi/config.txt`
 
 ### Touch Driver Installation (Linux/Raspberry Pi)
 ```bash
@@ -109,7 +129,7 @@ python -m pytest src/tests/ -v
 cd src/provisioning
 
 # Run the package creation script
-python example_usage.py
+python create_package.py
 ```
 
 **What happens:** The system will:
@@ -258,7 +278,7 @@ python3 -m pytest src/tests/ -v
 # Update version number in your code first
 # Then create new package
 cd /path/to/your/GTach/src/provisioning
-python example_usage.py
+python create_package.py
 ```
 
 ##### Step 16: Deploy Update (on Pi)
@@ -280,7 +300,7 @@ sudo ./install.sh
 ```bash
 cd /path/to/your/GTach
 python -m pytest src/tests/ -v                    # Verify tests pass
-cd src/provisioning && python example_usage.py    # Create package
+cd src/provisioning && python create_package.py    # Create package
 scp ../../packages/gtach-*.tar.gz pi@PI_IP:/home/pi/  # Transfer to Pi
 ```
 

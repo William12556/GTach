@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """
-Example Usage of GTach Application Provisioning System
+GTach Application Package Creator
 
-Demonstrates how to use the provisioning system components for creating 
-deployment packages with cross-platform compatibility. Shows integration 
-with existing configuration management and logging systems.
+Production script for creating GTach deployment packages with cross-platform 
+compatibility. Creates standardized deployment packages containing application 
+source code, configuration templates, and installation scripts.
 
-Usage Examples:
-- Basic package creation
-- Custom configuration processing
-- Cross-platform deployment
-- Logging integration
+Usage:
+    python create_package.py
+
+Features:
+- Basic deployment package creation for Raspberry Pi
+- Custom configuration processing for target platforms
+- Cross-platform development and deployment support
+- Comprehensive logging and error handling
+
+This script is the primary tool for creating GTach deployment packages.
 """
 
 import sys
@@ -29,9 +34,9 @@ from provisioning import (
 from provisioning.logging_config import setup_provisioning_logging, cleanup_provisioning_logging
 
 
-def example_basic_package_creation():
-    """Example: Basic package creation for Raspberry Pi deployment"""
-    print("=== Basic Package Creation Example ===")
+def create_deployment_package():
+    """Create deployment package for Raspberry Pi deployment"""
+    print("=== Creating GTach Deployment Package ===")
     
     # Setup logging
     session_id = setup_provisioning_logging(debug_mode=True)
@@ -74,9 +79,9 @@ def example_basic_package_creation():
         cleanup_provisioning_logging(session_id)
 
 
-def example_custom_configuration_processing():
-    """Example: Custom configuration template processing"""
-    print("\n=== Custom Configuration Processing Example ===")
+def demonstrate_configuration_processing():
+    """Demonstrate: Custom configuration template processing"""
+    print("\n=== Configuration Processing Demonstration ===")
     
     session_id = setup_provisioning_logging(debug_mode=False)
     logger = logging.getLogger('provisioning.example')
@@ -153,9 +158,9 @@ bluetooth:
         cleanup_provisioning_logging(session_id)
 
 
-def example_archive_management():
-    """Example: Direct archive management operations"""
-    print("\n=== Archive Management Example ===")
+def demonstrate_archive_management():
+    """Demonstrate: Direct archive management operations"""
+    print("\n=== Archive Management Demonstration ===")
     
     session_id = setup_provisioning_logging(debug_mode=False)
     logger = logging.getLogger('provisioning.example')
@@ -254,9 +259,9 @@ def example_archive_management():
         cleanup_provisioning_logging(session_id)
 
 
-def example_cross_platform_compatibility():
-    """Example: Demonstrating cross-platform compatibility features"""
-    print("\n=== Cross-Platform Compatibility Example ===")
+def demonstrate_cross_platform_compatibility():
+    """Demonstrate: Cross-platform compatibility features"""
+    print("\n=== Cross-Platform Compatibility Demonstration ===")
     
     session_id = setup_provisioning_logging(debug_mode=False)
     logger = logging.getLogger('provisioning.example')
@@ -340,9 +345,9 @@ def example_cross_platform_compatibility():
 
 
 def main():
-    """Run all provisioning system examples"""
-    print("GTach Application Provisioning System - Examples")
-    print("=" * 50)
+    """Create GTach deployment package with optional demonstrations"""
+    print("GTach Application Package Creator")
+    print("=" * 35)
     
     # Check if we're in the right location
     project_root = Path(__file__).parent.parent.parent
@@ -352,19 +357,21 @@ def main():
         return
     
     try:
-        # Run examples
-        example_basic_package_creation()
-        example_custom_configuration_processing() 
-        example_archive_management()
-        example_cross_platform_compatibility()
+        # Main package creation
+        create_deployment_package()
         
-        print("\n" + "=" * 50)
-        print("All examples completed successfully!")
+        # Optional demonstrations (comment out for production use)
+        demonstrate_configuration_processing() 
+        demonstrate_archive_management()
+        demonstrate_cross_platform_compatibility()
+        
+        print("\n" + "=" * 35)
+        print("Package creation completed successfully!")
         
     except KeyboardInterrupt:
-        print("\nExamples interrupted by user.")
+        print("\nPackage creation interrupted by user.")
     except Exception as e:
-        print(f"\nUnexpected error: {e}")
+        print(f"\nPackage creation failed: {e}")
         import traceback
         traceback.print_exc()
 
