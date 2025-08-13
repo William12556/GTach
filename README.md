@@ -4,13 +4,15 @@
 
 ## Overview
 
-GTach is an embedded application designed for Raspberry Pi deployment with Pimoroni Hyperpixel 2.1" Round touchscreen display. The project provides real-time tachometer functionality through a circular interface optimized for the 480x480 pixel round display while supporting cross-platform development workflows.
+GTach is an experimental embedded application under development for Raspberry Pi deployment with Pimoroni Hyperpixel 2.1" Round touchscreen display. The project implements real-time tachometer functionality through a circular interface for the 480x480 pixel round display while supporting cross-platform development workflows.
 
-This project represents a first attempt at AI-supported software development using Claude Desktop and Claude Code tools. The implementation is experimental in nature, serving as a learning exercise in AI-assisted development workflows, protocol-driven project management, and cross-platform embedded systems development.
+**Important Notice**: This software is currently very unproven and in early development stages. The implementation is experimental in nature, serving as a learning exercise in AI-assisted development workflows, protocol-driven project management, and cross-platform embedded systems development. Actual fitness for purpose can only be determined through thorough testing in target environments.
+
+This project represents a first attempt at AI-supported software development using Claude Desktop and Claude Code tools.
 
 ## Hardware Platform
 
-The project is designed for **Raspberry Pi** (any compatible model) with **Pimoroni Hyperpixel 2.1" Round** display:
+The project is under development for **Raspberry Pi** (any compatible model) with **Pimoroni Hyperpixel 2.1" Round** display:
 
 - **Display**: 2.1" IPS round touchscreen (480x480 pixels, ~229 PPI)
 - **Interface**: High-speed DPI interface (60 FPS frame rate)
@@ -24,10 +26,10 @@ The project follows Protocol 1 standards with a hierarchical organization suppor
 
 ### Key Features
 
-- **Hyperpixel Integration**: Native support for Pimoroni Hyperpixel 2.1" Round display
-- **Cross-Platform Development**: Multi-platform development with Raspberry Pi deployment
-- **Touch Interface**: Capacitive touchscreen support with gesture recognition
-- **Circular UI Design**: Interface optimized for 480x480 round display geometry
+- **Hyperpixel Integration**: Planned support for Pimoroni Hyperpixel 2.1" Round display
+- **Cross-Platform Development**: Development framework for multi-platform compatibility
+- **Touch Interface**: Planned capacitive touchscreen support with gesture recognition
+- **Circular UI Design**: Interface design for 480x480 round display geometry
 - **Documentation**: Protocol-driven documentation with visual diagram support
 - **AI-Assisted Development**: Claude Desktop and Claude Code integration per Protocol 4
 - **Iterative Development**: Iteration-based workflow per Protocol 2
@@ -75,12 +77,14 @@ sudo ./install.sh
 
 ### Prerequisites
 
+**Warning**: This software is experimental and unproven. Use at your own risk.
+
 Before you begin, ensure you have:
 - Development machine (Mac, Linux, or Windows) with project files
 - Raspberry Pi with network access
 - SSH access to the Raspberry Pi
 - Python 3.9+ installed on both systems
-- All 143 project tests passing
+- All project tests passing (test suite under development)
 
 ---
 
@@ -371,12 +375,12 @@ Development follows protocols with AI coordination support:
 
 ## Cross-Platform Compatibility
 
-The application supports operation across development and deployment environments:
+The application is designed to support operation across development and deployment environments:
 
-- **Development**: Any modern development machine (Mac, Linux, Windows) with display mocking and testing capabilities
-- **Deployment**: Raspberry Pi with Hyperpixel 2.1" Round display integration
-- **Configuration**: JSON-based platform detection and display configuration management
-- **Testing**: Validation across both environments including display simulation
+- **Development**: Planned support for modern development machines (Mac, Linux, Windows) with display mocking
+- **Deployment**: Intended for Raspberry Pi with Hyperpixel 2.1" Round display integration
+- **Configuration**: JSON-based platform detection and display configuration (under development)
+- **Testing**: Multi-layer testing framework (implementation in progress)
 
 ## License
 
@@ -412,8 +416,9 @@ The application supports operation across development and deployment environment
 
 ---
 
-**Project Status**: Active Development  
-**Protocol Compliance**: All protocols implemented and maintained  
-**Hardware Platform**: Raspberry Pi with Hyperpixel 2.1" Round Display  
-**Cross-Platform Status**: Multi-platform development and Linux deployment validated  
-**Documentation Status**: Documentation with visual diagram support
+**Project Status**: Early Development - Experimental and Unproven  
+**Protocol Compliance**: Protocols defined, implementation in progress  
+**Hardware Platform**: Intended for Raspberry Pi with Hyperpixel 2.1" Round Display  
+**Cross-Platform Status**: Framework designed, validation pending  
+**Documentation Status**: Documentation framework established  
+**Warning**: Software fitness for purpose can only be determined through comprehensive testing
