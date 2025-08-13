@@ -735,9 +735,8 @@ if __name__ == "__main__":
         if output_path:
             archive_path = Path(output_path)
         else:
-            # Auto-generate filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{config.package_name}-{config.version}-{timestamp}.tar.gz"
+            # Generate simplified filename: gtach-v{version}.tar.gz
+            filename = f"gtach-v{config.version}.tar.gz"
             
             if config.output_dir:
                 archive_path = Path(config.output_dir) / filename
@@ -746,6 +745,10 @@ if __name__ == "__main__":
                 
         # Ensure output directory exists
         archive_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Log simplified naming decision
+        self.logger.info(f"Using simplified package naming format: gtach-v{config.version}.tar.gz")
+        self.logger.debug(f"Package naming - Version: {config.version}, Target: {config.target_platform}")
         
         # Create archive
         self.logger.debug(f"Creating archive: {archive_path}")

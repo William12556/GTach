@@ -41,11 +41,55 @@ class TestConfigProcessor(unittest.TestCase):
         self.template_dir.mkdir(parents=True)
         self.output_dir.mkdir(parents=True)
         
+        # Create mock configuration file in expected locations
+        self._create_mock_config_files()
+        
         # Create test templates
         self._create_test_templates()
         
         # Initialize ConfigProcessor
         self.processor = ConfigProcessor(self.project_root, "raspberry-pi")
+    
+    def _create_mock_config_files(self):
+        """Create mock configuration files for testing"""
+        # Create src/config directory structure
+        src_config_dir = self.project_root / "src" / "config"
+        src_config_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Create config directory structure  
+        config_dir = self.project_root / "config"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Mock configuration content
+        mock_config = """
+port: AUTO
+baudrate: 38400
+timeout: 1.0
+reconnect_attempts: 3
+fast_mode: true
+bluetooth:
+  saved_devices: []
+  auto_connect: true
+  scan_duration: 8.0
+  retry_limit: 3
+  timeout: 2.0
+  bleak_timeout: 10.0
+display:
+  mode: DIGITAL
+  rpm_warning: 6500
+  rpm_danger: 7000
+  fps_limit: 60
+debug_logging: false
+data_log_enabled: false
+"""
+        
+        # Write configuration file to primary expected location
+        src_config_file = src_config_dir / "config.yaml"
+        src_config_file.write_text(mock_config)
+        
+        # Also write to fallback location for comprehensive testing
+        config_file = config_dir / "config.yaml"
+        config_file.write_text(mock_config)
     
     def tearDown(self):
         """Cleanup test environment"""
@@ -403,22 +447,65 @@ GPIO_AVAILABLE=${gpio_available}
         
         def process_templates_thread(thread_id):
             try:
+                # Create thread-specific directories
+                thread_temp_dir = self.temp_dir / f"thread_{thread_id}"
+                thread_project_root = thread_temp_dir / "test_project"
+                thread_template_dir = thread_project_root / "templates"
                 output_dir = self.temp_dir / f"output_{thread_id}"
+                
+                # Setup thread-specific test environment
+                thread_project_root.mkdir(parents=True, exist_ok=True)
+                thread_template_dir.mkdir(parents=True, exist_ok=True)
                 output_dir.mkdir(exist_ok=True)
                 
+                # Create mock configuration files for this thread
+                src_config_dir = thread_project_root / "src" / "config"
+                src_config_dir.mkdir(parents=True, exist_ok=True)
+                
+                mock_config = """
+port: AUTO
+baudrate: 38400
+timeout: 1.0
+reconnect_attempts: 3
+fast_mode: true
+bluetooth:
+  saved_devices: []
+  auto_connect: true
+  scan_duration: 8.0
+  retry_limit: 3
+  timeout: 2.0
+  bleak_timeout: 10.0
+display:
+  mode: DIGITAL
+  rpm_warning: 6500
+  rpm_danger: 7000
+  fps_limit: 60
+debug_logging: false
+data_log_enabled: false
+"""
+                (src_config_dir / "config.yaml").write_text(mock_config)
+                
+                # Copy template files
+                for template_file in self.template_dir.glob("*"):
+                    if template_file.is_file():
+                        shutil.copy2(template_file, thread_template_dir)
+                
+                # Create thread-specific processor
+                thread_processor = ConfigProcessor(thread_project_root, "raspberry-pi")
+                
                 with patch('provisioning.config_processor.ConfigManager') as mock_cm:
-                    mock_config = Mock()
-                    mock_config.port = "AUTO"
-                    mock_config.baudrate = 38400
-                    mock_config.bluetooth.scan_duration = 8.0
-                    mock_config.bluetooth.timeout = 2.0
-                    mock_config.display.fps_limit = 60
-                    mock_config.display.mode = "DIGITAL"
-                    mock_config.debug_logging = False
-                    mock_cm.return_value.load_config.return_value = mock_config
+                    mock_config_obj = Mock()
+                    mock_config_obj.port = "AUTO"
+                    mock_config_obj.baudrate = 38400
+                    mock_config_obj.bluetooth.scan_duration = 8.0
+                    mock_config_obj.bluetooth.timeout = 2.0
+                    mock_config_obj.display.fps_limit = 60
+                    mock_config_obj.display.mode = "DIGITAL"
+                    mock_config_obj.debug_logging = False
+                    mock_cm.return_value.load_config.return_value = mock_config_obj
                     
-                    processed = self.processor.process_templates(
-                        self.template_dir, output_dir
+                    processed = thread_processor.process_templates(
+                        thread_template_dir, output_dir
                     )
                     results.append((thread_id, processed))
                     

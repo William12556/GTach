@@ -32,9 +32,84 @@ from provisioning import (
     ArchiveManager, ArchiveConfig, CompressionFormat
 )
 from provisioning.logging_config import setup_provisioning_logging, cleanup_provisioning_logging
+from provisioning.version_manager import VersionManager
 
 
-def create_deployment_package():
+def get_user_version_input(logger) -> str:
+    """
+    Get version input from user with validation and examples.
+    
+    Args:
+        logger: Logger instance for recording version assignment decisions
+        
+    Returns:
+        Validated version string
+    """
+    version_manager = VersionManager()
+    
+    print("\n" + "=" * 50)
+    print("📦 GTach Package Version Assignment")
+    print("=" * 50)
+    
+    # Show examples
+    print("\nVersion Format Examples:")
+    examples = version_manager.suggest_version_examples()
+    for i, example in enumerate(examples[:6], 1):  # Show first 6 examples
+        print(f"  {i}. {example}")
+    print(f"  ... and more semantic version formats")
+    
+    print(f"\nSemantic Versioning Format: MAJOR.MINOR.PATCH[-prerelease][+build]")
+    print(f"• Stable releases: 1.0.0, 2.1.3")
+    print(f"• Pre-releases: 1.0.0-alpha.1, 2.0.0-beta.2, 1.5.0-rc.1")
+    print(f"• Development: 0.1.0-dev.20250813, 1.0.0+build.123")
+    
+    max_attempts = 5
+    attempt = 0
+    
+    while attempt < max_attempts:
+        attempt += 1
+        
+        print(f"\n{'─' * 50}")
+        if attempt == 1:
+            version_input = input("Enter version (e.g., 0.1.0, 1.2.3-alpha.1): ").strip()
+        else:
+            print(f"Attempt {attempt}/{max_attempts}")
+            version_input = input("Enter version: ").strip()
+        
+        if not version_input:
+            print("❌ Error: Version cannot be empty")
+            continue
+        
+        # Validate version format
+        is_valid, feedback = version_manager.validate_version_format(version_input)
+        
+        if is_valid:
+            print(f"✅ {feedback}")
+            
+            # Confirm version with user
+            confirm = input(f"\nConfirm version '{version_input}'? [Y/n]: ").strip().lower()
+            if confirm in ['', 'y', 'yes']:
+                logger.info(f"User selected version: {version_input}")
+                logger.debug(f"Version validation: {feedback}")
+                print(f"✓ Version confirmed: {version_input}")
+                return version_input
+            else:
+                print("Version selection cancelled by user")
+                continue
+        else:
+            print(f"❌ {feedback}")
+            
+            if attempt < max_attempts:
+                print(f"\nPlease try again ({max_attempts - attempt} attempts remaining)")
+            
+    # Max attempts reached
+    logger.warning(f"Version input failed after {max_attempts} attempts, using default")
+    print(f"\n❌ Maximum attempts ({max_attempts}) reached.")
+    print("Using default version: 0.1.0-dev")
+    return "0.1.0-dev"
+
+
+def create_deployment_package(user_version: Optional[str] = None):
     """Create deployment package for Raspberry Pi deployment"""
     print("=== Creating GTach Deployment Package ===")
     
@@ -68,10 +143,18 @@ def create_deployment_package():
                 logger.error(f"  - {path}")
             raise RuntimeError("Required configuration file (config.yaml) not found in any expected location")
         
+        # Determine version to use
+        if user_version:
+            package_version = user_version
+            logger.info(f"Using provided version: {package_version}")
+        else:
+            package_version = "1.0.0"
+            logger.info(f"Using default version: {package_version}")
+        
         # Create package configuration
         config = PackageConfig(
-            package_name="gtach-pi-deployment",
-            version="1.0.0",
+            package_name="gtach",  # Simplified package name
+            version=package_version,
             target_platform="raspberry-pi",
             source_dirs=["src/obdii"],
             output_dir=str(project_root / "packages"),
@@ -337,8 +420,8 @@ def demonstrate_cross_platform_compatibility():
             print(f"\nTarget: {target_platform}")
             
             config = PackageConfig(
-                package_name=f"gtach-{target_platform}",
-                version="1.0.0",
+                package_name="gtach",  # Simplified naming
+                version="1.0.0-test",
                 target_platform=target_platform,
                 source_dirs=["src/obdii"],
                 output_dir=str(project_root / "temp_packages"),
@@ -385,10 +468,27 @@ def main():
     operations_successful = True
     operation_results = []
     
+    # Get version from user interactively
+    user_version = None
+    try:
+        # Setup temporary logging for version input
+        temp_session_id = setup_provisioning_logging(debug_mode=False)
+        temp_logger = logging.getLogger('provisioning.version_input')
+        
+        user_version = get_user_version_input(temp_logger)
+        cleanup_provisioning_logging(temp_session_id)
+        
+    except KeyboardInterrupt:
+        print("\nVersion input interrupted by user.")
+        return 130
+    except Exception as e:
+        print(f"Error during version input: {e}")
+        user_version = None  # Will use default
+    
     try:
         # Main package creation
         try:
-            create_deployment_package()
+            create_deployment_package(user_version)
             operation_results.append(("Package Creation", True, None))
         except Exception as e:
             operations_successful = False

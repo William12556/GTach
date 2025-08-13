@@ -538,3 +538,81 @@ class VersionManager:
             self._dependency_cache.clear()
             
         self.logger.info("Version manager caches cleared")
+    
+    def validate_version_format(self, version_string: str) -> tuple[bool, str]:
+        """
+        Validate version format and provide detailed feedback.
+        
+        Args:
+            version_string: Version string to validate
+            
+        Returns:
+            Tuple of (is_valid, feedback_message)
+        """
+        try:
+            version = self.parse_version(version_string)
+            
+            # Additional validation for common patterns
+            feedback_parts = []
+            
+            if version.is_prerelease:
+                prerelease_types = ['alpha', 'beta', 'rc']
+                has_valid_prerelease = any(prerelease_type in version.prerelease.lower() 
+                                         for prerelease_type in prerelease_types)
+                if has_valid_prerelease:
+                    feedback_parts.append(f"Pre-release version ({version.prerelease})")
+                else:
+                    feedback_parts.append(f"Custom pre-release identifier ({version.prerelease})")
+            else:
+                feedback_parts.append("Stable release")
+            
+            if version.build_metadata:
+                feedback_parts.append(f"Build metadata: {version.build_metadata}")
+            
+            feedback = f"Valid semantic version: {version} - " + ", ".join(feedback_parts)
+            self.logger.debug(f"Version validation successful: {version_string}")
+            return True, feedback
+            
+        except ValueError as e:
+            error_msg = str(e)
+            
+            # Provide helpful suggestions based on common errors
+            suggestions = []
+            
+            if not re.match(r'^\d+\.\d+\.\d+', version_string.strip()):
+                suggestions.append("Format should be MAJOR.MINOR.PATCH (e.g., 1.0.0)")
+            
+            if '-' in version_string and not re.search(r'-[a-zA-Z]', version_string):
+                suggestions.append("Pre-release identifiers should contain letters (e.g., 1.0.0-alpha.1)")
+            
+            if version_string.count('.') < 2:
+                suggestions.append("Version must have at least three parts: major.minor.patch")
+            
+            if version_string.count('.') > 3 and '+' not in version_string:
+                suggestions.append("Extra dots should be in pre-release or build metadata sections")
+            
+            feedback = f"Invalid version format: {error_msg}"
+            if suggestions:
+                feedback += f" Suggestions: {'; '.join(suggestions)}"
+            
+            self.logger.debug(f"Version validation failed: {version_string} - {feedback}")
+            return False, feedback
+    
+    def suggest_version_examples(self) -> List[str]:
+        """
+        Get list of example version formats for user guidance.
+        
+        Returns:
+            List of example version strings
+        """
+        examples = [
+            "0.1.0",              # Initial development
+            "1.0.0",              # First stable release
+            "1.2.3",              # Standard semantic version
+            "2.0.0-alpha.1",      # Major version alpha
+            "1.5.0-beta.2",       # Minor version beta  
+            "1.0.1-rc.1",         # Patch release candidate
+            "1.0.0-dev.20250813", # Development build
+            "2.1.0+build.123"     # Version with build metadata
+        ]
+        return examples

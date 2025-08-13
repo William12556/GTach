@@ -1,0 +1,258 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.9.6, pytest-8.4.1, pluggy-1.6.0 -- /Library/Developer/CommandLineTools/usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/williamwatson/Documents/GitHub/GTach
+configfile: pyproject.toml
+plugins: anyio-4.9.0, cov-6.2.1, mock-3.14.1
+collecting ... collected 152 items
+
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_collect_files PASSED [  0%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_compression_format_from_extension PASSED [  1%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_create_archive_with_checksums PASSED [  1%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_create_archive_with_metadata_file PASSED [  2%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_create_tar_bz2_archive PASSED [  3%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_create_tar_gz_archive PASSED [  3%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_create_zip_archive PASSED [  4%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_error_handling PASSED [  5%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_extract_tar_archive PASSED [  5%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_extract_zip_archive PASSED [  6%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_get_stats PASSED [  7%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_initialization PASSED [  7%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_is_safe_path PASSED [  8%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_progress_callback PASSED [  9%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_should_exclude_file PASSED [  9%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_thread_safety PASSED [ 10%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_verify_tar_integrity PASSED [ 11%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManager::test_verify_zip_integrity PASSED [ 11%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveMetadata::test_from_dict PASSED [ 12%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveMetadata::test_to_dict PASSED [ 13%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveConfig::test_custom_values PASSED [ 13%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveConfig::test_default_values PASSED [ 14%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_parallel_archive_creation_performance PASSED [ 15%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_parallel_checksum_calculation PASSED [ 15%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_parallel_file_collection_below_threshold PASSED [ 16%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_parallel_file_collection_disabled PASSED [ 17%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_parallel_file_collection_enabled PASSED [ 17%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_parallel_processing_error_handling PASSED [ 18%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_progress_callback_with_parallel_processing PASSED [ 19%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_thread_pool_management PASSED [ 19%]
+src/tests/provisioning/test_archive_manager.py::TestArchiveManagerParallelProcessing::test_timing_statistics_collection PASSED [ 20%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_create_platform_config_template PASSED [ 21%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_different_target_platforms PASSED [ 21%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_get_output_filename PASSED [ 22%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_get_platform_config PASSED [ 23%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_get_stats PASSED [ 23%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_initialization PASSED [ 24%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_platform_configs_loaded PASSED [ 25%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_prepare_template_variables PASSED [ 25%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_process_json_template PASSED [ 26%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_process_templates PASSED [ 26%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_process_text_template PASSED [ 27%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_process_yaml_template PASSED [ 28%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_thread_safety PASSED [ 28%]
+src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_validate_config_content PASSED [ 29%]
+src/tests/provisioning/test_config_processor.py::TestPlatformConfig::test_to_dict PASSED [ 30%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_auto_detect_project_root PASSED [ 30%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_check_version_compatibility PASSED [ 31%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_collect_source_files PASSED [ 32%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_create_generic_install_script PASSED [ 32%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_create_manifest PASSED [ 33%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_create_package_basic PASSED [ 34%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_create_package_with_output_path PASSED [ 34%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_create_pi_install_script PASSED [ 35%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_error_handling PASSED [ 36%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_get_next_version PASSED [ 36%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_get_stats PASSED [ 37%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_initialization PASSED [ 38%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_process_config_templates PASSED [ 38%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_resolve_package_dependencies PASSED [ 39%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_should_exclude_file PASSED [ 40%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_thread_safety PASSED [ 40%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_validate_config_invalid PASSED [ 41%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_validate_config_invalid_version PASSED [ 42%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_validate_config_valid PASSED [ 42%]
+src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_validate_package_version PASSED [ 43%]
+src/tests/provisioning/test_package_creator.py::TestPackageManifest::test_from_dict PASSED [ 44%]
+src/tests/provisioning/test_package_creator.py::TestPackageManifest::test_to_dict PASSED [ 44%]
+src/tests/provisioning/test_package_creator.py::TestPackageConfig::test_custom_values PASSED [ 45%]
+src/tests/provisioning/test_package_creator.py::TestPackageConfig::test_default_values PASSED [ 46%]
+src/tests/provisioning/test_package_repository.py::TestPackageEntry::test_from_dict PASSED [ 46%]
+src/tests/provisioning/test_package_repository.py::TestPackageEntry::test_from_dict_missing_tags PASSED [ 47%]
+src/tests/provisioning/test_package_repository.py::TestPackageEntry::test_to_dict PASSED [ 48%]
+src/tests/provisioning/test_package_repository.py::TestSearchQuery::test_matches_date_range PASSED [ 48%]
+src/tests/provisioning/test_package_repository.py::TestSearchQuery::test_matches_name_filter PASSED [ 49%]
+src/tests/provisioning/test_package_repository.py::TestSearchQuery::test_matches_platform_filter PASSED [ 50%]
+src/tests/provisioning/test_package_repository.py::TestSearchQuery::test_matches_tags_filter PASSED [ 50%]
+src/tests/provisioning/test_package_repository.py::TestSearchQuery::test_matches_version_constraint PASSED [ 51%]
+src/tests/provisioning/test_package_repository.py::TestRepositoryStats::test_to_dict PASSED [ 51%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_cleanup_repository_actual PASSED [ 52%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_cleanup_repository_dry_run PASSED [ 53%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_default_repository_path PASSED [ 53%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_delete_package PASSED [ 54%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_delete_package_not_found PASSED [ 55%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_error_handling PASSED [ 55%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_find_compatible_versions PASSED [ 56%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_get_latest_version PASSED [ 57%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_get_latest_version_not_found PASSED [ 57%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_get_operation_stats PASSED [ 58%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_get_package_info PASSED [ 59%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_get_package_info_not_found PASSED [ 59%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_get_stats PASSED [ 60%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_index_persistence PASSED [ 61%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_initialization PASSED [ 61%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_list_packages PASSED [ 62%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_retrieve_package PASSED [ 63%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_retrieve_package_not_found PASSED [ 63%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_search_packages PASSED [ 64%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_store_package_basic PASSED [ 65%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_store_package_duplicate PASSED [ 65%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_store_package_invalid_version PASSED [ 66%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_store_package_missing_file PASSED [ 67%]
+src/tests/provisioning/test_package_repository.py::TestPackageRepository::test_thread_safety PASSED [ 67%]
+src/tests/provisioning/test_update_manager.py::TestUpdateConflict::test_conflict_creation PASSED [ 68%]
+src/tests/provisioning/test_update_manager.py::TestValidationResult::test_validation_result_creation PASSED [ 69%]
+src/tests/provisioning/test_update_manager.py::TestBackupInfo::test_backup_info_serialization PASSED [ 69%]
+src/tests/provisioning/test_update_manager.py::TestUpdateOperation::test_operation_serialization PASSED [ 70%]
+src/tests/provisioning/test_update_manager.py::TestUpdateConfig::test_custom_config PASSED [ 71%]
+src/tests/provisioning/test_update_manager.py::TestUpdateConfig::test_default_config PASSED [ 71%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_apply_update PASSED [ 72%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_cancel_update PASSED [ 73%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_cancel_update_non_existent PASSED [ 73%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_check_update_conflicts PASSED [ 74%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_cleanup_old_backups PASSED [ 75%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_create_backup PASSED [ 75%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_detect_current_version PASSED [ 76%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_get_stats PASSED [ 76%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_get_update_status PASSED [ 77%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_initialization PASSED [ 78%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_list_backups PASSED [ 78%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_retrieve_package PASSED [ 79%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_rollback_update PASSED [ 80%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_rollback_update_no_backup PASSED [ 80%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_start_update PASSED [ 81%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_start_update_invalid_version PASSED [ 82%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_thread_safety PASSED [ 82%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_validate_applied_update PASSED [ 83%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_validate_package_integrity PASSED [ 84%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_validate_package_integrity_checksum_mismatch PASSED [ 84%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_validate_target_package PASSED [ 85%]
+src/tests/provisioning/test_update_manager.py::TestUpdateManager::test_validate_target_package_not_found PASSED [ 86%]
+src/tests/provisioning/test_version_manager.py::TestVersion::test_compatibility_levels PASSED [ 86%]
+src/tests/provisioning/test_version_manager.py::TestVersion::test_invalid_version_parsing PASSED [ 87%]
+src/tests/provisioning/test_version_manager.py::TestVersion::test_valid_version_parsing PASSED [ 88%]
+src/tests/provisioning/test_version_manager.py::TestVersion::test_version_bumping PASSED [ 88%]
+src/tests/provisioning/test_version_manager.py::TestVersion::test_version_equality PASSED [ 89%]
+src/tests/provisioning/test_version_manager.py::TestVersion::test_version_hash PASSED [ 90%]
+src/tests/provisioning/test_version_manager.py::TestVersion::test_version_ordering PASSED [ 90%]
+src/tests/provisioning/test_version_manager.py::TestVersion::test_version_properties PASSED [ 91%]
+src/tests/provisioning/test_version_manager.py::TestVersionConstraint::test_constraint_matching PASSED [ 92%]
+src/tests/provisioning/test_version_manager.py::TestVersionConstraint::test_invalid_constraint_operator PASSED [ 92%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_check_compatibility PASSED [ 93%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_clear_cache PASSED [ 94%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_find_compatible_versions PASSED [ 94%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_get_latest_version PASSED [ 95%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_get_stats PASSED [ 96%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_initialization PASSED [ 96%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_parse_constraint PASSED [ 97%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_parse_version_caching PASSED [ 98%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_resolve_dependencies PASSED [ 98%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_thread_safety PASSED [ 99%]
+src/tests/provisioning/test_version_manager.py::TestVersionManager::test_validate_version_range PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../Library/Python/3.9/lib/python/site-packages/pygame/pkgdata.py:25
+  /Users/williamwatson/Library/Python/3.9/lib/python/site-packages/pygame/pkgdata.py:25: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+    from pkg_resources import resource_stream, resource_exists
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.9.6-final-0 ________________
+
+Name                                                                Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------------------------------------
+src/obdii/__init__.py                                                   5      0   100%
+src/obdii/app.py                                                       83     65    22%   23-47, 51-67, 71-87, 92-105, 109-117, 121-139, 143-144
+src/obdii/comm/__init__.py                                              4      0   100%
+src/obdii/comm/bluetooth.py                                           403    318    21%   25-31, 68-106, 111-116, 121-122, 127-128, 133-134, 139-140, 145-146, 151-152, 157-158, 163-164, 169, 174-175, 180-181, 186-187, 192-193, 198-199, 204-205, 210-211, 216-225, 229-235, 239-260, 264-277, 281-305, 310-319, 323-358, 362-416, 420-435, 439-446, 450-483, 487-499, 503-519, 523-532, 536, 546-550, 559-582, 591, 600-604, 618-632, 645-671, 680-684, 698
+src/obdii/comm/device_store.py                                        156    131    16%   16-18, 26-42, 46-48, 52-80, 91-99, 103-125, 129-144, 148-172, 176-196, 200-230, 234, 238-246, 250, 254, 258-264, 268-273, 277-280
+src/obdii/comm/models.py                                               49     33    33%   26-40, 44-61, 67-87
+src/obdii/comm/obd.py                                                  84     63    25%   27-40, 44-45, 49-51, 55-75, 79-93, 97-111, 115-133
+src/obdii/comm/pairing.py                                             301    268    11%   18, 23-25, 34-80, 84-93, 112-212, 216-258, 262-263, 267-272, 286-342, 346-379, 393-455, 459-498, 514, 518-519, 523-524, 528-536, 540-543, 547, 551
+src/obdii/comm/system_bluetooth.py                                    163    124    24%   50-53, 57-65, 69-75, 79-85, 89-91, 95-97, 104-105, 109-113, 117-140, 144-183, 187-207, 211-229, 233-242, 246-260, 264-272, 278-279, 284-288
+src/obdii/core/__init__.py                                              3      0   100%
+src/obdii/core/thread.py                                              324    267    18%   33-41, 59, 63-66, 72-78, 82-83, 87-93, 97-106, 110-130, 146-186, 191-198, 202-221, 225-240, 244-246, 250-255, 268-269, 273-281, 285-301, 313-357, 361-432, 436-470, 474-529, 533, 537, 541-545
+src/obdii/core/watchdog.py                                            194    146    25%   70-90, 97-98, 102-114, 124-126, 130-156, 160-171, 175-189, 193-204, 208-240, 244-278, 282-283, 287-306, 310-320, 324-325, 337-361
+src/obdii/core/watchdog_enhanced.py                                   289    289     0%   7-554
+src/obdii/display/__init__.py                                          17      6    65%   15-20
+src/obdii/display/async_operations.py                                 182    138    24%   62-79, 83-95, 99-113, 131-158, 169-170, 181-189, 197-198, 209-224, 228-306, 316-331, 340-343, 348-350
+src/obdii/display/components/__init__.py                                4      4     0%   7-11
+src/obdii/display/components/coordinator.py                           200    200     0%   6-373
+src/obdii/display/components/factory.py                                70     70     0%   6-166
+src/obdii/display/enhanced_touch_factory.py                           315    315     0%   7-667
+src/obdii/display/graphics/__init__.py                                  2      2     0%   7-16
+src/obdii/display/graphics/splash_graphics.py                         266    266     0%   7-578
+src/obdii/display/hardware_interface.py                               267    267     0%   7-563
+src/obdii/display/input/__init__.py                                     3      0   100%
+src/obdii/display/input/interfaces.py                                  56      9    84%   47, 52, 57, 62, 67, 72, 78, 83, 88
+src/obdii/display/input/touch_coordinator.py                          287    256    11%   26-66, 83-99, 119-135, 152-164, 168-181, 185-192, 204-243, 247-270, 274-325, 330-357, 362-363, 367-378, 382-409, 413-436, 440-459, 463-469, 473-477, 487-516, 520-538, 542-543, 547-552, 556-557, 561-566, 570-584
+src/obdii/display/manager.py                                          463    402    13%   22-24, 29-31, 57-77, 81-102, 106-119, 123-133, 137-147, 151-162, 166-212, 216-240, 244-260, 264-266, 270-280, 284-293, 297-345, 349-373, 377-383, 387-399, 403-432, 436-476, 480-497, 502-515, 520-537, 541-546, 550-591, 595-630, 634-656, 660-686, 690-712, 716-734, 738-755, 759-766, 771-772, 776-778, 782-784, 788, 792-810, 814-824, 829-838, 842-856
+src/obdii/display/manager_backup.py                                  1127   1127     0%   7-2018
+src/obdii/display/models.py                                            29      0   100%
+src/obdii/display/navigation_gestures.py                              266    266     0%   7-498
+src/obdii/display/performance.py                                      388    388     0%   9-813
+src/obdii/display/performance/__init__.py                              17     10    41%   17-19, 24-27, 32-34
+src/obdii/display/performance/interfaces.py                            66     14    79%   39, 58, 63, 68, 73, 78, 83, 88, 93, 98, 103, 108, 113, 118
+src/obdii/display/performance/monitor.py                              281    246    12%   30-77, 81-106, 110-127, 131-153, 157-193, 197-211, 215-219, 223-227, 231-236, 243-280, 284-294, 298-316, 320-326, 330-354, 358-369, 373-383, 387-398, 402-412, 416-427, 431-436, 440-459, 463-475, 479-481, 485-501
+src/obdii/display/rendering/__init__.py                                 3      0   100%
+src/obdii/display/rendering/engine.py                                 269    239    11%   29-59, 73-107, 111-133, 147-162, 167-174, 179-186, 192-207, 213-220, 225-235, 254-276, 280-290, 299-364, 368-390, 394-395, 399-404, 408-415, 430-439, 443-461, 465, 469-470
+src/obdii/display/rendering/interfaces.py                              61     14    77%   36, 42, 48, 54, 61, 68, 74, 81, 86, 91, 96, 101, 107, 112
+src/obdii/display/setup.py                                            396    354    11%   17-19, 47-94, 98-99, 104-106, 111, 115-127, 131-139, 143-163, 167-207, 211-228, 232-270, 274-311, 315-382, 386-479, 483-501, 505-513, 517-525, 529-537, 541-555, 559-595, 599-603, 609-612, 616-625, 629
+src/obdii/display/setup_components/__init__.py                          0      0   100%
+src/obdii/display/setup_components/bluetooth/__init__.py                0      0   100%
+src/obdii/display/setup_components/bluetooth/interface.py             246    231     6%   20-30, 34-105, 109-123, 128-211, 215-300, 304-316, 320-357
+src/obdii/display/setup_components/layout/__init__.py                   0      0   100%
+src/obdii/display/setup_components/layout/circular_positioning.py     228    211     7%   20-46, 51-64, 74-113, 117-167, 179-286, 291-346, 357-383, 387-404, 408-447, 451-464, 468-475
+src/obdii/display/setup_components/rendering/__init__.py                0      0   100%
+src/obdii/display/setup_components/rendering/device_surfaces.py       281    261     7%   15-17, 28-55, 64-73, 77-85, 89-97, 101-116, 122-238, 243-399, 403-410, 414-430, 434-466
+src/obdii/display/setup_components/state/__init__.py                    0      0   100%
+src/obdii/display/setup_components/state/coordinator.py               271    237    13%   18-56, 60-61, 65-80, 84-103, 107-109, 113-118, 122-125, 129-181, 185-200, 204-232, 236-237, 241-242, 246-250, 254-258, 262-263, 267-271, 275-299, 303-304, 308-309, 313-315, 319-322, 326-329, 333-335, 339-356, 360-386, 390-391, 401-403, 407-429
+src/obdii/display/setup_models.py                                      74      9    88%   52, 55-57, 73-77
+src/obdii/display/setup_original_backup.py                           1948   1948     0%   7-3694
+src/obdii/display/splash.py                                           327    293    10%   16-18, 25-27, 33-35, 70-143, 156-163, 173-178, 193-205, 221-231, 244-296, 315-336, 349-393, 397-420, 424-445, 449-473, 477-500, 505-526, 530-541, 550-571, 583-588, 600-605, 621-632, 644-645, 677-719
+src/obdii/display/touch.py                                            228    205    10%   15-17, 30-53, 57-74, 78-87, 91-115, 119-155, 159-166, 170-191, 203-225, 233-279, 286-294, 298-308, 312-319, 323-340, 344-370, 374-408
+src/obdii/display/touch_interface.py                                  454    355    22%   22, 35, 39, 43, 47, 51, 61-62, 90-95, 107-110, 123, 133, 146-151, 155-157, 166-173, 182, 191, 207-209, 218-220, 224-225, 229-230, 242-249, 261-269, 280-298, 302-342, 346-384, 388-405, 419-444, 448-458, 470-506, 510-520, 524-534, 543-549, 560-592, 603-621, 632-644, 658-677, 688, 692-695, 699-701, 710, 722-728, 732-734, 738-740, 744-750, 754-764, 768-774, 778-787, 804-870, 890-922, 939-955, 972-974, 990-992
+src/obdii/display/typography.py                                       317    216    32%   27-29, 129-136, 140-155, 167-186, 199-209, 221-227, 239-246, 259-272, 287-305, 309-311, 315-316, 342-365, 404-481, 496-526, 530, 534, 550, 562-590, 607-612, 625, 630, 635, 640, 645, 650, 655, 660, 665, 670, 675, 680, 685, 695-713, 730-735, 759, 774-778, 796-838
+src/obdii/display/ui_testing_framework.py                             265    265     0%   7-639
+src/obdii/main.py                                                     452    425     6%   32-39, 49-64, 74-133, 149-257, 267-286, 296-327, 337-371, 381-390, 409-479, 489-550, 562-641, 654-666, 676-732, 742-860, 864
+src/obdii/utils/__init__.py                                             4      0   100%
+src/obdii/utils/config.py                                             876    532    39%   25-27, 32-37, 79, 95, 100, 112-113, 126-129, 132, 135-139, 143-153, 157-159, 163, 202-204, 218-219, 223-224, 227-228, 235-236, 240-241, 244-245, 249, 253-254, 260-261, 265-266, 271, 279, 288-304, 312, 361, 383, 388-389, 420, 431, 437, 442, 447, 469, 482, 507, 518, 550, 568, 600-605, 620-630, 641-673, 684-690, 698-738, 749-758, 770-806, 817-833, 843-859, 867-910, 918-954, 962-979, 997-999, 1027, 1083-1084, 1088, 1090, 1111, 1119-1121, 1127-1132, 1146-1147, 1150-1153, 1169-1189, 1198-1199, 1205, 1211-1235, 1246-1252, 1265-1311, 1315, 1328-1334, 1347-1357, 1369-1378, 1388-1391, 1399-1402, 1413-1415, 1423-1433, 1451, 1463, 1468-1469, 1479-1490, 1498, 1506-1508, 1516-1518, 1526-1528, 1540-1574, 1582-1616, 1623-1645, 1658-1719, 1728-1747, 1756-1762, 1770-1797, 1801-1804, 1808, 1812, 1816-1822
+src/obdii/utils/dependencies.py                                       324    270    17%   62-71, 76-119, 123, 234-265, 276-328, 332-384, 388-402, 406-424, 428-520, 524-530, 534, 538-568, 573-613, 625-627, 632-663, 667
+src/obdii/utils/home.py                                               132     55    58%   73-75, 83-100, 114, 124-142, 146-151, 157-158, 178, 182, 186, 190, 208, 212, 216, 220, 224, 232, 236, 240, 248, 252, 257-267
+src/obdii/utils/platform.py                                           560    317    43%   87-88, 92-93, 97-98, 102-104, 184-186, 196-198, 204-206, 212-214, 220-222, 229-230, 241-287, 302-364, 379-400, 416-427, 436-437, 464-496, 515, 522, 529, 549-580, 584-595, 599-642, 646-679, 683-694, 698-713, 717-727, 731-741, 745-746, 756-757, 761-800, 804-811, 825-846, 850-855, 895, 904, 929, 931, 963-968, 973-978, 985-988, 993-998, 1003-1008, 1014-1019, 1024-1028, 1033-1051, 1063-1091, 1095-1106
+src/obdii/utils/services/__init__.py                                    7      7     0%   14-33
+src/obdii/utils/services/configuration.py                             224    224     0%   9-532
+src/obdii/utils/services/dependency.py                                261    261     0%   9-606
+src/obdii/utils/services/platform.py                                  279    279     0%   9-591
+src/obdii/utils/services/registry.py                                  276    276     0%   9-586
+src/obdii/utils/terminal.py                                            52     41    21%   20-34, 38-46, 50-79
+src/provisioning/__init__.py                                            5      5     0%   19-28
+src/provisioning/archive_manager.py                                   486     79    84%   211-224, 238-240, 322-329, 387, 410-411, 442-444, 529-530, 557-558, 566-568, 595-596, 600-603, 674, 686-688, 726, 745-749, 782, 795-796, 803-807, 835-836, 843-847, 877, 891-892, 914-915, 984-985, 1013-1015, 1043-1045, 1077, 1084-1086
+src/provisioning/config_processor.py                                  262     50    81%   31, 43-45, 136-141, 282-283, 288, 304-305, 316-319, 351-352, 360, 425-426, 453, 501-502, 530, 542-544, 562-566, 596-601, 635, 643-644, 661, 677-681, 715, 719, 748-749
+src/provisioning/create_package.py                                    238    238     0%   21-451
+src/provisioning/logging_config.py                                    209    209     0%   17-485
+src/provisioning/package_creator.py                                   335     49    85%   37-38, 163, 213-239, 327, 345, 367-368, 385-386, 414-415, 459-460, 487-488, 494-500, 517, 524, 529-530, 684-686, 695-696, 745, 879, 887, 894-895
+src/provisioning/package_repository.py                                365     49    87%   90, 103-104, 250-252, 360-367, 391-392, 460-463, 505-507, 531, 572, 584, 628-629, 648, 654-660, 665-673, 709-710, 725-726, 736
+src/provisioning/update_manager.py                                    645    216    67%   39-42, 279-283, 315-316, 320-322, 353, 386-389, 414-417, 422, 426-428, 440-498, 513-516, 610-611, 651-659, 683, 700-708, 724-725, 736, 742, 747, 818-825, 829-835, 844-847, 869-922, 935-967, 988-990, 997-998, 1011-1012, 1031-1039, 1064-1065, 1092-1094, 1107-1112, 1116-1118, 1125, 1141-1149, 1161-1196, 1206-1221, 1245, 1250, 1279-1289, 1323, 1331-1337, 1345-1347, 1375-1377, 1381-1382, 1389-1391, 1404, 1427-1428, 1435-1437
+src/provisioning/version_manager.py                                   245      7    97%   142, 147, 156, 167, 189, 202, 208
+src/tests/provisioning/__init__.py                                      0      0   100%
+src/tests/provisioning/test_archive_manager.py                        350      3    99%   334-335, 733
+src/tests/provisioning/test_config_processor.py                       241      3    99%   512-513, 565
+src/tests/provisioning/test_package_creator.py                        260      4    98%   84, 321-322, 526
+src/tests/provisioning/test_package_repository.py                     324     10    97%   326-330, 703-704, 752-754, 767
+src/tests/provisioning/test_update_manager.py                         342      3    99%   797-798, 856
+src/tests/provisioning/test_version_manager.py                        223      3    99%   434-435, 485
+-------------------------------------------------------------------------------------------------
+TOTAL                                                               19709  14143    28%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+======================== 152 passed, 1 warning in 3.04s ========================
