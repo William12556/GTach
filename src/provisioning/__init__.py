@@ -25,4 +25,4 @@ __all__ = [
     'ConfigProcessor', 'PlatformConfig', 
     'ArchiveManager', 'ArchiveMetadata', 'ArchiveConfig', 'CompressionFormat'
 ]
-__version__ = '1.0.0'
+__version__ = '0.1.0-alpha.1'

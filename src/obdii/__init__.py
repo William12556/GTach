@@ -3,7 +3,7 @@
 from .app import OBDIIApplication
 from .main import main
 
-__version__ = "0.1.0"
+__version__ = "0.1.0-alpha.1"
 __author__ = "Your Name"
 
 __all__ = [

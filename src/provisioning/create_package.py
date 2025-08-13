@@ -33,6 +33,7 @@ from provisioning import (
 )
 from provisioning.logging_config import setup_provisioning_logging, cleanup_provisioning_logging
 from provisioning.version_manager import VersionManager
+from provisioning.project_version_manager import VersionWorkflow
 
 
 def get_user_version_input(logger) -> str:
@@ -453,7 +454,7 @@ def demonstrate_cross_platform_compatibility():
 
 
 def main():
-    """Create GTach deployment package with operation outcome tracking"""
+    """Create GTach deployment package with version management and operation tracking"""
     print("GTach Application Package Creator")
     print("=" * 35)
     
@@ -464,26 +465,85 @@ def main():
         print("Please run this script from the provisioning directory.")
         return 1
     
+    # Initialize version workflow
+    version_workflow = VersionWorkflow(project_root)
+    
+    # Check for version inconsistencies and offer management
+    print("\n🔍 Checking project version consistency...")
+    current_version = version_workflow.get_current_project_version()
+    stats = version_workflow.project_manager.get_stats()
+    
+    if stats['has_inconsistencies']:
+        print("⚠️  Version inconsistencies detected across project files!")
+        print(f"Found {len(stats['version_groups'])} different versions:")
+        for version, count in stats['version_groups'].items():
+            print(f"   • {version}: {count} files")
+        
+        print(f"\nWould you like to:")
+        print(f"1. Fix version inconsistencies automatically")
+        print(f"2. Set project version interactively") 
+        print(f"3. Continue with current version ({current_version})")
+        print(f"4. Exit")
+        
+        choice = input("\nSelect option [1-4]: ").strip()
+        
+        if choice == "1":
+            # Use current most common version
+            if current_version:
+                print(f"Setting all files to version: {current_version}")
+                version_workflow.project_manager.update_all_versions(current_version)
+                print("✅ Version consistency restored!")
+            else:
+                print("❌ No valid version found to standardize on")
+                return 1
+        elif choice == "2":
+            # Interactive version management
+            selected_version = version_workflow.interactive_version_update()
+            if selected_version:
+                current_version = selected_version
+                print(f"✅ Project version updated to: {current_version}")
+            else:
+                print("❌ Version update cancelled")
+                return 1
+        elif choice == "3":
+            print(f"Continuing with current version: {current_version}")
+        elif choice == "4":
+            print("Exiting...")
+            return 0
+        else:
+            print("Invalid choice, continuing with current version")
+    else:
+        print(f"✅ All project files consistent at version: {current_version}")
+    
     # Track operation outcomes
     operations_successful = True
     operation_results = []
     
-    # Get version from user interactively
-    user_version = None
-    try:
-        # Setup temporary logging for version input
-        temp_session_id = setup_provisioning_logging(debug_mode=False)
-        temp_logger = logging.getLogger('provisioning.version_input')
-        
-        user_version = get_user_version_input(temp_logger)
-        cleanup_provisioning_logging(temp_session_id)
-        
-    except KeyboardInterrupt:
-        print("\nVersion input interrupted by user.")
-        return 130
-    except Exception as e:
-        print(f"Error during version input: {e}")
-        user_version = None  # Will use default
+    # Get version for package creation (default to project version)
+    user_version = current_version
+    
+    print(f"\n📦 Package Version Selection")
+    print(f"Current project version: {current_version}")
+    
+    use_different = input(f"Use a different version for this package? [y/N]: ").strip().lower()
+    if use_different in ['y', 'yes']:
+        try:
+            # Setup temporary logging for version input
+            temp_session_id = setup_provisioning_logging(debug_mode=False)
+            temp_logger = logging.getLogger('provisioning.version_input')
+            
+            user_version = get_user_version_input(temp_logger)
+            cleanup_provisioning_logging(temp_session_id)
+            
+        except KeyboardInterrupt:
+            print("\nVersion input interrupted by user.")
+            return 130
+        except Exception as e:
+            print(f"Error during version input: {e}")
+            user_version = current_version  # Fall back to project version
+    else:
+        print(f"Using project version: {current_version}")
+        user_version = current_version
     
     try:
         # Main package creation

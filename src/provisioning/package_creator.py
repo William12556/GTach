@@ -96,7 +96,7 @@ class PackageConfig:
     """Configuration for package creation"""
     # Package identification
     package_name: str = "gtach-app"
-    version: str = "1.0.0"
+    version: str = "0.1.0-alpha.1"
     target_platform: str = "raspberry-pi"
     
     # Source paths (relative to project root)

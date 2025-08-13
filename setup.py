@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="gtach",
-    version="1.0.0",
+    version="0.1.0-alpha.1",
     description="GTach Embedded Application System",
     author="William Watson",
     author_email="william.watson@example.com",

@@ -501,7 +501,7 @@ class TestPackageConfig(unittest.TestCase):
         config = PackageConfig()
         
         self.assertEqual(config.package_name, "gtach-app")
-        self.assertEqual(config.version, "1.0.0")
+        self.assertEqual(config.version, "0.1.0-alpha.1")
         self.assertEqual(config.target_platform, "raspberry-pi")
         self.assertIn("src/obdii", config.source_dirs)
         self.assertIn("__pycache__", config.exclude_patterns)
