@@ -265,7 +265,8 @@ class TestPackageCreator(unittest.TestCase):
         package_path = self.creator.create_package(config)
         
         self.assertTrue(package_path.exists())
-        self.assertTrue(package_path.name.startswith("test-package-1.0.0"))
+        # Package uses simplified naming: gtach-v{version}.tar.gz
+        self.assertTrue(package_path.name.startswith("gtach-v1.0.0"))
         self.assertTrue(package_path.name.endswith(".tar.gz"))
         
         # Verify package is a valid archive

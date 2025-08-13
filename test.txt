@@ -238,21 +238,21 @@ src/obdii/utils/terminal.py                                            52     41
 src/provisioning/__init__.py                                            5      5     0%   19-28
 src/provisioning/archive_manager.py                                   486     79    84%   211-224, 238-240, 322-329, 387, 410-411, 442-444, 529-530, 557-558, 566-568, 595-596, 600-603, 674, 686-688, 726, 745-749, 782, 795-796, 803-807, 835-836, 843-847, 877, 891-892, 914-915, 984-985, 1013-1015, 1043-1045, 1077, 1084-1086
 src/provisioning/config_processor.py                                  262     50    81%   31, 43-45, 136-141, 282-283, 288, 304-305, 316-319, 351-352, 360, 425-426, 453, 501-502, 530, 542-544, 562-566, 596-601, 635, 643-644, 661, 677-681, 715, 719, 748-749
-src/provisioning/create_package.py                                    238    238     0%   21-451
+src/provisioning/create_package.py                                    300    300     0%   21-551
 src/provisioning/logging_config.py                                    209    209     0%   17-485
-src/provisioning/package_creator.py                                   335     49    85%   37-38, 163, 213-239, 327, 345, 367-368, 385-386, 414-415, 459-460, 487-488, 494-500, 517, 524, 529-530, 684-686, 695-696, 745, 879, 887, 894-895
+src/provisioning/package_creator.py                                   336     49    85%   37-38, 163, 213-239, 327, 345, 367-368, 385-386, 414-415, 459-460, 487-488, 494-500, 517, 524, 529-530, 684-686, 695-696, 744, 882, 890, 897-898
 src/provisioning/package_repository.py                                365     49    87%   90, 103-104, 250-252, 360-367, 391-392, 460-463, 505-507, 531, 572, 584, 628-629, 648, 654-660, 665-673, 709-710, 725-726, 736
 src/provisioning/update_manager.py                                    645    216    67%   39-42, 279-283, 315-316, 320-322, 353, 386-389, 414-417, 422, 426-428, 440-498, 513-516, 610-611, 651-659, 683, 700-708, 724-725, 736, 742, 747, 818-825, 829-835, 844-847, 869-922, 935-967, 988-990, 997-998, 1011-1012, 1031-1039, 1064-1065, 1092-1094, 1107-1112, 1116-1118, 1125, 1141-1149, 1161-1196, 1206-1221, 1245, 1250, 1279-1289, 1323, 1331-1337, 1345-1347, 1375-1377, 1381-1382, 1389-1391, 1404, 1427-1428, 1435-1437
-src/provisioning/version_manager.py                                   245      7    97%   142, 147, 156, 167, 189, 202, 208
+src/provisioning/version_manager.py                                   280     40    86%   142, 147, 156, 167, 189, 202, 208, 552-599, 608-618
 src/tests/provisioning/__init__.py                                      0      0   100%
 src/tests/provisioning/test_archive_manager.py                        350      3    99%   334-335, 733
 src/tests/provisioning/test_config_processor.py                       241      3    99%   512-513, 565
-src/tests/provisioning/test_package_creator.py                        260      4    98%   84, 321-322, 526
+src/tests/provisioning/test_package_creator.py                        260      4    98%   84, 322-323, 527
 src/tests/provisioning/test_package_repository.py                     324     10    97%   326-330, 703-704, 752-754, 767
 src/tests/provisioning/test_update_manager.py                         342      3    99%   797-798, 856
 src/tests/provisioning/test_version_manager.py                        223      3    99%   434-435, 485
 -------------------------------------------------------------------------------------------------
-TOTAL                                                               19709  14143    28%
+TOTAL                                                               19807  14238    28%
 Coverage HTML written to dir htmlcov
 Coverage XML written to file coverage.xml
-======================== 152 passed, 1 warning in 3.04s ========================
+======================== 152 passed, 1 warning in 3.06s ========================
