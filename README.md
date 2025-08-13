@@ -118,7 +118,7 @@ cd /path/to/your/GTach
 #### Step 2: Verify Project Status
 ```bash
 # Run the test suite to ensure everything works
-python -m pytest src/tests/ -v
+python3 -m pytest src/tests/ -v
 
 # You should see: 143 tests passed
 ```
@@ -129,7 +129,7 @@ python -m pytest src/tests/ -v
 cd src/provisioning
 
 # Run the package creation script
-python create_package.py
+python3 create_package.py
 ```
 
 **What happens:** The system will:
@@ -278,7 +278,7 @@ python3 -m pytest src/tests/ -v
 # Update version number in your code first
 # Then create new package
 cd /path/to/your/GTach/src/provisioning
-python create_package.py
+python3 create_package.py
 ```
 
 ##### Step 16: Deploy Update (on Pi)
@@ -299,8 +299,8 @@ sudo ./install.sh
 **On Development Machine (Packaging):**
 ```bash
 cd /path/to/your/GTach
-python -m pytest src/tests/ -v                    # Verify tests pass
-cd src/provisioning && python create_package.py    # Create package
+python3 -m pytest src/tests/ -v                    # Verify tests pass
+cd src/provisioning && python3 create_package.py    # Create package
 scp ../../packages/gtach-*.tar.gz pi@PI_IP:/home/pi/  # Transfer to Pi
 ```
 
@@ -336,20 +336,20 @@ sudo systemctl status gtach                      # Check status
 ### Development Environment
 ```bash
 # Install development environment
-python setup.py develop
+python3 setup.py develop
 
 # Run with debug logging and display simulation
-python -m gtach.main --debug --simulate-display
+python3 -m gtach.main --debug --simulate-display
 
 # Execute test suite including display tests
-python -m pytest src/tests/
+python3 -m pytest src/tests/
 ```
 
 ### Production Environment (Linux/Raspberry Pi)
 ```bash
 # Deploy package (from development environment)
 scp deployment_package.tar.gz pi@raspberry-pi:/tmp/
-ssh pi@raspberry-pi "cd /tmp && tar -xzf deployment_package.tar.gz && python setup.py install"
+ssh pi@raspberry-pi "cd /tmp && tar -xzf deployment_package.tar.gz && python3 setup.py install"
 
 # Run on Raspberry Pi with Hyperpixel display
 gtach --debug

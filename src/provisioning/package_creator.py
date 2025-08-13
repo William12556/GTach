@@ -470,10 +470,12 @@ class PackageCreator:
             
         Returns:
             List of processed template file paths (relative)
+            
+        Raises:
+            RuntimeError: If critical configuration processing fails
         """
         template_files = []
         
-        # Import config processor (will implement next)
         try:
             from .config_processor import ConfigProcessor
             processor = ConfigProcessor(self.project_root, config.target_platform)
@@ -485,12 +487,17 @@ class PackageCreator:
                     self.logger.debug(f"Config template directory not found: {template_dir}")
                     continue
                     
-                # Process templates in directory
-                processed = processor.process_templates(dir_path, self.workspace_dir)
-                template_files.extend(processed)
-                
-        except ImportError:
-            self.logger.warning("ConfigProcessor not available - skipping template processing")
+                # Process templates in directory - any errors will propagate up
+                try:
+                    processed = processor.process_templates(dir_path, self.workspace_dir)
+                    template_files.extend(processed)
+                except Exception as e:
+                    self.logger.error(f"Configuration template processing failed for {template_dir}: {e}")
+                    raise RuntimeError(f"Failed to process configuration templates in {template_dir}: {e}") from e
+                    
+        except ImportError as e:
+            self.logger.error("ConfigProcessor not available - cannot create deployment package")
+            raise RuntimeError("ConfigProcessor module required for package creation") from e
             
         return template_files
     

@@ -47,6 +47,27 @@ def create_deployment_package():
         project_root = Path(__file__).parent.parent.parent
         logger.info(f"Using project root: {project_root}")
         
+        # Validate configuration file availability before proceeding
+        config_paths = [
+            project_root / "src" / "config" / "config.yaml",
+            project_root / "config" / "config.yaml", 
+            project_root / "config.yaml"
+        ]
+        
+        config_found = False
+        for config_path in config_paths:
+            if config_path.exists():
+                logger.info(f"Configuration file found: {config_path}")
+                config_found = True
+                break
+        
+        if not config_found:
+            logger.error("Configuration file discovery failed")
+            logger.error("Searched paths:")
+            for path in config_paths:
+                logger.error(f"  - {path}")
+            raise RuntimeError("Required configuration file (config.yaml) not found in any expected location")
+        
         # Create package configuration
         config = PackageConfig(
             package_name="gtach-pi-deployment",
@@ -59,22 +80,26 @@ def create_deployment_package():
         )
         
         # Initialize package creator
+        logger.info("Initializing PackageCreator...")
         creator = PackageCreator(project_root)
         
         # Create deployment package
-        logger.info("Creating deployment package...")
+        logger.info("Starting package creation process...")
         package_path = creator.create_package(config)
         
+        logger.info(f"Package creation successful: {package_path}")
         print(f"✓ Package created successfully: {package_path}")
         
         # Show package stats
         stats = creator.get_stats()
+        logger.info(f"Package creation stats: {stats}")
         print(f"  Operation count: {stats['operation_count']}")
         print(f"  Source platform: {stats['source_platform']}")
         
     except Exception as e:
-        logger.error(f"Package creation failed: {e}")
+        logger.error(f"Package creation failed: {e}", exc_info=True)
         print(f"✗ Error: {e}")
+        raise  # Re-raise to ensure proper error propagation
     finally:
         cleanup_provisioning_logging(session_id)
 
@@ -345,7 +370,7 @@ def demonstrate_cross_platform_compatibility():
 
 
 def main():
-    """Create GTach deployment package with optional demonstrations"""
+    """Create GTach deployment package with operation outcome tracking"""
     print("GTach Application Package Creator")
     print("=" * 35)
     
@@ -354,26 +379,72 @@ def main():
     if not (project_root / "src" / "obdii").exists():
         print("Error: Could not find src/obdii directory.")
         print("Please run this script from the provisioning directory.")
-        return
+        return 1
+    
+    # Track operation outcomes
+    operations_successful = True
+    operation_results = []
     
     try:
         # Main package creation
-        create_deployment_package()
+        try:
+            create_deployment_package()
+            operation_results.append(("Package Creation", True, None))
+        except Exception as e:
+            operations_successful = False
+            operation_results.append(("Package Creation", False, str(e)))
         
         # Optional demonstrations (comment out for production use)
-        demonstrate_configuration_processing() 
-        demonstrate_archive_management()
-        demonstrate_cross_platform_compatibility()
+        try:
+            demonstrate_configuration_processing()
+            operation_results.append(("Configuration Processing", True, None))
+        except Exception as e:
+            operations_successful = False
+            operation_results.append(("Configuration Processing", False, str(e)))
         
+        try:
+            demonstrate_archive_management()
+            operation_results.append(("Archive Management", True, None))
+        except Exception as e:
+            operations_successful = False
+            operation_results.append(("Archive Management", False, str(e)))
+        
+        try:
+            demonstrate_cross_platform_compatibility()
+            operation_results.append(("Cross-Platform Compatibility", True, None))
+        except Exception as e:
+            operations_successful = False
+            operation_results.append(("Cross-Platform Compatibility", False, str(e)))
+        
+        # Report outcomes based on actual results
         print("\n" + "=" * 35)
-        print("Package creation completed successfully!")
+        print("Operation Summary:")
+        print("-" * 35)
+        
+        for operation, success, error in operation_results:
+            status = "✓ SUCCESS" if success else "✗ FAILED"
+            print(f"{operation}: {status}")
+            if error:
+                print(f"  Error: {error}")
+        
+        if operations_successful:
+            print("\n" + "=" * 35)
+            print("Package creation completed successfully!")
+            return 0
+        else:
+            print("\n" + "=" * 35)
+            print("Package creation completed with errors!")
+            print("Check the error messages above for details.")
+            return 1
         
     except KeyboardInterrupt:
         print("\nPackage creation interrupted by user.")
+        return 130  # Standard exit code for SIGINT
     except Exception as e:
-        print(f"\nPackage creation failed: {e}")
+        print(f"\nCritical error in package creation: {e}")
         import traceback
         traceback.print_exc()
+        return 1
 
 
 if __name__ == "__main__":
