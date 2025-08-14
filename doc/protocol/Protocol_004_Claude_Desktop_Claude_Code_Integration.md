@@ -60,6 +60,10 @@ CONTEXT: [Development Context and Background]
 PROTOCOL REVIEW REQUIRED:
 - Review relevant project protocols from doc/protocol/
 - Apply protocol requirements throughout implementation
+FILE PLACEMENT REQUIREMENT:
+- ALL SOURCE CODE FILES MUST BE CREATED IN src/ DIRECTORY
+- NO PYTHON FILES (.py) IN PROJECT ROOT DIRECTORY
+- ALL TEST FILES MUST BE IN src/tests/ DIRECTORY
 ISSUE DESCRIPTION: [Detailed Problem Statement]
 SOLUTION STRATEGY: [High-Level Approach]
 IMPLEMENTATION PLAN: [Step-by-Step Implementation Details]

@@ -161,6 +161,15 @@ Establish standardized directory structure and file organization principles for 
 - **pyproject.toml**: Modern Python project metadata and build system configuration
 - **Makefile**: Build automation and common task shortcuts
 
+### Root Directory Restrictions
+**Prohibited in Root Directory**:
+- Python source code files (.py) - All source code must reside in src/ directory
+- Test files - All test files must reside in src/tests/ directory
+- Implementation files - No implementation artifacts in project root
+- Temporary development files - Must be excluded via .gitignore
+
+**Exception Handling**: Only essential project configuration and documentation files permitted in root directory.
+
 ## Cross-Platform Considerations
 
 ### Path Standards

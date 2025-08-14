@@ -19,10 +19,12 @@ Components:
 from .package_creator import PackageCreator, PackageConfig, PackageManifest
 from .config_processor import ConfigProcessor, PlatformConfig
 from .archive_manager import ArchiveManager, ArchiveMetadata, ArchiveConfig, CompressionFormat
+from .version_state_manager import VersionStateManager, VersionState, DevelopmentStage, IncrementHistory
 
 __all__ = [
     'PackageCreator', 'PackageConfig', 'PackageManifest',
     'ConfigProcessor', 'PlatformConfig', 
-    'ArchiveManager', 'ArchiveMetadata', 'ArchiveConfig', 'CompressionFormat'
+    'ArchiveManager', 'ArchiveMetadata', 'ArchiveConfig', 'CompressionFormat',
+    'VersionStateManager', 'VersionState', 'DevelopmentStage', 'IncrementHistory'
 ]
 __version__ = '0.1.0-alpha.1'

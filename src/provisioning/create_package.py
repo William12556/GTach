@@ -1,27 +1,34 @@
 #!/usr/bin/env python3
 """
-GTach Application Package Creator
+Enhanced GTach Application Package Creator with Version State Management
 
-Production script for creating GTach deployment packages with cross-platform 
-compatibility. Creates standardized deployment packages containing application 
-source code, configuration templates, and installation scripts.
+Production script for creating GTach deployment packages with comprehensive 
+version state management, stage-based workflows, and intelligent increment suggestions.
 
 Usage:
     python create_package.py
 
 Features:
-- Basic deployment package creation for Raspberry Pi
-- Custom configuration processing for target platforms
-- Cross-platform development and deployment support
-- Comprehensive logging and error handling
+- Comprehensive version state management with persistent storage
+- Stage-based development workflow (dev → alpha → beta → rc → release → stable)
+- Intelligent increment suggestions based on current stage
+- Project consistency enforcement with version synchronization
+- Multi-package session handling with increment tracking
+- Optional project version updates after package creation
+- Backward compatibility with manual version input
+- Comprehensive logging and error handling per Protocol 8
 
-This script is the primary tool for creating GTach deployment packages.
+Protocol Compliance:
+- Protocol 8: Comprehensive logging and debug standards
+- Protocol 6: Cross-platform development standards
+- Protocol 2: Systematic iteration workflow
 """
 
 import sys
 import logging
+import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, List, Tuple, Any
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -29,57 +36,441 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from provisioning import (
     PackageCreator, PackageConfig, PackageManifest,
     ConfigProcessor, PlatformConfig,
-    ArchiveManager, ArchiveConfig, CompressionFormat
+    ArchiveManager, ArchiveConfig, CompressionFormat,
+    VersionStateManager, VersionState, DevelopmentStage
 )
 from provisioning.logging_config import setup_provisioning_logging, cleanup_provisioning_logging
 from provisioning.version_manager import VersionManager
 from provisioning.project_version_manager import VersionWorkflow
 
 
-def get_user_version_input(logger) -> str:
+def handle_version_state_workflow(project_root: Path, 
+                                session_id: str, 
+                                logger: logging.Logger) -> Tuple[Optional[str], VersionStateManager]:
     """
-    Get version input from user with validation and examples.
+    Handle comprehensive version state workflow with stage-based management.
     
     Args:
-        logger: Logger instance for recording version assignment decisions
+        project_root: Project root directory
+        session_id: Current session identifier
+        logger: Logger instance for operation tracking
         
     Returns:
-        Validated version string
+        Tuple of (selected_version, state_manager)
+    """
+    logger.info("Starting version state workflow")
+    
+    try:
+        # Initialize version state manager
+        state_manager = VersionStateManager(project_root, session_id=session_id)
+        current_state = state_manager.get_current_state()
+        
+        print(f"\n🔧 GTach Version State Management")
+        print(f"=" * 50)
+        
+        # Show current version state
+        print(f"\n📊 Current Version State:")
+        print(f"   Version: {current_state.current_version}")
+        print(f"   Stage: {current_state.current_stage.value}")
+        print(f"   Total Increments: {current_state.total_increments}")
+        
+        # Show recent history if available
+        if current_state.total_increments > 0:
+            print(f"   Last Updated: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_state.last_updated))}")
+            
+            recent_history = state_manager.get_increment_history(limit=3)
+            if recent_history:
+                print(f"\n📋 Recent Changes:")
+                for i, entry in enumerate(recent_history, 1):
+                    print(f"   {i}. {entry.from_version} → {entry.to_version} ({entry.increment_type})")
+        
+        # Check for project consistency issues
+        version_workflow = VersionWorkflow(project_root)
+        project_stats = version_workflow.project_manager.get_stats()
+        
+        if project_stats.get('has_inconsistencies', False):
+            logger.warning("Project version inconsistencies detected")
+            consistency_resolved = resolve_version_inconsistencies(
+                state_manager, version_workflow, logger
+            )
+            if not consistency_resolved:
+                return None, state_manager
+        else:
+            print(f"✅ Project files are version-consistent")
+        
+        # Offer version management options
+        print(f"\n🎯 Version Management Options:")
+        print(f"1. Use current version ({current_state.current_version})")
+        print(f"2. Increment version (stage-based suggestions)")
+        print(f"3. Manual version entry")
+        print(f"4. View version history")
+        print(f"5. Exit")
+        
+        while True:
+            choice = input(f"\nSelect option [1-5]: ").strip()
+            
+            if choice == "1":
+                logger.info(f"User selected current version: {current_state.current_version}")
+                return current_state.current_version, state_manager
+            
+            elif choice == "2":
+                # Stage-based increment suggestions
+                selected_version = handle_stage_based_increment(state_manager, logger)
+                if selected_version:
+                    return selected_version, state_manager
+                # Continue loop if user cancelled
+                
+            elif choice == "3":
+                # Manual version entry with fallback
+                selected_version = get_manual_version_input(logger)
+                if selected_version:
+                    # Record manual version in state manager
+                    state_manager.update_version(
+                        selected_version,
+                        increment_type="manual",
+                        user_context="Manual version entry via package creation",
+                        operation_context="package_creation_manual"
+                    )
+                    return selected_version, state_manager
+                # Continue loop if user cancelled
+                
+            elif choice == "4":
+                # Show detailed version history
+                show_version_history(state_manager)
+                # Continue loop after showing history
+                
+            elif choice == "5":
+                logger.info("User exited version state workflow")
+                return None, state_manager
+                
+            else:
+                print("❌ Invalid choice. Please select 1-5.")
+        
+    except Exception as e:
+        logger.error(f"Version state workflow failed: {e}", exc_info=True)
+        print(f"❌ Version state workflow error: {e}")
+        print("Falling back to manual version input...")
+        
+        # Fallback to manual version input
+        fallback_version = get_manual_version_input(logger)
+        if fallback_version:
+            # Create minimal state manager for tracking
+            try:
+                state_manager = VersionStateManager(project_root, session_id=session_id)
+                state_manager.update_version(
+                    fallback_version,
+                    increment_type="fallback",
+                    user_context="Fallback after state workflow error",
+                    operation_context="package_creation_fallback"
+                )
+                return fallback_version, state_manager
+            except Exception:
+                # Ultimate fallback - return version without state tracking
+                return fallback_version, None
+        
+        return None, None
+
+
+def resolve_version_inconsistencies(state_manager: VersionStateManager,
+                                  version_workflow: VersionWorkflow,
+                                  logger: logging.Logger) -> bool:
+    """
+    Resolve project version inconsistencies with user guidance.
+    
+    Args:
+        state_manager: Version state manager instance
+        version_workflow: Version workflow manager
+        logger: Logger instance
+        
+    Returns:
+        True if inconsistencies were resolved, False otherwise
+    """
+    logger.info("Resolving project version inconsistencies")
+    
+    stats = version_workflow.project_manager.get_stats()
+    version_groups = stats.get('version_groups', {})
+    
+    print(f"\n⚠️  Project Version Inconsistencies Detected!")
+    print(f"Found {len(version_groups)} different versions across project files:")
+    
+    for version, count in version_groups.items():
+        print(f"   • {version}: {count} files")
+    
+    current_state = state_manager.get_current_state()
+    state_version = current_state.current_version
+    
+    print(f"\nVersion State Manager version: {state_version}")
+    
+    print(f"\nResolution Options:")
+    print(f"1. Synchronize all project files to state manager version ({state_version})")
+    print(f"2. Update state manager to most common project version")
+    print(f"3. Set new version for entire project (interactive)")
+    print(f"4. Continue with inconsistencies (not recommended)")
+    
+    choice = input(f"\nSelect resolution [1-4]: ").strip()
+    
+    try:
+        if choice == "1":
+            # Sync project files to state manager version
+            logger.info(f"Synchronizing project files to state version: {state_version}")
+            print(f"Synchronizing all project files to: {state_version}")
+            
+            version_workflow.project_manager.update_all_versions(state_version)
+            print(f"✅ Project synchronized to state manager version")
+            return True
+            
+        elif choice == "2":
+            # Update state manager to most common project version
+            most_common_version = max(version_groups.items(), key=lambda x: x[1])[0]
+            logger.info(f"Updating state manager to most common version: {most_common_version}")
+            print(f"Updating state manager to most common project version: {most_common_version}")
+            
+            state_manager.update_version(
+                most_common_version,
+                increment_type="synchronization",
+                user_context="Synchronized to most common project version",
+                operation_context="consistency_resolution"
+            )
+            print(f"✅ State manager updated to project version")
+            return True
+            
+        elif choice == "3":
+            # Interactive version setting
+            logger.info("Starting interactive version resolution")
+            print(f"Setting new version for entire project...")
+            
+            selected_version = version_workflow.interactive_version_update()
+            if selected_version:
+                # Update state manager to match
+                state_manager.update_version(
+                    selected_version,
+                    increment_type="project_sync",
+                    user_context="Project-wide version update",
+                    operation_context="consistency_resolution"
+                )
+                print(f"✅ Project and state manager synchronized to: {selected_version}")
+                return True
+            else:
+                print("❌ Version resolution cancelled")
+                return False
+                
+        elif choice == "4":
+            # Continue with inconsistencies
+            logger.warning("User chose to continue with version inconsistencies")
+            print("⚠️  Continuing with version inconsistencies")
+            return True
+            
+        else:
+            print("❌ Invalid choice")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Failed to resolve version inconsistencies: {e}", exc_info=True)
+        print(f"❌ Error resolving inconsistencies: {e}")
+        return False
+
+
+def handle_stage_based_increment(state_manager: VersionStateManager, 
+                                logger: logging.Logger) -> Optional[str]:
+    """
+    Handle stage-based version increment with intelligent suggestions.
+    
+    Args:
+        state_manager: Version state manager instance
+        logger: Logger instance
+        
+    Returns:
+        Selected version string or None if cancelled
+    """
+    logger.info("Starting stage-based increment workflow")
+    
+    current_state = state_manager.get_current_state()
+    current_stage = current_state.current_stage
+    
+    print(f"\n🎯 Stage-Based Version Increment")
+    print(f"Current: {current_state.current_version} ({current_stage.value})")
+    
+    # Show valid next stages
+    next_stages = current_stage.get_next_stages()
+    print(f"Valid next stages: {[stage.value for stage in next_stages]}")
+    
+    # Generate suggestions for different increment types
+    print(f"\n💡 Increment Suggestions:")
+    
+    increment_options = []
+    
+    # Prerelease increment (within same stage)
+    if current_stage != DevelopmentStage.RELEASE:
+        prerelease_suggestions = state_manager.suggest_next_version("prerelease")
+        if prerelease_suggestions:
+            increment_options.extend([
+                ("prerelease", prerelease_suggestions[0], f"Increment {current_stage.value} version")
+            ])
+    
+    # Minor increment suggestions
+    minor_suggestions = state_manager.suggest_next_version("minor")
+    increment_options.extend([
+        ("minor", minor_suggestions[0], "Minor version increment"),
+    ])
+    
+    # Major increment suggestions  
+    major_suggestions = state_manager.suggest_next_version("major")
+    increment_options.extend([
+        ("major", major_suggestions[0], "Major version increment"),
+    ])
+    
+    # Patch increment suggestions
+    patch_suggestions = state_manager.suggest_next_version("patch")
+    increment_options.extend([
+        ("patch", patch_suggestions[0], "Patch version increment"),
+    ])
+    
+    # Display options
+    for i, (inc_type, version, description) in enumerate(increment_options, 1):
+        stage = DevelopmentStage.from_version_string(version)
+        stage_name = stage.value if stage else "unknown"
+        print(f"   {i}. {version} ({stage_name}) - {description}")
+    
+    print(f"   {len(increment_options) + 1}. Custom version")
+    print(f"   {len(increment_options) + 2}. Cancel")
+    
+    while True:
+        try:
+            choice_input = input(f"\nSelect increment option [1-{len(increment_options) + 2}]: ").strip()
+            choice = int(choice_input)
+            
+            if 1 <= choice <= len(increment_options):
+                # Selected a suggested increment
+                inc_type, selected_version, description = increment_options[choice - 1]
+                
+                print(f"\nSelected: {selected_version}")
+                print(f"Description: {description}")
+                
+                confirm = input(f"Confirm increment to {selected_version}? [Y/n]: ").strip().lower()
+                if confirm in ['', 'y', 'yes']:
+                    # Update state manager
+                    increment = state_manager.update_version(
+                        selected_version,
+                        increment_type=inc_type,
+                        user_context=f"Stage-based increment: {description}",
+                        operation_context="package_creation_increment"
+                    )
+                    
+                    logger.info(f"Stage-based increment: {increment.from_version} → {selected_version}")
+                    print(f"✅ Version incremented: {increment.from_version} → {selected_version}")
+                    
+                    if increment.stage_transition:
+                        print(f"   Stage transition: {increment.from_stage.value} → {increment.to_stage.value}")
+                    
+                    return selected_version
+                else:
+                    print("Increment cancelled")
+                    return None
+                    
+            elif choice == len(increment_options) + 1:
+                # Custom version
+                custom_version = get_manual_version_input(logger, context="stage-based custom")
+                if custom_version:
+                    state_manager.update_version(
+                        custom_version,
+                        increment_type="custom",
+                        user_context="Custom version via stage-based workflow",
+                        operation_context="package_creation_custom"
+                    )
+                    return custom_version
+                return None
+                
+            elif choice == len(increment_options) + 2:
+                # Cancel
+                logger.info("User cancelled stage-based increment")
+                return None
+                
+            else:
+                print(f"❌ Invalid choice. Please select 1-{len(increment_options) + 2}")
+                
+        except ValueError:
+            print(f"❌ Invalid input. Please enter a number 1-{len(increment_options) + 2}")
+
+
+def show_version_history(state_manager: VersionStateManager) -> None:
+    """
+    Display comprehensive version history.
+    
+    Args:
+        state_manager: Version state manager instance
+    """
+    print(f"\n📋 Version History")
+    print(f"=" * 40)
+    
+    current_state = state_manager.get_current_state()
+    
+    print(f"Current Version: {current_state.current_version} ({current_state.current_stage.value})")
+    print(f"Total Increments: {current_state.total_increments}")
+    print(f"Creation Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_state.creation_time))}")
+    print(f"Last Updated: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(current_state.last_updated))}")
+    
+    # Show increment history
+    history = state_manager.get_increment_history(limit=10)
+    if history:
+        print(f"\n🔄 Recent Increments (last {min(len(history), 10)}):")
+        for i, entry in enumerate(history, 1):
+            timestamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(entry.timestamp))
+            stage_info = ""
+            if entry.stage_transition:
+                stage_info = f" [{entry.from_stage.value if entry.from_stage else '?'} → {entry.to_stage.value}]"
+            
+            print(f"   {i}. {entry.from_version} → {entry.to_version}{stage_info}")
+            print(f"      Type: {entry.increment_type}, Time: {timestamp}")
+            if entry.user_context:
+                print(f"      Context: {entry.user_context}")
+    
+    # Show stage history
+    stage_history = state_manager.get_stage_history()
+    if stage_history:
+        print(f"\n🎭 Stage Transitions:")
+        for version, stage, timestamp in stage_history[-5:]:  # Last 5 transitions
+            time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(timestamp))
+            print(f"   {version} → {stage.value} ({time_str})")
+    
+    # Show statistics
+    stats = state_manager.get_stats()
+    print(f"\n📊 Statistics:")
+    print(f"   Session ID: {stats.get('session_id', 'Unknown')}")
+    print(f"   Platform: {stats.get('platform', 'Unknown')}")
+    print(f"   Operation Count: {stats.get('operation_count', 0)}")
+    print(f"   State File Size: {stats.get('state_file_size', 0)} bytes")
+
+
+def get_manual_version_input(logger: logging.Logger, context: str = "manual") -> Optional[str]:
+    """
+    Get manual version input from user with validation.
+    
+    Args:
+        logger: Logger instance for recording decisions
+        context: Context for logging
+        
+    Returns:
+        Validated version string or None if cancelled
     """
     version_manager = VersionManager()
     
-    print("\n" + "=" * 50)
-    print("📦 GTach Package Version Assignment")
-    print("=" * 50)
+    print(f"\n📝 Manual Version Entry")
+    print(f"─" * 30)
     
     # Show examples
-    print("\nVersion Format Examples:")
-    examples = version_manager.suggest_version_examples()
-    for i, example in enumerate(examples[:6], 1):  # Show first 6 examples
-        print(f"  {i}. {example}")
-    print(f"  ... and more semantic version formats")
+    print(f"Examples: 1.0.0, 2.1.3-alpha.1, 0.5.0-beta.2, 1.0.0-rc.1")
     
-    print(f"\nSemantic Versioning Format: MAJOR.MINOR.PATCH[-prerelease][+build]")
-    print(f"• Stable releases: 1.0.0, 2.1.3")
-    print(f"• Pre-releases: 1.0.0-alpha.1, 2.0.0-beta.2, 1.5.0-rc.1")
-    print(f"• Development: 0.1.0-dev.20250813, 1.0.0+build.123")
-    
-    max_attempts = 5
-    attempt = 0
-    
-    while attempt < max_attempts:
-        attempt += 1
-        
-        print(f"\n{'─' * 50}")
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
         if attempt == 1:
-            version_input = input("Enter version (e.g., 0.1.0, 1.2.3-alpha.1): ").strip()
+            version_input = input(f"Enter version (or 'cancel' to abort): ").strip()
         else:
             print(f"Attempt {attempt}/{max_attempts}")
-            version_input = input("Enter version: ").strip()
+            version_input = input(f"Enter version: ").strip()
         
-        if not version_input:
-            print("❌ Error: Version cannot be empty")
-            continue
+        if version_input.lower() in ['cancel', 'abort', 'exit', '']:
+            logger.info(f"Manual version input cancelled ({context})")
+            return None
         
         # Validate version format
         is_valid, feedback = version_manager.validate_version_format(version_input)
@@ -87,27 +478,151 @@ def get_user_version_input(logger) -> str:
         if is_valid:
             print(f"✅ {feedback}")
             
-            # Confirm version with user
-            confirm = input(f"\nConfirm version '{version_input}'? [Y/n]: ").strip().lower()
+            confirm = input(f"Confirm version '{version_input}'? [Y/n]: ").strip().lower()
             if confirm in ['', 'y', 'yes']:
-                logger.info(f"User selected version: {version_input}")
-                logger.debug(f"Version validation: {feedback}")
-                print(f"✓ Version confirmed: {version_input}")
+                logger.info(f"Manual version selected: {version_input} ({context})")
                 return version_input
             else:
-                print("Version selection cancelled by user")
+                print("Version selection cancelled")
                 continue
         else:
             print(f"❌ {feedback}")
-            
             if attempt < max_attempts:
-                print(f"\nPlease try again ({max_attempts - attempt} attempts remaining)")
+                print(f"Please try again ({max_attempts - attempt} attempts remaining)")
+    
+    logger.warning(f"Manual version input failed after {max_attempts} attempts ({context})")
+    print(f"❌ Maximum attempts reached")
+    return None
+
+
+def handle_post_package_version_update(state_manager: Optional[VersionStateManager],
+                                     package_version: str,
+                                     logger: logging.Logger) -> None:
+    """
+    Handle optional project version update after successful package creation.
+    
+    Args:
+        state_manager: Version state manager instance (may be None)
+        package_version: Version used for package creation
+        logger: Logger instance
+    """
+    if not state_manager:
+        return
+    
+    current_state = state_manager.get_current_state()
+    
+    # Only prompt if package version differs from current state
+    if current_state.current_version == package_version:
+        logger.debug("Package version matches state version, no update needed")
+        return
+    
+    print(f"\n🔄 Post-Package Version Management")
+    print(f"Package created with version: {package_version}")
+    print(f"Current state version: {current_state.current_version}")
+    
+    update_choice = input(f"Update project to package version ({package_version})? [y/N]: ").strip().lower()
+    
+    if update_choice in ['y', 'yes']:
+        try:
+            # Update state manager
+            increment = state_manager.update_version(
+                package_version,
+                increment_type="post_package_sync",
+                user_context="Synchronized to package version after creation",
+                operation_context="post_package_update"
+            )
             
-    # Max attempts reached
-    logger.warning(f"Version input failed after {max_attempts} attempts, using default")
-    print(f"\n❌ Maximum attempts ({max_attempts}) reached.")
-    print("Using default version: 0.1.0-dev")
-    return "0.1.0-dev"
+            logger.info(f"Post-package version update: {increment.from_version} → {package_version}")
+            print(f"✅ Project version updated to: {package_version}")
+            
+            # Also sync project files if needed
+            sync_files = input(f"Also sync project files to {package_version}? [Y/n]: ").strip().lower()
+            if sync_files in ['', 'y', 'yes']:
+                try:
+                    from provisioning.project_version_manager import ProjectVersionManager
+                    project_manager = ProjectVersionManager(state_manager.project_root)
+                    project_manager.update_all_versions(package_version)
+                    print(f"✅ All project files synchronized to: {package_version}")
+                    logger.info(f"Project files synchronized to: {package_version}")
+                except Exception as e:
+                    logger.error(f"Failed to sync project files: {e}")
+                    print(f"⚠️  Warning: Failed to sync project files: {e}")
+            
+        except Exception as e:
+            logger.error(f"Post-package version update failed: {e}")
+            print(f"❌ Failed to update project version: {e}")
+    else:
+        logger.info("User declined post-package version update")
+
+
+def handle_multi_package_session(state_manager: Optional[VersionStateManager],
+                               logger: logging.Logger) -> bool:
+    """
+    Handle multi-package session prompting for additional packages.
+    
+    Args:
+        state_manager: Version state manager instance
+        logger: Logger instance
+        
+    Returns:
+        True if user wants to create another package, False otherwise
+    """
+    if not state_manager:
+        return False
+    
+    print(f"\n📦 Multi-Package Session")
+    
+    current_state = state_manager.get_current_state()
+    session_stats = state_manager.get_stats()
+    
+    print(f"Current session: {session_stats.get('session_id', 'Unknown')}")
+    print(f"Current version: {current_state.current_version}")
+    print(f"Session operations: {session_stats.get('operation_count', 0)}")
+    
+    create_another = input(f"Create another package in this session? [y/N]: ").strip().lower()
+    
+    if create_another in ['y', 'yes']:
+        logger.info("User requested another package in multi-package session")
+        
+        # Suggest increment for next package
+        increment_suggestion = input(f"Increment version for next package? [Y/n]: ").strip().lower()
+        if increment_suggestion in ['', 'y', 'yes']:
+            # Show quick increment options
+            print(f"\nQuick increment options:")
+            print(f"1. Patch increment (recommended for iterative packages)")
+            print(f"2. Prerelease increment (same stage)")
+            print(f"3. Keep current version")
+            
+            quick_choice = input(f"Select [1-3]: ").strip()
+            
+            if quick_choice == "1":
+                patch_suggestions = state_manager.suggest_next_version("patch")
+                if patch_suggestions:
+                    new_version = patch_suggestions[0]
+                    state_manager.update_version(
+                        new_version,
+                        increment_type="multi_package_patch",
+                        user_context="Patch increment for multi-package session",
+                        operation_context="multi_package_session"
+                    )
+                    print(f"✅ Version incremented to: {new_version}")
+                    
+            elif quick_choice == "2":
+                prerelease_suggestions = state_manager.suggest_next_version("prerelease")
+                if prerelease_suggestions:
+                    new_version = prerelease_suggestions[0]
+                    state_manager.update_version(
+                        new_version,
+                        increment_type="multi_package_prerelease",
+                        user_context="Prerelease increment for multi-package session",
+                        operation_context="multi_package_session"
+                    )
+                    print(f"✅ Version incremented to: {new_version}")
+        
+        return True
+    else:
+        logger.info("User declined multi-package session continuation")
+        return False
 
 
 def create_deployment_package(user_version: Optional[str] = None):
@@ -188,275 +703,10 @@ def create_deployment_package(user_version: Optional[str] = None):
         cleanup_provisioning_logging(session_id)
 
 
-def demonstrate_configuration_processing():
-    """Demonstrate: Custom configuration template processing"""
-    print("\n=== Configuration Processing Demonstration ===")
-    
-    session_id = setup_provisioning_logging(debug_mode=False)
-    logger = logging.getLogger('provisioning.example')
-    
-    try:
-        project_root = Path(__file__).parent.parent.parent
-        
-        # Create sample template directory and files
-        template_dir = project_root / "temp_templates"
-        template_dir.mkdir(exist_ok=True)
-        
-        # Create a sample configuration template
-        config_template = """
-# GTach Configuration Template
-app:
-  name: ${package_name}
-  version: ${version}
-  install_dir: ${app_dir}
-  user: ${user}
-  group: ${group}
-
-platform:
-  type: ${platform_name}
-  gpio_enabled: ${gpio_available}
-  performance_profile: ${performance_profile}
-
-display:
-  fps_limit: ${fps_limit}
-  mode: digital
-
-bluetooth:
-  scan_duration: 8.0
-  timeout: ${bluetooth_timeout}
-"""
-        
-        (template_dir / "gtach.template.yaml").write_text(config_template)
-        
-        # Process templates for different platforms
-        platforms = ["raspberry-pi", "macos", "linux"]
-        
-        for platform in platforms:
-            print(f"\nProcessing templates for {platform}:")
-            
-            processor = ConfigProcessor(project_root, platform)
-            output_dir = project_root / f"temp_output_{platform}"
-            output_dir.mkdir(exist_ok=True)
-            
-            # Add custom variables
-            custom_vars = {
-                "package_name": "gtach-custom",
-                "version": "2.0.0"
-            }
-            
-            processed_files = processor.process_templates(
-                template_dir, output_dir, custom_vars
-            )
-            
-            print(f"  ✓ Processed {len(processed_files)} files:")
-            for file_path in processed_files:
-                print(f"    - {file_path}")
-        
-        # Cleanup temporary files
-        import shutil
-        shutil.rmtree(template_dir)
-        for platform in platforms:
-            output_dir = project_root / f"temp_output_{platform}"
-            if output_dir.exists():
-                shutil.rmtree(output_dir)
-        
-    except Exception as e:
-        logger.error(f"Configuration processing failed: {e}")
-        print(f"✗ Error: {e}")
-    finally:
-        cleanup_provisioning_logging(session_id)
-
-
-def demonstrate_archive_management():
-    """Demonstrate: Direct archive management operations"""
-    print("\n=== Archive Management Demonstration ===")
-    
-    session_id = setup_provisioning_logging(debug_mode=False)
-    logger = logging.getLogger('provisioning.example')
-    
-    try:
-        project_root = Path(__file__).parent.parent.parent
-        
-        # Create sample source directory
-        source_dir = project_root / "temp_source"
-        source_dir.mkdir(exist_ok=True)
-        
-        # Create sample files
-        sample_files = [
-            "main.py",
-            "config/settings.yaml", 
-            "data/sample.txt",
-            "scripts/deploy.sh"
-        ]
-        
-        for file_path in sample_files:
-            full_path = source_dir / file_path
-            full_path.parent.mkdir(parents=True, exist_ok=True)
-            full_path.write_text(f"Sample content for {file_path}\n")
-        
-        # Initialize archive manager
-        manager = ArchiveManager()
-        
-        # Test different compression formats
-        formats = [
-            ("sample.tar.gz", CompressionFormat.TAR_GZ),
-            ("sample.tar.bz2", CompressionFormat.TAR_BZ2),
-            ("sample.zip", CompressionFormat.ZIP)
-        ]
-        
-        archives_dir = project_root / "temp_archives"
-        archives_dir.mkdir(exist_ok=True)
-        
-        for filename, format_type in formats:
-            print(f"\nTesting {format_type.name} format:")
-            
-            # Configure archive with progress callback
-            progress_updates = []
-            def progress_callback(current, total):
-                progress_updates.append((current, total))
-            
-            config = ArchiveConfig(
-                compression_level=6,
-                create_checksums=True,
-                include_metadata=True,
-                progress_callback=progress_callback
-            )
-            
-            # Create archive
-            archive_path = archives_dir / filename
-            metadata = manager.create_archive(source_dir, archive_path, config)
-            
-            print(f"  ✓ Created: {metadata.filename}")
-            print(f"    Files: {metadata.file_count}")
-            print(f"    Uncompressed: {metadata.uncompressed_size:,} bytes")
-            print(f"    Compressed: {metadata.compressed_size:,} bytes")
-            print(f"    Ratio: {metadata.compressed_size/metadata.uncompressed_size:.2%}")
-            print(f"    Checksum: {metadata.checksum_sha256[:16]}..." if metadata.checksum_sha256 else "    No checksum")
-            print(f"    Progress updates: {len(progress_updates)}")
-            
-            # Verify integrity
-            is_valid = manager.verify_archive_integrity(archive_path)
-            print(f"    Integrity: {'✓ Valid' if is_valid else '✗ Invalid'}")
-            
-            # Test extraction
-            extract_dir = project_root / f"temp_extract_{format_type.name}"
-            extract_metadata = manager.extract_archive(archive_path, extract_dir)
-            
-            print(f"    Extraction: ✓ {extract_metadata.file_count} files")
-            
-            # Cleanup extract directory
-            import shutil
-            shutil.rmtree(extract_dir)
-        
-        # Show manager stats
-        stats = manager.get_stats()
-        print(f"\nArchive Manager Stats:")
-        print(f"  Total operations: {stats['operation_count']}")
-        print(f"  Archives created: {stats['archives_created']}")
-        print(f"  Archives extracted: {stats['archives_extracted']}")
-        print(f"  Bytes processed: {stats['bytes_processed']:,}")
-        
-        # Cleanup temporary files
-        import shutil
-        shutil.rmtree(source_dir)
-        shutil.rmtree(archives_dir)
-        
-    except Exception as e:
-        logger.error(f"Archive management failed: {e}")
-        print(f"✗ Error: {e}")
-    finally:
-        cleanup_provisioning_logging(session_id)
-
-
-def demonstrate_cross_platform_compatibility():
-    """Demonstrate: Cross-platform compatibility features"""
-    print("\n=== Cross-Platform Compatibility Demonstration ===")
-    
-    session_id = setup_provisioning_logging(debug_mode=False)
-    logger = logging.getLogger('provisioning.example')
-    
-    try:
-        project_root = Path(__file__).parent.parent.parent
-        
-        # Show platform detection
-        from obdii.utils.platform import get_platform_type, get_platform_info
-        
-        current_platform = get_platform_type()
-        platform_info = get_platform_info()
-        
-        print(f"Current Platform: {current_platform.name}")
-        print(f"Platform Details:")
-        print(f"  System: {platform_info['system_info']['system']}")
-        print(f"  Machine: {platform_info['system_info']['machine']}")
-        print(f"  Architecture: {platform_info['system_info']['architecture']}")
-        
-        capabilities = platform_info['capabilities']
-        print(f"  GPIO Available: {capabilities['gpio_available']}")
-        print(f"  GPIO Accessible: {capabilities['gpio_accessible']}")
-        print(f"  Display Hardware: {capabilities['display_hardware']}")
-        
-        # Show different platform configurations
-        print(f"\nPlatform-Specific Configurations:")
-        
-        platforms = ["raspberry-pi", "macos", "linux"]
-        for platform in platforms:
-            processor = ConfigProcessor(project_root, platform)
-            platform_config = processor._get_platform_config()
-            
-            if platform_config:
-                vars = platform_config.template_variables
-                print(f"\n{platform.upper()}:")
-                print(f"  App Dir: {vars['app_dir']}")
-                print(f"  User: {vars['user']}")
-                print(f"  GPIO: {vars['gpio_available']}")
-                print(f"  FPS Limit: {vars['fps_limit']}")
-                print(f"  Performance: {vars['performance_profile']}")
-        
-        # Test package creation for different targets
-        print(f"\nTesting Package Creation for Different Targets:")
-        
-        creator = PackageCreator(project_root)
-        
-        for target_platform in platforms:
-            print(f"\nTarget: {target_platform}")
-            
-            config = PackageConfig(
-                package_name="gtach",  # Simplified naming
-                version="1.0.0-test",
-                target_platform=target_platform,
-                source_dirs=["src/obdii"],
-                output_dir=str(project_root / "temp_packages"),
-                verify_integrity=False  # Skip for speed
-            )
-            
-            try:
-                package_path = creator.create_package(config)
-                package_size = package_path.stat().st_size
-                print(f"  ✓ Package created: {package_path.name} ({package_size:,} bytes)")
-                
-                # Cleanup
-                package_path.unlink()
-                
-            except Exception as e:
-                print(f"  ✗ Failed: {e}")
-        
-        # Cleanup packages directory
-        packages_dir = project_root / "temp_packages"
-        if packages_dir.exists():
-            import shutil
-            shutil.rmtree(packages_dir)
-        
-    except Exception as e:
-        logger.error(f"Cross-platform compatibility test failed: {e}")
-        print(f"✗ Error: {e}")
-    finally:
-        cleanup_provisioning_logging(session_id)
-
-
 def main():
-    """Create GTach deployment package with version management and operation tracking"""
-    print("GTach Application Package Creator")
-    print("=" * 35)
+    """Enhanced GTach deployment package creation with comprehensive version state management"""
+    print("Enhanced GTach Application Package Creator")
+    print("=" * 45)
     
     # Check if we're in the right location
     project_root = Path(__file__).parent.parent.parent
@@ -465,121 +715,43 @@ def main():
         print("Please run this script from the provisioning directory.")
         return 1
     
-    # Initialize version workflow
-    version_workflow = VersionWorkflow(project_root)
-    
-    # Check for version inconsistencies and offer management
-    print("\n🔍 Checking project version consistency...")
-    current_version = version_workflow.get_current_project_version()
-    stats = version_workflow.project_manager.get_stats()
-    
-    if stats['has_inconsistencies']:
-        print("⚠️  Version inconsistencies detected across project files!")
-        print(f"Found {len(stats['version_groups'])} different versions:")
-        for version, count in stats['version_groups'].items():
-            print(f"   • {version}: {count} files")
-        
-        print(f"\nWould you like to:")
-        print(f"1. Fix version inconsistencies automatically")
-        print(f"2. Set project version interactively") 
-        print(f"3. Continue with current version ({current_version})")
-        print(f"4. Exit")
-        
-        choice = input("\nSelect option [1-4]: ").strip()
-        
-        if choice == "1":
-            # Use current most common version
-            if current_version:
-                print(f"Setting all files to version: {current_version}")
-                version_workflow.project_manager.update_all_versions(current_version)
-                print("✅ Version consistency restored!")
-            else:
-                print("❌ No valid version found to standardize on")
-                return 1
-        elif choice == "2":
-            # Interactive version management
-            selected_version = version_workflow.interactive_version_update()
-            if selected_version:
-                current_version = selected_version
-                print(f"✅ Project version updated to: {current_version}")
-            else:
-                print("❌ Version update cancelled")
-                return 1
-        elif choice == "3":
-            print(f"Continuing with current version: {current_version}")
-        elif choice == "4":
-            print("Exiting...")
-            return 0
-        else:
-            print("Invalid choice, continuing with current version")
-    else:
-        print(f"✅ All project files consistent at version: {current_version}")
-    
-    # Track operation outcomes
-    operations_successful = True
-    operation_results = []
-    
-    # Get version for package creation (default to project version)
-    user_version = current_version
-    
-    print(f"\n📦 Package Version Selection")
-    print(f"Current project version: {current_version}")
-    
-    use_different = input(f"Use a different version for this package? [y/N]: ").strip().lower()
-    if use_different in ['y', 'yes']:
-        try:
-            # Setup temporary logging for version input
-            temp_session_id = setup_provisioning_logging(debug_mode=False)
-            temp_logger = logging.getLogger('provisioning.version_input')
-            
-            user_version = get_user_version_input(temp_logger)
-            cleanup_provisioning_logging(temp_session_id)
-            
-        except KeyboardInterrupt:
-            print("\nVersion input interrupted by user.")
-            return 130
-        except Exception as e:
-            print(f"Error during version input: {e}")
-            user_version = current_version  # Fall back to project version
-    else:
-        print(f"Using project version: {current_version}")
-        user_version = current_version
+    # Setup main session logging
+    main_session_id = setup_provisioning_logging(debug_mode=True)
+    logger = logging.getLogger('provisioning.enhanced_create_package')
     
     try:
+        logger.info("Starting enhanced package creation workflow")
+        
+        # Handle comprehensive version state workflow
+        selected_version, state_manager = handle_version_state_workflow(
+            project_root, main_session_id, logger
+        )
+        
+        if not selected_version:
+            print("Package creation cancelled - no version selected")
+            return 0
+        
+        print(f"\n📦 Creating package with version: {selected_version}")
+        
+        # Track operation outcomes
+        operations_successful = True
+        operation_results = []
+        
         # Main package creation
         try:
-            create_deployment_package(user_version)
+            create_deployment_package(selected_version)
             operation_results.append(("Package Creation", True, None))
+            logger.info(f"Package creation successful with version: {selected_version}")
+            
         except Exception as e:
             operations_successful = False
             operation_results.append(("Package Creation", False, str(e)))
+            logger.error(f"Package creation failed: {e}", exc_info=True)
         
-        # Optional demonstrations (comment out for production use)
-        try:
-            demonstrate_configuration_processing()
-            operation_results.append(("Configuration Processing", True, None))
-        except Exception as e:
-            operations_successful = False
-            operation_results.append(("Configuration Processing", False, str(e)))
-        
-        try:
-            demonstrate_archive_management()
-            operation_results.append(("Archive Management", True, None))
-        except Exception as e:
-            operations_successful = False
-            operation_results.append(("Archive Management", False, str(e)))
-        
-        try:
-            demonstrate_cross_platform_compatibility()
-            operation_results.append(("Cross-Platform Compatibility", True, None))
-        except Exception as e:
-            operations_successful = False
-            operation_results.append(("Cross-Platform Compatibility", False, str(e)))
-        
-        # Report outcomes based on actual results
-        print("\n" + "=" * 35)
+        # Report operation results
+        print("\n" + "=" * 45)
         print("Operation Summary:")
-        print("-" * 35)
+        print("-" * 45)
         
         for operation, success, error in operation_results:
             status = "✓ SUCCESS" if success else "✗ FAILED"
@@ -588,24 +760,38 @@ def main():
                 print(f"  Error: {error}")
         
         if operations_successful:
-            print("\n" + "=" * 35)
-            print("Package creation completed successfully!")
+            print("\n✅ Package creation completed successfully!")
+            
+            # Handle post-package version management
+            handle_post_package_version_update(state_manager, selected_version, logger)
+            
+            # Check for multi-package session continuation
+            if handle_multi_package_session(state_manager, logger):
+                print("\n🔄 Restarting for next package...")
+                return main()  # Recursive call for next package
+            
             return 0
         else:
-            print("\n" + "=" * 35)
-            print("Package creation completed with errors!")
+            print("\n❌ Package creation completed with errors!")
             print("Check the error messages above for details.")
             return 1
-        
+    
     except KeyboardInterrupt:
         print("\nPackage creation interrupted by user.")
+        logger.info("Package creation interrupted by user (KeyboardInterrupt)")
         return 130  # Standard exit code for SIGINT
+        
     except Exception as e:
-        print(f"\nCritical error in package creation: {e}")
+        print(f"\nCritical error in enhanced package creation: {e}")
+        logger.error(f"Critical error in enhanced package creation: {e}", exc_info=True)
         import traceback
         traceback.print_exc()
         return 1
+        
+    finally:
+        cleanup_provisioning_logging(main_session_id)
 
 
 if __name__ == "__main__":
-    main()
+    exit_code = main()
+    sys.exit(exit_code)
