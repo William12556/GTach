@@ -15,11 +15,13 @@ Establish standardized directory structure and file organization principles for 
 ```
 /Users/williamwatson/Documents/GitHub/GTach/
 ├── README.md                  # Project overview and setup instructions
+├── RELEASE_NOTES.md          # Current release summary with links to detailed release documentation
 ├── .gitignore                 # Git exclusion patterns
 ├── requirements.txt           # Python dependencies
 ├── license.md                 # Project licensing information
-├── setup.py                   # Python package setup configuration
 ├── pyproject.toml            # Modern Python project configuration
+├── releases/                 # Release documentation directory
+│   └── RELEASE_NOTES_v*.md   # Detailed version-specific release documentation
 ├── src/                      # Source code directory (organized functional hierarchy)
 │   ├── [module_files].py     # Root-level modules
 │   ├── functional_domain/    # Functional grouping (level 1)
@@ -167,12 +169,18 @@ The design/diagrams/components/ directory structure must align with src/ functio
 
 ### Mandatory Files
 - **README.md**: Comprehensive project overview with setup instructions and usage examples
+- **RELEASE_NOTES.md**: Current release summary with links to detailed release documentation in releases/ directory
 - **.gitignore**: Python-specific exclusions, platform-specific temporary files, IDE configurations
 - **requirements.txt**: All Python dependencies with version specifications
 - **license.md**: Project licensing terms and attribution requirements
 
+### Release Management Requirements
+- **releases/ directory**: Contains detailed version-specific release documentation
+- **RELEASE_NOTES_v*.md**: Detailed technical release notes following standardized format
+- **Root RELEASE_NOTES.md**: Summary file linking to detailed release documentation
+- **Version consistency**: Release versions must align with pyproject.toml version specifications
+
 ### Optional Configuration Files
-- **setup.py**: Python package installation and distribution configuration
 - **pyproject.toml**: Modern Python project metadata and build system configuration
 - **Makefile**: Build automation and common task shortcuts
 
