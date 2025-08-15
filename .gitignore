@@ -5,3 +5,4 @@
 10000
 **/logs
 .zsh_history
+coverage.xml
