@@ -160,6 +160,12 @@ FILE PLACEMENT REQUIREMENT:
 - NO PYTHON FILES (.py) IN PROJECT ROOT DIRECTORY
 - ALL TEST FILES MUST BE IN src/tests/ DIRECTORY
 
+FILE MODIFICATION REQUIREMENT:
+- MODIFY EXISTING FILES DIRECTLY - DO NOT CREATE NEW VERSIONS
+- USE EXISTING FILENAME - NO _enhanced, _v2, _updated SUFFIXES
+- VERSION CONTROL HANDLED BY GIT - NO MANUAL FILE VERSIONING
+- PRESERVE ORIGINAL FILE PATHS AND NAMES
+
 ISSUE DESCRIPTION:
 Enhance the ProjectVersionManager class to integrate with VersionStateManager for coordinated version management. The enhancement must provide state-aware consistency checking, coordinated project file updates, and improved user interaction for consistency resolution while maintaining existing atomic update capabilities.
 

@@ -163,6 +163,12 @@ FILE PLACEMENT REQUIREMENT:
 - NO PYTHON FILES (.py) IN PROJECT ROOT DIRECTORY
 - ALL TEST FILES MUST BE IN src/tests/ DIRECTORY
 
+FILE MODIFICATION REQUIREMENT:
+- MODIFY EXISTING FILES DIRECTLY - DO NOT CREATE NEW VERSIONS
+- USE EXISTING FILENAME - NO _enhanced, _v2, _updated SUFFIXES
+- VERSION CONTROL HANDLED BY GIT - NO MANUAL FILE VERSIONING
+- PRESERVE ORIGINAL FILE PATHS AND NAMES
+
 ISSUE DESCRIPTION:
 Integrate the newly implemented VersionStateManager into the package creation workflow in create_package.py. The integration must provide stage-based version management, project consistency enforcement, intelligent increment suggestions, and optional project version updates while maintaining intuitive user experience.
 

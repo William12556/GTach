@@ -8,7 +8,7 @@
 **Version**: 1.0
 **Status**: Active
 **Created**: 2025 08 07
-**Last Updated**: 2025 08 07
+**Last Updated**: 2025 08 15
 
 ## Purpose
 
@@ -34,6 +34,17 @@ Subsidiary diagrams provide detailed views of individual components while mainta
 - Detailed component diagrams maintain consistent abstraction levels with master documents
 - Cross-reference validation ensures subsidiary diagrams align with master document specifications
 - Update procedures coordinate changes between master and subsidiary documents
+
+**Subsystem Organization Standards**:
+- Component diagrams organized by functional domain matching `src/` directory structure per Protocol 1
+- Each subsystem maintains dedicated subdirectory within `components/` directory
+- Cross-subsystem interactions documented in master diagrams
+- Functional domain boundaries align with Protocol 1 three-level source code organization
+
+**Component Diagram Naming Conventions**:
+- **Format**: `[component_function].md`
+- **Examples**: `package_creation.md`, `interface_management.md`, `rendering_pipeline.md`
+- **Integration**: Component diagrams reference parent design documents using format `Design_[iteration]_[component].md`
 
 ### Core Diagram Categories
 The visual documentation system implements five primary diagram categories that address the project's technical complexity while supporting cross-platform development and hardware integration requirements.

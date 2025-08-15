@@ -1,8 +1,9 @@
 # Protocol 1: Project Structure Standards
 
 **Created**: 2025 01 06  
-**Version**: 3.0  
+**Version**: 3.1  
 **Status**: Active  
+**Last Updated**: 2025 08 15  
 
 ## Purpose
 
@@ -105,10 +106,18 @@ Establish standardized directory structure and file organization principles for 
 - **design/**: Architecture decisions, technical specifications, and design patterns including visual documentation through Protocol 12 diagram standards
   - **design/diagrams/**: Visual documentation organized by master documents and subsidiary categories
   - **design/diagrams/master/**: Master document hierarchy providing authoritative single sources of truth
+  - **design/diagrams/components/**: Component diagrams organized by functional domain matching src/ directory structure
 - **hardware/**: Hardware specifications, integration procedures, and testing documentation with visual documentation support
   - **hardware/diagrams/**: Hardware-specific visual documentation including GPIO interfaces and physical connection specifications (subsidiary)
 - **issues/**: Bug reports, feature requests, and problem tracking
 - **templates/**: Standardized document formats for consistent documentation
+
+#### Diagram-Source Code Alignment
+The design/diagrams/components/ directory structure must align with src/ functional domains to maintain consistency between architectural documentation and implementation organization:
+- Component diagram subdirectories mirror src/ functional domain organization
+- Each functional domain (e.g., comm/, display/, core/) has corresponding diagram subdirectory
+- Diagram organization supports Protocol 1 three-level maximum nesting principle
+- Cross-functional integration documented in master diagrams rather than component-specific diagrams
 
 #### Obsidian Integration Requirements
 - All documentation directories linked via symbolic links to Obsidian vault
@@ -136,6 +145,12 @@ Establish standardized directory structure and file organization principles for 
 - **Python Modules**: snake_case.py (e.g., gpio_controller.py)
 - **Test Files**: test_[module_name].py (e.g., test_gpio_controller.py)
 - **Configuration Files**: [purpose]_config.py (e.g., platform_config.py)
+
+### File Modification Standards
+- **Direct Modification**: Modify existing files rather than creating new versions
+- **Filename Preservation**: Maintain original filenames during enhancements
+- **Prohibited Suffixes**: No _enhanced, _v2, _updated, _new, _modified suffixes
+- **Version Control**: Git history provides file versioning - no manual file versioning
 
 ### Documentation Files
 - **Protocols**: Protocol_[number]_[title].md (e.g., Protocol_001_Project_Structure_Standards.md)

@@ -1,8 +1,9 @@
 # Protocol 3: Documentation Standards
 
 **Created**: 2025 01 06  
-**Version**: 1.2  
+**Version**: 1.3  
 **Status**: Active  
+**Last Updated**: 2025 08 15  
 
 ## Purpose
 
@@ -33,6 +34,32 @@ Documentation must reference all project files using relative paths from the pro
 
 ### Cross-Reference Management
 All cross-references between documents must be maintained manually to ensure accuracy and prevent broken links. Automated link generation is prohibited to maintain precise control over document relationships and ensure compatibility with version control systems.
+
+#### Master-Subsidiary Document Linkage
+Diagram documents following Protocol 12 visual documentation standards must maintain specific cross-reference relationships:
+
+**Master Document References**:
+- Master diagrams must identify all subsidiary component diagrams
+- Define interface contracts between subsystems
+- Establish architectural constraints for component implementations
+- Provide authoritative definitions for cross-subsystem integration
+
+**Subsidiary Document References**:
+- Component diagrams must reference governing master diagram as authoritative source
+- Maintain consistency with master-defined interfaces
+- Align internal architecture with master constraints
+- Document subsystem boundaries defined in master
+
+**Cross-Component References**:
+- Component diagrams may reference other components through master diagram mediation
+- Direct reference for implementation coordination where appropriate
+- Shared interface documentation for common patterns
+
+#### Cross-Reference Validation Procedures
+- Cross-reference accuracy validated through systematic review procedures
+- Update coordination ensures subsidiary diagrams reflect master document specifications
+- Conflict resolution procedures address discrepancies between master and subsidiary documentation
+- Manual validation required before iteration completion per Protocol 2 standards
 
 ## Code Block Documentation Format
 

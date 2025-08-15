@@ -28,6 +28,22 @@ Commits must be synchronized with iteration completion cycles to ensure atomic c
 - Pre-commit validation must be completed successfully before commit execution
 - Emergency rollback commits permitted only for critical production issues
 
+### File Modification Standards
+All file modifications must follow systematic procedures that leverage git version control capabilities while preventing file proliferation through manual versioning approaches.
+
+**File Modification Requirements**:
+- Direct modification of existing files rather than creating new versions
+- Preservation of original filenames and paths during enhancements
+- Git-based version history maintenance instead of manual file versioning
+- Prohibition of versioning suffixes (_enhanced, _v2, _updated, _new)
+- Clear file modification documentation in commit messages
+
+**Version Control Integration**:
+- All file changes tracked through git history
+- Rollback capabilities through git revert rather than backup files
+- File evolution documented through commit progression
+- Branch-based development for experimental changes when necessary
+
 ## Commit Message Standards
 
 ### Structured Commit Message Format
