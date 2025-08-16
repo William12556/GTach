@@ -2,7 +2,9 @@
 **/.DS_Store
 .obsidian/
 *.log
+**/*.log
 10000
 **/logs
 .zsh_history
 coverage.xml
+test.txt
