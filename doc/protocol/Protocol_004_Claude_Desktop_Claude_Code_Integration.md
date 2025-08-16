@@ -57,9 +57,12 @@ All Claude Code prompts must follow a standardized template structure that scale
 ITERATION: [000]
 TASK: [Brief Description]
 CONTEXT: [Development Context and Background]
-PROTOCOL REVIEW REQUIRED:
-- Review relevant project protocols from doc/protocol/
-- Apply protocol requirements throughout implementation
+PROTOCOL ACKNOWLEDGMENT REQUIRED:
+- Read and understand ALL relevant project protocols from doc/protocol/
+- Read and understand ALL relevant templates from doc/templates/
+- Confirm protocol and template comprehension before beginning implementation
+- Apply protocol requirements and template standards throughout development process
+- Document any protocol or template conflicts or clarifications needed
 FILE PLACEMENT REQUIREMENT:
 - ALL SOURCE CODE FILES MUST BE CREATED IN src/ DIRECTORY
 - NO PYTHON FILES (.py) IN PROJECT ROOT DIRECTORY
@@ -147,7 +150,11 @@ All prompts must meet comprehensive quality requirements to ensure effective tas
 
 **Content Requirements**:
 - Complete context provision including relevant file contents where necessary
-- Mandatory protocol review section specifying relevant protocols for Claude Code examination
+- Mandatory protocol acknowledgment requirement specifying that Claude Code must read, understand, and confirm comprehension of all relevant protocols before beginning any implementation work
+- Mandatory template compliance verification where applicable documentation, code structure, or artifact creation is required
+- Template selection justification for document creation tasks specifying which templates apply and how they will be implemented
+- Template deviation documentation where project-specific requirements necessitate modifications to standard template structures
+- Protocol conflict identification and resolution procedures where implementation requirements may conflict with protocol specifications
 - Clear and unambiguous task descriptions with specific deliverables
 - Detailed success criteria that enable objective completion validation
 - Comprehensive error handling and edge case consideration
