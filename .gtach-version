@@ -1,0 +1,27 @@
+{
+  "auto_increment_enabled": true,
+  "creation_time": 1755258935.793816,
+  "current_stage": "dev",
+  "current_version": "0.1.0-dev",
+  "custom_metadata": {},
+  "increment_history": [],
+  "last_session_id": "provisioning_20250815_135535",
+  "last_updated": 1755258935.793844,
+  "major_version": 0,
+  "minor_version": 1,
+  "patch_version": 0,
+  "platform_info": {
+    "initialization_time": "2025-08-15T11:55:35.793683+00:00",
+    "platform_type": "MACOS",
+    "python_version": "3.9"
+  },
+  "preferred_stage_progression": [
+    "alpha",
+    "beta",
+    "rc",
+    "release"
+  ],
+  "prerelease_counter": 1,
+  "stage_history": [],
+  "total_increments": 0
+}
