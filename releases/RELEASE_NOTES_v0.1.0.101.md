@@ -1,18 +1,18 @@
-# Release Notes v0.1.0-alpha.1
+# Release Notes v0.1.0.101
 
-**Created**: 2025 08 13
+**Created**: 2025 08 17
 
 ## Release Notes Header
 
-**Release ID**: RELEASE_NOTES_v0.1.0-alpha.1
-**Version**: v0.1.0-alpha.1
+**Release ID**: RELEASE_NOTES_v0.1.0.101
+**Version**: v0.1.0.101
 **Release Date**: 2025-08-13
 **Release Type**: Alpha
 **Status**: Final
 
 ## Release Summary
 
-GTach v0.1.0-alpha.1 establishes foundational architecture for retro-styled OBDII/ELM327 tachometer application targeting Raspberry Pi with Pimoroni Hyperpixel 2.1\" Round display. This alpha release implements comprehensive provisioning system, cross-platform development framework, and AI-assisted development workflows.
+GTach v0.1.0.101 establishes foundational architecture for retro-styled OBDII/ELM327 tachometer application targeting Raspberry Pi with Pimoroni Hyperpixel 2.1\" Round display. This alpha release implements comprehensive provisioning system, cross-platform development framework, and AI-assisted development workflows.
 
 ## Breaking Changes
 
