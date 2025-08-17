@@ -2,7 +2,7 @@
 
 **Created**: YYYY MM DD
 
-**Prompt ID**: [####]
+**Prompt ID**: [change_number_task] (Must match corresponding change document number)
 **Task Type**: [Bug Fix/Feature/Refactor/Performance/Security]
 **Complexity**: [Simple/Standard/Complex]
 **Priority**: [Critical/High/Medium/Low]

@@ -2,7 +2,7 @@
 
 **Created**: 2025 08 14
 
-**Prompt ID**: [008_02]
+**Prompt ID**: [010_01]
 **Task Type**: Integration
 **Complexity**: Complex  
 **Priority**: High
@@ -149,7 +149,7 @@ Enhance the `create_package.py` script to integrate VersionStateManager for comp
 ## Claude Code Prompt
 
 ```
-ITERATION: 008_02
+ITERATION: 010_01
 TASK: Integrate VersionStateManager with Package Creation Workflow
 CONTEXT: Enhancing create_package.py to provide comprehensive version state management integration with stage-based workflows, consistency enforcement, and intelligent increment suggestions.
 

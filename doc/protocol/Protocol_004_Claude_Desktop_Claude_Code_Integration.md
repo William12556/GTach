@@ -105,15 +105,17 @@ DEPENDENCIES: [Related Files, Protocols, or Previous Implementations]
 - Comprehensive testing and validation requirements
 - Integration impact assessment and mitigation strategies
 
-### Sequential Numbering Integration
-Prompt identification must align with the project's iteration-based numbering system to ensure consistency and traceability across all development artifacts.
+### Change-Prompt Correspondence Requirement
+Prompt documentation must maintain 1:1 correspondence with change documents to ensure complete traceability across development lifecycle.
 
-**Identification Format**: `Prompt_[iteration]_[task_sequence]_[brief_description]`
+**Primary Correspondence Rule**: Each change document requires exactly one primary prompt document with matching iteration number.
+**Format**: `Prompt_[change_number]_[task_description]` OR `Prompt_[change_number]_[sub_task]_[task_description]` for complex changes
 
 **Examples**:
-- `Prompt_001_01_GPIO_Interface_Implementation`
-- `Prompt_001_02_GPIO_Unit_Tests_Creation`
-- `Prompt_002_01_Configuration_Management_Integration`
+- `Change_001_GPIO_Implementation.md` → `Prompt_001_GPIO_Interface_Implementation.md`
+- `Change_010_Enhanced_Package_Creation.md` → `Prompt_010_01_Package_Creation_Integration.md` + `Prompt_010_02_Project_Manager_Enhancement.md`
+
+**Sub-Prompt Rules**: Complex changes may require multiple implementation phases using format `Prompt_[change_number]_[sub_task]_[description]`
 
 ## Prompt Creation and Management Procedures
 
