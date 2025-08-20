@@ -7,7 +7,7 @@
 # See the LICENSE file in the project root for full license text.
 
 """
-OBD protocol handling for OBDII display application.
+OBD protocol handling for GTach display application.
 Manages OBD communication and data processing.
 """
 

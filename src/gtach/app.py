@@ -7,7 +7,7 @@
 # See the LICENSE file in the project root for full license text.
 
 """
-Main application class for OBDII display application.
+Main application class for GTach display application.
 Manages component lifecycle and initialization.
 """
 
@@ -56,7 +56,7 @@ class GTachApplication:
     def start(self) -> None:
         """Start application components"""
         try:
-            self.logger.info("Starting OBDII application")
+            self.logger.info("Starting GTach application")
             config = self._config_manager.load_config()
             
             # Check if setup is needed

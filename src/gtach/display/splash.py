@@ -7,7 +7,7 @@
 # See the LICENSE file in the project root for full license text.
 
 """
-Splash screen component for OBDII display application.
+Splash screen component for GTach display application.
 Provides animated startup screen with loading indicators and application branding.
 """
 
@@ -44,7 +44,7 @@ except ImportError:
 
 class SplashScreen:
     """
-    Thread-safe splash screen implementation for OBDII RPM Display application.
+    Thread-safe splash screen implementation for GTach application.
     
     Provides animated startup screen with progress indicators, application branding,
     and graceful fallback for systems without pygame support. Designed for use
@@ -134,7 +134,7 @@ class SplashScreen:
         }
         
         # Application branding and version info
-        self._app_title = "OBDII RPM Display"
+        self._app_title = "GTach"
         self._version_text = "v1.0.0"  # Placeholder version
         self._subtitle = "Bluetooth OBD-II Monitor"
         

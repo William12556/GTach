@@ -7,12 +7,12 @@
 # See the LICENSE file in the project root for full license text.
 
 """
-OBDII RPM Display - Unified Application Entry Point
+GTach - Unified Application Entry Point
 
 Author: William Watson
 Created: 2025-07-02
 
-This module provides the single, unified entry point for the OBDII RPM Display application.
+This module provides the single, unified entry point for the GTach application.
 It handles configuration hierarchy, argument parsing, and application initialization.
 """
 
@@ -37,10 +37,10 @@ def setup_configuration_paths() -> dict:
         dict: Configuration paths in order of precedence
     """
     config_paths = {
-        'user_config': Path.home() / '.config' / 'obdii' / 'config.yaml',
-        'system_config': Path('/etc/obdii/config.yaml'),
-        'env_config': os.getenv('OBDII_CONFIG'),
-        'logging_config': os.getenv('OBDII_LOGGING', '/etc/obdii/logging.yaml')
+        'user_config': Path.home() / '.config' / 'gtach' / 'config.yaml',
+        'system_config': Path('/etc/gtach/config.yaml'),
+        'env_config': os.getenv('GTACH_CONFIG'),
+        'logging_config': os.getenv('GTACH_LOGGING', '/etc/gtach/logging.yaml')
     }
     
     return config_paths
@@ -79,8 +79,8 @@ def parse_arguments() -> argparse.Namespace:
         Parsed arguments namespace
     """
     parser = argparse.ArgumentParser(
-        description='OBDII RPM Display - Real-time engine monitoring',
-        prog='obdii'
+        description='GTach - Real-time engine monitoring',
+        prog='gtach'
     )
     
     parser.add_argument(
@@ -104,7 +104,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--version',
         action='version',
-        version='OBDII RPM Display 1.0.0'
+        version='GTach 1.0.0'
     )
     
     parser.add_argument(
@@ -566,7 +566,7 @@ def setup_logging(debug: bool = False, config_file: Optional[Path] = None) -> No
         config_file: Optional logging configuration file
     """
     # Debug trace to help diagnose issues
-    debug_mode = debug or os.getenv('OBDII_DEBUG_LOGGING', '').lower() == 'true'
+    debug_mode = debug or os.getenv('GTACH_DEBUG_LOGGING', '').lower() == 'true'
     
     if debug_mode:
         print(f"DEBUG: setup_logging called with debug={debug}, config_file={config_file}")
@@ -797,7 +797,7 @@ def main() -> int:
             print_logging_validation_report(setup_result["validation"])
         
         logger = logging.getLogger(__name__)
-        logger.info("OBDII RPM Display starting...")
+        logger.info("GTach starting...")
         logger.info(f"Configuration: {config_file or 'built-in defaults'}")
         logger.info(f"Logging setup method: {setup_result['method']}")
         

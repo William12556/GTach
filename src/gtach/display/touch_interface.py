@@ -7,7 +7,7 @@
 # See the LICENSE file in the project root for full license text.
 
 """
-Hardware abstraction layer for touch interfaces in OBDII display application.
+Hardware abstraction layer for touch interfaces in GTach display application.
 Provides platform-aware touch interface selection with conditional imports.
 """
 
