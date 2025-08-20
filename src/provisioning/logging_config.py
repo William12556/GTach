@@ -34,13 +34,13 @@ from contextlib import contextmanager
 
 # Import existing utilities
 try:
-    from ..obdii.utils.platform import get_platform_type, PlatformType
-    from ..obdii.utils.config import ConfigManager
+    from ..gtach.utils.platform import get_platform_type, PlatformType
+    from ..gtach.utils.config import ConfigManager
 except ImportError:
     import sys
     sys.path.append(str(Path(__file__).parent.parent))
-    from obdii.utils.platform import get_platform_type, PlatformType
-    from obdii.utils.config import ConfigManager
+    from gtach.utils.platform import get_platform_type, PlatformType
+    from gtach.utils.config import ConfigManager
 
 
 class ProvisioningLogger:
@@ -173,7 +173,7 @@ class ProvisioningLogger:
         
         # Fallback to user directory
         try:
-            from ..obdii.utils.home import get_home_path
+            from ..gtach.utils.home import get_home_path
             user_log_dir = get_home_path() / 'logs' / 'provisioning'
             user_log_dir.mkdir(parents=True, exist_ok=True)
             return user_log_dir

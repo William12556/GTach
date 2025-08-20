@@ -22,7 +22,7 @@ from .display import DisplayManager
 from .display.setup import SetupDisplayManager
 from .utils import ConfigManager, TerminalRestorer
 
-class OBDIIApplication:
+class GTachApplication:
     """Main application controller"""
     
     def __init__(self, config_path: str = None, debug: bool = False):

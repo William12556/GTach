@@ -17,12 +17,12 @@ from .manager import DisplayManager
 try:
     from .touch import TouchHandler
     TOUCH_HANDLER_AVAILABLE = True
-    _logger = logging.getLogger('obdii.display')
+    _logger = logging.getLogger('gtach.display')
     _logger.debug("TouchHandler imported successfully")
 except ImportError as e:
     TouchHandler = None
     TOUCH_HANDLER_AVAILABLE = False
-    _logger = logging.getLogger('obdii.display')
+    _logger = logging.getLogger('gtach.display')
     _logger.warning(f"TouchHandler import failed: {e}")
     _logger.info("Touch functionality will not be available")
 

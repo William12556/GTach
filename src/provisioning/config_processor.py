@@ -34,14 +34,14 @@ from contextlib import contextmanager
 
 # Import existing utilities following project structure  
 try:
-    from ..obdii.utils.platform import PlatformType, get_platform_type
-    from ..obdii.utils.config import ConfigManager, OBDConfig
+    from ..gtach.utils.platform import PlatformType, get_platform_type
+    from ..gtach.utils.config import ConfigManager, OBDConfig
 except ImportError:
     # Fallback for development/testing
     import sys
     sys.path.append(str(Path(__file__).parent.parent))
-    from obdii.utils.platform import PlatformType, get_platform_type
-    from obdii.utils.config import ConfigManager, OBDConfig
+    from gtach.utils.platform import PlatformType, get_platform_type
+    from gtach.utils.config import ConfigManager, OBDConfig
 
 # Try to import yaml for template processing
 try:

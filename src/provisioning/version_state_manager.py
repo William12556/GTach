@@ -53,12 +53,12 @@ except ImportError:
     from logging_config import get_provisioning_logger
 
 try:
-    from ..obdii.utils.platform import get_platform_type, PlatformType
+    from ..gtach.utils.platform import get_platform_type, PlatformType
 except ImportError:
     # Fallback when running standalone
     import sys
     sys.path.append(str(Path(__file__).parent.parent))
-    from obdii.utils.platform import get_platform_type, PlatformType
+    from gtach.utils.platform import get_platform_type, PlatformType
 
 
 class DevelopmentStage(Enum):

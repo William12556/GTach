@@ -45,11 +45,11 @@ from enum import Enum, auto
 
 # Import existing utilities
 try:
-    from ..obdii.utils.platform import get_platform_type, PlatformType
+    from ..gtach.utils.platform import get_platform_type, PlatformType
 except ImportError:
     import sys
     sys.path.append(str(Path(__file__).parent.parent))
-    from obdii.utils.platform import get_platform_type, PlatformType
+    from gtach.utils.platform import get_platform_type, PlatformType
 
 
 class CompressionFormat(Enum):

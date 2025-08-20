@@ -1,2 +1,2 @@
 [console_scripts]
-gtach = main:main
+gtach = gtach.main:main

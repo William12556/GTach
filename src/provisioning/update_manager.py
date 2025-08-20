@@ -42,8 +42,8 @@ from enum import Enum, auto
 # Import existing utilities following project structure
 try:
     # Try relative imports first
-    from ..obdii.utils.platform import get_platform_type, PlatformType
-    from ..obdii.utils.config import ConfigManager
+    from ..gtach.utils.platform import get_platform_type, PlatformType
+    from ..gtach.utils.config import ConfigManager
     from .package_repository import PackageRepository, PackageEntry, SearchQuery
     from .version_manager import VersionManager, Version, CompatibilityLevel
     from .package_creator import PackageManifest
@@ -51,8 +51,8 @@ except ImportError:
     # Fallback for development/testing
     import sys
     sys.path.append(str(Path(__file__).parent.parent))
-    from obdii.utils.platform import get_platform_type, PlatformType
-    from obdii.utils.config import ConfigManager
+    from gtach.utils.platform import get_platform_type, PlatformType
+    from gtach.utils.config import ConfigManager
     sys.path.append(str(Path(__file__).parent))
     from package_repository import PackageRepository, PackageEntry, SearchQuery
     from version_manager import VersionManager, Version, CompatibilityLevel

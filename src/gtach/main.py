@@ -834,14 +834,14 @@ def main() -> int:
         # Import and start main application
         try:
             # Try relative import first (when run as a module)
-            from .app import OBDIIApplication
+            from .app import GTachApplication
         except ImportError:
             # Fall back to absolute import (when run directly)
             sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-            from obdii.app import OBDIIApplication
+            from gtach.app import GTachApplication
         
         # Initialize and run application
-        app = OBDIIApplication(config_file, args.debug)
+        app = GTachApplication(config_file, args.debug)
         
         if args.service:
             logger.info("Running in service mode")

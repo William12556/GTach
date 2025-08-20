@@ -40,14 +40,14 @@ from contextlib import contextmanager
 # Import existing utilities following project structure
 try:
     # Try relative import first
-    from ..obdii.utils.platform import get_platform_type, PlatformType
-    from ..obdii.utils.config import ConfigManager
+    from ..gtach.utils.platform import get_platform_type, PlatformType
+    from ..gtach.utils.config import ConfigManager
     from .version_manager import VersionManager, Version
 except ImportError:
     # Fallback for development/testing
     sys.path.append(str(Path(__file__).parent.parent))
-    from obdii.utils.platform import get_platform_type, PlatformType
-    from obdii.utils.config import ConfigManager
+    from gtach.utils.platform import get_platform_type, PlatformType
+    from gtach.utils.config import ConfigManager
     sys.path.append(str(Path(__file__).parent))
     from version_manager import VersionManager, Version
 

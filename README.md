@@ -253,7 +253,7 @@ tail -f /opt/gtach/logs/session_*.log
 ```bash
 # Test GPIO functionality (if your hardware supports it)
 cd /opt/gtach
-python3 -c "from src.obdii.utils.platform import get_platform_info; print(get_platform_info())"
+python3 -c "from src.gtach.utils.platform import get_platform_info; print(get_platform_info())"
 
 # Should show Pi-specific capabilities
 ```

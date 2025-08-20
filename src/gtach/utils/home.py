@@ -139,9 +139,9 @@ class OBDIIHome:
         
         # Check if installed in editable mode
         try:
-            import obdii
-            if hasattr(obdii, '__path__') and obdii.__path__:
-                path = Path(obdii.__path__[0])
+            import gtach
+            if hasattr(gtach, '__path__') and gtach.__path__:
+                path = Path(gtach.__path__[0])
                 return 'src' in str(path) or '.egg-link' in str(path)
         except ImportError:
             pass

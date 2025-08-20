@@ -386,7 +386,7 @@ def demonstrate_cross_platform_compatibility():
         project_root = Path(__file__).parent.parent.parent
         
         # Show platform detection
-        from obdii.utils.platform import get_platform_type, get_platform_info
+        from gtach.utils.platform import get_platform_type, get_platform_info
         
         current_platform = get_platform_type()
         platform_info = get_platform_info()
