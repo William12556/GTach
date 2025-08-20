@@ -77,4 +77,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Warning**: Software fitness for purpose can only be determined through comprehensive testing. This is experimental development software.
+**Warning**: This is experimental development software. Actual fitness for purpose is not guaranteed.
