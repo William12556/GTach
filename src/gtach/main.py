@@ -198,7 +198,7 @@ def validate_logging_configuration() -> Dict[str, Any]:
         log_locations = []
         
         # System log directory
-        system_log_dir = Path('/var/log/obdii')
+        system_log_dir = Path('/var/log/gtach')
         if system_log_dir.exists():
             if os.access(system_log_dir, os.W_OK):
                 log_locations.append(f"✅ System: {system_log_dir} (writable)")
@@ -211,7 +211,7 @@ def validate_logging_configuration() -> Dict[str, Any]:
             validation_result["checks"]["system_log_dir"] = "❌ Not found"
         
         # User log directory
-        user_log_dir = Path.home() / '.local' / 'share' / 'obdii' / 'logs'
+        user_log_dir = Path.home() / '.local' / 'share' / 'gtach' / 'logs'
         try:
             user_log_dir.mkdir(parents=True, exist_ok=True)
             test_file = user_log_dir / '.write_test'
@@ -612,7 +612,7 @@ def setup_logging(debug: bool = False, config_file: Optional[Path] = None) -> No
         from .utils.home import get_home_path
         log_dir = get_home_path() / 'logs'
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_file_path = log_dir / 'obdii_fallback.log'
+        log_file_path = log_dir / 'gtach_fallback.log'
     except:
         # Ultimate fallback - no file logging
         log_dir = None
