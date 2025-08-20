@@ -1,4 +1,4 @@
-# GTach - Hyperpixel Round Display Application
+# GTach - Retro styled ODBII/ELM327 based Tachometer
 
 **Created**: 2025 08 08
 

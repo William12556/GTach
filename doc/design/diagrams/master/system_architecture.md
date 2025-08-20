@@ -7,9 +7,9 @@
 **Master Diagram ID**: Master_System_Architecture_GTach
 **Category**: System Architecture
 **Version**: 1.0
-**Status**: Draft
+**Status**: Active
 **Created**: 2025 08 08
-**Last Updated**: 2025 08 08
+**Last Updated**: 2025 08 20
 **Authority Level**: Master Document - Single Source of Truth
 
 ## Purpose and Authority
@@ -31,13 +31,20 @@ All subsidiary architecture diagrams must maintain consistency with this master 
 ## System Overview
 
 ### Master System View
-[To be developed: Highest level view of the GTach system showing functional domains, cross-platform abstractions, and deployment architecture]
+The GTach system implements a comprehensive OBDII diagnostic interface with cross-platform development and deployment architecture. The system consists of two primary domains: the OBDII application providing vehicle diagnostics through display, communication, and core services, and the provisioning system enabling automated deployment and updates.
 
 ### Architectural Principles
-[To be developed: Core architectural principles including cross-platform compatibility, embedded systems constraints, and development workflow integration]
+- **Cross-Platform Compatibility**: Identical application logic across Mac development and Raspberry Pi deployment through platform abstraction
+- **Embedded Systems Optimization**: Resource-efficient design for Pi hardware constraints with optimized memory and CPU usage
+- **Thread Safety**: Comprehensive concurrent operation support across all system components
+- **Hardware Abstraction**: Common interface patterns enabling mock implementations for development and real hardware for production
+- **Modular Architecture**: Functional domain separation enabling independent development and testing
 
 ### Integration Points
-[To be developed: Critical integration points between functional domains, platform abstraction layers, and hardware interfaces]
+- **OBDII-Provisioning Integration**: Application lifecycle management through provisioning system
+- **Platform Abstraction Boundaries**: Cross-platform compatibility layers between development and production environments
+- **Hardware Interface Points**: GPIO, display, and input device integration through standardized interfaces
+- **Communication Protocols**: Bluetooth and OBD interface standardization across platforms
 
 ## Master Visual Documentation
 
@@ -49,24 +56,38 @@ flowchart TD
             PackageCreator[Package Creator]
             VersionMgr[Version Manager]
             RepoMgr[Repository Manager]
+            ArchiveMgr[Archive Manager]
         end
         
-        subgraph "Display Development"
-            DisplayMock[Display Manager Mock]
-            TouchMock[Touch Handler Mock]
-            RenderDev[Render Engine Dev]
-        end
-        
-        subgraph "Communication Development"
-            BluetoothMock[Bluetooth Mock]
-            OBDMock[OBD Handler Mock]
-            DeviceStoreDev[Device Store Dev]
-        end
-        
-        subgraph "Core Development"
-            ThreadMgrDev[Thread Manager Dev]
-            ConfigMgrDev[Config Manager Dev]
-            WatchdogDev[Watchdog Dev]
+        subgraph "OBDII Application Development"
+            subgraph "Display Development"
+                DisplayMgrDev[Display Manager]
+                ComponentsDev[Component Factory]
+                RenderEngineDev[Render Engine]
+                TouchCoordDev[Touch Coordinator]
+                GraphicsDev[Graphics Engine]
+                PerformanceDev[Performance Monitor]
+            end
+            
+            subgraph "Communication Development"
+                BluetoothDev[Bluetooth Manager]
+                OBDDev[OBD Handler]
+                DeviceStoreDev[Device Store]
+                PairingDev[Pairing Manager]
+                SystemBluetoothDev[System Bluetooth]
+            end
+            
+            subgraph "Core Development"
+                ThreadMgrDev[Thread Manager]
+                WatchdogDev[Watchdog Enhanced]
+                ConfigMgrDev[Configuration Manager]
+            end
+            
+            subgraph "Utils Development"
+                PlatformUtilsDev[Platform Utils]
+                ServicesDev[Service Registry]
+                DependencyDev[Dependency Manager]
+            end
         end
     end
     
@@ -75,12 +96,14 @@ flowchart TD
         ConfigAbstract[Configuration Abstraction]
         InterfaceAbstract[Interface Abstraction]
         HardwareAbstract[Hardware Abstraction]
+        ServiceAbstract[Service Abstraction]
     end
     
     subgraph "Distribution Layer"
         PackageDist[Package Distribution]
         SecureTransfer[Secure Transfer]
         IntegrityVerify[Integrity Verification]
+        VersionValidation[Version Validation]
     end
     
     subgraph "Deployment Environment (Raspberry Pi)"
@@ -90,46 +113,58 @@ flowchart TD
             RollbackMgr[Rollback Manager]
         end
         
-        subgraph "Display Production"
-            DisplayMgr[Display Manager]
-            TouchHandler[Touch Handler]
-            RenderEngine[Render Engine]
-        end
-        
-        subgraph "Communication Production"
-            BluetoothMgr[Bluetooth Manager]
-            OBDHandler[OBD Handler]
-            DeviceStore[Device Store]
-        end
-        
-        subgraph "Core Production"
-            ThreadMgr[Thread Manager]
-            ConfigMgr[Config Manager]
-            Watchdog[Watchdog]
+        subgraph "OBDII Application Production"
+            subgraph "Display Production"
+                DisplayMgr[Display Manager]
+                Components[Component Factory]
+                RenderEngine[Render Engine]
+                TouchCoord[Touch Coordinator]
+                Graphics[Graphics Engine]
+                Performance[Performance Monitor]
+            end
+            
+            subgraph "Communication Production"
+                BluetoothMgr[Bluetooth Manager]
+                OBDHandler[OBD Handler]
+                DeviceStore[Device Store]
+                PairingMgr[Pairing Manager]
+                SystemBluetooth[System Bluetooth]
+            end
+            
+            subgraph "Core Production"
+                ThreadMgr[Thread Manager]
+                Watchdog[Watchdog Enhanced]
+                ConfigMgr[Configuration Manager]
+            end
+            
+            subgraph "Utils Production"
+                PlatformUtils[Platform Utils]
+                Services[Service Registry]
+                Dependency[Dependency Manager]
+            end
         end
         
         subgraph "Hardware Interfaces"
             GPIO[GPIO Controller]
-            Display[Display Hardware]
-            Input[Input Devices]
+            HyperPixel[HyperPixel Display]
+            TouchInterface[Touch Interface]
+            BluetoothHW[Bluetooth Hardware]
         end
     end
     
     %% Development to Abstraction
     PackageCreator --> PlatformDetect
     VersionMgr --> ConfigAbstract
-    RepoMgr --> InterfaceAbstract
-    DisplayMock --> HardwareAbstract
-    TouchMock --> HardwareAbstract
-    BluetoothMock --> InterfaceAbstract
-    OBDMock --> InterfaceAbstract
-    ThreadMgrDev --> ConfigAbstract
-    ConfigMgrDev --> PlatformDetect
+    DisplayMgrDev --> HardwareAbstract
+    BluetoothDev --> InterfaceAbstract
+    ThreadMgrDev --> ServiceAbstract
+    PlatformUtilsDev --> PlatformDetect
     
     %% Abstraction to Distribution
     PlatformDetect --> PackageDist
     ConfigAbstract --> SecureTransfer
     InterfaceAbstract --> IntegrityVerify
+    ServiceAbstract --> VersionValidation
     
     %% Distribution to Production
     PackageDist --> Installer
@@ -138,19 +173,28 @@ flowchart TD
     
     %% Platform Abstraction to Production
     HardwareAbstract --> DisplayMgr
-    HardwareAbstract --> TouchHandler
+    HardwareAbstract --> TouchCoord
     InterfaceAbstract --> BluetoothMgr
     InterfaceAbstract --> OBDHandler
-    ConfigAbstract --> ThreadMgr
+    ServiceAbstract --> ThreadMgr
     ConfigAbstract --> ConfigMgr
     
     %% Production to Hardware
-    DisplayMgr --> Display
-    TouchHandler --> Input
-    BluetoothMgr --> GPIO
+    DisplayMgr --> HyperPixel
+    TouchCoord --> TouchInterface
+    BluetoothMgr --> BluetoothHW
     OBDHandler --> GPIO
     ThreadMgr --> GPIO
-    ConfigMgr --> GPIO
+    
+    %% OBDII Internal Integration
+    DisplayMgr --> Components
+    Components --> RenderEngine
+    RenderEngine --> Graphics
+    TouchCoord --> Performance
+    BluetoothMgr --> DeviceStore
+    DeviceStore --> PairingMgr
+    ThreadMgr --> Watchdog
+    ConfigMgr --> Services
     
     %% Cross-cutting Integration
     Installer --> DisplayMgr
@@ -241,12 +285,13 @@ flowchart TD
 ## Subsidiary Document Governance
 
 ### Subsidiary Document Registry
-- **Master_Provisioning_System_Architecture_GTach**: Detailed provisioning system architecture
-- **Provisioning_Component_Interaction_GTach**: Component interfaces and data flows
-- **Provisioning_Data_Flow_GTach**: Comprehensive workflow visualization
-- **Display_Domain_Architecture** (Future): Display management and rendering
-- **Communication_Domain_Architecture** (Future): Bluetooth and OBD interfaces
-- **Core_Services_Architecture** (Future): Thread management and system services
+- **Provisioning_System_Architecture**: Detailed provisioning system architecture (Active)
+- **Provisioning_Component_Interaction**: Component interfaces and data flows (Active)
+- **Provisioning_Data_Flow**: Comprehensive workflow visualization (Active)
+- **Display_System_Architecture** (Required): Display subsystem with components, graphics, rendering, and touch coordination
+- **Communication_System_Architecture** (Required): Bluetooth, OBD, device store, and pairing management
+- **Core_Services_Architecture** (Required): Thread management, watchdog, and configuration services
+- **Hardware_Interface_Specifications** (Required): GPIO, HyperPixel, and touch interface diagrams
 
 ### Abstraction Level Management
 All subsidiary architecture diagrams must maintain consistent abstraction levels that provide detailed views of components shown at high level in this master document.
@@ -377,7 +422,7 @@ Master document completeness is ensured through:
 
 ---
 
-**Master Document Status**: Active - Provisioning System Integrated
-**Authority Verification Date**: 2025-08-08
-**Next Master Review**: 2025-09-08
-**Subsidiary Coordination Status**: Provisioning subsidiaries created and coordinated
+**Master Document Status**: Active - OBDII Application Architecture Integrated
+**Authority Verification Date**: 2025-08-20
+**Next Master Review**: 2025-09-20
+**Subsidiary Coordination Status**: Provisioning subsidiaries complete, OBDII component diagrams required
