@@ -176,3 +176,7 @@ All version references within this release note must conform to the numeric vers
 **Validation Status**: [Complete/Incomplete/Requires Review]
 **Deployment Status**: [Not Deployed/Staged/Production]
 **Rollback Plan**: [Available/Not Required/Documented Separately]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

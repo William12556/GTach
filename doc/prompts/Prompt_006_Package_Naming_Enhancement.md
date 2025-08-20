@@ -195,3 +195,7 @@ Key considerations:
 - [[Change_006_Provisioning_Package_Naming_Enhancement.md]]
 - [[Design_001_Application_Provisioning_System.md]]
 - [[Protocol_002_Iteration_Based_Development_Workflow.md]]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

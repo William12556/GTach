@@ -170,3 +170,7 @@ python3 create_package.py
 **Validation Status**: Complete
 **Deployment Status**: Staged
 **Rollback Plan**: Available
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

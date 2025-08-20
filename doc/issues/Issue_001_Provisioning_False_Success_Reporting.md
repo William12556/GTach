@@ -146,3 +146,7 @@ None
 **Issue Status**: Open
 **Assigned To**: Development Team
 **Resolution Date**: Pending
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

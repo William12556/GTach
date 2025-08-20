@@ -195,3 +195,7 @@ This implementation maintains consistency with Protocol 13 release management st
 - [[Change_001_Git_Release_Automation.md]]
 - [[Protocol 13 Release Management Documentation Standards]]
 - [[Protocol 5 GitHub Desktop Workflow Integration]]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

@@ -31,3 +31,7 @@ Initial alpha release establishing core project structure, cross-platform develo
 ---
 
 **Note**: This file provides brief summaries of releases. Detailed technical information, implementation details, and comprehensive change logs are maintained in individual release documents within the `releases/` directory.
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

@@ -159,3 +159,7 @@ Current deployment procedures require manual file copying and configuration mana
 
 **Change Status**: Complete
 **Next Review**: N/A - Iteration Complete
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

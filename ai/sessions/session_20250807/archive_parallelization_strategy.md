@@ -52,3 +52,7 @@
 - 2-4x improvement for large archives (>100 files)
 - Reduced I/O wait time through concurrent operations
 - Better CPU utilization on multi-core systems
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

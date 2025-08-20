@@ -616,3 +616,7 @@ v2.0.0-alpha.1    # Breaking changes development
 ---
 
 This comprehensive guide provides complete deployment and release procedures for the GTach application, ensuring reliable installation and professional release management.
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

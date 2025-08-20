@@ -264,3 +264,7 @@ Changes to this diagram coordinate with the master document through:
 **Diagram Status**: Active
 **Master Document Alignment**: Verified 2025-08-08
 **Next Review**: 2025-09-08
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

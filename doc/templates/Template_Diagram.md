@@ -123,3 +123,7 @@
 **Diagram Status**: [Complete/Incomplete/Requires Review]
 **Next Review**: [When this diagram should be reviewed]
 **Integration Status**: [How well integrated with project documentation]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

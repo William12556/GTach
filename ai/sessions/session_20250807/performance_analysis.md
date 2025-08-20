@@ -42,3 +42,7 @@
 3. **Checksum caching and optimization** - Medium-high impact  
 4. **I/O operation batching** - Medium impact
 5. **Memory usage optimization** - Medium impact
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

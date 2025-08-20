@@ -192,3 +192,7 @@ Component B
 **Review Status**: [Pending/In Review/Approved]
 **Implementation Status**: [Not Started/In Progress/Complete]
 **Next Review Date**: [YYYY-MM-DD]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

@@ -58,3 +58,7 @@ Enhanced project root detection working in both test and production environments
 
 **Status**: Complete
 **Result**: ✅ Success - Project root detection enhanced for test environments
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

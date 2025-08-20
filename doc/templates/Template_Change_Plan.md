@@ -151,3 +151,7 @@
 
 **Change Status**: [Planned/In Progress/Completed/Rolled Back]
 **Next Review**: [Date]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

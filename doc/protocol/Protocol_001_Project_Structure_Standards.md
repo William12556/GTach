@@ -249,3 +249,7 @@ The design/diagrams/components/ directory structure must align with src/ functio
 **Implementation Priority**: Immediate  
 **Dependencies**: None  
 **Related Protocols**: Protocol 2 (Iteration Workflow), Protocol 3 (Documentation Standards), Protocol 12 (Visual Documentation Standards)
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

@@ -145,3 +145,7 @@ doc/hardware/[category]/[hardware_type]/
 **Document Status**: Complete Conversation Protocol  
 **Follow-up Required**: Template creation and Obsidian vault integration  
 **Implementation Priority**: Framework complete - ready for development iterations
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

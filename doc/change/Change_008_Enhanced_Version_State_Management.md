@@ -185,3 +185,7 @@ Current version management system has several limitations:
 
 **Change Status**: Planned
 **Next Review**: 2025-08-15
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

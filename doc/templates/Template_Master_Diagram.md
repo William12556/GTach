@@ -139,3 +139,7 @@
 **Authority Verification Date**: [When authority was last verified]
 **Next Master Review**: [When this master document authority should be reviewed]
 **Subsidiary Coordination Status**: [Status of subsidiary document alignment]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

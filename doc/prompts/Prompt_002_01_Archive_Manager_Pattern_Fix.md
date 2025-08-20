@@ -58,3 +58,7 @@ Enhanced pattern matching correctly identifies files for exclusion using glob-st
 
 **Status**: Complete
 **Result**: ✅ Success - Pattern matching fixed, test passes
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

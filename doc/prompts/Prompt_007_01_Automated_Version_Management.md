@@ -238,3 +238,7 @@ DEPENDENCIES:
 - doc/change/Change_007_Automated_Version_Management.md
 - Protocol 1: Project Structure Standards
 - Protocol 8: Logging and Debug Standards
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

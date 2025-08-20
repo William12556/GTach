@@ -10,6 +10,9 @@
 - Do not create, add, remove or change source code, documents and artefacts unless explicitly requested.
 - Use templates from project knowledge for document creation.
 - After creating documents in the filesystem, insert a 'Created: <year> <month> <day>'  timestamp comment at the top of newly created documents based on the documents metadata creation date as retrieved by the MCP command 'get_file_info'.
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+
 - Add ISO 690 references (Harvard style) and citations at the end of all artefacts and documents if and only if external sources of information are used. 
 - Explain all proposed changes in a comprehensive, structured and detailed manner.
 - Application debug logging is triggered when --debug argument is given in command line of the application.

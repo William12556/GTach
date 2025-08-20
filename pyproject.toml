@@ -1,3 +1,8 @@
+# Copyright (c) 2025 William Watson
+#
+# This file is part of GTach.
+# GTach is licensed under the MIT License.
+
 [build-system]
 requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"

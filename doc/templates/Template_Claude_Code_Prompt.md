@@ -149,3 +149,7 @@ DEPENDENCIES: [Related Files, Protocols, or Previous Implementations]
 - [[Link to related issue]]
 - [[Link to design document]]
 - [[Link to change plan]]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

@@ -185,3 +185,7 @@
 **Session Status**: [Complete/Incomplete/Requires Follow-up]
 **Next Review**: [When this synopsis should be reviewed]
 **Archived**: [Whether this synopsis has been archived to long-term storage]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

@@ -51,3 +51,7 @@ cd hyperpixel2r
   cd hyperpixel2r-python
   ./install.sh
   ```
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

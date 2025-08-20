@@ -70,3 +70,7 @@ For example:
 def handle_touch(touch_id, x, y, state):
     print(touch_id, x, y, state)
 ```
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

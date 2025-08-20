@@ -1084,3 +1084,7 @@ FAILED src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_
 FAILED src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_create_package_with_output_path
 FAILED src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_thread_safety
 =================== 7 failed, 49 passed, 1 warning in 0.42s ====================
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

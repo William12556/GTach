@@ -37,3 +37,7 @@ If you want to change the position of your HyperPixel2r in a multi-display setup
 ## Touch rotation
 
 Touch is only supported via the Python library - https://github.com/pimoroni/hyperpixel2r-python
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

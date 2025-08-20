@@ -161,3 +161,7 @@ FAILED src/tests/provisioning/test_config_processor.py::TestConfigProcessor::tes
 FAILED src/tests/provisioning/test_config_processor.py::TestConfigProcessor::test_process_templates
 FAILED src/tests/provisioning/test_package_creator.py::TestPackageCreator::test_auto_detect_project_root
 =================== 4 failed, 52 passed, 1 warning in 0.27s ====================
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

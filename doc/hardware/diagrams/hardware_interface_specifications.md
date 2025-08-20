@@ -300,3 +300,7 @@ Changes to this hardware interface specification coordinate with the master docu
 **Diagram Status**: Active
 **Master Document Alignment**: Verified 2025-08-20
 **Next Review**: 2025-09-20
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

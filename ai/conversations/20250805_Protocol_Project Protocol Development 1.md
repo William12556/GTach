@@ -156,3 +156,7 @@ All nine protocols in `/Users/williamwatson/Documents/GitHub/GTach/doc/protocol/
 **Protocol Status**: Complete and Validated  
 **Implementation Priority**: Immediate  
 **Next Session Focus**: Template creation and sample iteration validation
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

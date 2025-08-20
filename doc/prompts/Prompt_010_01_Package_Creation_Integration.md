@@ -216,3 +216,7 @@ This integration focuses on seamless user experience while providing powerful ve
 - [[Change Plan: Enhanced Version State Management System]]
 - [[Claude Code Prompt: Version State Manager Implementation]]
 - [[Protocol 8: Logging and Debug Standards]]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

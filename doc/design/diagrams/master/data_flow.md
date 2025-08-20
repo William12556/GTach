@@ -34,3 +34,7 @@ All subsidiary data flow diagrams must maintain consistency with this master doc
 **Authority Verification Date**: 2025-08-08
 **Next Master Review**: 2025-09-08
 **Subsidiary Coordination Status**: No subsidiaries yet created
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

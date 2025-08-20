@@ -132,3 +132,7 @@ Protocol 13 Release Management Documentation Standards provides the framework fo
 
 **Change Status**: Planned
 **Next Review**: 2025 08 20
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

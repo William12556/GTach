@@ -160,3 +160,7 @@ To be documented post-implementation
 
 **Change Status**: Planned
 **Next Review**: 2025-08-18
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

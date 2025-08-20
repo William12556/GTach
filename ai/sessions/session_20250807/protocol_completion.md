@@ -23,3 +23,7 @@ ThreadPoolExecutor-based archive parallelization with:
 
 ## Next Action
 Execute Claude Code prompt for Phase 2 implementation.
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

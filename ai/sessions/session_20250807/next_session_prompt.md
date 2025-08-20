@@ -37,3 +37,7 @@
 
 ## Continuation Action
 Ready for Claude Code prompt creation and implementation.
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

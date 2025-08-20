@@ -201,3 +201,7 @@ Foundation iteration for advanced provisioning capabilities. Focus on reliable b
 - [[Design_001_Application_Provisioning_System.md]]
 - [[Change_001_Package_Structure_Implementation.md]]
 - [[Protocol_001_Project_Structure_Standards.md]]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

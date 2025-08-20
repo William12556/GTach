@@ -195,3 +195,7 @@ Update all project files to v0.1.0-alpha.1:
 **Implementation Priority**: High  
 **Dependencies**: None (self-contained enhancement)  
 **Integration Impact**: Minimal disruption to existing provisioning workflow
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

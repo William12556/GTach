@@ -145,3 +145,7 @@
 **Dependencies**: [List of dependent protocols]
 **Related Protocols**: [List of related protocols]
 **Review Date**: [Next scheduled review date]
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

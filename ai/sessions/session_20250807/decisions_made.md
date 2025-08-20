@@ -21,3 +21,7 @@
 - Provisioning system only (defer OBDII optimization)
 - Maintain 100% test success rate
 - Preserve thread safety and cross-platform compatibility
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

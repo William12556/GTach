@@ -147,3 +147,7 @@ FILE: src/provisioning/archive_manager.py
 **Prompt Status**: Ready for execution
 **Implementation Phase**: 2 (Implementation)
 **Dependencies Met**: Phase 1 design documentation complete
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

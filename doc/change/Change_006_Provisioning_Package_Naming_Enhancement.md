@@ -190,3 +190,7 @@ To be documented post-implementation based on user experience feedback.
 
 **Change Status**: Planned
 **Next Review**: 2025 08 13
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
