@@ -5,7 +5,7 @@
 # GTach is licensed under the MIT License.
 # See the LICENSE file in the project root for full license text.
 
-"""OBDII RPM Display application package."""
+"""GTach application package."""
 
 from .app import GTachApplication
 from .main import main
