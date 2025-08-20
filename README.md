@@ -77,4 +77,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Warning**: This is experimental development software. Actual fitness for purpose is not guaranteed.
+**Warning**: This is experimental software. Actual fitness for purpose is not guaranteed.
