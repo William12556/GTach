@@ -199,3 +199,7 @@ GENERATE: [Specific code generation request with technical specifications]
 **MCP Interface**: LM Studio Codestral 22b  
 **Execution Environment**: /Users/williamwatson/Documents/GitHub/GTach  
 **Integration Protocol**: Claude Desktop → Codestral → Claude Code
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

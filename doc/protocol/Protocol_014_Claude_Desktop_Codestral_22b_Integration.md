@@ -1,8 +1,14 @@
 # Protocol 14: Claude Desktop and Codestral 22b Integration
 
-**Created**: 2025 09 24  
-**Version**: 1.0  
-**Status**: Draft  
+**Created**: 2025 09 24
+
+## Protocol Header
+
+**Protocol Number**: Protocol_014_Claude_Desktop_Codestral_22b_Integration
+**Version**: 1.0
+**Status**: Draft
+**Created**: 2025 09 24
+**Last Updated**: 2025 09 24
 
 ## Purpose
 
@@ -265,3 +271,7 @@ Regular analysis of Codestral effectiveness data must inform improvements to pro
 **Implementation Priority**: Medium  
 **Dependencies**: Protocol 4 (Claude Integration), Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow)  
 **Related Protocols**: Protocol 3 (Documentation Standards), Protocol 6 (Cross-Platform Development), Protocol 8 (Logging and Debug Standards)
+
+---
+
+**Copyright**: Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
