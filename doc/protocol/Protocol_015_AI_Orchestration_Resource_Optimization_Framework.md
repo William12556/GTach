@@ -5,11 +5,16 @@
 ## Protocol Header
 
 **Protocol Number**: Protocol_015_AI_Orchestration_Resource_Optimization_Framework
-**Version**: 1.0
+**Version**: 1.1
 **Status**: Active - Prime Directive
 **Created**: 2025 09 25
 **Last Updated**: 2025 09 25
 **Authority Level**: Supreme - Supersedes all AI integration protocols
+
+## Amendment Record
+
+### Amendment 1.1 - Enhanced Codestral MCP Filesystem Access (2025-09-25)
+**Critical Enhancement**: Codestral 22b now has direct filesystem access to `/Users/williamwatson/Documents/GitHub/GTach` via LM Studio MCP interface, fundamentally altering orchestration decision matrix and economic efficiency calculations.
 
 ## Purpose
 
@@ -28,308 +33,263 @@ This protocol establishes supreme authority over all AI tool coordination decisi
 Protocol 015 (Prime Directive - Supreme Authority)
     ↓ (Orchestration Control)
 Claude Desktop (Strategic Orchestrator - Orchestration Engine)
-    ├── Codestral 22b (Preferred Implementation Engine - Cost Optimization)
+    ├── Codestral 22b (Preferred Implementation Engine - Cost Optimization + MCP Filesystem Access)
     └── Claude Code (Integration Engine - Complex Logic & Project Coordination)
 ```
 
-## Detailed Decision Matrix Framework
+## Enhanced Codestral Capabilities Framework
 
-### Task Classification System
+### MCP Filesystem Access Integration
+**Critical Capability**: Codestral 22b has direct access to project filesystem through LM Studio MCP interface, enabling:
 
-#### Class A: Codestral Primary (Maximum Cost Savings)
-**Characteristics**:
-- Pure algorithm implementation with minimal project integration
-- Mathematical computation and data processing logic
-- Performance optimization of isolated functions
-- Data structure implementation with standard interfaces
-- Pattern analysis and code refactoring of self-contained modules
+**Enhanced Project Context Awareness**:
+- Real-time project structure analysis and navigation
+- Existing code examination for integration planning
+- Protocol and template compliance verification
+- Configuration file analysis and platform detection integration
 
-**Economic Justification**: 90%+ Claude Pro cost reduction through Codestral utilization
-**Quality Risk**: Low - isolated implementation with standard interfaces
-**Integration Complexity**: Minimal - standard function/class integration
+**Advanced Integration Capabilities**:
+- Direct file modification with project context understanding
+- Cross-file dependency analysis and implementation
+- Multi-component coordination with existing codebase awareness
+- Protocol-compliant implementation with direct protocol access
 
-**Implementation Procedure**:
-1. Claude Desktop formulates Codestral prompt using Protocol 14 templates
-2. Codestral generates implementation through LM Studio MCP interface
-3. Claude Desktop validates output quality and integration compatibility
-4. Direct integration into project without Claude Code intervention
+**Economic Efficiency Amplification**:
+- Expanded Class A task coverage through enhanced integration capabilities
+- Elevated Class B workflow efficiency through comprehensive project context
+- Reduced Class C strategic intervention requirements
 
-#### Class B: Codestral-Claude Code Sequential (Optimized Cost Efficiency)
-**Characteristics**:
-- Complex algorithms requiring project architecture integration
-- Performance-critical implementations needing cross-platform compatibility
-- Advanced data structures with project-specific interface requirements
-- Optimization tasks affecting multiple project components
+### Recalibrated Decision Matrix Thresholds
+**Enhanced Capability Adjustments**:
+```python
+# Updated thresholds reflecting MCP filesystem access
+integration_complexity_threshold = 0.5  # Raised from 0.3
+project_context_available = True        # MCP filesystem access
+protocol_compliance_capability = True   # Direct protocol access
+multi_file_coordination_capability = True # Enhanced integration scope
+```
 
-**Economic Justification**: 60-80% Claude Pro cost reduction through primary Codestral generation
-**Quality Risk**: Medium - requires integration validation and compatibility verification
-**Integration Complexity**: Moderate - systematic handoff between AI tools required
+## Enhanced Decision Matrix Framework
 
-**Implementation Procedure**:
-1. Claude Desktop formulates Codestral prompt for core algorithm generation
-2. Codestral generates algorithmic implementation through MCP interface
-3. Claude Desktop validates algorithmic correctness and optimization effectiveness
-4. Claude Desktop formulates Claude Code integration prompt incorporating Codestral output
-5. Claude Code performs project integration and cross-platform compatibility implementation
-6. Claude Desktop validates complete solution against project requirements
+### Task Classification System (Updated)
 
-#### Class C: Claude Code Primary (Strategic Cost Allocation)
-**Characteristics**:
-- Multi-file architectural changes affecting project structure
-- Protocol compliance verification and implementation
-- Cross-platform testing framework integration
-- Complex debugging requiring project context and historical knowledge
-- Configuration management and deployment coordination
+#### Class A: Codestral Primary (Enhanced Maximum Cost Savings)
+**Expanded Characteristics**:
+- Pure algorithm implementation with **enhanced project integration capability**
+- Mathematical computation and data processing logic **with project context**
+- Performance optimization of **both isolated and integrated functions**
+- Data structure implementation with **project-specific interface compliance**
+- Pattern analysis and code refactoring with **multi-file coordination**
+- **NEW**: Protocol-compliant implementations with direct protocol access
+- **NEW**: Configuration-aware cross-platform implementations
 
-**Economic Justification**: Strategic Claude Pro allocation for irreplaceable capabilities
-**Quality Risk**: Low - utilizing Claude Code's established project expertise
-**Integration Complexity**: High - full project context and architectural understanding required
+**Economic Justification**: **95%+ Claude Pro cost reduction** through enhanced Codestral utilization
+**Quality Risk**: **Very Low** - project context awareness with protocol compliance
+**Integration Complexity**: **Low to Moderate** - direct project integration capability
 
-**Implementation Procedure**:
-1. Claude Desktop analyzes requirements confirming Claude Code necessity
-2. Claude Desktop formulates comprehensive Claude Code prompt per Protocol 4 standards
-3. Claude Code performs complete implementation with full project integration
-4. Claude Desktop validates implementation against all protocol requirements
+**Enhanced Implementation Procedure**:
+1. Claude Desktop formulates Codestral prompt with MCP filesystem context
+2. **Codestral analyzes project structure and existing implementations via MCP**
+3. Codestral generates implementation with full project integration through MCP interface
+4. **Codestral validates protocol compliance and project standards directly**
+5. Direct project integration with comprehensive context awareness
 
-### Decision Logic Algorithm
+#### Class B: Codestral-Claude Code Sequential (Enhanced Cost Efficiency)
+**Enhanced Characteristics**:
+- **Significantly expanded scope** due to Codestral's enhanced integration capabilities
+- Complex architectural changes requiring **strategic Claude Desktop oversight**
+- **Multi-protocol implementations** requiring coordination validation
+- Advanced cross-platform implementations with **deployment complexity**
+- **Testing framework integration** requiring specialized validation procedures
+
+**Economic Justification**: **80-90% Claude Pro cost reduction** through enhanced Codestral primary generation
+**Quality Risk**: **Low** - comprehensive project context with strategic oversight
+**Integration Complexity**: **Moderate** - enhanced but still requiring strategic validation
+
+**Enhanced Implementation Procedure**:
+1. Claude Desktop formulates enhanced Codestral prompt with comprehensive project context
+2. **Codestral performs advanced implementation with direct project integration**
+3. Claude Desktop validates architectural compliance and strategic requirements
+4. **Conditional Claude Code engagement only for complex testing or deployment coordination**
+5. Claude Desktop validates complete solution with enhanced integration verification
+
+#### Class C: Claude Code Strategic (Reduced Strategic Allocation)
+**Significantly Reduced Characteristics**:
+- **Complex multi-protocol architectural changes** requiring strategic architectural oversight
+- **Advanced testing framework architecture** requiring specialized coordination
+- **Complex debugging scenarios** requiring historical context and conversation continuity
+- **Deployment coordination** requiring cross-platform strategic planning
+
+**Economic Justification**: **Strategic Claude Pro allocation for irreplaceable strategic capabilities**
+**Quality Risk**: **Low** - utilizing Claude Code for only the most complex strategic scenarios
+**Integration Complexity**: **Very High** - reserved for scenarios requiring strategic architectural oversight
+
+### Enhanced Decision Logic Algorithm
 
 ```python
-def orchestration_decision(task):
+def enhanced_orchestration_decision(task):
     """
-    Prime directive decision logic for AI tool selection
+    Enhanced prime directive decision logic with MCP filesystem access
     Returns: (primary_tool, workflow_type, economic_efficiency_rating)
     """
     
-    # Phase 1: Economic Impact Assessment
-    claude_pro_cost_high = assess_claude_pro_usage_cost(task)
-    codestral_capability = assess_codestral_suitability(task)
+    # Phase 1: Enhanced Capability Assessment
+    codestral_mcp_access = True           # MCP filesystem access available
+    project_context_available = True     # Real-time project structure access
+    protocol_compliance_capability = True # Direct protocol access
     
-    # Phase 2: Complexity Analysis  
+    # Phase 2: Enhanced Complexity Analysis
     algorithm_complexity = analyze_algorithmic_requirements(task)
     integration_complexity = analyze_project_integration_needs(task)
     protocol_compliance_needs = analyze_protocol_requirements(task)
+    multi_file_coordination = analyze_multi_file_requirements(task)
     
-    # Phase 3: Quality Risk Assessment
-    isolated_implementation = can_implement_in_isolation(task)
-    standard_interfaces = uses_standard_interfaces(task)
-    testing_complexity = assess_testing_requirements(task)
+    # Phase 3: Enhanced Quality Risk Assessment
+    project_context_sufficient = assess_project_context_requirements(task)
+    strategic_oversight_required = assess_strategic_requirements(task)
+    testing_framework_complexity = assess_testing_coordination_needs(task)
     
-    # Decision Matrix Application
-    if (codestral_capability >= 0.8 and 
-        integration_complexity < 0.3 and 
-        isolated_implementation and 
-        standard_interfaces):
-        return ("Codestral", "Class_A_Primary", 0.90)
+    # Enhanced Decision Matrix Application
+    if (codestral_mcp_access and 
+        project_context_sufficient and
+        integration_complexity < 0.5 and  # Raised threshold
+        not strategic_oversight_required):
+        return ("Codestral", "Class_A_Enhanced_Primary", 0.95)
     
-    elif (codestral_capability >= 0.6 and 
-          algorithm_complexity >= 0.7 and 
-          integration_complexity < 0.7):
-        return ("Codestral_Sequential", "Class_B_Hybrid", 0.70)
+    elif (codestral_mcp_access and
+          algorithm_complexity >= 0.6 and  # Lowered threshold
+          integration_complexity < 0.8 and # Raised threshold  
+          not testing_framework_complexity):
+        return ("Codestral_Sequential", "Class_B_Enhanced_Hybrid", 0.85)
     
-    elif (integration_complexity >= 0.7 or 
-          protocol_compliance_needs >= 0.8 or 
-          testing_complexity >= 0.8):
-        return ("Claude_Code", "Class_C_Strategic", 0.20)
+    elif (strategic_oversight_required or
+          testing_framework_complexity >= 0.8 or
+          multi_file_coordination >= 0.9):  # Only highest complexity
+        return ("Claude_Code", "Class_C_Strategic_Reduced", 0.15)
     
     else:
-        # Default to cost optimization when decision factors are balanced
-        return ("Codestral_Sequential", "Class_B_Hybrid", 0.65)
+        # Default to enhanced cost optimization
+        return ("Codestral_Sequential", "Class_B_Enhanced_Hybrid", 0.85)
 ```
 
-## Operational Implementation Procedures
+## Enhanced Operational Implementation Procedures
 
-### Cycle Initialization Sequence
+### Enhanced Cycle Initialization Sequence
 
-#### Step 1: Mandatory Orchestration Consultation
-**Requirement**: All software engineering cycles must begin with Protocol 015 consultation
-**Procedure**:
+#### Step 1: Enhanced Orchestration Consultation
+**Enhanced Requirement**: All software engineering cycles must begin with enhanced Protocol 015 consultation leveraging Codestral MCP capabilities
+**Enhanced Procedure**:
 1. Claude Desktop identifies proposed development task
-2. Applies decision matrix algorithm to task characteristics
-3. Determines optimal AI tool assignment and workflow type
-4. Documents orchestration decision with economic efficiency rationale
-5. Proceeds to appropriate subordinate protocol implementation
+2. **Evaluates Codestral MCP filesystem access requirements**
+3. Applies enhanced decision matrix algorithm with MCP capability assessment
+4. Determines optimal AI tool assignment with enhanced economic efficiency targets
+5. Documents orchestration decision with enhanced cost optimization rationale
 
-#### Step 2: Economic Efficiency Assessment
-**Cost Optimization Analysis**:
+#### Step 2: Enhanced Economic Efficiency Assessment
+**Enhanced Cost Optimization Analysis**:
 - Estimate Claude Pro token consumption for direct Claude Code implementation
-- Calculate Codestral capability percentage for core algorithmic requirements
-- Project cost savings percentage through orchestration optimization
-- Validate economic efficiency target achievement (minimum 40% cost reduction)
+- **Calculate enhanced Codestral capability percentage with MCP filesystem access**
+- Project enhanced cost savings percentage (up to 95% for Class A tasks)
+- **Validate enhanced economic efficiency target achievement (minimum 60% cost reduction)**
 
-#### Step 3: Quality Risk Mitigation
-**Quality Assurance Framework**:
-- Establish quality validation checkpoints appropriate to tool selection
-- Define integration verification procedures for multi-tool workflows
-- Specify rollback procedures if orchestrated approach fails quality standards
-- Document quality maintenance strategies across AI tool transitions
+### Enhanced Tool Coordination Workflows
 
-### Tool Coordination Workflows
-
-#### Workflow A: Codestral Primary Implementation
+#### Enhanced Workflow A: Codestral Primary Implementation
 ```
-1. Task Analysis (Claude Desktop)
-   └── Economic efficiency > 90%, integration complexity < 30%
+1. Enhanced Task Analysis (Claude Desktop)
+   └── Economic efficiency > 95%, integration complexity < 50%
 
-2. Codestral Prompt Generation (Claude Desktop)
-   └── Protocol 14 template with optimization focus
+2. Enhanced Codestral Prompt Generation (Claude Desktop)
+   └── Protocol 14 template with MCP filesystem access context
 
-3. Algorithm Generation (Codestral via MCP)
-   └── Pure implementation with standard interfaces
+3. Enhanced Algorithm Generation (Codestral via MCP with filesystem access)
+   └── Implementation with direct project integration and protocol compliance
 
-4. Quality Validation (Claude Desktop)  
-   └── Algorithmic correctness and optimization verification
+4. Enhanced Quality Validation (Claude Desktop)  
+   └── Architectural and protocol compliance verification
 
-5. Direct Integration
-   └── Standard integration without additional AI tool engagement
+5. Direct Enhanced Integration
+   └── Complete implementation without additional AI tool engagement
 ```
 
-#### Workflow B: Codestral-Claude Code Sequential
+#### Enhanced Workflow B: Codestral-Claude Code Sequential
 ```
-1. Task Analysis (Claude Desktop)
-   └── Economic efficiency 60-80%, hybrid implementation optimal
+1. Enhanced Task Analysis (Claude Desktop)
+   └── Economic efficiency 80-90%, enhanced hybrid implementation optimal
 
-2. Algorithmic Core Generation (Codestral via MCP)
-   └── Core algorithm implementation with optimization focus
+2. Enhanced Algorithmic Implementation (Codestral via MCP with filesystem access)
+   └── Advanced implementation with comprehensive project integration
 
-3. Output Analysis (Claude Desktop)
-   └── Algorithmic validation and integration planning
+3. Strategic Analysis (Claude Desktop)
+   └── Architectural validation and strategic requirement assessment
 
-4. Integration Implementation (Claude Code)
-   └── Project integration with cross-platform compatibility
+4. Conditional Strategic Implementation (Claude Code - if required)
+   └── Strategic coordination for complex testing or deployment scenarios only
 
-5. Complete Solution Validation (Claude Desktop)
-   └── End-to-end functionality and quality verification
-```
-
-#### Workflow C: Claude Code Strategic Implementation
-```  
-1. Task Analysis (Claude Desktop)
-   └── Complex integration requirements justify strategic Claude Pro allocation
-
-2. Comprehensive Implementation (Claude Code)
-   └── Full-scope implementation per Protocol 4 standards
-
-3. Quality Validation (Claude Desktop)
-   └── Complete solution verification against all project requirements
+5. Enhanced Solution Validation (Claude Desktop)
+   └── Complete architectural and strategic compliance verification
 ```
 
-## Protocol Reconciliation Specifications
+## Enhanced Protocol Reconciliation Specifications
 
-### Protocol 4 Redefinition
+### Protocol 4 Further Scope Reduction
 
-**Retained Responsibilities**:
-- Complex project architecture integration requiring full project context
-- Multi-file coordination and structural changes
-- Protocol compliance verification and implementation
-- Cross-platform testing framework integration
-- Configuration management and deployment coordination
+**Significantly Reduced Responsibilities**:
+- **Strategic architectural oversight** for complex multi-protocol implementations
+- **Advanced testing framework coordination** requiring specialized strategic planning
+- **Complex debugging scenarios** requiring conversation continuity and historical context
+- **Deployment strategic planning** requiring cross-platform architectural coordination
 
-**Transferred Responsibilities** (to Codestral Primary or Sequential):
-- Pure algorithm implementation and optimization
-- Mathematical computation code generation  
-- Performance optimization of isolated functions
-- Data structure implementation with standard interfaces
-- Pattern analysis and refactoring of self-contained modules
+**Further Transferred Responsibilities** (to Enhanced Codestral):
+- **Multi-file coordination and structural changes** with project context
+- **Protocol compliance implementation** with direct protocol access
+- **Cross-platform compatibility implementation** with configuration awareness
+- **Integration testing coordination** with project structure understanding
 
-**Modified Operational Constraints**:
-- Operates only when orchestration framework determines strategic necessity
-- Integrates Codestral-generated algorithms when specified by orchestration workflow
-- Maintains comprehensive project integration capabilities for complex scenarios
+### Protocol 14 Significant Enhancement
 
-### Protocol 14 Enhancement
+**Dramatically Expanded Authority**:
+- **Primary implementation engine for majority of development tasks**
+- **Project integration capabilities** through MCP filesystem access
+- **Protocol compliance verification and implementation** with direct access
+- **Multi-file coordination** with comprehensive project context
+- **Cross-platform implementation** with configuration management awareness
 
-**Expanded Primary Authority**:
-- Default implementation engine for all algorithmic tasks
-- Primary code generation tool for cost optimization
-- Performance optimization implementation with economic efficiency mandate
+**Enhanced Operational Framework**:
+- **Direct project integration capability** through MCP filesystem access
+- **Real-time project analysis** for optimal implementation strategies
+- **Protocol-compliant implementations** without external validation requirements
+- **Advanced integration scenarios** previously requiring Claude Code intervention
 
-**Enhanced Integration Requirements**:
-- Systematic handoff procedures to Claude Code for project integration
-- Quality validation coordination with Claude Desktop orchestration
-- Economic efficiency optimization targets (minimum 60% cost reduction)
+## Enhanced Success Metrics and Monitoring
 
-**Modified Operational Framework**:
-- Receives orchestrated task assignments through systematic decision matrix
-- Generates implementations optimized for subsequent Claude Code integration when required
-- Maintains thread safety and documentation standards for seamless project integration
+### Enhanced Economic Efficiency Metrics
 
-## Quality Assurance Integration
+**Updated Primary KPIs**:
+- **Claude Pro usage reduction percentage (target: minimum 60% reduction, up to 95% for enhanced Class A)**
+- **Enhanced Codestral utilization rate (target: 80%+ of all development tasks)**
+- **Cost per delivered code functionality (target: 60%+ improvement through MCP capabilities)**
+- **Enhanced economic efficiency achievement across expanded task classifications**
 
-### Cross-Tool Validation Procedures
+**Enhanced Quality Maintenance Metrics**:
+- **Protocol compliance verification** through Codestral direct access
+- **Project integration success rate** through MCP filesystem capabilities
+- **Multi-file coordination effectiveness** with enhanced project context
+- **Cross-platform compatibility maintenance** through configuration awareness
 
-**Codestral Output Validation**:
-- Algorithmic correctness verification through Claude Desktop analysis
-- Code quality assessment including thread safety and error handling
-- Integration compatibility verification for project architecture requirements
-- Performance optimization effectiveness measurement
+### Enhanced Continuous Optimization Framework
 
-**Sequential Workflow Quality Gates**:
-- Codestral output quality confirmation before Claude Code integration
-- Integration implementation validation against original requirements
-- End-to-end functionality verification across tool boundaries
-- Cross-platform compatibility confirmation for sequential implementations
-
-**Economic Efficiency Monitoring**:
-- Claude Pro usage tracking across all orchestrated workflows
-- Cost reduction achievement measurement against optimization targets
-- Quality maintenance verification during cost optimization procedures
-- Return on investment analysis for orchestration framework implementation
-
-## Success Metrics and Monitoring
-
-### Economic Efficiency Metrics
-
-**Primary KPIs**:
-- Claude Pro usage reduction percentage (target: minimum 40% reduction)
-- Codestral utilization rate (target: maximum feasible algorithmic task coverage)
-- Cost per delivered code functionality (target: continuous optimization)
-- Economic efficiency achievement across task classifications
-
-**Quality Maintenance Metrics**:
-- Code quality consistency across AI tools (thread safety, error handling, documentation)
-- Integration success rate for multi-tool workflows  
-- Cross-platform compatibility maintenance during cost optimization
-- Testing coverage and functionality verification across orchestrated implementations
-
-### Continuous Optimization Framework
-
-**Monthly Assessment Procedures**:
-- Orchestration decision effectiveness analysis and optimization
-- Task classification accuracy improvement based on implementation results
-- Economic efficiency target adjustment based on achieved cost reductions
-- Quality standard maintenance verification across all AI tool outputs
-
-**Framework Evolution Requirements**:
-- Decision matrix refinement based on operational experience
-- Workflow optimization based on efficiency analysis
-- Tool capability assessment updates reflecting improved AI performance
-- Protocol integration enhancement for seamless orchestration operation
-
-## Implementation Roadmap
-
-### Phase 1: Framework Establishment (Immediate)
-- Protocol 015 activation as prime directive
-- Protocol 4 and Protocol 14 reconciliation implementation
-- Decision matrix integration into all software engineering cycle initiations
-- Basic orchestration workflow establishment
-
-### Phase 2: Optimization Refinement (First Month)
-- Decision logic calibration based on initial implementation results
-- Quality assurance procedure refinement for multi-tool workflows
-- Economic efficiency measurement system implementation
-- Continuous improvement framework activation
-
-### Phase 3: Advanced Coordination (Ongoing)
-- Sophisticated decision matrix evolution based on accumulated experience
-- Automated orchestration decision support system development
-- Advanced quality validation procedures for complex multi-tool scenarios
-- Strategic economic optimization achievement and target enhancement
+**Enhanced Assessment Procedures**:
+- **MCP filesystem access effectiveness analysis** and optimization identification
+- **Enhanced task classification accuracy** based on expanded Codestral capabilities
+- **Economic efficiency target achievement** with enhanced cost reduction potential
+- **Protocol compliance automation** through direct Codestral access validation
 
 ---
 
-**Implementation Priority**: Critical - Prime Directive Status
-**Dependencies**: Protocol 4 (Claude Integration), Protocol 14 (Codestral Integration), Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow)
-**Subordinate Protocols**: All AI integration protocols must defer to orchestration decisions
+**Implementation Priority**: Critical - Prime Directive Status with Enhanced Capabilities
+**Dependencies**: Protocol 4 (Reduced Scope), Protocol 14 (Enhanced Scope), Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow)
+**Subordinate Protocols**: All AI integration protocols must defer to enhanced orchestration decisions
 **Related Protocols**: Protocol 3 (Documentation Standards), Protocol 6 (Cross-Platform Development), Protocol 8 (Logging and Debug Standards)
 
 ---
