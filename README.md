@@ -10,6 +10,8 @@ GTach is an experimental embedded application under development for Raspberry Pi
 
 This project represents a first attempt at AI-supported software development using Claude Desktop, Claude Code and Codestral 22b AI tools. The objective is to establish a sort of AI orchestration framework to guide software development. A kind of AI wrangler if you will.
 
+What you see from this point on is completely AI generated. With me as the overlord of course ;-).
+
 ## Quick Start
 
 ### Development Environment
