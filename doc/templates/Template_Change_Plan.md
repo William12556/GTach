@@ -8,6 +8,9 @@
 **Date**: [YYYY MM DD]
 **Priority**: [Critical/High/Medium/Low]
 **Change Type**: [Bug Fix/Enhancement/Refactor/Security/Performance]
+**AI Tool Primary**: [Claude Code/Codestral 22b/Orchestration]
+**Economic Efficiency**: [Percentage cost reduction achieved]
+**Workflow Type**: [Class A/Class B/Class C per Protocol 015]
 
 ## Change Description
 
@@ -28,6 +31,19 @@
 - **Risk Level**: [Low/Medium/High]
 - **Potential Issues**: [What could go wrong]
 - **Mitigation**: [How risks are mitigated]
+
+## AI Tool Coordination
+
+### Orchestration Decision
+- **Primary AI Tool**: [Claude Code/Codestral 22b]
+- **Secondary AI Tools**: [If multi-tool workflow]
+- **Decision Rationale**: [Reference to Protocol 015 decision logic]
+- **Economic Efficiency Achievement**: [Cost reduction percentage]
+
+### Tool-Specific Implementation Details
+- **Codestral MCP Utilization**: [If applicable - filesystem access usage]
+- **Claude Code Integration**: [If applicable - strategic implementation aspects]
+- **Cross-Tool Validation**: [If multi-tool workflow coordination required]
 
 ## Implementation Details
 

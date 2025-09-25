@@ -116,6 +116,23 @@ CODESTRAL COORDINATION: [Integration with Enhanced Codestral implementations]
 - **STRATEGIC SCOPE**: Architectural oversight and coordination requirements only
 - **CODESTRAL INTEGRATION**: Coordination with enhanced Codestral implementations
 
+### Strategic Prompt Archiving System
+**Critical Requirement**: Every Claude Code prompt must be systematically archived in the project's strategic prompt management system.
+
+**Strategic Archiving Procedure**:
+1. Create prompt file in `doc/prompts/claude/` directory using standard naming convention
+2. Include complete strategic prompt documentation with orchestration metadata
+3. Embed actual Claude Code prompt as copyable code block within document
+4. Validate document creation timestamp using `get_file_info` command and correct header if necessary
+5. Add orchestration-specific metadata including Protocol 015 decision rationale
+6. Cross-reference related Codestral prompts for integration procedures
+7. Update strategic effectiveness tracking based on execution results
+8. Archive AI coordination context in enhanced `ai/project_knowledge/` structure
+9. Update session management materials with strategic coordination procedures
+10. Document strategic integration pathway and economic efficiency achievement
+
+**Strategic Archival Location**: `doc/prompts/claude/Prompt_[iteration]_[task_sequence]_[strategic_description].md`
+
 ## Orchestrated Integration Workflow Procedures
 
 ### Enhanced Development Task Initiation

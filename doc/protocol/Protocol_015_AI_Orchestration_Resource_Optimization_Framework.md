@@ -5,7 +5,7 @@
 ## Protocol Header
 
 **Protocol Number**: Protocol_015_AI_Orchestration_Resource_Optimization_Framework
-**Version**: 1.1
+**Version**: 1.2
 **Status**: Active - Prime Directive
 **Created**: 2025 09 25
 **Last Updated**: 2025 09 25
@@ -15,6 +15,9 @@
 
 ### Amendment 1.1 - Enhanced Codestral MCP Filesystem Access (2025-09-25)
 **Critical Enhancement**: Codestral 22b now has direct filesystem access to `/Users/williamwatson/Documents/GitHub/GTach` via LM Studio MCP interface, fundamentally altering orchestration decision matrix and economic efficiency calculations.
+
+### Amendment 1.2 - Documentation Organization Framework (2025-09-25)
+**Structural Enhancement**: AI tool prompt documentation reorganized into dedicated subdirectories (`doc/prompts/claude/` and `doc/prompts/codestral/`) per Protocol 001 updated structure, enabling systematic economic efficiency tracking and orchestration effectiveness monitoring.
 
 ## Purpose
 

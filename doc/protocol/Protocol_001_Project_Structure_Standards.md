@@ -1,9 +1,9 @@
 # Protocol 1: Project Structure Standards
 
 **Created**: 2025 01 06  
-**Version**: 3.1  
+**Version**: 3.2  
 **Status**: Active  
-**Last Updated**: 2025 08 15  
+**Last Updated**: 2025 09 25  
 
 ## Purpose
 
@@ -31,7 +31,9 @@ Establish standardized directory structure and file organization principles for 
 │   └── tests/                # Test files only
 ├── doc/                      # Project documentation (Obsidian managed)
 │   ├── protocol/             # Development protocols
-│   ├── prompts/              # Claude Code prompts archive
+│   ├── prompts/              # AI tool prompts organized by tool type
+│   │   ├── claude/           # Claude Code prompts (Protocol 4)
+│   │   └── codestral/        # Codestral 22b prompts (Protocol 14)
 │   ├── change/               # Change documentation
 │   ├── audits/               # Code and process audits
 │   ├── design/               # Design documents
@@ -102,7 +104,9 @@ Establish standardized directory structure and file organization principles for 
 
 #### Documentation Hierarchy
 - **protocol/**: Development workflow and standards documentation
-- **prompts/**: Archive of all Claude Code prompts organized by iteration
+- **prompts/**: AI tool prompts organized by tool type following Protocol 015 orchestration framework
+  - **prompts/claude/**: Claude Code prompts following Protocol 4 standards for strategic implementation
+  - **prompts/codestral/**: Codestral 22b prompts following Protocol 14 standards with MCP filesystem access
 - **change/**: Change requests, impact assessments, and implementation records
 - **audits/**: Code reviews, security assessments, and compliance checks
 - **design/**: Architecture decisions, technical specifications, and design patterns including visual documentation through Protocol 12 diagram standards

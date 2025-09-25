@@ -5,7 +5,7 @@
 ## Protocol Header
 
 **Protocol Number**: Protocol_014_Claude_Desktop_Codestral_22b_Integration
-**Version**: 1.1
+**Version**: 1.2
 **Status**: Active
 **Created**: 2025 09 24
 **Last Updated**: 2025 09 25
@@ -14,6 +14,9 @@
 
 ### Amendment 1.1 - MCP Filesystem Access Integration (2025-09-25)
 **Critical Enhancement**: Codestral 22b now has direct filesystem access to project directory via LM Studio MCP interface, enabling comprehensive project context awareness and advanced integration capabilities.
+
+### Amendment 1.2 - Prompt Organization Framework (2025-09-25)
+**Organizational Enhancement**: Codestral prompts now archived in dedicated `doc/prompts/codestral/` subdirectory per Protocol 001 updated structure, enabling systematic economic efficiency tracking and AI tool coordination.
 
 ## Purpose
 
