@@ -57,7 +57,7 @@ The GTach project follows structured development protocols with **Protocol 015 s
 | [Protocol 7](Protocol_007_Obsidian_Integration_Standards.md) | Obsidian vault integration | Active |
 | [Protocol 9](Protocol_009_AI_Coordination_Knowledge_Management.md) | AI coordination and knowledge management | Active |
 
-*_Protocol 4 operates under Protocol 015 orchestration authority with reconciled responsibilities_
+*_Protocol 4 operates under Protocol 015 orchestration authority with dramatically reduced strategic scope - majority of responsibilities transferred to enhanced Codestral_
 
 ### High Priority Protocols
 
@@ -123,10 +123,12 @@ Claude Desktop (Strategic Orchestrator)
 - **Enhanced Economic Target**: **60-95% Claude Pro usage reduction** through comprehensive utilization
 - **Direct Integration**: **Real-time project integration** without external handoff requirements
 
-#### Claude Code (Reduced Strategic Engine)
-- **Significantly Reduced Scope**: **Strategic architectural oversight** for complex multi-protocol scenarios
-- **Further Removed Scope**: **Multi-file coordination, protocol compliance** transferred to enhanced Codestral
-- **Strategic Role**: **Advanced strategic coordination** for highest complexity scenarios only
+#### Claude Code (Strategic Architectural Oversight)
+- **Dramatically Reduced Scope**: **Strategic architectural oversight only** for highest complexity scenarios
+- **Transferred Responsibilities**: **Source code implementation, testing, protocol compliance** → Enhanced Codestral
+- **Retained Strategic Functions**: **Multi-protocol architectural coordination, advanced testing framework strategy**
+- **Usage Target**: **<20% of development tasks** through intelligent orchestration
+- **Economic Mandate**: **Minimize usage** while maintaining strategic architectural capabilities
 
 ## Enhanced Memory and Session Management
 
