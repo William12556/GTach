@@ -1,254 +1,183 @@
 # Protocol 4: Claude Desktop and Claude Code Integration
 
 **Created**: 2025 01 06  
-**Version**: 1.0  
+**Version**: 1.1
 **Status**: Active  
+**Last Updated**: 2025 09 25
+
+## Amendment Record
+
+### Amendment 1.1 - Orchestration Framework Reconciliation (2025-09-25)
+**Critical Scope Reduction**: Protocol 4 reconciled with Protocol 015 (AI Orchestration Framework) to eliminate conflicts and optimize resource allocation. Majority of implementation responsibilities transferred to enhanced Codestral 22b per orchestration directive.
 
 ## Purpose
 
-Define the systematic integration between Claude Desktop and Claude Code tools to optimize AI-assisted development workflows, establish clear tool responsibilities, and ensure comprehensive prompt management that supports iterative development cycles.
+Define the **significantly reduced strategic integration** between Claude Desktop and Claude Code tools under the supreme authority of Protocol 015 (AI Orchestration Framework), establishing Claude Code's specialized role in **strategic architectural oversight** for highest complexity scenarios only.
 
-## Tool Responsibility Framework
+## Orchestration Framework Integration
 
-### Claude Desktop Primary Functions
-Claude Desktop serves as the strategic design and coordination platform for the development process, focusing on high-level planning, analysis, and workflow management.
+### Supreme Authority Acknowledgment
+This protocol operates under the **supreme authority of Protocol 015** (AI Orchestration and Resource Optimization Framework), which mandates:
+- **Mandatory orchestration consultation** before Claude Code engagement
+- **Economic efficiency optimization** through Codestral-first approach
+- **Strategic resource allocation** for irreplaceable capabilities only
 
-**Core Responsibilities**:
-- Software architecture design and analysis
-- Development workflow coordination and planning
+### Orchestrated Tool Selection Logic
+Claude Code engagement **only occurs** when Protocol 015 decision matrix determines:
+- **Class C: Strategic scenarios** requiring architectural oversight
+- Integration complexity ≥ 0.8 (highest threshold)
+- Strategic architectural planning beyond Codestral's enhanced capabilities
+- Complex multi-protocol coordination requiring conversation continuity
+
+## Reconciled Tool Responsibility Framework
+
+### Claude Desktop Enhanced Orchestration Functions
+Claude Desktop maintains strategic orchestration authority while coordinating all AI tool selection per Protocol 015 mandate.
+
+**Enhanced Core Responsibilities**:
+- **AI orchestration decisions** per Protocol 015 decision matrix
+- Software architecture design and analysis **for strategic scenarios**
+- Development workflow coordination with **Codestral-first optimization**
 - Protocol creation and documentation management
-- Debugging strategy formulation and analysis
-- Integration planning between development phases
-- Quality assurance oversight and validation planning
+- **Codestral coordination** through LM Studio MCP interface
+- **Claude Code strategic engagement** for highest complexity scenarios only
 - AI coordination materials management and knowledge base maintenance
 - Conversation continuity preservation through synopsis creation
 
-**Operational Constraints**:
+**Enhanced Operational Constraints**:
+- **Mandatory Protocol 015 consultation** before any AI tool engagement
 - No direct source code creation or modification
-- No artifact creation for source code implementations
-- Focus on design documentation and strategic planning
-- Prompt creation for Claude Code task execution
+- **Codestral coordination** takes priority over Claude Code for cost optimization
+- Focus on strategic architectural oversight for complex scenarios
 
-### Claude Code Primary Functions
-Claude Code operates as the tactical implementation platform, executing specific development tasks under the strategic guidance provided by Claude Desktop through structured prompts.
+### Claude Code Dramatically Reduced Strategic Functions
+Claude Code operates **only for strategic architectural oversight** scenarios under Protocol 015 orchestration authority, with **majority of implementation responsibilities transferred to enhanced Codestral**.
 
-**Core Responsibilities**:
-- Source code implementation and modification
-- Unit test creation and validation
-- Integration test development
-- Bug fixing and debugging implementation
-- Performance optimization code changes
-- Cross-platform compatibility implementations
+**Significantly Reduced Strategic Responsibilities**:
+- **Strategic architectural oversight** for complex multi-protocol implementations
+- **Advanced testing framework coordination** requiring specialized strategic planning
+- **Complex debugging scenarios** requiring conversation continuity and historical context  
+- **Deployment strategic planning** requiring cross-platform architectural coordination
+- **Multi-protocol integration coordination** exceeding Codestral's enhanced capabilities
 
-**Operational Constraints**:
+**Transferred Responsibilities** (Now handled by Enhanced Codestral 22b):
+- ~~Source code implementation and modification~~ → **Enhanced Codestral Primary**
+- ~~Unit test creation and validation~~ → **Enhanced Codestral Primary**
+- ~~Integration test development~~ → **Enhanced Codestral Primary**
+- ~~Bug fixing and debugging implementation~~ → **Enhanced Codestral Primary**
+- ~~Performance optimization code changes~~ → **Enhanced Codestral Primary**
+- ~~Cross-platform compatibility implementations~~ → **Enhanced Codestral Primary**
+- ~~Multi-file coordination and structural changes~~ → **Enhanced Codestral with MCP Access**
+- ~~Protocol compliance verification and implementation~~ → **Enhanced Codestral with Direct Protocol Access**
+
+**Enhanced Operational Constraints**:
+- **Operates only when Protocol 015 determines strategic necessity**
 - Operates exclusively from `/Users/williamwatson/Documents/GitHub/GTach` directory
-- Follows structured prompts created by Claude Desktop
-- Implements thread safety requirements in all code
-- Includes comprehensive logging and error handling
-- Maintains code documentation standards per Protocol 3
+- **Integrates Codestral-generated algorithms** when specified by orchestration workflow
+- Maintains **strategic architectural oversight capabilities** for highest complexity scenarios
+- **Economic efficiency mandate**: Minimize usage through intelligent orchestration
 
-## Structured Prompt Management System
+## Strategic Prompt Management System
 
-### Prompt Template Framework
-All Claude Code prompts must follow a standardized template structure that scales with task complexity and ensures comprehensive context provision.
+### Orchestration-Compliant Prompt Framework
+**Critical Requirement**: All Claude Code prompts must be **preceded by Protocol 015 orchestration decision** confirming strategic necessity and economic efficiency justification.
 
-**Base Template Structure**:
+**Enhanced Strategic Template Structure**:
 ```
+ORCHESTRATION DECISION REFERENCE: [Protocol 015 Class C Strategic Justification]
+ECONOMIC EFFICIENCY ANALYSIS: [Cost optimization assessment and Codestral limitation analysis]
 ITERATION: [000]
-TASK: [Brief Description]
-CONTEXT: [Development Context and Background]
+TASK: [Strategic Architectural Task Description]
+CONTEXT: [Strategic Development Context and Background]
+CODESTRAL INTEGRATION REQUIREMENTS:
+- Integration with Codestral-generated implementations where applicable
+- Strategic oversight of enhanced AI tool coordination
+- Validation of cross-AI tool output integration
+
 PROTOCOL ACKNOWLEDGMENT REQUIRED:
 - Read and understand ALL relevant project protocols from doc/protocol/
-- Read and understand ALL relevant templates from doc/templates/
-- Confirm protocol and template comprehension before beginning implementation
-- Apply protocol requirements and template standards throughout development process
-- Document any protocol or template conflicts or clarifications needed
-FILE PLACEMENT REQUIREMENT:
-- ALL SOURCE CODE FILES MUST BE CREATED IN src/ DIRECTORY
-- NO PYTHON FILES (.py) IN PROJECT ROOT DIRECTORY
-- ALL TEST FILES MUST BE IN src/tests/ DIRECTORY
+- Acknowledge Protocol 015 supreme authority and orchestration mandate
+- Confirm strategic necessity justification for Claude Code engagement
+- Apply protocol requirements with emphasis on economic efficiency
 
-FILE MODIFICATION REQUIREMENT:
-- MODIFY EXISTING FILES DIRECTLY - DO NOT CREATE NEW VERSIONS
-- USE EXISTING FILENAME - NO _enhanced, _v2, _updated SUFFIXES
-- VERSION CONTROL HANDLED BY GIT - NO MANUAL FILE VERSIONING
-- PRESERVE ORIGINAL FILE PATHS AND NAMES
-ISSUE DESCRIPTION: [Detailed Problem Statement]
-SOLUTION STRATEGY: [High-Level Approach]
-IMPLEMENTATION PLAN: [Step-by-Step Implementation Details]
-SUCCESS CRITERIA: [Measurable Completion Requirements]
-DEPENDENCIES: [Related Files, Protocols, or Previous Implementations]
+STRATEGIC ISSUE DESCRIPTION: [Complex Strategic Problem Requiring Architectural Oversight]
+STRATEGIC SOLUTION APPROACH: [High-Level Strategic Coordination Approach]
+STRATEGIC IMPLEMENTATION PLAN: [Strategic Oversight and Coordination Steps]
+SUCCESS CRITERIA: [Strategic Integration and Architectural Validation Requirements]
+CODESTRAL COORDINATION: [Integration with Enhanced Codestral implementations]
 ```
 
-### Complexity-Based Template Adaptation
+### Orchestration-Based Template Adaptation
 
-#### Simple Tasks (Basic implementations, minor modifications)
-**Prompt Structure**:
-- ITERATION: Three-digit sequential number
-- TASK: Single sentence description
-- CONTEXT: Brief background (1-2 sentences)
-- IMPLEMENTATION PLAN: Direct implementation steps
-- SUCCESS CRITERIA: Clear completion markers
+#### Strategic Tasks Only (Complex architectural coordination, multi-protocol integration)
+**Enhanced Prompt Structure**:
+- **ORCHESTRATION JUSTIFICATION**: Protocol 015 Class C decision rationale
+- **ECONOMIC EFFICIENCY**: Cost optimization analysis and Codestral limitation assessment
+- **STRATEGIC SCOPE**: Architectural oversight and coordination requirements only
+- **CODESTRAL INTEGRATION**: Coordination with enhanced Codestral implementations
 
-#### Standard Tasks (Feature implementations, integration work)
-**Prompt Structure**:
-- Full template implementation with comprehensive sections
-- Detailed solution strategy with multiple approaches considered
-- Step-by-step implementation plan with validation points
-- Comprehensive success criteria including testing requirements
+## Orchestrated Integration Workflow Procedures
 
-#### Complex Tasks (Architecture changes, cross-platform implementations)
-**Prompt Structure**:
-- Extended template with additional sections for risk assessment
-- Multiple solution strategies with comparative analysis
-- Detailed implementation plan with rollback procedures
-- Comprehensive testing and validation requirements
-- Integration impact assessment and mitigation strategies
+### Enhanced Development Task Initiation
+Each strategic development task follows **mandatory orchestration workflow** ensuring economic efficiency optimization.
 
-### Change-Prompt Correspondence Requirement
-Prompt documentation must maintain 1:1 correspondence with change documents to ensure complete traceability across development lifecycle.
+**Orchestrated Workflow Steps**:
+1. **Protocol 015 Consultation**: **Mandatory orchestration decision matrix application**
+2. **Economic Efficiency Assessment**: Cost optimization analysis and tool selection justification  
+3. **Strategic Necessity Validation**: Confirmation that Codestral enhanced capabilities are insufficient
+4. **Strategic Task Analysis**: Claude Desktop formulates strategic architectural oversight requirements
+5. **Orchestrated Prompt Creation**: Strategic prompt with Codestral integration requirements
+6. **Strategic Implementation**: Claude Code provides architectural oversight and coordination only
+7. **Cross-AI Validation**: Claude Desktop validates strategic integration with Codestral implementations
+8. **Economic Monitoring**: Cost optimization achievement tracking and analysis
 
-**Primary Correspondence Rule**: Each change document requires exactly one primary prompt document with matching iteration number.
-**Format**: `Prompt_[change_number]_[task_description]` OR `Prompt_[change_number]_[sub_task]_[task_description]` for complex changes
+### Enhanced Quality Assurance Integration
+Quality assurance procedures **prioritize economic efficiency** while maintaining strategic architectural oversight capabilities.
 
-**Examples**:
-- `Change_001_GPIO_Implementation.md` → `Prompt_001_GPIO_Interface_Implementation.md`
-- `Change_010_Enhanced_Package_Creation.md` → `Prompt_010_01_Package_Creation_Integration.md` + `Prompt_010_02_Project_Manager_Enhancement.md`
+**Orchestrated QA Checkpoints**:
+- **Economic efficiency validation** before Claude Code engagement
+- Strategic necessity confirmation through Protocol 015 decision matrix
+- **Codestral integration compatibility** assessment and coordination planning
+- Strategic implementation review for architectural oversight effectiveness
+- **Cost optimization verification** and resource utilization analysis
 
-**Sub-Prompt Rules**: Complex changes may require multiple implementation phases using format `Prompt_[change_number]_[sub_task]_[description]`
+## Cross-Platform Strategic Coordination
 
-## Prompt Creation and Management Procedures
+### Strategic Platform Oversight
+Claude Code provides **strategic architectural oversight only** for complex cross-platform scenarios exceeding Codestral's enhanced integration capabilities.
 
-### Inline Prompt Creation Requirements
-All Claude Code prompts must be created as inline code blocks within Claude Desktop responses rather than as separate artifacts. This approach ensures immediate availability, maintains conversation context, and facilitates prompt archiving procedures.
+**Strategic Platform Responsibilities**:
+- **Architectural coordination** for complex multi-platform integration strategies
+- **Testing framework strategic planning** requiring architectural oversight
+- **Deployment strategic coordination** exceeding enhanced Codestral capabilities
+- **Configuration management strategy** for complex multi-protocol scenarios
 
-**Format Requirements**:
-```
-Claude Code Prompt - Iteration [number]:
+## Strategic Effectiveness Monitoring
 
-[Complete structured prompt content formatted as plain text code block]
-```
+### Economic Efficiency Tracking
+Claude Code usage must be **systematically minimized** through intelligent orchestration while maintaining strategic capability availability.
 
-### Prompt Archiving System
-Every Claude Code prompt must be systematically archived in the project's prompt management system to ensure traceability, reusability, and continuous improvement of prompt effectiveness.
+**Strategic Utilization Metrics**:
+- **Claude Code engagement frequency** (target: <20% of development tasks)
+- **Strategic scenario success rate** for architectural oversight effectiveness
+- **Economic efficiency achievement** through orchestrated resource allocation
+- **Codestral integration coordination** success and strategic value delivery
 
-**Archiving Procedure**:
-1. Create prompt file in `doc/prompts/` directory using standard naming convention
-2. Include complete prompt documentation with metadata and analysis
-3. Embed actual Claude Code prompt as copyable code block within document
-4. Validate document creation timestamp using `get_file_info` command and correct header if necessary
-5. Add metadata including creation date, iteration number, and task classification
-6. Cross-reference related implementation files and documentation
-7. Update prompt effectiveness tracking based on execution results
-8. Archive AI coordination context in enhanced `ai/project_knowledge/` structure for future reference
-9. Update session management materials in `ai/sessions/` per Protocol 11 session continuity procedures
-10. Update conversation synopsis in `ai/synopses/` for iteration continuity
+### Strategic Optimization Process
+Regular analysis of strategic engagement effectiveness must inform **continuous reduction** of Claude Code necessity through enhanced Codestral capabilities.
 
-**Code Block Requirement**:
-Each archived prompt document must contain the actual Claude Code prompt in a copyable code block format to enable direct copy-paste execution in Claude Code environment. This ensures immediate usability and eliminates transcription errors during prompt execution.
-
-### Prompt Quality Standards
-All prompts must meet comprehensive quality requirements to ensure effective task execution and minimize iteration cycles between Claude Desktop and Claude Code.
-
-**Content Requirements**:
-- Complete context provision including relevant file contents where necessary
-- Mandatory protocol acknowledgment requirement specifying that Claude Code must read, understand, and confirm comprehension of all relevant protocols before beginning any implementation work
-- Mandatory template compliance verification where applicable documentation, code structure, or artifact creation is required
-- Template selection justification for document creation tasks specifying which templates apply and how they will be implemented
-- Template deviation documentation where project-specific requirements necessitate modifications to standard template structures
-- Protocol conflict identification and resolution procedures where implementation requirements may conflict with protocol specifications
-- Clear and unambiguous task descriptions with specific deliverables
-- Detailed success criteria that enable objective completion validation
-- Comprehensive error handling and edge case consideration
-- Thread safety requirements explicitly stated for concurrent operations
-- Visual documentation requirements per Protocol 12 standards where system architecture, component relationships, or hardware interfaces are involved in implementation
-- Master document coordination requirements where system-level changes affect authoritative architectural documentation
-
-**Documentation Requirements**:
-- Actual Claude Code prompt embedded as copyable code block within archived document
-- Prompt formatted for direct copy-paste execution in Claude Code
-- Complete prompt context preserved in both inline and archived formats
-
-## Integration Workflow Procedures
-
-### Development Task Initiation
-Each development task follows a systematic workflow that ensures proper coordination between Claude Desktop strategic planning and Claude Code tactical implementation.
-
-**Workflow Steps**:
-1. **Task Analysis**: Claude Desktop analyzes requirements and formulates implementation strategy using previous iteration synopses from `ai/synopses/`
-2. **Prompt Creation**: Structured prompt created inline with comprehensive context including relevant AI knowledge base materials
-3. **Prompt Archiving**: Prompt saved to project prompt management system and AI coordination materials updated
-4. **Task Execution**: Claude Code executes implementation following prompt specifications
-5. **Result Validation**: Claude Desktop reviews implementation for compliance and quality
-6. **Integration Documentation**: Results documented per Protocol 3 standards
-7. **AI Coordination Update**: Technical knowledge and workflow insights archived in AI coordination system
-
-### Quality Assurance Integration
-Quality assurance procedures must be integrated throughout the Claude Desktop and Claude Code workflow to ensure consistent code quality and adherence to project standards.
-
-**QA Checkpoints**:
-- Prompt quality validation before Claude Code execution
-- Implementation review for adherence to prompt specifications
-- Code quality assessment including thread safety and error handling
-- Documentation completeness verification
-- Cross-platform compatibility validation where applicable
-
-### Error Handling and Iteration Management
-When Claude Code implementation does not meet specifications or encounters errors, a systematic approach must be followed to resolve issues while maintaining project standards and documentation requirements.
-
-**Error Resolution Procedure**:
-1. **Issue Classification**: Determine if error is prompt clarity, implementation approach, or environmental
-2. **Root Cause Analysis**: Claude Desktop analyzes implementation gaps and prompt deficiencies
-3. **Prompt Refinement**: Create refined prompt addressing identified issues
-4. **Re-implementation**: Claude Code executes refined prompt with improved context
-5. **Validation and Documentation**: Ensure resolution meets original requirements and update documentation
-
-## Cross-Platform Development Integration
-
-### Platform-Specific Prompt Considerations
-Prompts must address cross-platform development requirements including conditional imports, platform detection, and environment-specific configurations to ensure seamless operation across Mac development and Raspberry Pi deployment environments.
-
-**Platform Integration Requirements**:
-- Explicit platform compatibility requirements in all prompts
-- Conditional import strategies for platform-specific dependencies
-- Configuration management integration for environment-specific settings
-- Testing procedures that validate cross-platform functionality
-
-### Configuration Management Prompt Integration
-All prompts involving configuration or platform-specific functionality must integrate with the project's configuration management system to ensure consistent behavior across development and deployment environments.
-
-**Configuration Integration Standards**:
-- Reference to platform configuration structure in relevant prompts
-- Explicit handling of platform detection and configuration loading
-- Environment-specific testing requirements and validation procedures
-- Error handling for configuration loading failures and platform detection issues
-
-## Prompt Effectiveness Monitoring
-
-### Success Metrics Tracking
-The effectiveness of Claude Code prompts must be systematically tracked to identify areas for improvement and optimize the prompt creation process over time.
-
-**Tracking Metrics**:
-- First-pass success rate for prompt execution
-- Number of refinement iterations required per task
-- Code quality metrics for implementations from prompts
-- Cross-platform compatibility success rates
-- Documentation completeness scores
-
-### Continuous Improvement Process
-Regular analysis of prompt effectiveness data must inform improvements to prompt templates, content standards, and workflow procedures to enhance overall development efficiency.
-
-**Improvement Procedures**:
-- Monthly review of prompt success metrics and failure patterns
-- Template refinement based on identified common issues
-- Quality standard updates based on implementation results
-- Workflow optimization based on efficiency analysis
+**Strategic Improvement Procedures**:
+- **Monthly strategic engagement analysis** and optimization identification
+- **Codestral capability enhancement assessment** for strategic task transfer potential
+- **Economic efficiency optimization** through strategic resource reallocation
+- **Orchestration framework refinement** based on strategic coordination effectiveness
 
 ---
 
-**Implementation Priority**: Immediate  
-**Dependencies**: Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow), Protocol 3 (Documentation Standards)  
-**Related Protocols**: Protocol 6 (Cross-Platform Development), Protocol 8 (Logging and Debug Standards), Protocol 11 (Enhanced AI Memory and Session Management), Protocol 12 (Visual Documentation Standards)
+**Implementation Priority**: Critical - Orchestration Framework Compliance Mandatory
+**Supreme Authority**: Protocol 015 (AI Orchestration and Resource Optimization Framework)
+**Dependencies**: Protocol 015 (Supreme Authority), Protocol 014 (Enhanced Codestral), Protocol 1 (Project Structure), Protocol 2 (Iteration Workflow)
+**Related Protocols**: Protocol 3 (Documentation Standards), Protocol 6 (Cross-Platform Development), Protocol 8 (Logging and Debug Standards)
 
 ---
 
