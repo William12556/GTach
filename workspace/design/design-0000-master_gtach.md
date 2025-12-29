@@ -893,17 +893,15 @@ flowchart LR
 
 ## 14.0 Tier 2 Domain Documents
 
-The following Tier 2 domain design documents will decompose each domain:
+The following Tier 2 domain design documents decompose each domain:
 
 | Document | Domain | Status |
 |----------|--------|--------|
-| design-XXXXXXXX-domain_core.md | Core (Threading/Watchdog) | Pending |
-| design-XXXXXXXX-domain_comm.md | Communication (Bluetooth/OBD) | Pending |
-| design-XXXXXXXX-domain_display.md | Display (Rendering/Touch) | Pending |
-| design-XXXXXXXX-domain_utils.md | Utilities (Config/Platform) | Pending |
-| design-XXXXXXXX-domain_provisioning.md | Provisioning (Deployment) | Pending |
-
-*UUID placeholders to be replaced upon document creation*
+| [design-4f8a2b1c-domain_core.md](<design-4f8a2b1c-domain_core.md>) | Core (Threading/Watchdog) | Complete |
+| [design-7d3e9f5a-domain_comm.md](<design-7d3e9f5a-domain_comm.md>) | Communication (Bluetooth/OBD) | Complete |
+| [design-2c6b8e4d-domain_display.md](<design-2c6b8e4d-domain_display.md>) | Display (Rendering/Touch) | Complete |
+| [design-9a1f3c7e-domain_utils.md](<design-9a1f3c7e-domain_utils.md>) | Utilities (Config/Platform) | Complete |
+| [design-5b2d4e6f-domain_provisioning.md](<design-5b2d4e6f-domain_provisioning.md>) | Provisioning (Deployment) | Complete |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -914,6 +912,7 @@ The following Tier 2 domain design documents will decompose each domain:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial master design document created via reverse engineering of existing source code |
+| 1.1 | 2025-12-29 | William Watson | Added Tier 2 domain document cross-references (Core, Comm, Display, Utils, Provisioning) |
 
 ---
 
