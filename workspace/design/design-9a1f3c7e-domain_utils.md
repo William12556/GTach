@@ -733,17 +733,15 @@ sequenceDiagram
 
 ## 9.0 Tier 3 Component Documents
 
-The following Tier 3 component design documents will decompose each component:
+The following Tier 3 component design documents decompose each component:
 
 | Document | Component | Status |
 |----------|-----------|--------|
-| design-XXXXXXXX-component_utils_config_manager.md | ConfigManager | Pending |
-| design-XXXXXXXX-component_utils_platform_detector.md | PlatformDetector | Pending |
-| design-XXXXXXXX-component_utils_terminal_restorer.md | TerminalRestorer | Pending |
-| design-XXXXXXXX-component_utils_dependency_validator.md | DependencyValidator | Pending |
-| design-XXXXXXXX-component_utils_home.md | OBDII_HOME Utilities | Pending |
-
-*UUID placeholders to be replaced upon document creation*
+| [design-b4c5d6e7-component_utils_config_manager.md](<design-b4c5d6e7-component_utils_config_manager.md>) | ConfigManager | Complete |
+| [design-c5d6e7f8-component_utils_platform_detector.md](<design-c5d6e7f8-component_utils_platform_detector.md>) | PlatformDetector | Complete |
+| [design-d6e7f8a9-component_utils_terminal_restorer.md](<design-d6e7f8a9-component_utils_terminal_restorer.md>) | TerminalRestorer | Complete |
+| [design-e7f8a9b0-component_utils_dependency_validator.md](<design-e7f8a9b0-component_utils_dependency_validator.md>) | DependencyValidator | Complete |
+| [design-f8a9b0c1-component_utils_home.md](<design-f8a9b0c1-component_utils_home.md>) | OBDII_HOME Utilities | Complete |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -754,6 +752,7 @@ The following Tier 3 component design documents will decompose each component:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
+| 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
 
 ---
 

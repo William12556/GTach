@@ -20,6 +20,7 @@ Created: 2025-12-29
 - [12.0 Non-Functional Requirements](<#12.0 non-functional requirements>)
 - [13.0 Visual Documentation](<#13.0 visual documentation>)
 - [14.0 Tier 2 Domain Documents](<#14.0 tier 2 domain documents>)
+- [15.0 Tier 3 Component Documents](<#15.0 tier 3 component documents>)
 - [Version History](<#version history>)
 
 ---
@@ -907,12 +908,69 @@ The following Tier 2 domain design documents decompose each domain:
 
 ---
 
+## 15.0 Tier 3 Component Documents
+
+The following Tier 3 component design documents provide detailed implementation specifications:
+
+### 15.1 Core Domain Components
+
+| Document | Component | Source File |
+|----------|-----------|-------------|
+| [design-a1b2c3d4-component_core_thread_manager.md](<design-a1b2c3d4-component_core_thread_manager.md>) | ThreadManager | src/gtach/core/thread.py |
+| [design-b2c3d4e5-component_core_watchdog_monitor.md](<design-b2c3d4e5-component_core_watchdog_monitor.md>) | WatchdogMonitor | src/gtach/core/watchdog.py |
+| [design-c3d4e5f6-component_core_async_sync_bridge.md](<design-c3d4e5f6-component_core_async_sync_bridge.md>) | AsyncSyncBridge | src/gtach/core/thread.py |
+
+### 15.2 Communication Domain Components
+
+| Document | Component | Source File |
+|----------|-----------|-------------|
+| [design-d4e5f6a7-component_comm_bluetooth_manager.md](<design-d4e5f6a7-component_comm_bluetooth_manager.md>) | BluetoothManager | src/gtach/comm/bluetooth.py |
+| [design-e5f6a7b8-component_comm_obd_protocol.md](<design-e5f6a7b8-component_comm_obd_protocol.md>) | OBDProtocol | src/gtach/comm/obd.py |
+| [design-f6a7b8c9-component_comm_device_store.md](<design-f6a7b8c9-component_comm_device_store.md>) | DeviceStore | src/gtach/comm/device_store.py |
+| [design-a7b8c9d0-component_comm_bluetooth_device.md](<design-a7b8c9d0-component_comm_bluetooth_device.md>) | BluetoothDevice | src/gtach/comm/models.py |
+
+### 15.3 Display Domain Components
+
+| Document | Component | Source File |
+|----------|-----------|-------------|
+| [design-b8c9d0e1-component_display_manager.md](<design-b8c9d0e1-component_display_manager.md>) | DisplayManager | src/gtach/display/manager.py |
+| [design-c9d0e1f2-component_display_rendering_engine.md](<design-c9d0e1f2-component_display_rendering_engine.md>) | DisplayRenderingEngine | src/gtach/display/rendering.py |
+| [design-d0e1f2a3-component_display_touch_coordinator.md](<design-d0e1f2a3-component_display_touch_coordinator.md>) | TouchEventCoordinator | src/gtach/display/input.py |
+| [design-e1f2a3b4-component_display_performance_monitor.md](<design-e1f2a3b4-component_display_performance_monitor.md>) | PerformanceMonitor | src/gtach/display/performance.py |
+| [design-f2a3b4c5-component_display_splash_screen.md](<design-f2a3b4c5-component_display_splash_screen.md>) | SplashScreen | src/gtach/display/splash.py |
+| [design-a3b4c5d6-component_display_setup_manager.md](<design-a3b4c5d6-component_display_setup_manager.md>) | SetupDisplayManager | src/gtach/display/setup_manager.py |
+
+### 15.4 Utilities Domain Components
+
+| Document | Component | Source File |
+|----------|-----------|-------------|
+| [design-b4c5d6e7-component_utils_config_manager.md](<design-b4c5d6e7-component_utils_config_manager.md>) | ConfigManager | src/gtach/utils/config.py |
+| [design-c5d6e7f8-component_utils_platform_detector.md](<design-c5d6e7f8-component_utils_platform_detector.md>) | PlatformDetector | src/gtach/utils/platform.py |
+| [design-d6e7f8a9-component_utils_terminal_restorer.md](<design-d6e7f8a9-component_utils_terminal_restorer.md>) | TerminalRestorer | src/gtach/utils/terminal.py |
+| [design-e7f8a9b0-component_utils_dependency_validator.md](<design-e7f8a9b0-component_utils_dependency_validator.md>) | DependencyValidator | src/gtach/utils/dependencies.py |
+| [design-f8a9b0c1-component_utils_home.md](<design-f8a9b0c1-component_utils_home.md>) | OBDII_HOME Utilities | src/gtach/utils/home.py |
+
+### 15.5 Provisioning Domain Components
+
+| Document | Component | Source File |
+|----------|-----------|-------------|
+| [design-a9b0c1d2-component_prov_package_creator.md](<design-a9b0c1d2-component_prov_package_creator.md>) | PackageCreator | src/gtach/provisioning/package.py |
+| [design-b0c1d2e3-component_prov_config_processor.md](<design-b0c1d2e3-component_prov_config_processor.md>) | ConfigProcessor | src/gtach/provisioning/config_processor.py |
+| [design-c1d2e3f4-component_prov_archive_manager.md](<design-c1d2e3f4-component_prov_archive_manager.md>) | ArchiveManager | src/gtach/provisioning/archive.py |
+| [design-d2e3f4a5-component_prov_version_state_manager.md](<design-d2e3f4a5-component_prov_version_state_manager.md>) | VersionStateManager | src/gtach/provisioning/version_state.py |
+| [design-e3f4a5b6-component_prov_version_manager.md](<design-e3f4a5b6-component_prov_version_manager.md>) | VersionManager | src/gtach/provisioning/version.py |
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial master design document created via reverse engineering of existing source code |
 | 1.1 | 2025-12-29 | William Watson | Added Tier 2 domain document cross-references (Core, Comm, Display, Utils, Provisioning) |
+| 1.2 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references (23 components across 5 domains) |
 
 ---
 

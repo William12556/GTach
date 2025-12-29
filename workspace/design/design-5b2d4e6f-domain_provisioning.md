@@ -694,17 +694,15 @@ graph TD
 
 ## 9.0 Tier 3 Component Documents
 
-The following Tier 3 component design documents will decompose each component:
+The following Tier 3 component design documents decompose each component:
 
 | Document | Component | Status |
 |----------|-----------|--------|
-| design-XXXXXXXX-component_prov_package_creator.md | PackageCreator | Pending |
-| design-XXXXXXXX-component_prov_config_processor.md | ConfigProcessor | Pending |
-| design-XXXXXXXX-component_prov_archive_manager.md | ArchiveManager | Pending |
-| design-XXXXXXXX-component_prov_version_state_manager.md | VersionStateManager | Pending |
-| design-XXXXXXXX-component_prov_version_manager.md | VersionManager | Pending |
-
-*UUID placeholders to be replaced upon document creation*
+| [design-a9b0c1d2-component_prov_package_creator.md](<design-a9b0c1d2-component_prov_package_creator.md>) | PackageCreator | Complete |
+| [design-b0c1d2e3-component_prov_config_processor.md](<design-b0c1d2e3-component_prov_config_processor.md>) | ConfigProcessor | Complete |
+| [design-c1d2e3f4-component_prov_archive_manager.md](<design-c1d2e3f4-component_prov_archive_manager.md>) | ArchiveManager | Complete |
+| [design-d2e3f4a5-component_prov_version_state_manager.md](<design-d2e3f4a5-component_prov_version_state_manager.md>) | VersionStateManager | Complete |
+| [design-e3f4a5b6-component_prov_version_manager.md](<design-e3f4a5b6-component_prov_version_manager.md>) | VersionManager | Complete |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -715,6 +713,7 @@ The following Tier 3 component design documents will decompose each component:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
+| 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
 
 ---
 

@@ -705,18 +705,16 @@ flowchart TD
 
 ## 9.0 Tier 3 Component Documents
 
-The following Tier 3 component design documents will decompose each component:
+The following Tier 3 component design documents decompose each component:
 
 | Document | Component | Status |
 |----------|-----------|--------|
-| design-XXXXXXXX-component_display_manager.md | DisplayManager | Pending |
-| design-XXXXXXXX-component_display_rendering_engine.md | DisplayRenderingEngine | Pending |
-| design-XXXXXXXX-component_display_touch_coordinator.md | TouchEventCoordinator | Pending |
-| design-XXXXXXXX-component_display_performance_monitor.md | PerformanceMonitor | Pending |
-| design-XXXXXXXX-component_display_splash_screen.md | SplashScreen | Pending |
-| design-XXXXXXXX-component_display_setup_manager.md | SetupDisplayManager | Pending |
-
-*UUID placeholders to be replaced upon document creation*
+| [design-b8c9d0e1-component_display_manager.md](<design-b8c9d0e1-component_display_manager.md>) | DisplayManager | Complete |
+| [design-c9d0e1f2-component_display_rendering_engine.md](<design-c9d0e1f2-component_display_rendering_engine.md>) | DisplayRenderingEngine | Complete |
+| [design-d0e1f2a3-component_display_touch_coordinator.md](<design-d0e1f2a3-component_display_touch_coordinator.md>) | TouchEventCoordinator | Complete |
+| [design-e1f2a3b4-component_display_performance_monitor.md](<design-e1f2a3b4-component_display_performance_monitor.md>) | PerformanceMonitor | Complete |
+| [design-f2a3b4c5-component_display_splash_screen.md](<design-f2a3b4c5-component_display_splash_screen.md>) | SplashScreen | Complete |
+| [design-a3b4c5d6-component_display_setup_manager.md](<design-a3b4c5d6-component_display_setup_manager.md>) | SetupDisplayManager | Complete |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -727,6 +725,7 @@ The following Tier 3 component design documents will decompose each component:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
+| 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
 
 ---
 

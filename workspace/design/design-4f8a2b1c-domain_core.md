@@ -584,15 +584,13 @@ flowchart TD
 
 ## 9.0 Tier 3 Component Documents
 
-The following Tier 3 component design documents will decompose each component:
+The following Tier 3 component design documents decompose each component:
 
 | Document | Component | Status |
 |----------|-----------|--------|
-| design-XXXXXXXX-component_core_thread_manager.md | ThreadManager | Pending |
-| design-XXXXXXXX-component_core_watchdog_monitor.md | WatchdogMonitor | Pending |
-| design-XXXXXXXX-component_core_async_sync_bridge.md | AsyncSyncBridge | Pending |
-
-*UUID placeholders to be replaced upon document creation*
+| [design-a1b2c3d4-component_core_thread_manager.md](<design-a1b2c3d4-component_core_thread_manager.md>) | ThreadManager | Complete |
+| [design-b2c3d4e5-component_core_watchdog_monitor.md](<design-b2c3d4e5-component_core_watchdog_monitor.md>) | WatchdogMonitor | Complete |
+| [design-c3d4e5f6-component_core_async_sync_bridge.md](<design-c3d4e5f6-component_core_async_sync_bridge.md>) | AsyncSyncBridge | Complete |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -603,6 +601,7 @@ The following Tier 3 component design documents will decompose each component:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
+| 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
 
 ---
 

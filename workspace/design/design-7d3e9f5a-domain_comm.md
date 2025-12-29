@@ -666,16 +666,14 @@ sequenceDiagram
 
 ## 9.0 Tier 3 Component Documents
 
-The following Tier 3 component design documents will decompose each component:
+The following Tier 3 component design documents decompose each component:
 
 | Document | Component | Status |
 |----------|-----------|--------|
-| design-XXXXXXXX-component_comm_bluetooth_manager.md | BluetoothManager | Pending |
-| design-XXXXXXXX-component_comm_obd_protocol.md | OBDProtocol | Pending |
-| design-XXXXXXXX-component_comm_device_store.md | DeviceStore | Pending |
-| design-XXXXXXXX-component_comm_bluetooth_device.md | BluetoothDevice | Pending |
-
-*UUID placeholders to be replaced upon document creation*
+| [design-d4e5f6a7-component_comm_bluetooth_manager.md](<design-d4e5f6a7-component_comm_bluetooth_manager.md>) | BluetoothManager | Complete |
+| [design-e5f6a7b8-component_comm_obd_protocol.md](<design-e5f6a7b8-component_comm_obd_protocol.md>) | OBDProtocol | Complete |
+| [design-f6a7b8c9-component_comm_device_store.md](<design-f6a7b8c9-component_comm_device_store.md>) | DeviceStore | Complete |
+| [design-a7b8c9d0-component_comm_bluetooth_device.md](<design-a7b8c9d0-component_comm_bluetooth_device.md>) | BluetoothDevice | Complete |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -686,6 +684,7 @@ The following Tier 3 component design documents will decompose each component:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
+| 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
 
 ---
 
