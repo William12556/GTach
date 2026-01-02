@@ -18,9 +18,10 @@ What you see from this point on is completely AI generated. With me as the overl
 ```bash
 git clone [repository-url] GTach
 cd GTach
-pip3 install -r requirements.txt
-python3 -m pytest src/tests/ -v
-python3 -m gtach.main --debug --simulate-display
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .[dev]
+python3 -m pytest tests/ -v
 ```
 
 ### Raspberry Pi Deployment
@@ -45,25 +46,15 @@ ssh pi@PI_IP "tar -xzf gtach-*.tar.gz && cd gtach-* && sudo ./install.sh"
 - Pimoroni Hyperpixel 2.1" Round display (480x480 pixels)
 - MicroSD card (8GB minimum)
 
-## Documentation Guide
+## Documentation
 
-### Essential Reading
-- [Quick Start Guide](doc/setup/quick_start.md) - Get running in 5 minutes
-- [Hardware Requirements](doc/hardware/requirements.md) - What you need
-- [Hyperpixel Specifications](doc/hardware/hyperpixel_specifications.md) - Display details
-
-### Setup and Installation
-- [Development Setup](doc/setup/development_environment.md) - Development machine setup
-- [Raspberry Pi Deployment](doc/setup/raspberry_pi_deployment.md) - Target hardware setup
-
-### Development
-- [Development Protocols](doc/protocol/README.md) - Development workflow overview
-- [Testing Guide](doc/testing/testing_overview.md) - Running and writing tests
-- [Cross-Platform Development](doc/development/cross_platform_guide.md) - Mac/Pi compatibility
-
-### Hardware Integration
-- [GPIO Interfaces](doc/hardware/gpio_interfaces.md) - Hardware connections
-- [Troubleshooting](doc/hardware/troubleshooting.md) - Common hardware issues
+### Project Structure
+- `ai/` - Governance framework and templates
+- `workspace/design/` - Architecture and component design documents
+- `workspace/` - Development artifacts (issues, changes, tests, audits)
+- `src/` - Source code
+- `tests/` - Test suite
+- `docs/` - Technical documentation
 
 ## Project Status
 
