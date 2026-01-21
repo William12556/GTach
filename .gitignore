@@ -1,26 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# macOS
 .DS_Store
 **/.DS_Store
-.obsidian/
+.zsh_history
+
+# Logs
 *.log
 **/*.log
-**/logs
-.zsh_history
-coverage.xml
-.coverage
-htmlcov/
-test.txt
-**/tmp
+
+# Obsidian
+.obsidian/
+*.canvas
+
+# AI framework
 deprecated/
 workspace/admin/
 workspace/ai/
 workspace/proposal/
 workspace/proposal/closed/
-venv/
-.venv/
-*.pyc
-__pycache__/
-.pytest_cache/
-dist/
-build/
-*.egg-info/
-.mypy_cache/
+
+# other
+10000
+test.txt
+**/tmp
+*.pdf
