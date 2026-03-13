@@ -16,7 +16,7 @@ Created: 2025-12-12
 
 ```yaml
 # T04 Prompt Template v1.0 - YAML Format
-# Optimized for Claude Desktop → Claude Code filesystem communication
+# Optimized for Strategic Domain → Tactical Domain filesystem communication
 # Designed for minimal token usage while maintaining completeness
 
 prompt_info:
@@ -29,6 +29,20 @@ prompt_info:
   coupled_docs:
     change_ref: "change-<uuid>"  # Must reference source change UUID
     change_iteration: 1  # Must match change.iteration
+
+behavioral_standards:
+  source: ""  # Path to behavioral-standards.yaml (e.g., "workspace/knowledge/behavioral-standards.yaml")
+  enforcement_level: ""  # strict, advisory, disabled
+
+
+tactical_execution:
+  mode: ""  # ralph_loop, direct
+  worker_model: ""  # Model name for code generation
+  reviewer_model: ""  # Model name for review (ralph_loop only)
+  max_iterations: 10  # Loop iteration limit (ralph_loop only)
+  boundary_conditions:
+    token_budget: 50000
+    time_limit_minutes: 30
 
 context:
   purpose: ""  # What this code accomplishes
@@ -117,6 +131,24 @@ deliverable:
 success_criteria:
   - ""
 
+element_registry:
+  source: ""  # Path to name registry master (e.g., "workspace/design/design-<project>-name_registry-master.md")
+  entries:    # Relevant entries for this code generation task (copied from registry)
+    modules:
+      - name: ""
+        path: ""
+    classes:
+      - name: ""
+        module: ""
+    functions:
+      - name: ""
+        module: ""
+        signature: ""
+    constants:
+      - name: ""
+        module: ""
+        type: ""
+
 notes: ""
 
 metadata:
@@ -202,6 +234,45 @@ properties:
         type: integer
       system_prompt:
         type: string
+  
+  behavioral_standards:
+    type: object
+    properties:
+      source:
+        type: string
+        pattern: "^workspace/knowledge/.*\\.yaml$"
+        description: "Path to behavioral standards YAML file"
+      enforcement_level:
+        type: string
+        enum:
+          - strict
+          - advisory
+          - disabled
+        description: "Level of behavioral constraint enforcement"
+
+  tactical_execution:
+    type: object
+    properties:
+      mode:
+        type: string
+        enum:
+          - ralph_loop
+          - direct
+      worker_model:
+        type: string
+      reviewer_model:
+        type: string
+      max_iterations:
+        type: integer
+        minimum: 1
+        maximum: 100
+      boundary_conditions:
+        type: object
+        properties:
+          token_budget:
+            type: integer
+          time_limit_minutes:
+            type: integer
   
   context:
     type: object
@@ -429,6 +500,56 @@ properties:
     items:
       type: string
   
+  element_registry:
+    type: object
+    properties:
+      source:
+        type: string
+        description: "Path to name registry master document"
+      entries:
+        type: object
+        properties:
+          modules:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                path:
+                  type: string
+          classes:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                module:
+                  type: string
+          functions:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                module:
+                  type: string
+                signature:
+                  type: string
+          constants:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                module:
+                  type: string
+                type:
+                  type: string
+  
   notes:
     type: string
   
@@ -456,6 +577,9 @@ properties:
 | ------- | ---------- | ------------------------------------ |
 | 1.0     | 2025-12-12 | Split from governance.md into separate file for maintainability |
 | 1.1     | 2025-12-12 | UUID pattern migration: Replaced NNNN sequence numbering with 8-character UUID format (^[0-9a-f]{8}$) in all fields |
+| 1.2     | 2025-02-13 | Added behavioral_standards section for autonomous loop execution behavioral constraints |
+| 1.3     | 2025-02-13 | Added tactical_execution section for Ralph Loop integration: mode selection, worker/reviewer model specification, iteration limits, boundary conditions |
+| 1.4     | 2026-03-12 | Added element_registry field with source reference and scoped entries for canonical naming contract |
 
 ---
 

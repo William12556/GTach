@@ -72,6 +72,17 @@ recommendations:
 
 notes: ""
 
+
+loop_execution:
+  enabled: false  # true if ralph_loop mode was used
+  iterations_completed: 0
+  final_state: ""  # SHIP, BLOCKED, TIMEOUT
+  token_consumption: 0
+  duration_seconds: 0
+  worker_model: ""
+  reviewer_model: ""
+  exit_reason: ""  # success, max_iterations, token_budget, time_limit, divergence
+
 version_history:
   - version: ""
     date: ""
@@ -239,6 +250,36 @@ properties:
   
   notes:
     type: string
+
+  loop_execution:
+    type: object
+    properties:
+      enabled:
+        type: boolean
+      iterations_completed:
+        type: integer
+      final_state:
+        type: string
+        enum:
+          - SHIP
+          - BLOCKED
+          - TIMEOUT
+      token_consumption:
+        type: integer
+      duration_seconds:
+        type: integer
+      worker_model:
+        type: string
+      reviewer_model:
+        type: string
+      exit_reason:
+        type: string
+        enum:
+          - success
+          - max_iterations
+          - token_budget
+          - time_limit
+          - divergence
   
   version_history:
     type: array
@@ -280,6 +321,7 @@ properties:
 | ------- | ---------- | ------------------------------------ |
 | 1.0     | 2025-12-12 | Split from governance.md into separate file for maintainability |
 | 1.1     | 2025-12-12 | UUID pattern migration: Replaced NNNN sequence numbering with 8-character UUID format (^[0-9a-f]{8}$) in all fields |
+| 1.2     | 2025-02-13 | Added loop_execution section for Ralph Loop traceability: iteration count, final state, resource consumption, model configuration, exit reason |
 
 ---
 

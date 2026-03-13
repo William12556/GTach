@@ -475,15 +475,15 @@ entity:
     - name: "mode"
       type: "DisplayMode"
       constraints: "Default SPLASH"
-    - name: "rpm_warning"
+    - name: "rpm_max"
       type: "int"
-      constraints: "Default 6500"
-    - name: "rpm_danger"
-      type: "int"
-      constraints: "Default 7000"
+      constraints: "Default 8000 (gauge scale ceiling)"
     - name: "fps_limit"
       type: "int"
-      constraints: "Default 60 (dev), 30 (deploy)"
+      constraints: "Default 30"
+    - name: "rpm_band_note"
+      type: "str"
+      constraints: "Background colour bands fixed: black 0-2999, green 3000-3999, yellow 4000-4999, red 5000+"
     - name: "touch_long_press"
       type: "float"
       constraints: "Default 1.0 seconds"
@@ -726,6 +726,7 @@ The following Tier 3 component design documents decompose each component:
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
 | 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
+| 1.2 | 2026-03-13 | William Watson | C3: fps_limit 60->30. C4: removed rpm_warning/rpm_danger; replaced with fixed 4-band background colour scheme and rpm_max. |
 
 ---
 

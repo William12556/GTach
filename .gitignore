@@ -35,6 +35,12 @@ workspace/ai/
 workspace/proposal/
 workspace/proposal/closed/
 
+# Tactical Domain
+CLAUDE.local.md
+.claude/settings.json
+.claude/commands/
+.ael/ralph/
+
 # other
 10000
 test.txt

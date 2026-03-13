@@ -201,6 +201,32 @@ visual_documentation:
     - "Legend explaining symbols and notation"
     - "Cross-references to related design sections"
 
+element_registry:
+  # Populated incrementally across design tiers.
+  # Tier 1: packages and top-level modules
+  # Tier 2: extend with domain module and class names
+  # Tier 3: finalise with functions, constants, and full signatures
+  packages:
+    - name: ""        # e.g., "mypackage"
+      path: "src/"
+  modules:
+    - name: ""        # exact import name, e.g., "mypackage.utils"
+      path: ""        # e.g., "src/mypackage/utils.py"
+      package: ""
+  classes:
+    - name: ""        # PascalCase
+      module: ""      # exact import name
+      base_classes:
+        - ""
+  functions:
+    - name: ""        # snake_case
+      module: ""
+      signature: ""   # e.g., "parse_config(path: str) -> dict"
+  constants:
+    - name: ""        # UPPER_SNAKE_CASE
+      module: ""
+      type: ""
+
 version_history:
   - version: ""
     date: ""
@@ -671,6 +697,65 @@ properties:
           items:
             type: string
   
+  element_registry:
+    type: object
+    properties:
+      packages:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            path:
+              type: string
+      modules:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            path:
+              type: string
+            package:
+              type: string
+      classes:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            module:
+              type: string
+            base_classes:
+              type: array
+              items:
+                type: string
+      functions:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            module:
+              type: string
+            signature:
+              type: string
+      constants:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            module:
+              type: string
+            type:
+              type: string
+  
   metadata:
     type: object
     required:
@@ -695,6 +780,7 @@ properties:
 | Version | Date       | Description                          |
 | ------- | ---------- | ------------------------------------ |
 | 1.0     | 2025-12-12 | Split from governance.md into separate file for maintainability |
+| 1.1     | 2026-03-12 | Added element_registry section for incremental population across design tiers |
 
 ---
 

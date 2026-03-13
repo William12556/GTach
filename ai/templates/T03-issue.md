@@ -109,6 +109,13 @@ traceability:
 
 notes: ""
 
+
+loop_context:
+  was_loop_execution: false
+  blocked_at_iteration: 0
+  failure_mode: ""  # boundary_exceeded, divergence, critical_error
+  last_review_feedback: ""
+
 version_history:
   - version: ""
     date: ""
@@ -359,6 +366,22 @@ properties:
   
   notes:
     type: string
+
+  loop_context:
+    type: object
+    properties:
+      was_loop_execution:
+        type: boolean
+      blocked_at_iteration:
+        type: integer
+      failure_mode:
+        type: string
+        enum:
+          - boundary_exceeded
+          - divergence
+          - critical_error
+      last_review_feedback:
+        type: string
   
   version_history:
     type: array
@@ -400,6 +423,7 @@ properties:
 | ------- | ---------- | ------------------------------------ |
 | 1.0     | 2025-12-12 | Split from governance.md into separate file for maintainability |
 | 1.1     | 2025-12-12 | UUID pattern migration: Replaced NNNN sequence numbering with 8-character UUID format (^[0-9a-f]{8}$) in all fields |
+| 1.2     | 2026-03-13 | Added loop_context section for Ralph Loop traceability |
 
 ---
 

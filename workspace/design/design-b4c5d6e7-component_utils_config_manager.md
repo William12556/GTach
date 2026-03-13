@@ -46,16 +46,14 @@ document_info:
 
 ### 2.1 Purpose
 
-ConfigManager provides a thread-safe singleton for application configuration management with YAML persistence, validation, and session-based debug logging.
+ConfigManager provides a thread-safe singleton for application configuration management with YAML persistence and validation.
 
 ### 2.2 Responsibilities
 
 1. Load configuration from YAML file hierarchy
-2. Provide thread-safe read/write access via RWLock
-3. Validate configuration against constraints
-4. Support atomic transactions with rollback
-5. Enable session-based debug logging
-6. Persist changes to YAML file
+2. Provide thread-safe read/write access via threading.Lock
+3. Validate configuration against basic range constraints
+4. Persist changes to YAML file
 
 ### 2.3 Singleton Pattern
 
@@ -117,11 +115,8 @@ def __init__(self) -> None:
 | Attribute | Type | Purpose |
 |-----------|------|---------|
 | `_config` | `OBDConfig` | Current configuration |
-| `_rw_lock` | `RWLock` | Read-write lock |
+| `_lock` | `threading.Lock` | Configuration access lock |
 | `_config_path` | `Path` | Active config file path |
-| `_session_id` | `Optional[str]` | Debug session identifier |
-| `_log_file` | `Optional[Path]` | Session log file path |
-| `_validators` | `List[ConfigValidator]` | Validation rules |
 | `_callbacks` | `List[Callable]` | Change observers |
 
 [Return to Table of Contents](<#table of contents>)
@@ -180,24 +175,7 @@ def update_config(self, updates: Dict[str, Any]) -> bool:
     """
 ```
 
-### 4.4 begin_transaction
-
-```python
-def begin_transaction(self) -> ConfigTransaction:
-    """Begin atomic configuration transaction.
-    
-    Returns:
-        ConfigTransaction context manager
-    
-    Usage:
-        with config_manager.begin_transaction() as txn:
-            txn.set('bluetooth.timeout', 15.0)
-            txn.set('display.fps_limit', 30)
-            # Automatically commits on exit, rollback on exception
-    """
-```
-
-### 4.5 validate
+### 4.4 validate
 
 ```python
 def validate(self) -> Dict[str, Any]:
@@ -208,27 +186,7 @@ def validate(self) -> Dict[str, Any]:
     """
 ```
 
-### 4.6 Session Logging
-
-```python
-def enable_debug_logging(self, session_id: str = None) -> str:
-    """Enable session-based debug logging.
-    
-    Args:
-        session_id: Optional custom session ID (generates UUID if None)
-    
-    Returns:
-        Session ID
-    
-    Creates:
-        Log file at ~/.config/gtach/logs/session_<id>.log
-    """
-
-def get_log_file_path(self) -> Optional[Path]:
-    """Get current session log file path."""
-```
-
-### 4.7 reload
+### 4.5 reload
 
 ```python
 def reload(self) -> bool:
@@ -265,27 +223,19 @@ class OBDConfig:
     """Root configuration container."""
     bluetooth: BluetoothConfig
     display: DisplayConfig
-    session: SessionConfig
 
 @dataclass
 class BluetoothConfig:
     scan_duration: float = 10.0
     connection_timeout: float = 10.0
     command_timeout: float = 2.0
-    retry_limit: int = 3
-    retry_delay: float = 3.0
+    retry_delay: float = 5.0     # Delay between reconnect attempts (no retry limit)
 
 @dataclass
 class DisplayConfig:
     mode: str = "DIGITAL"
-    rpm_warning: int = 6500
-    rpm_danger: int = 7000
-    fps_limit: int = 60
-
-@dataclass
-class SessionConfig:
-    debug_mode: bool = False
-    log_level: str = "INFO"
+    rpm_max: int = 8000
+    fps_limit: int = 30
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -294,49 +244,16 @@ class SessionConfig:
 
 ## 6.0 Thread Safety
 
-### 6.1 RWLock Implementation
+### 6.1 Lock Usage
 
-```python
-class RWLock:
-    """Reader-writer lock allowing multiple readers or single writer."""
-    
-    def __init__(self):
-        self._read_ready = threading.Condition(threading.Lock())
-        self._readers = 0
-    
-    def acquire_read(self) -> None:
-        """Acquire read lock (blocks if writer active)."""
-    
-    def release_read(self) -> None:
-        """Release read lock."""
-    
-    def acquire_write(self) -> None:
-        """Acquire write lock (blocks until no readers/writers)."""
-    
-    def release_write(self) -> None:
-        """Release write lock."""
-```
-
-### 6.2 Context Managers
+ConfigManager uses a single `threading.Lock` for exclusive access on both reads and writes. This is appropriate for the Pi Zero single-core context: read contention is low and RWLock overhead is unnecessary.
 
 ```python
 @contextmanager
-def read_lock(self):
-    """Context manager for read access."""
-    self._rw_lock.acquire_read()
-    try:
+def _locked(self):
+    """Context manager for exclusive configuration access."""
+    with self._lock:
         yield
-    finally:
-        self._rw_lock.release_read()
-
-@contextmanager
-def write_lock(self):
-    """Context manager for write access."""
-    self._rw_lock.acquire_write()
-    try:
-        yield
-    finally:
-        self._rw_lock.release_write()
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -355,25 +272,7 @@ def write_lock(self):
 | Validation failure | Reject update, return errors |
 | Save failure | Log error, data in memory |
 
-### 7.2 ConfigTransaction Rollback
 
-```python
-class ConfigTransaction:
-    """Atomic configuration transaction with rollback."""
-    
-    def __enter__(self):
-        self._snapshot = copy.deepcopy(self._config)
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None:
-            # Rollback on exception
-            self._config = self._snapshot
-            return False
-        # Commit changes
-        self._manager._save()
-        return True
-```
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -387,72 +286,24 @@ class ConfigTransaction:
 classDiagram
     class ConfigManager {
         -OBDConfig _config
-        -RWLock _rw_lock
+        -Lock _lock
         -Path _config_path
-        -str _session_id
         +get_instance() ConfigManager
         +get_config() OBDConfig
         +update_config(updates) bool
-        +begin_transaction() ConfigTransaction
         +validate() Dict
-        +enable_debug_logging(id) str
         +reload() bool
-    }
-    
-    class RWLock {
-        -Condition _read_ready
-        -int _readers
-        +acquire_read()
-        +release_read()
-        +acquire_write()
-        +release_write()
-    }
-    
-    class ConfigTransaction {
-        -ConfigManager _manager
-        -OBDConfig _snapshot
-        +set(key, value)
-        +get(key) Any
-        +commit()
-        +rollback()
     }
     
     class OBDConfig {
         +BluetoothConfig bluetooth
         +DisplayConfig display
-        +SessionConfig session
     }
     
-    ConfigManager *-- RWLock
     ConfigManager *-- OBDConfig
-    ConfigManager --> ConfigTransaction
 ```
 
-### 8.2 Read-Write Lock Sequence
 
-```mermaid
-sequenceDiagram
-    participant R1 as Reader 1
-    participant R2 as Reader 2
-    participant W as Writer
-    participant RWL as RWLock
-    
-    R1->>RWL: acquire_read()
-    RWL-->>R1: granted
-    R2->>RWL: acquire_read()
-    Note over RWL: Multiple readers OK
-    RWL-->>R2: granted
-    
-    W->>RWL: acquire_write()
-    Note over RWL: Writer waits
-    
-    R1->>RWL: release_read()
-    R2->>RWL: release_read()
-    
-    RWL-->>W: granted (exclusive)
-    W->>W: modify config
-    W->>RWL: release_write()
-```
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -463,6 +314,7 @@ sequenceDiagram
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| 1.1 | 2026-03-13 | William Watson | OOS-05/06/07: removed SessionConfig, ConfigTransaction, RWLock; simplified to threading.Lock. C3: fps_limit 60->30. C4: removed rpm_warning/rpm_danger. C1: removed retry_limit. H2/H3/H4: removed session logging attributes. |
 
 ---
 

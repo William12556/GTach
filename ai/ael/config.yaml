@@ -1,0 +1,21 @@
+# oMLX inference endpoint
+omlx:
+  base_url: "http://127.0.0.1:8000/v1"
+  api_key: "local"
+  default_model: "Devstral-Small-2-24B-Instruct-2512"
+
+# MCP server definitions
+mcp_servers:
+  filesystem:
+    command: "/usr/local/bin/npx"
+    args:
+      - "-y"
+      - "@j0hanz/filesystem-mcp@latest"
+      - "/Users/williamwatson/Documents/GitHub/GTach"
+    env:
+      PATH: "/opt/homebrew/opt/node@24/bin:/usr/local/bin:/usr/bin:/bin"
+
+# Loop control
+loop:
+  max_iterations: 10
+  state_dir: ".ael/ralph"

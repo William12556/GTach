@@ -201,11 +201,10 @@ async def scan_for_devices(self,
         2. Set state to SCANNING
         3. Create BleakScanner
         4. Start scan with timeout
-        5. Filter for ELM327/OBD devices (name matching)
-        6. Convert to BluetoothDevice objects
+        5. Convert all discovered devices to BluetoothDevice objects (no name filtering)
+        6. Return full device list
         7. Update device_store with discoveries
         8. Restore previous state
-        9. Return device list
     
     Error Handling:
         On exception: restore state, log error, return empty list
@@ -355,8 +354,7 @@ class BluetoothConfig:
     scan_duration: float = 10.0       # Scan timeout seconds
     connection_timeout: float = 10.0  # Connect timeout
     command_timeout: float = 2.0      # Command response timeout
-    retry_limit: int = 3              # Max retry attempts
-    retry_delay: float = 3.0          # Delay between retries
+    retry_delay: float = 5.0          # Delay between reconnect attempts (no retry limit)
 ```
 
 ### 5.3 ELM327 Characteristics
@@ -462,17 +460,20 @@ Main Thread                    Bluetooth Thread
 | Write failure | BleakError | Log, return None |
 | Notification error | BleakError | Log, attempt recovery |
 
-### 8.2 Retry Logic
+### 8.2 Reconnect Loop
 
 ```python
-async def connect_with_retry(self, device: BluetoothDevice) -> bool:
-    """Connect with exponential backoff retry."""
-    for attempt in range(self.config.retry_limit):
+async def reconnect_indefinitely(self, device: BluetoothDevice) -> None:
+    """Attempt reconnection indefinitely until success or stop signal.
+    
+    No retry limit is enforced. Delay between attempts is configured
+    via BluetoothConfig.retry_delay. Exits only when connected or
+    _stop_event is set.
+    """
+    while not self._stop_event.is_set():
         if await self.connect(device):
-            return True
-        delay = self.config.retry_delay * (2 ** attempt)
-        await asyncio.sleep(delay)
-    return False
+            return
+        await asyncio.sleep(self.config.retry_delay)
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -607,6 +608,7 @@ stateDiagram-v2
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| 1.1 | 2026-03-13 | William Watson | C1: removed retry_limit; replaced connect_with_retry with indefinite reconnect_indefinitely loop. M3: removed name filter from scan_for_devices. |
 
 ---
 

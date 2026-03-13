@@ -470,12 +470,9 @@ entity:
     - name: "scan_duration"
       type: "float"
       constraints: "Default 10.0 seconds"
-    - name: "retry_limit"
-      type: "int"
-      constraints: "Default 3"
     - name: "retry_delay"
       type: "float"
-      constraints: "Default 3.0 seconds"
+      constraints: "Default 5.0 seconds (no retry limit)"
     - name: "timeout"
       type: "float"
       constraints: "Default 10.0 seconds"
@@ -522,19 +519,13 @@ storage:
   structure:
     bluetooth:
       scan_duration: 10.0
-      retry_limit: 3
-      retry_delay: 3.0
+      retry_delay: 5.0
       timeout: 10.0
       bleak_timeout: 10.0
     display:
       mode: "DIGITAL"
-      rpm_warning: 6500
-      rpm_danger: 7000
-      fps_limit: 60
-    session:
-      debug_mode: false
-      log_level: "INFO"
-      session_id: null
+      rpm_max: 8000
+      fps_limit: 30
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -753,6 +744,7 @@ The following Tier 3 component design documents decompose each component:
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
 | 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
+| 1.2 | 2026-03-13 | William Watson | C1: removed retry_limit attribute. C3: fps_limit 60->30. C4: removed rpm_warning/rpm_danger; added rpm_max. OOS-05: removed SessionConfig section from config structure. |
 
 ---
 

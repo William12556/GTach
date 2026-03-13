@@ -53,7 +53,7 @@ DisplayManager orchestrates all display operations including rendering, touch ha
 
 1. Initialize and coordinate display components
 2. Run main display loop with frame timing
-3. Manage display mode state machine (SPLASH→DIGITAL/GAUGE→SETTINGS)
+3. Manage display mode state machine (SPLASH→DIGITAL/GAUGE/DISCONNECTED→SETTINGS)
 4. Read RPM data from ThreadManager message queue
 5. Delegate rendering to DisplayRenderingEngine
 6. Delegate touch events to TouchEventCoordinator
@@ -164,7 +164,7 @@ def stop(self) -> None:
 def _display_loop(self) -> None:
     """Main display loop.
     
-    Target: 60 FPS (development), 30 FPS (deployment)
+    Target: 30 FPS
     
     Algorithm:
         while not _stop_event.is_set():
@@ -224,12 +224,19 @@ def _render_gauge(self, surface: pygame.Surface, rpm: int) -> None:
         - Digital readout overlay
     """
 
+def _render_disconnected(self, surface: pygame.Surface) -> None:
+    """Render disconnected state screen.
+    
+    Features:
+        - Static disconnected indicator
+        - Prompt indicating long-press gesture to enter setup mode
+    """
+
 def _render_settings(self, surface: pygame.Surface) -> None:
     """Render settings menu.
     
     Features:
         - Mode selection
-        - RPM thresholds
         - Connection info
     """
 ```
@@ -273,12 +280,24 @@ def _on_long_press(self) -> None:
     Mode Transitions:
         DIGITAL/GAUGE -> SETTINGS
         SETTINGS -> Previous mode
+        DISCONNECTED -> SETUP (clears stored device, starts discovery)
     """
 ```
 
 ### 4.7 Setup Mode Methods
 
 ```python
+def set_connection_state(self, connected: bool) -> None:
+    """Update connection state from BluetoothManager.
+    
+    Args:
+        connected: True if Bluetooth connection is active
+    
+    Mode Transitions:
+        DIGITAL/GAUGE -> DISCONNECTED: when connected=False
+        DISCONNECTED -> previous DIGITAL/GAUGE mode: when connected=True
+    """
+
 def enter_setup_mode(self) -> None:
     """Enter setup wizard mode."""
 
@@ -300,10 +319,11 @@ def is_in_setup_mode(self) -> bool:
 ```python
 class DisplayMode(Enum):
     """Display mode enumeration."""
-    SPLASH = auto()    # Startup splash screen
-    DIGITAL = auto()   # Numeric RPM display
-    GAUGE = auto()     # Analog gauge display
-    SETTINGS = auto()  # Settings menu
+    SPLASH = auto()        # Startup splash screen
+    DIGITAL = auto()       # Numeric RPM display
+    GAUGE = auto()         # Analog gauge display
+    DISCONNECTED = auto()  # Bluetooth connection lost
+    SETTINGS = auto()      # Settings menu
 ```
 
 ### 5.2 Mode Transitions
@@ -314,6 +334,10 @@ class DisplayMode(Enum):
 | SPLASH | SETUP | First run detected |
 | DIGITAL | GAUGE | Swipe gesture |
 | GAUGE | DIGITAL | Swipe gesture |
+| DIGITAL | DISCONNECTED | Connection lost |
+| GAUGE | DISCONNECTED | Connection lost |
+| DISCONNECTED | DIGITAL/GAUGE | Connection restored |
+| DISCONNECTED | SETUP | Long press (clears stored device) |
 | DIGITAL | SETTINGS | Long press |
 | GAUGE | SETTINGS | Long press |
 | SETTINGS | DIGITAL/GAUGE | Long press |
@@ -323,12 +347,17 @@ class DisplayMode(Enum):
 ```python
 @dataclass
 class DisplayConfig:
-    """Display configuration settings."""
+    """Display configuration settings.
+    
+    RPM background colour bands are fixed and not user-configurable:
+        0-2999   -> black background
+        3000-3999 -> green background
+        4000-4999 -> yellow background
+        5000+    -> red background
+    """
     mode: DisplayMode = DisplayMode.SPLASH
-    rpm_warning: int = 6500      # Yellow zone threshold
-    rpm_danger: int = 7000       # Red zone threshold
-    rpm_max: int = 8000          # Maximum displayed RPM
-    fps_limit: int = 60          # Target frame rate
+    rpm_max: int = 8000          # Maximum displayed RPM (gauge scale)
+    fps_limit: int = 30          # Target frame rate
     splash_duration: float = 4.0 # Splash screen seconds
 ```
 
@@ -341,27 +370,42 @@ class DisplayConfig:
 ### 6.1 Frame Sequence
 
 ```
-1. Clear back buffer (black)
-2. Render mode content to back buffer
-3. Render overlays (FPS, connection status)
-4. Swap buffers (back → front)
-5. Pygame display flip
-6. Frame rate delay
+1. Determine background colour from RPM band (see 5.3)
+2. Clear back buffer with band colour
+3. Render mode content (RPM numeral or gauge arc) in contrasting colour
+4. Render overlays (connection status)
+5. Swap buffers (back → front)
+6. Pygame display flip
+7. Frame rate delay
 ```
 
 ### 6.2 Color Scheme
 
 ```python
-COLORS = {
-    'background': (0, 0, 0),        # Black
-    'text': (255, 255, 255),        # White
-    'rpm_normal': (0, 255, 0),      # Green
-    'rpm_warning': (255, 255, 0),   # Yellow
-    'rpm_danger': (255, 0, 0),      # Red
-    'gauge_face': (40, 40, 40),     # Dark gray
-    'gauge_tick': (200, 200, 200),  # Light gray
-    'needle': (255, 0, 0),          # Red
-}
+# Fixed RPM background band boundaries (not user-configurable)
+RPM_BAND_GREEN  = 3000
+RPM_BAND_YELLOW = 4000
+RPM_BAND_RED    = 5000
+
+# Background colour per band
+BAND_COLORS = [
+    (0,              (0, 0, 0)),       # 0-2999:   black
+    (RPM_BAND_GREEN,  (0, 180, 0)),   # 3000-3999: green
+    (RPM_BAND_YELLOW, (200, 200, 0)), # 4000-4999: yellow
+    (RPM_BAND_RED,    (200, 0, 0)),   # 5000+:     red
+]
+
+# Foreground (RPM numeral, gauge arc) - high contrast against all bands
+FOREGROUND_COLOR = (255, 255, 255)  # White
+GAUGE_TICK_COLOR = (180, 180, 180)  # Light gray
+
+def get_band_color(rpm: int) -> tuple:
+    """Return background colour for given RPM."""
+    color = (0, 0, 0)
+    for threshold, band_color in BAND_COLORS:
+        if rpm >= threshold:
+            color = band_color
+    return color
 ```
 
 ### 6.3 Circular Display Handling
@@ -464,7 +508,9 @@ classDiagram
         -_render_splash()
         -_render_digital()
         -_render_gauge()
+        -_render_disconnected()
         -_render_settings()
+        +set_connection_state(connected)
     }
     
     DisplayManager --> DisplayRenderingEngine
@@ -488,11 +534,13 @@ flowchart TD
     MODE -->|SPLASH| RS[Render Splash]
     MODE -->|DIGITAL| RD[Render Digital]
     MODE -->|GAUGE| RG[Render Gauge]
+    MODE -->|DISCONNECTED| RX[Render Disconnected]
     MODE -->|SETTINGS| RST[Render Settings]
     
     RS --> SWAP
     RD --> SWAP
     RG --> SWAP
+    RX --> SWAP
     RST --> SWAP
     
     SWAP[Swap Buffers] --> FPS[Update FPS]
@@ -509,6 +557,7 @@ flowchart TD
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| 1.1 | 2026-03-13 | William Watson | C3: fps_limit 60->30. C4: fixed 4-band background colour scheme; removed rpm_warning/rpm_danger from DisplayConfig; updated frame sequence and colour constants. H1: added DISCONNECTED mode, set_connection_state(), _render_disconnected(), updated transitions. |
 
 ---
 

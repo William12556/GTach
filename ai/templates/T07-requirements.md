@@ -25,6 +25,14 @@ project_info:
   author: ""
   status: ""  # active, approved, closed
 
+naming_conventions:
+  package_name: ""   # Root package name (e.g., "mypackage")
+  module_style: ""   # e.g., "snake_case"
+  class_style: ""    # e.g., "PascalCase"
+  function_style: "" # e.g., "snake_case"
+  constant_style: "" # e.g., "UPPER_SNAKE_CASE"
+  notes: ""
+
 functional_requirements:
   - id: ""  # <8-char-uuid>
     type: "functional"
@@ -137,6 +145,22 @@ properties:
           - active
           - approved
           - closed
+  
+  naming_conventions:
+    type: object
+    properties:
+      package_name:
+        type: string
+      module_style:
+        type: string
+      class_style:
+        type: string
+      function_style:
+        type: string
+      constant_style:
+        type: string
+      notes:
+        type: string
   
   functional_requirements:
     type: array
@@ -357,6 +381,7 @@ properties:
 | Version | Date       | Description                          |
 | ------- | ---------- | ------------------------------------ |
 | 1.0     | 2025-12-13 | Initial creation for P10 Requirements protocol |
+| 1.1     | 2026-03-12 | Added naming_conventions section for early capture of element naming rules |
 
 ---
 
