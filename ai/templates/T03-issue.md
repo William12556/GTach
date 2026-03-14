@@ -25,14 +25,14 @@ issue_info:
   reporter: ""
   status: ""  # open, investigating, resolved, verified, closed, deferred
   severity: ""  # critical, high, medium, low
-  type: ""  # bug, defect, error, performance, security
+  type: ""  # bug, defect, error, performance, security, enhancement, requirement_change
   iteration: 1  # Increments with each debug cycle
   coupled_docs:
     change_ref: ""  # change-<uuid> when created
     change_iteration: null  # Matches change.iteration
 
 source:
-  origin: ""  # test_result, user_report, code_review, monitoring
+  origin: ""  # test_result, user_report, code_review, monitoring, requirement_change
   test_ref: ""  # Link to test result if applicable
   description: ""
 
@@ -188,6 +188,8 @@ properties:
           - error
           - performance
           - security
+          - enhancement
+          - requirement_change
       iteration:
         type: integer
         minimum: 1
@@ -215,6 +217,7 @@ properties:
           - user_report
           - code_review
           - monitoring
+          - requirement_change
       test_ref:
         type: string
       description:
@@ -424,6 +427,7 @@ properties:
 | 1.0     | 2025-12-12 | Split from governance.md into separate file for maintainability |
 | 1.1     | 2025-12-12 | UUID pattern migration: Replaced NNNN sequence numbering with 8-character UUID format (^[0-9a-f]{8}$) in all fields |
 | 1.2     | 2026-03-13 | Added loop_context section for Ralph Loop traceability |
+| 1.3     | 2026-03-14 | Added `enhancement` and `requirement_change` to `issue_info.type` enum; added `requirement_change` to `source.origin` enum to support enhancement and requirements-change workflows via P03 |
 
 ---
 

@@ -554,6 +554,7 @@ exclude_lines = [
     - Strategic Domain: Reads template from ai/templates/T02-change.md
     - Strategic Domain: Creates change documents exclusively from issue documents using T02 template and saves them in folder workspace/change
     - Strategic Domain: For human-requested source code changes, first creates issue document via P04, then creates change document referencing that issue
+    - Strategic Domain: For enhancement or requirement change requests, creates issue document via P04 with type `enhancement` or `requirement_change` and origin `requirement_change`, then creates change document referencing that issue
     - Exception: Non-source-code changes (workspace/ documents per 1.4.10) may be implemented directly after human approval without issue/change documents
   - §1.4.2 Document coupling
     - Strategic Domain: Ensures one-to-one coupling between issue and change documents
@@ -1139,6 +1140,7 @@ flowchart TD
 | 7.5     | 2026-03-11 | Narrowed scope to Apple Silicon + MLX: removed OLLama profile setup from §1.2.8; removed Goose/OLLama from §1.1.4 implementation options; deprecated docs/setup-goose.md, docs/setup-ollama-lmstudio.md, ai/profiles/ollama.md to deprecated/ |
 | 7.6     | 2026-03-11 | Integrated AEL into workflow: replaced Tactical Domain black-box subgraph with AEL Ralph Loop + SHIP/BLOCKED decision; updated §1.1.8 command format; updated §1.1.11 Loop Exit traceability (SHIP→T06, BLOCKED→T03); updated §1.10.3 Human Handoff command format |
 | 7.7     | 2026-03-12 | Added name registry: design-\<project\>-name_registry-master.md as incremental canonical element naming contract; P02 §1.3.16 registry structure; P02 §1.3.1/§1.3.3/§1.3.5 registry directives per tier; P02 §1.3.7 registry naming convention; P00 §1.1.10 registry master notation; P08 §1.9.3 naming consistency audit scope; P09 §1.10.2 element_registry prompt directive |
+| 7.8     | 2026-03-14 | Added enhancement and requirement_change paths to P03 §1.4.1: creates T03 issue with type `enhancement` or `requirement_change` before T02 change document; resolves omission where T03 type enum had no accommodation for non-defect change requests |
 
 ---
 [Return to Table of Contents](<#table of contents>)
