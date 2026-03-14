@@ -4,12 +4,12 @@
 # GTach is licensed under the MIT License.
 
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61.0", "build>=0.10.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "gtach"
-version = "0.1.0.001"
+version = "0.1.1"
 authors = [
     {name = "GTach Project Contributors"},
 ]
@@ -102,7 +102,7 @@ extend-exclude = '''
 profile = "black"
 multi_line_output = 3
 line_length = 88
-known_first_party = ["gtach", "provisioning"]
+known_first_party = ["gtach"]
 
 [tool.mypy]
 python_version = "3.9"

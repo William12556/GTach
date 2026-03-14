@@ -26,12 +26,14 @@ python3 -m pytest tests/ -v
 
 ### Raspberry Pi Deployment
 ```bash
-# Create deployment package
-cd src/provisioning && python3 create_package.py
+# Build distribution wheel (Mac)
+./build.sh
 
-# Deploy to Pi
-scp ../../packages/gtach-*.tar.gz pi@PI_IP:/home/pi/
-ssh pi@PI_IP "tar -xzf gtach-*.tar.gz && cd gtach-* && sudo ./install.sh"
+# Transfer to Pi
+scp dist/gtach-*.whl pi@PI_IP:/tmp/
+
+# Install on Pi
+ssh pi@PI_IP "./install.sh gtach-X.Y.Z-py3-none-any.whl"
 ```
 
 ## Requirements
