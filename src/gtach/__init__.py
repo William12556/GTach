@@ -1,7 +1,7 @@
 # Copyright (c) 2025 William Watson
-# 
+#
 # This file is part of GTach.
-# 
+#
 # GTach is licensed under the MIT License.
 # See the LICENSE file in the project root for full license text.
 
@@ -10,7 +10,7 @@
 from .app import GTachApplication
 from .main import main
 
-__version__ = "0.1.1"
+__version__ = '0.1.1'
 __author__ = "William Watson"
 
 __all__ = [
