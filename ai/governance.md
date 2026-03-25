@@ -399,6 +399,8 @@ pip list
     - **AEL setup (both profiles)**:
       - Install AEL dependencies: `pip install -r ai/ael/requirements.txt`
       - Configure `ai/ael/config.yaml` with inference endpoint and MCP server definitions
+      - Run `python ai/ael/src/budget.py` to generate initial context-budget.md in state directory
+      - Re-run `budget.py` after any model change
       - Recipe location: `<project name>/ai/ael/recipes/`
       - Reference: §1.1.11, §1.2.4
 
@@ -600,12 +602,26 @@ exclude_lines = [
     - Strategic Domain: Cross-links updated documents to source change document
   - §1.4.11 Documentation domain
     - Change documentation is only required for source code changes in src/. Change documentation to documents in the workspace/ is not required and can be made directly after human approval.
+  - §1.4.12 Trivial Change Exemption
+    - Definitions:
+      - Trivial: the outcome is fully predictable before implementation; no analysis, experimentation, or design judgement is required to determine the correct solution.
+      - Surgical: confined to a single, well-bounded location in the codebase; does not disturb surrounding logic, interfaces, or dependent components.
+    - A qualifying change must be both trivial and surgical simultaneously. Either quality alone is insufficient.
+    - When all five criteria below are satisfied, Strategic Domain may implement directly after human approval — no T03, T02, T04, or AEL required. Git commit history is the sole audit record for exempt changes.
+    - Criteria (all must hold simultaneously):
+      - (1) Confined to a single function or entry point
+      - (2) Net line delta ≤20 lines
+      - (3) No interface changes (signatures, contracts, public APIs)
+      - (4) Unambiguous with no design decisions required
+      - (5) Human approval obtained before implementation
+    - If any criterion fails, standard T03 → T02 → T04 → AEL workflow applies.
 
 [Return to Table of Contents](<#table of contents>)
 
 #### 1.5 P04 Issue
   - §1.5.1 Issue creation from test results
     - Strategic Domain: Reads template from ai/templates/T03-issue.md
+    - Strategic Domain: Before specifying any target file_path in a T03 issue, reads the project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms the named file is in the deployment path
     - Strategic Domain: Creates issue documents from errors reported in workspace/test/result using T03 template and saves them in folder workspace/issues
   - §1.5.2 Reserved for future use
     - Strategic Domain: Reserved for future use
@@ -901,7 +917,7 @@ pip install dist/*.whl
     - Prompt documents are always Tactical Domain specific.
     - Strategic Domain: Reads template from ai/templates/T04-prompt.md
     - Strategic Domain: Creates prompt documents from design and change documents using T04 template
-    - Strategic Domain: Saves prompts with naming format prompt-<uuid>-<n>.md in workspace/prompt/
+    - Strategic Domain: Saves prompts with naming format prompt-<uuid>-<name>.md in workspace/prompt/
     - Strategic Domain: UUID assignment follows workflow initiation pattern:
     - First document created in workflow (Issue OR Change) generates new 8-character UUID
     - All subsequently coupled documents (Change, Prompt, Test, Result) inherit that UUID
@@ -909,6 +925,11 @@ pip install dist/*.whl
     - Strategic Domain: Rewrites prompt documents in place when revisions required
     - Strategic Domain: Embeds complete design specifications and schema within prompt documents
     - Strategic Domain: Ensures prompt documents are self-contained requiring no external file references
+    - Strategic Domain: Populates tactical_brief field with a concise plain-text AEL task payload (~200-400 tokens); brief contains only: file(s) to modify, hard constraints, implementation steps, deliverable path(s), success criteria; all governance metadata omitted from brief
+    - Strategic Domain: Checks whether context-budget.md exists in AEL state directory before authoring tactical_brief; if absent, instructs human to run `python ai/ael/src/budget.py` from project root before proceeding
+    - Strategic Domain: Reads context-budget.md and adjusts brief size to fit within available context headroom
+    - Strategic Domain: Verifies tactical_brief field is non-empty before issuing AEL command; an empty or placeholder brief causes orchestrator fallback to full raw document, inflating context and risking saturation
+    - Strategic Domain: Before specifying any target file path in a T04 prompt, reads the project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms the named file is in the deployment path
     - Strategic Domain: Embeds element_registry field in T04 prompt from name registry master, scoped to elements relevant to the code generation task
     - Strategic Domain: Prompt references source change UUID in coupled_docs.change_ref field
     - Strategic Domain: Prompt iteration number matches source change iteration number
@@ -986,7 +1007,8 @@ python ai/ael/src/orchestrator.py --mode loop \
 
 ```mermaid
 flowchart TD
-    Init[P01: Project Initialization] --> Start([Human: Initiate Requirements])
+    Init[P01: Project Initialization] --> Budget_Init[Human: Run budget.py<br/>generates context-budget.md]
+    Budget_Init --> Start([Human: Initiate Requirements])
     Start --> D1_Elicit[Strategic Domain: Requirements Elicitation P10]
     
     D1_Elicit --> H_Req{Human: Review Requirements}
@@ -1002,9 +1024,13 @@ flowchart TD
     H2 -->|Revise| D1_Decompose
     H2 -->|Approve| Trace1[Strategic Domain: Update<br/>traceability matrix P05]
     
-    Trace1 --> D1_Baseline[Human: Tag baseline<br/>in GitHub]
+    Trace1 --> D1_Tag[Human: Tag baseline<br/>in GitHub]
     
-    D1_Baseline --> D1_Prompt[Strategic Domain: Create T04 prompt<br/>with design + schema]
+    D1_Tag --> Budget_Check{context-budget.md<br/>present?}
+    Budget_Check -->|No| Budget_Remind[Strategic Domain: Instruct<br/>human to run budget.py]
+    Budget_Remind --> Budget_Run[Human: Run budget.py]
+    Budget_Run --> D1_Prompt
+    Budget_Check -->|Yes| D1_Prompt[Strategic Domain: Create T04 prompt<br/>with design + schema]
     
     D1_Prompt --> H3{Human: Approve<br/>code generation}
     H3 -->|Revise| D1_Prompt
@@ -1032,7 +1058,11 @@ flowchart TD
     Issue_Type -->|Bug| D1_Change[Strategic Domain: Create change T02]
     D1_Change --> H4{Human: Review<br/>change}
     H4 -->|Revise| D1_Change
-    H4 -->|Approve| D1_Debug_Prompt[Strategic Domain: Create debug<br/>prompt T04]
+    H4 -->|Approve| Budget_Check2{context-budget.md<br/>present?}
+    Budget_Check2 -->|No| Budget_Remind2[Strategic Domain: Instruct<br/>human to run budget.py]
+    Budget_Remind2 --> Budget_Run2[Human: Run budget.py]
+    Budget_Run2 --> D1_Debug_Prompt
+    Budget_Check2 -->|Yes| D1_Debug_Prompt[Strategic Domain: Create debug<br/>prompt T04]
     
     D1_Debug_Prompt --> H5{Human: Approve<br/>debug}
     H5 -->|Revise| D1_Debug_Prompt
@@ -1061,7 +1091,8 @@ flowchart TD
     Progressive -->|Full regression| H7{Human: Accept<br/>deliverable?}
     H7 -->|Reject| D1_Issue
     H7 -->|Accept| D1_Close[Strategic Domain: Close documents<br/>Move to closed/<br/>Git commit]
-    D1_Close --> Complete([Complete])
+    D1_Close --> AEL_Reset[Human: Run --mode reset<br/>clear AEL state]
+    AEL_Reset --> Complete([Complete])
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -1141,6 +1172,11 @@ flowchart TD
 | 7.6     | 2026-03-11 | Integrated AEL into workflow: replaced Tactical Domain black-box subgraph with AEL Ralph Loop + SHIP/BLOCKED decision; updated §1.1.8 command format; updated §1.1.11 Loop Exit traceability (SHIP→T06, BLOCKED→T03); updated §1.10.3 Human Handoff command format |
 | 7.7     | 2026-03-12 | Added name registry: design-\<project\>-name_registry-master.md as incremental canonical element naming contract; P02 §1.3.16 registry structure; P02 §1.3.1/§1.3.3/§1.3.5 registry directives per tier; P02 §1.3.7 registry naming convention; P00 §1.1.10 registry master notation; P08 §1.9.3 naming consistency audit scope; P09 §1.10.2 element_registry prompt directive |
 | 7.8     | 2026-03-14 | Added enhancement and requirement_change paths to P03 §1.4.1: creates T03 issue with type `enhancement` or `requirement_change` before T02 change document; resolves omission where T03 type enum had no accommodation for non-defect change requests |
+| 7.9     | 2026-03-18 | Added P03 §1.4.12 Trivial Change Exemption: defines trivial and surgical change criteria; when all five criteria satisfied and human approval obtained, Strategic Domain may implement directly without T03, T02, T04, or AEL; git history is sole audit record |
+| 8.0     | 2026-03-18 | Added P09 §1.10.2 tactical_brief directive: Strategic Domain populates concise AEL task payload (~200-400 tokens) in T04 prompt; orchestrator uses brief in preference to full document |
+| 8.1     | 2026-03-20 | Added context budget: AEL orchestrator resolves context window from model config.json on disk; warn/abort thresholds enforced per phase iteration; context-budget.md written to state directory at startup for Strategic Domain; P09 §1.10.2 directive: Strategic Domain reads context-budget.md before authoring tactical_brief |
+| 8.2     | 2026-03-20 | Added entry point verification directive to P04 §1.5.1 and P09 §1.10.2: Strategic Domain reads project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms target file is in deployment path before specifying any file_path in T03 issue or T04 prompt; resolves issue c3e5b7d9 |
+| 8.3     | 2026-03-24 | Added tactical_brief verification directive to P09 §1.10.2: Strategic Domain must verify tactical_brief is non-empty before issuing AEL command; T04 template v1.6 removes governance-only fields and fixes placeholder |
 
 ---
 [Return to Table of Contents](<#table of contents>)

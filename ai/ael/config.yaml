@@ -15,7 +15,23 @@ mcp_servers:
     env:
       PATH: "/opt/homebrew/opt/node@24/bin:/usr/local/bin:/usr/bin:/bin"
 
+# Inference endpoint readiness
+readiness:
+  timeout_seconds: 60
+  poll_interval_seconds: 2
+  
 # Loop control
 loop:
-  max_iterations: 10
+  max_iterations: 5         # Ralph Loop outer cycles (worker + reviewer passes)
+  phase_max_iterations: 20  # tool-call iterations per phase (work or review)
   state_dir: ".ael/ralph"
+  
+# Context budget
+# context_window: null resolves from model config.json on disk.
+# Set explicitly to override (e.g. when model is remote and not stored locally).
+context:
+  models_dir: "/Users/williamwatson/ai-models"
+  context_window: null      # tokens; null = read from model config.json
+  budget_warn_pct: 0.80     # print warning at this fraction of context window
+  budget_abort_pct: 0.95    # abort phase at this fraction
+

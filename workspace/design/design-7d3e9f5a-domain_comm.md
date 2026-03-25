@@ -17,6 +17,10 @@ Created: 2025-12-29
 - [9.0 Tier 3 Component Documents](<#9.0 tier 3 component documents>)
 - [Version History](<#version history>)
 
+> **Change notice:** v2.0 replaces the Bleak/BLE-based BluetoothManager with an
+> OBDTransport abstraction. See ARCH e7f8a9b0 and REQ g1h2i3j4 in
+> requirements-gtach-master.md.
+
 ---
 
 ## 1.0 Document Information
@@ -27,8 +31,8 @@ document_info:
   tier: 2
   domain: "Communication"
   parent: "design-0000-master_gtach.md"
-  version: "1.0"
-  date: "2025-12-29"
+  version: "2.0"
+  date: "2026-03-24"
   author: "William Watson"
 ```
 
@@ -44,27 +48,28 @@ document_info:
 
 ### 2.1 Purpose
 
-The Communication domain manages Bluetooth connectivity to ELM327 OBD-II adapters and implements the OBD-II protocol for vehicle data acquisition. It provides cross-platform Bluetooth support using the Bleak library with async/await patterns while maintaining thread safety for integration with the Core domain.
+The Communication domain manages connectivity to ELM327 OBD-II adapters and implements the OBD-II protocol for vehicle data acquisition. It provides a transport abstraction supporting three physical transports: RFCOMM socket (Pi/Linux, real ELM327), serial port (macOS, paired ELM327), and TCP socket (any platform, ircama emulator). All transports present a uniform interface to the OBD protocol layer.
 
 ### 2.2 Responsibilities
 
-1. **Bluetooth Device Discovery**: Scan for available Bluetooth devices, identify ELM327 adapters
-2. **Connection Management**: Establish, maintain, and recover Bluetooth connections
-3. **OBD Protocol Initialization**: Configure ELM327 with AT commands (ATZ, ATE0, ATSP0/8)
-4. **RPM Data Acquisition**: Request PID 0x0C, parse response, deliver to display
-5. **Device Persistence**: Store paired device information for automatic reconnection
-6. **State Machine Management**: Track connection states (DISCONNECTED→SCANNING→CONNECTING→CONNECTED)
-7. **Error Recovery**: Retry connections with exponential backoff
+1. **Transport Abstraction**: Provide OBDTransport interface hiding physical transport from OBDProtocol
+2. **Transport Selection**: Select concrete transport at startup via platform detection or CLI override
+3. **Connection Management**: Establish, maintain, and recover transport connections
+4. **OBD Protocol Initialization**: Configure ELM327 with AT commands (ATZ, ATE0, ATSP0/8)
+5. **RPM Data Acquisition**: Request PID 0x0C, parse response, deliver to display
+6. **Device Persistence**: Store paired device information for automatic reconnection
+7. **State Machine Management**: Track connection states (DISCONNECTED→CONNECTING→CONNECTED→ERROR)
+8. **Error Recovery**: Retry connections indefinitely with configured delay
 
 ### 2.3 Domain Patterns
 
 | Pattern | Implementation | Purpose |
 |---------|---------------|---------|
-| State Machine | BluetoothState enum | Connection state tracking |
+| Abstract Base Class | OBDTransport | Uniform interface across all transports |
+| Strategy | RFCOMMTransport / SerialTransport / TCPTransport | Runtime transport selection |
+| State Machine | TransportState enum | Connection state tracking |
 | Repository | DeviceStore | Device persistence and retrieval |
-| Adapter | OBDProtocol | Adapt ELM327 protocol to application interface |
-| Observer | Connection callbacks | Notify consumers of state changes |
-| Strategy | Bleak backend selection | Cross-platform Bluetooth support |
+| Adapter | OBDProtocol | Adapt ELM327 AT protocol to application interface |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -77,21 +82,22 @@ The Communication domain manages Bluetooth connectivity to ELM327 OBD-II adapter
 ```yaml
 location: "src/gtach/comm/"
 modules:
-  - "__init__.py: Package exports (BluetoothManager, BluetoothState, OBDProtocol, OBDResponse)"
-  - "bluetooth.py: BluetoothManager, BluetoothState, BluetoothConnectionError"
+  - "__init__.py: Package exports (OBDTransport, TransportState, OBDProtocol, OBDResponse, DeviceStore)"
+  - "transport.py: OBDTransport (ABC), TransportState, TransportError, select_transport()"
+  - "rfcomm.py: RFCOMMTransport — RFCOMM socket, Pi/Linux, real ELM327"
+  - "serial_transport.py: SerialTransport — pyserial, macOS, paired ELM327 or emulator"
+  - "tcp_transport.py: TCPTransport — TCP socket, any platform, ircama emulator"
   - "obd.py: OBDProtocol, OBDResponse"
   - "device_store.py: DeviceStore (YAML-based persistence)"
   - "models.py: BluetoothDevice dataclass"
-  - "pairing.py: Bluetooth pairing utilities"
-  - "system_bluetooth.py: System-level Bluetooth operations"
 ```
 
 ### 3.2 External Dependencies
 
 | Dependency | Type | Purpose |
 |------------|------|---------|
-| bleak | Third-party | Cross-platform Bluetooth LE/Classic |
-| asyncio | Standard Library | Async operations for Bleak |
+| pyserial | Third-party | SerialTransport on macOS |
+| socket | Standard Library | RFCOMMTransport (AF_BLUETOOTH) and TCPTransport |
 | threading | Standard Library | Thread-safe state management |
 | yaml | Third-party (optional) | Device configuration persistence |
 | logging | Standard Library | Structured logging |
@@ -109,68 +115,173 @@ modules:
 
 ## 4.0 Components
 
-### 4.1 BluetoothManager
+### 4.1 OBDTransport (Abstract Base)
 
 ```yaml
 component:
-  name: "BluetoothManager"
-  purpose: "Manage Bluetooth device discovery and connection using Bleak"
-  file: "bluetooth.py"
-  
+  name: "OBDTransport"
+  purpose: "Abstract base class defining the uniform transport interface for all concrete transports"
+  file: "transport.py"
+
   responsibilities:
-    - "Scan for Bluetooth devices with configurable timeout"
-    - "Identify ELM327/OBD adapters from device names"
-    - "Establish Bluetooth connections with retry logic"
-    - "Manage connection state machine"
-    - "Coordinate async operations from sync context"
-    - "Send commands and receive responses via RFCOMM"
-  
+    - "Define connect(), disconnect(), send_command(), is_connected() as abstract methods"
+    - "Define TransportState enum (DISCONNECTED, CONNECTING, CONNECTED, ERROR)"
+    - "Provide select_transport() factory function for platform-based transport selection"
+    - "Provide TransportError base exception"
+
   key_elements:
-    - name: "BluetoothManager"
-      type: "class"
-      purpose: "Main Bluetooth coordinator"
-    - name: "BluetoothState"
+    - name: "OBDTransport"
+      type: "class (ABC)"
+      purpose: "Abstract transport interface"
+    - name: "TransportState"
       type: "enum"
       purpose: "Connection state enumeration"
-    - name: "BluetoothConnectionError"
+    - name: "TransportError"
       type: "exception"
-      purpose: "Bluetooth-specific error type"
-  
-  dependencies:
-    internal:
-      - "DeviceStore"
-    external:
-      - "bleak.BleakClient"
-      - "bleak.BleakScanner"
-      - "asyncio.AbstractEventLoop"
-      - "threading.RLock"
-      - "concurrent.futures.ThreadPoolExecutor"
-  
+      purpose: "Base transport error"
+    - name: "select_transport"
+      type: "function"
+      purpose: "Factory: returns concrete transport based on platform or CLI args"
+
   processing_logic:
-    - "Initialize with ThreadManager reference for heartbeat updates"
-    - "Scan uses BleakScanner with configurable timeout"
-    - "Connection uses BleakClient with service discovery"
-    - "State transitions are atomic (protected by RLock)"
-    - "Async operations submitted via ThreadPoolExecutor"
-    - "Commands sent via write characteristic, responses via notification"
-  
-  error_conditions:
-    - condition: "Bleak library not installed"
-      handling: "Log error, set state to ERROR, return gracefully"
-    - condition: "Device not found during scan"
-      handling: "Return empty list, maintain DISCONNECTED state"
-    - condition: "Connection timeout"
-      handling: "Increment retry count, attempt reconnection"
-    - condition: "Connection lost"
-      handling: "Transition to DISCONNECTED, trigger reconnection"
+    - "select_transport() checks --transport CLI arg first (tcp, rfcomm, serial)"
+    - "If no CLI arg: PlatformType.MACOS -> SerialTransport; PlatformType.RASPBERRY_PI_* -> RFCOMMTransport"
+    - "TCP host/port passed via --obd-host / --obd-port args (default localhost:35000)"
+    - "RFCOMM MAC address read from DeviceStore"
+    - "Serial port auto-discovered via serial.tools.list_ports on macOS"
 ```
 
-### 4.2 OBDProtocol
+### 4.2 RFCOMMTransport
+
+```yaml
+component:
+  name: "RFCOMMTransport"
+  purpose: "Classic Bluetooth SPP transport using RFCOMM socket for Pi/Linux"
+  file: "rfcomm.py"
+
+  responsibilities:
+    - "Open RFCOMM socket to ELM327 MAC address on channel 1"
+    - "Send AT commands as bytes; read response up to prompt character (>)"
+    - "Maintain connection with keepalive; detect loss and signal reconnect"
+    - "Retry connection indefinitely with configured delay"
+
+  key_elements:
+    - name: "RFCOMMTransport"
+      type: "class"
+      purpose: "Concrete RFCOMM transport"
+
+  dependencies:
+    internal:
+      - "OBDTransport"
+      - "DeviceStore"
+    external:
+      - "socket (AF_BLUETOOTH, BTPROTO_RFCOMM)"
+      - "threading.RLock"
+
+  processing_logic:
+    - "socket.socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)"
+    - "sock.connect((mac_address, 1))  # channel 1 for SPP"
+    - "send_command(): encode to bytes, write to socket, read until > prompt"
+    - "Response read with configurable timeout (default 2 s)"
+    - "On socket error: set DISCONNECTED, retry loop sleeps retry_delay"
+
+  error_conditions:
+    - condition: "Device not paired or out of range"
+      handling: "OSError on connect; retry after delay"
+    - condition: "Connection lost mid-read"
+      handling: "Catch recv() returning empty; set DISCONNECTED"
+    - condition: "Response timeout"
+      handling: "Return None; caller handles missing data"
+```
+
+### 4.3 SerialTransport
+
+```yaml
+component:
+  name: "SerialTransport"
+  purpose: "Serial port transport for macOS with paired ELM327 or emulator"
+  file: "serial_transport.py"
+
+  responsibilities:
+    - "Open pyserial connection to /dev/tty.* device (macOS SPP) or configured port"
+    - "Send AT commands; read response up to prompt character (>)"
+    - "Auto-discover ELM327 serial port if none configured"
+    - "Retry connection with configured delay"
+
+  key_elements:
+    - name: "SerialTransport"
+      type: "class"
+      purpose: "Concrete serial transport"
+
+  dependencies:
+    internal:
+      - "OBDTransport"
+    external:
+      - "serial (pyserial)"
+      - "serial.tools.list_ports"
+
+  processing_logic:
+    - "Port configured via --serial-port arg or auto-discovered from list_ports()"
+    - "Auto-discovery: filter ports containing 'ELM' or 'OBD' in description or device name"
+    - "serial.Serial(port, baudrate=38400, timeout=2)"
+    - "send_command(): write bytes, read until > prompt with read_until()"
+    - "On SerialException: set DISCONNECTED, retry after delay"
+
+  error_conditions:
+    - condition: "Port not found"
+      handling: "Log error, retry after delay"
+    - condition: "Device disconnected"
+      handling: "SerialException; set DISCONNECTED, retry"
+    - condition: "Response timeout"
+      handling: "Return None; caller handles missing data"
+```
+
+### 4.4 TCPTransport
+
+```yaml
+component:
+  name: "TCPTransport"
+  purpose: "TCP socket transport for connecting to ircama ELM327 emulator"
+  file: "tcp_transport.py"
+
+  responsibilities:
+    - "Open TCP socket to configured host:port (default localhost:35000)"
+    - "Send AT commands as bytes; read response up to prompt character (>)"
+    - "Retry connection with configured delay"
+
+  key_elements:
+    - name: "TCPTransport"
+      type: "class"
+      purpose: "Concrete TCP transport"
+
+  dependencies:
+    internal:
+      - "OBDTransport"
+    external:
+      - "socket (AF_INET, SOCK_STREAM)"
+
+  processing_logic:
+    - "socket.socket(AF_INET, SOCK_STREAM)"
+    - "sock.connect((host, port))"
+    - "send_command(): encode to bytes, sendall(), recv() loop until > prompt"
+    - "Response read with configurable timeout via sock.settimeout()"
+    - "On ConnectionRefusedError / OSError: set DISCONNECTED, retry after delay"
+
+  error_conditions:
+    - condition: "Emulator not running"
+      handling: "ConnectionRefusedError; retry after delay"
+    - condition: "Connection dropped"
+      handling: "recv() returns empty; set DISCONNECTED, retry"
+    - condition: "Response timeout"
+      handling: "socket.timeout; return None"
+```
+
+### 4.5 OBDProtocol
 
 ```yaml
 component:
   name: "OBDProtocol"
-  purpose: "Handle OBD-II protocol communication with ELM327"
+  purpose: "Handle OBD-II protocol communication with ELM327 via OBDTransport"
   file: "obd.py"
   
   responsibilities:
@@ -190,13 +301,13 @@ component:
   
   dependencies:
     internal:
-      - "BluetoothManager"
+      - "OBDTransport"
     external:
       - "threading.Thread"
       - "threading.Event"
   
   processing_logic:
-    - "Protocol loop waits for Bluetooth connection"
+    - "Protocol loop waits for transport connection"
     - "Initialize ELM327: ATZ (reset), ATE0 (echo off), ATSP0/8 (protocol)"
     - "Request RPM: send '010C', parse response bytes"
     - "RPM calculation: ((A * 256) + B) / 4"
@@ -204,7 +315,7 @@ component:
     - "Set ThreadManager.data_available event"
   
   error_conditions:
-    - condition: "Bluetooth not connected"
+    - condition: "Transport not connected"
       handling: "Sleep and retry loop"
     - condition: "Initialization failure"
       handling: "Log error, retry initialization"
@@ -214,7 +325,7 @@ component:
       handling: "Log error with traceback, sleep and continue"
 ```
 
-### 4.3 DeviceStore
+### 4.6 DeviceStore
 
 ```yaml
 component:
@@ -255,7 +366,7 @@ component:
       handling: "Log error, data remains in memory"
 ```
 
-### 4.4 BluetoothDevice
+### 4.7 BluetoothDevice
 
 ```yaml
 component:
@@ -290,77 +401,71 @@ component:
 
 ## 5.0 Interfaces
 
-### 5.1 BluetoothManager Public Interface
+### 5.1 OBDTransport Abstract Interface
 
 ```python
-class BluetoothManager:
-    def __init__(self, thread_manager: ThreadManager, 
-                 device_store: DeviceStore = None) -> None
-    
-    # State access (thread-safe properties)
+class OBDTransport(ABC):
+    @abstractmethod
+    def connect(self) -> bool: ...
+    @abstractmethod
+    def disconnect(self) -> None: ...
+    @abstractmethod
+    def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]: ...
+    @abstractmethod
+    def is_connected(self) -> bool: ...
     @property
-    def state(self) -> BluetoothState
-    @property
-    def current_device(self) -> Optional[Tuple[str, str]]
-    @property
-    def client(self) -> Optional[BleakClient]
-    
-    # Lifecycle
-    def start(self) -> None
-    def stop(self) -> None
-    
-    # Operations (async internally, sync externally)
-    def scan_devices(self, timeout: float = 10.0) -> List[BluetoothDevice]
-    def connect(self, address: str, name: str = None) -> bool
-    def disconnect(self) -> None
-    def is_connected(self) -> bool
-    def send_command(self, command: str, timeout: float = 1.0) -> Optional[str]
+    @abstractmethod
+    def state(self) -> TransportState: ...
+
+def select_transport(platform: PlatformType, args: argparse.Namespace) -> OBDTransport:
+    """Factory: selects concrete transport based on CLI args or platform."""
 ```
 
-### 5.2 OBDProtocol Public Interface
+### 5.2 Concrete Transport Constructors
+
+```python
+class RFCOMMTransport(OBDTransport):
+    def __init__(self, mac_address: str, channel: int = 1,
+                 retry_delay: float = 5.0) -> None
+
+class SerialTransport(OBDTransport):
+    def __init__(self, port: Optional[str] = None, baudrate: int = 38400,
+                 retry_delay: float = 5.0) -> None
+
+class TCPTransport(OBDTransport):
+    def __init__(self, host: str = "localhost", port: int = 35000,
+                 retry_delay: float = 5.0) -> None
+```
+
+### 5.3 OBDProtocol Public Interface
 
 ```python
 class OBDProtocol:
-    def __init__(self, bluetooth_manager: BluetoothManager,
+    def __init__(self, transport: OBDTransport,
                  thread_manager: ThreadManager) -> None
     def start(self) -> None
     def stop(self) -> None
 ```
 
-### 5.3 DeviceStore Public Interface
+### 5.4 DeviceStore Public Interface
 
 ```python
 class DeviceStore:
     def __init__(self, config_path: str = "config/devices.yaml") -> None
-    
-    # Device management
-    def save_paired_device(self, device: BluetoothDevice, 
-                          is_primary: bool = True) -> None
+    def save_device(self, device: BluetoothDevice, is_primary: bool = True) -> None
     def get_primary_device(self) -> Optional[BluetoothDevice]
     def get_all_devices(self) -> List[BluetoothDevice]
     def remove_device(self, mac_address: str) -> bool
-    def set_primary_device(self, mac_address: str) -> bool
     def get_device_by_mac(self, mac_address: str) -> Optional[BluetoothDevice]
-    def clear_all_devices(self) -> None
-    
-    # Setup state
-    def is_setup_complete(self) -> bool
-    def mark_setup_complete(self) -> None
-    def is_first_run(self) -> bool
-    
-    # Configuration
-    def get_discovery_timeout(self) -> int
-    def set_discovery_timeout(self, timeout: int) -> None
 ```
 
-### 5.4 Inter-Domain Contracts
+### 5.5 Inter-Domain Contracts
 
 | Interface | Consumer | Contract |
 |-----------|----------|----------|
 | OBDResponse → message_queue | Display domain | Display reads RPM from queue |
-| BluetoothState changes | Application | App responds to connection state |
-| is_setup_complete() | Application | Determines startup mode |
-| scan_devices() | Display/Setup | Returns discovered devices for UI |
+| TransportState changes | Application | App responds to connection state |
+| select_transport() | Application | Returns transport for platform/CLI args |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -421,12 +526,11 @@ entity:
       constraints: "Error message if parsing failed"
 ```
 
-### 6.3 BluetoothState Enumeration
+### 6.3 TransportState Enumeration
 
 ```yaml
 states:
-  DISCONNECTED: "No active Bluetooth connection"
-  SCANNING: "Device discovery in progress"
+  DISCONNECTED: "No active transport connection"
   CONNECTING: "Connection attempt in progress"
   CONNECTED: "Active connection established"
   ERROR: "Unrecoverable error state"
@@ -447,17 +551,11 @@ storage:
         mac_address: "string"
         device_type: "string"
         last_connected: "ISO datetime string"
-        connection_verified: "boolean"
-        signal_strength: "integer"
       secondary:
         <mac_address>:
           name: "string"
           mac_address: "string"
           # ... same fields as primary
-    setup:
-      completed: "boolean"
-      first_run: "boolean"
-      discovery_timeout: "integer (seconds)"
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -469,15 +567,13 @@ storage:
 ### 7.1 Exception Hierarchy
 
 ```
-BluetoothConnectionError (domain base)
-├── DeviceNotFoundError
-├── ConnectionTimeoutError
-├── ServiceDiscoveryError
-└── CommandTimeoutError
+TransportError (domain base)
+├── ConnectionError
+├── TimeoutError
+└── ProtocolError
 
 OBDError (domain base)
 ├── InitializationError
-├── ProtocolError
 └── ResponseParseError
 ```
 
@@ -485,11 +581,10 @@ OBDError (domain base)
 
 | Error Type | Strategy |
 |------------|----------|
-| Bleak not installed | Log error, set ERROR state, return gracefully |
-| Device not found | Return empty results, stay DISCONNECTED |
-| Connection timeout | Retry with exponential backoff (max 3 attempts) |
-| Connection lost | Transition DISCONNECTED, trigger auto-reconnect |
-| Command timeout | Return None, caller handles missing data |
+| Transport not available | Log error, set ERROR state, return gracefully |
+| Connection refused / device not found | Retry indefinitely with configured delay |
+| Connection lost | Transition DISCONNECTED, retry loop resumes |
+| Command timeout | Return None; caller handles missing data |
 | Parse error | Log warning, return None response |
 
 ### 7.3 Logging Standards
@@ -497,13 +592,15 @@ OBDError (domain base)
 ```yaml
 logging:
   logger_names:
-    - "BluetoothManager"
+    - "RFCOMMTransport"
+    - "SerialTransport"
+    - "TCPTransport"
     - "OBDProtocol"
     - "DeviceStore"
   
   log_levels:
     DEBUG: "Command/response details, state transitions"
-    INFO: "Connection established, device paired, protocol initialized"
+    INFO: "Connection established, transport selected, protocol initialized"
     WARNING: "Retry attempts, parse failures, timeout warnings"
     ERROR: "Connection failures, protocol errors (with traceback)"
 ```
@@ -519,65 +616,51 @@ logging:
 ```mermaid
 graph TB
     subgraph "Communication Domain"
-        BM[BluetoothManager]
+        TR[OBDTransport ABC]
+        RF[RFCOMMTransport]
+        SE[SerialTransport]
+        TC[TCPTransport]
         OBD[OBDProtocol]
         DS[DeviceStore]
         BD[BluetoothDevice]
-        BS[BluetoothState]
     end
-    
-    subgraph "External Libraries"
-        BLEAK[Bleak Library]
-        YAML[PyYAML]
-    end
-    
+
     subgraph "Core Domain"
         TM[ThreadManager]
         MQ[message_queue]
     end
-    
-    BM --> BLEAK
-    BM --> DS
-    BM --> TM
-    BM --> BS
-    
-    OBD --> BM
+
+    subgraph "External Systems"
+        ELM1[ELM327 via RFCOMM]
+        ELM2[ELM327 via Serial]
+        ELM3[ircama emulator via TCP]
+    end
+
+    RF --> TR
+    SE --> TR
+    TC --> TR
+    OBD --> TR
     OBD --> TM
     OBD --> MQ
-    
-    DS --> YAML
     DS --> BD
-    
-    subgraph "External Systems"
-        ELM[ELM327 Adapter]
-        ECU[Vehicle ECU]
-    end
-    
-    BLEAK -.->|Bluetooth| ELM
-    ELM -.->|OBD-II| ECU
+
+    RF -.->|RFCOMM socket| ELM1
+    SE -.->|pyserial| ELM2
+    TC -.->|TCP socket| ELM3
 ```
 
-### 8.2 Bluetooth State Machine
+### 8.2 TransportState Machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> DISCONNECTED
-    
-    DISCONNECTED --> SCANNING: scan_devices()
-    DISCONNECTED --> CONNECTING: connect() with known device
-    
-    SCANNING --> DISCONNECTED: scan complete/timeout
-    SCANNING --> CONNECTING: device selected
-    
+
+    DISCONNECTED --> CONNECTING: connect()
     CONNECTING --> CONNECTED: connection success
     CONNECTING --> DISCONNECTED: connection failed (retry)
-    CONNECTING --> ERROR: max retries exceeded
-    
-    CONNECTED --> DISCONNECTED: disconnect() or lost
-    CONNECTED --> ERROR: protocol error
-    
+    CONNECTED --> DISCONNECTED: disconnect() or connection lost
+    CONNECTED --> ERROR: unrecoverable error
     ERROR --> DISCONNECTED: reset
-    ERROR --> SCANNING: retry scan
 ```
 
 ### 8.3 OBD Protocol Flow
@@ -586,78 +669,74 @@ stateDiagram-v2
 sequenceDiagram
     participant App as Application
     participant OBD as OBDProtocol
-    participant BT as BluetoothManager
+    participant TR as OBDTransport
     participant ELM as ELM327
     participant ECU as Vehicle ECU
-    
+
     App->>OBD: start()
-    
+
     loop Protocol Loop
-        OBD->>BT: is_connected()?
-        
+        OBD->>TR: is_connected()?
+
         alt Not Connected
             OBD->>OBD: sleep(0.1s)
         else Connected
-            OBD->>BT: send_command("ATZ")
-            BT->>ELM: ATZ
-            ELM-->>BT: OK
-            
-            OBD->>BT: send_command("ATE0")
-            BT->>ELM: ATE0
-            ELM-->>BT: OK
-            
-            OBD->>BT: send_command("ATSP0")
-            BT->>ELM: ATSP0
-            ELM-->>BT: OK
-            
+            OBD->>TR: send_command("ATZ")
+            TR->>ELM: ATZ
+            ELM-->>TR: OK
+            OBD->>TR: send_command("ATE0")
+            TR->>ELM: ATE0
+            ELM-->>TR: OK
+            OBD->>TR: send_command("ATSP0")
+            TR->>ELM: ATSP0
+            ELM-->>TR: OK
+
             loop Data Acquisition
-                OBD->>BT: send_command("010C")
-                BT->>ELM: 010C
+                OBD->>TR: send_command("010C")
+                TR->>ELM: 010C
                 ELM->>ECU: Request PID 0x0C
                 ECU-->>ELM: Response
-                ELM-->>BT: 41 0C XX XX
-                BT-->>OBD: Response bytes
-                OBD->>OBD: Parse RPM = ((A*256)+B)/4
+                ELM-->>TR: 41 0C XX XX
+                TR-->>OBD: response string
+                OBD->>OBD: RPM = ((A*256)+B)/4
                 OBD->>App: message_queue.put(OBDResponse)
             end
         end
     end
 ```
 
-### 8.4 Device Discovery Sequence
+### 8.4 Transport Selection Sequence
 
 ```mermaid
 sequenceDiagram
-    participant UI as Setup UI
-    participant BM as BluetoothManager
-    participant BS as BleakScanner
+    participant App as Application
+    participant ST as select_transport()
+    participant PD as PlatformDetect
+    participant TR as Concrete Transport
     participant DS as DeviceStore
-    
-    UI->>BM: scan_devices(timeout=10)
-    BM->>BM: state = SCANNING
-    BM->>BS: discover(timeout)
-    
-    loop For Each Device
-        BS-->>BM: BLEDevice
-        BM->>BM: Filter ELM327/OBD
+
+    App->>ST: select_transport(platform, args)
+
+    alt --transport tcp
+        ST->>TR: TCPTransport(host, port)
+    else --transport serial
+        ST->>TR: SerialTransport(port)
+    else --transport rfcomm
+        ST->>DS: get_primary_device()
+        DS-->>ST: mac_address
+        ST->>TR: RFCOMMTransport(mac_address)
+    else platform auto-detect
+        ST->>PD: get_platform()
+        alt macOS
+            ST->>TR: SerialTransport()
+        else Raspberry Pi
+            ST->>DS: get_primary_device()
+            DS-->>ST: mac_address
+            ST->>TR: RFCOMMTransport(mac_address)
+        end
     end
-    
-    BS-->>BM: Scan complete
-    BM->>BM: state = DISCONNECTED
-    BM-->>UI: List[BluetoothDevice]
-    
-    UI->>BM: connect(device.address)
-    BM->>BM: state = CONNECTING
-    
-    alt Connection Success
-        BM->>BM: state = CONNECTED
-        BM->>DS: save_paired_device(device)
-        DS->>DS: Write devices.yaml
-        BM-->>UI: True
-    else Connection Failed
-        BM->>BM: state = DISCONNECTED
-        BM-->>UI: False
-    end
+
+    ST-->>App: OBDTransport
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -666,14 +745,18 @@ sequenceDiagram
 
 ## 9.0 Tier 3 Component Documents
 
-The following Tier 3 component design documents decompose each component:
+The following Tier 3 component design documents are pending creation for the v2.0 transport abstraction architecture:
 
 | Document | Component | Status |
 |----------|-----------|--------|
-| [design-d4e5f6a7-component_comm_bluetooth_manager.md](<design-d4e5f6a7-component_comm_bluetooth_manager.md>) | BluetoothManager | Complete |
-| [design-e5f6a7b8-component_comm_obd_protocol.md](<design-e5f6a7b8-component_comm_obd_protocol.md>) | OBDProtocol | Complete |
-| [design-f6a7b8c9-component_comm_device_store.md](<design-f6a7b8c9-component_comm_device_store.md>) | DeviceStore | Complete |
-| [design-a7b8c9d0-component_comm_bluetooth_device.md](<design-a7b8c9d0-component_comm_bluetooth_device.md>) | BluetoothDevice | Complete |
+| [design-b1c2d3e4-component_comm_transport.md](<design-b1c2d3e4-component_comm_transport.md>) | OBDTransport + select_transport() | Complete |
+| [design-c2d3e4f5-component_comm_rfcomm_transport.md](<design-c2d3e4f5-component_comm_rfcomm_transport.md>) | RFCOMMTransport | Complete |
+| [design-d3e4f5a6-component_comm_tcp_transport.md](<design-d3e4f5a6-component_comm_tcp_transport.md>) | TCPTransport | Complete |
+| [design-e4f5a6b7-component_comm_serial_transport.md](<design-e4f5a6b7-component_comm_serial_transport.md>) | SerialTransport | Complete |
+| [design-f5a6b7c8-component_comm_obd_protocol.md](<design-f5a6b7c8-component_comm_obd_protocol.md>) | OBDProtocol | Complete |
+| [design-a6b7c8d9-component_comm_device_store.md](<design-a6b7c8d9-component_comm_device_store.md>) | DeviceStore + BluetoothDevice | Complete |
+
+> **Note:** v1.x Tier 3 documents (BluetoothManager-based) have been archived to `deprecated/`.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -685,6 +768,7 @@ The following Tier 3 component design documents decompose each component:
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
 | 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
+| 2.0 | 2026-03-24 | William Watson | Transport abstraction redesign: replaced BluetoothManager/Bleak with OBDTransport ABC and three concrete transports (RFCOMM, Serial, TCP); updated §4–§9 to reflect new architecture |
 
 ---
 

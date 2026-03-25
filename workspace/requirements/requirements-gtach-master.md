@@ -253,6 +253,35 @@ functional_requirements:
       service management; daemon logic within the application is unnecessary.
     dependencies:
       - "c9d0e1f2"
+
+  - id: "g1h2i3j4"
+    type: "functional"
+    description: >
+      The application shall support a macOS development mode activated by a
+      --macos CLI flag or automatic platform detection. In this mode the full
+      display pipeline runs in a native pygame window and OBD communication
+      is established via TCPTransport to an ircama ELM327 emulator instance.
+      Pi-specific hardware (HyperPixel, RPi.GPIO) is bypassed via mock
+      implementations. Touch input is received via pygame mouse events.
+    acceptance_criteria:
+      - "--macos flag activates macOS development mode regardless of detected platform"
+      - "Platform detection of macOS activates macOS development mode automatically"
+      - "Display renders in a 480x480 pygame window on macOS"
+      - "TCPTransport connects to a configurable host and port (default: localhost:35000)"
+      - "--obd-host and --obd-port CLI arguments configure the TCP connection target"
+      - "Touch input in macOS mode is driven by pygame mouse events"
+      - "RPi.GPIO and HyperPixel imports are suppressed; mock implementations are used"
+      - "Application starts, displays splash screen, and enters normal RPM display mode"
+      - "macOS mode is not a production deployment target; Pi Zero 2W is the sole production platform"
+    source: "stakeholder"
+    rationale: >
+      macOS development mode allows full application development and UI testing
+      without Raspberry Pi hardware. The ircama ELM327 emulator provides a
+      realistic OBD-II data source. Confining macOS support to a named mode
+      prevents accidental deployment and keeps the production path unambiguous.
+    dependencies:
+      - "e7f8a9b0"
+      - "b0c1d2e3"
 ```
 
 ---
@@ -344,13 +373,19 @@ non_functional_requirements:
       The codebase shall use conditional imports for platform-specific
       dependencies to permit development and testing on macOS.
     acceptance_criteria:
-      - "Import of pygame, bleak, and hardware-specific modules is guarded by try/except"
-      - "Application degrades gracefully on macOS when hardware interfaces are absent"
+      - "Import of pygame and hardware-specific modules is guarded by try/except"
+      - "Application runs fully on macOS in macOS development mode (REQ g1h2i3j4)"
       - "Mock stubs are sufficient for unit testing without target hardware"
+      - "Transport selection is platform-conditional; no transport-specific code exists outside the transport layer"
     target_metric: "All platform-specific imports are conditional"
     source: "constraint"
-    rationale: "Development occurs on macOS; deployment target is Raspberry Pi."
-    dependencies: []
+    rationale: >
+      Development occurs on macOS; deployment target is Raspberry Pi Zero 2W.
+      The transport abstraction (ARCH e7f8a9b0) enables macOS to use TCPTransport
+      or SerialTransport without hardware-specific code in higher layers.
+    dependencies:
+      - "e7f8a9b0"
+      - "g1h2i3j4"
 ```
 
 ---
@@ -419,18 +454,32 @@ architectural_requirements:
   - id: "e7f8a9b0"
     type: "architectural"
     description: >
-      The application shall use the Bleak library for Bluetooth communication
-      with the ELM327 adapter.
+      The comm layer shall implement an OBDTransport abstraction with three
+      concrete transport implementations selected at startup based on platform
+      detection or CLI override. The ELM327 adapter communicates via Classic
+      Bluetooth SPP (not BLE); the ircama ELM327 emulator communicates via TCP.
     acceptance_criteria:
-      - "Bluetooth operations use Bleak BleakScanner and BleakClient"
-      - "Bleak operations execute in a dedicated event loop thread"
-      - "Synchronous interface is provided for OBD protocol caller"
+      - "OBDTransport abstract base class defines a uniform interface: connect(), disconnect(), send_command(), is_connected()"
+      - "RFCOMMTransport implements RFCOMM socket communication for Pi/Linux with a real ELM327 adapter"
+      - "SerialTransport implements pyserial communication for macOS with a paired ELM327 adapter (/dev/tty.*)"
+      - "TCPTransport implements TCP socket communication for any platform connecting to the ircama ELM327 emulator"
+      - "OBDProtocol communicates only through OBDTransport; it has no knowledge of the concrete transport"
+      - "Platform detection selects transport automatically; --transport CLI flag overrides detection"
+      - "pyserial is used for SerialTransport and is an explicit dependency"
     constraints:
-      - "bleak >= 0.20"
+      - "pyserial >= 3.5"
+      - "No BLE library dependency; ELM327 adapters use Classic Bluetooth SPP exclusively"
     source: "architectural"
-    rationale: "Bleak provides cross-platform BLE support compatible with both macOS and Pi."
+    rationale: >
+      Real ELM327 adapters use Classic Bluetooth SPP (RFCOMM), not BLE.
+      The Bleak library is a BLE library and is incompatible with ELM327 adapters
+      on all platforms. The ircama emulator supports TCP, enabling macOS
+      development without Bluetooth pairing. A transport abstraction decouples
+      OBDProtocol from the physical transport, supporting all three scenarios
+      with a single protocol implementation.
     dependencies:
       - "c5d6e7f8"
+      - "g1h2i3j4"
 
   - id: "f8a9b0c1"
     type: "architectural"
@@ -462,6 +511,33 @@ architectural_requirements:
     rationale: "Watchdog provides a last-resort recovery mechanism for hung threads."
     dependencies:
       - "f8a9b0c1"
+
+  - id: "h2i3j4k5"
+    type: "architectural"
+    description: >
+      macOS is a supported development and testing platform. The Pi Zero 2W
+      remains the sole production deployment target. Development on macOS
+      shall exercise the same application code paths as production, differing
+      only in transport selection (TCPTransport vs RFCOMMTransport) and
+      hardware mock activation.
+    acceptance_criteria:
+      - "Application package installs and runs on macOS via pip install -e .[dev]"
+      - "All unit tests execute on macOS without Pi hardware"
+      - "macOS mode exercises the same OBDProtocol code path as production"
+      - "No macOS-specific code exists outside: transport layer, platform detection, and entry point flag handling"
+    constraints:
+      - "macOS Apple Silicon (M-series) is the primary development hardware"
+      - "ircama ELM327 emulator (pip install ELM327-emulator) is the macOS OBD data source"
+      - "Pi Zero 2W is the sole supported production deployment target"
+    source: "architectural"
+    rationale: >
+      Constraining macOS-specific code to defined layers ensures production
+      code paths are exercised during development. The emulator provides
+      protocol-accurate OBD responses, enabling realistic display pipeline
+      testing without vehicle hardware.
+    dependencies:
+      - "e7f8a9b0"
+      - "g1h2i3j4"
 ```
 
 ---
@@ -563,6 +639,7 @@ validation:
 | 0.5     | 2026-03-13 | William Watson | Removed hardware-uninfluenceable acceptance criteria: dropped "readable under ambient lighting" (REQ a1b2c3d4); rephrased 5 Hz criterion as configurable polling interval target; removed "deliberate enough to prevent accidental activation" (REQ f3a4b5c6); replaced hardware-fact criteria in ARCH b0c1d2e3 with software-testable equivalents |
 | 0.6     | 2026-03-13 | William Watson | REQ b2c3d4e5 — added swipe left/right gesture for runtime mode switching; mode persists to config file. REQ c3d4e5f6 — rpm_warning, rpm_danger, rpm_max now explicitly configurable; added guard criterion for invalid threshold ordering |
 | 0.8     | 2026-03-13 | William Watson | Section 1.0 populated with document purpose statement; validation status set to approved |
+| 0.9     | 2026-03-24 | William Watson | ARCH e7f8a9b0 — replaced Bleak/BLE mandate with OBDTransport abstraction (RFCOMMTransport, SerialTransport, TCPTransport); NFR b4c5d6e7 — removed Bleak reference, updated to reference transport abstraction; added REQ g1h2i3j4 (macOS development mode); added ARCH h2i3j4k5 (macOS as development platform) |
 
 ---
 
