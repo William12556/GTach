@@ -24,7 +24,7 @@ except ImportError:
     yaml = None
     YAML_AVAILABLE = False
 
-from ..display.setup_models import BluetoothDevice
+from .models import BluetoothDevice
 
 class DeviceStore:
     """Manages persistent storage of paired Bluetooth devices"""
@@ -37,12 +37,7 @@ class DeviceStore:
         if not YAML_AVAILABLE:
             self.logger.warning("YAML library not available - device storage will use in-memory fallback")
             self.config = {
-                'paired_devices': {},
-                'setup': {
-                    'completed': False,
-                    'first_run': True,
-                    'discovery_timeout': 30
-                }
+                'paired_devices': {}
             }
         else:
             self._ensure_config_dir()
@@ -100,22 +95,25 @@ class DeviceStore:
             return
             
         try:
-            with open(self.config_path, 'w') as f:
+            tmp_path = self.config_path + '.tmp'
+            with open(tmp_path, 'w') as f:
                 yaml.dump(self.config, f, default_flow_style=False)
+            os.replace(tmp_path, self.config_path)
         except Exception as e:
             self.logger.error(f"Failed to save device config: {e}")
     
-    def save_paired_device(self, device: BluetoothDevice, is_primary: bool = True) -> None:
+    def save_device(self, device: BluetoothDevice, is_primary: bool = True) -> None:
         """Save a paired device to storage"""
         try:
             device_data = {
                 'name': device.name,
                 'mac_address': device.mac_address,
-                'device_type': device.device_type,
-                'last_connected': datetime.now().isoformat(),
-                'connection_verified': device.connection_verified,
-                'signal_strength': device.signal_strength
+                'device_type': device.device_type
             }
+            
+            # Include last_connected if it exists
+            if device.last_connected:
+                device_data['last_connected'] = device.last_connected.isoformat()
             
             if is_primary:
                 self.config['paired_devices']['primary'] = device_data
@@ -136,14 +134,15 @@ class DeviceStore:
         try:
             primary_data = self.config.get('paired_devices', {}).get('primary')
             if primary_data:
+                last_connected = None
+                if primary_data.get('last_connected'):
+                    last_connected = datetime.fromisoformat(primary_data['last_connected'])
+                
                 return BluetoothDevice(
                     name=primary_data['name'],
                     mac_address=primary_data['mac_address'],
-                    device_type=primary_data.get('device_type', 'ELM327'),
-                    signal_strength=primary_data.get('signal_strength', 0),
-                    last_seen=datetime.fromisoformat(primary_data.get('last_connected', datetime.now().isoformat())),
-                    is_paired=True,
-                    connection_verified=primary_data.get('connection_verified', False)
+                    device_type=primary_data.get('device_type', 'UNKNOWN'),
+                    last_connected=last_connected
                 )
             return None
         except Exception as e:

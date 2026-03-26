@@ -16,7 +16,7 @@ import threading
 import time
 from dataclasses import dataclass
 from typing import Optional
-from .bluetooth import BluetoothManager
+from .transport import OBDTransport
 from ..core import ThreadManager
 
 @dataclass
@@ -30,9 +30,9 @@ class OBDResponse:
 class OBDProtocol:
     """Handles OBD protocol communication"""
     
-    def __init__(self, bluetooth_manager: BluetoothManager, thread_manager: ThreadManager):
+    def __init__(self, transport: OBDTransport, thread_manager: ThreadManager):
         self.logger = logging.getLogger('OBDProtocol')
-        self.bluetooth = bluetooth_manager
+        self.transport = transport
         self.thread_manager = thread_manager
         self.shutdown_event = threading.Event()
         
@@ -63,14 +63,14 @@ class OBDProtocol:
             try:
                 self.thread_manager.update_heartbeat('obd_protocol')
                 
-                if not self.bluetooth.is_connected():
+                if not self.transport.is_connected():
                     time.sleep(0.1)
                     continue
                 
                 if not self._initialize_protocol():
                     continue
                 
-                while self.bluetooth.is_connected():
+                while self.transport.is_connected():
                     rpm_data = self._request_rpm()
                     if rpm_data:
                         self.thread_manager.message_queue.put(rpm_data)
@@ -102,14 +102,14 @@ class OBDProtocol:
     def _send_command(self, command: bytes) -> Optional[str]:
         """Send command to ELM327 device using Bleak interface"""
         try:
-            if not self.bluetooth.is_connected():
+            if not self.transport.is_connected():
                 return None
                 
             # Convert bytes command to string for Bleak interface
             command_str = command.decode('ascii')
             
             # Use the new Bleak-based send_command method
-            response = self.bluetooth.send_command(command_str, timeout=self.timeout)
+            response = self.transport.send_command(command_str, timeout=self.timeout)
             
             return response
             

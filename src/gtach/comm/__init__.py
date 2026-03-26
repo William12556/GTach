@@ -7,14 +7,22 @@
 
 """Communication components for OBDII display application."""
 
-from .bluetooth import BluetoothManager, BluetoothState
+from .transport import OBDTransport, TransportState, TransportError, select_transport
+from .rfcomm import RFCOMMTransport
+from .tcp_transport import TCPTransport
+from .serial_transport import SerialTransport
 from .obd import OBDProtocol, OBDResponse
-from .models import BluetoothDevice  # Add this line
+from .models import BluetoothDevice
 
 __all__ = [
-    'BluetoothManager',
-    'BluetoothState',
+    'OBDTransport',
+    'TransportState',
+    'TransportError',
+    'select_transport',
+    'RFCOMMTransport',
+    'TCPTransport',
+    'SerialTransport',
     'OBDProtocol',
     'OBDResponse',
-    'BluetoothDevice'  # Add this line
+    'BluetoothDevice'
 ]

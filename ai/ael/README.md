@@ -231,6 +231,8 @@ tests/test_integration.py                     SKIPPED [oMLX not reachable]
 | 1.1 | 2026-03-11 | Merged ralph-loop.sh into orchestrator.py; added --mode worker\|reviewer\|loop; removed shell script |
 | 1.2 | 2026-03-11 | Added tests/ directory: test_parser.py (unit), test_integration.py (Layers 2–4); added Testing section |
 | 1.3 | 2026-03-20 | Added budget.py; added --mode reset; updated Configuration and Usage sections; context.models_dir note |
+| 1.4 | 2026-03-25 | Added `format_tool_signatures()` to orchestrator.py: injects tool parameter signatures into `{{TOOLS}}` system prompt placeholder to prevent model tool-call hallucination |
+| 1.5 | 2026-03-25 | Added `mcp-grep` server to `config.yaml` MCP server definitions |
 
 ---
 

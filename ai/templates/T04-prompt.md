@@ -139,6 +139,9 @@ tactical_brief: ""
 # Plain text ~200-400 tokens. Include: file(s) to modify, hard constraints,
 # implementation steps, deliverable paths, success criteria.
 # Omit all governance metadata.
+# FORMAT: orchestrator detects tactical_brief only in ```yaml blocks with tactical_brief
+# as the root key. When using per-section YAML blocks, author §8.0 as a dedicated
+# ```yaml block (not ```text) with tactical_brief: as the sole root key.
 
 notes: ""
 ```
@@ -497,6 +500,7 @@ properties:
 | 1.4     | 2026-03-12 | Added element_registry field with source reference and scoped entries for canonical naming contract |
 | 1.5     | 2026-03-18 | Added tactical_brief field: concise AEL task payload authored by Strategic Domain; orchestrator uses brief in preference to full document to reduce model context consumption |
 | 1.6     | 2026-03-24 | Removed behavioral_standards, tactical_execution, metadata, priority fields (governance-only, zero AEL utility); fixed tactical_brief placeholder (was #-comment block causing fallback to raw document); added tactical_brief to schema required with minLength:1; removed orphaned mcp_config and malformed enum items from schema |
+| 1.7     | 2026-03-25 | Added FORMAT comment to tactical_brief field: orchestrator detects tactical_brief only in ```yaml blocks with tactical_brief as root key; per-section prompts must author §8.0 as a dedicated ```yaml block (not ```text) |
 
 ---
 
