@@ -42,6 +42,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import sys
 import time
 import uuid
@@ -73,6 +74,11 @@ _MCP_ERROR_PATTERNS = (
     "Error calling",
     "MCP error",
     "Input validation error",
+)
+
+_EDIT_PATTERN_ERRORS = (
+    "edits failed to match",
+    "E_INVALID_INPUT",
 )
 
 
@@ -599,8 +605,6 @@ async def run_phase(
             log.debug("tool result: %s", result)
             preview = result[:200] + ("..." if len(result) > 200 else "")
             console.print(f"[dim]  result ← {escape(preview)}[/dim]")
-            messages.append({"role": "tool", "content": result, "tool_call_id": tc["id"]})
-
             # P3: duplicate read tracking
             if tc["name"] in ("read", "read_file", "read_text_file"):
                 _path = tc["arguments"].get("path", "")
@@ -610,8 +614,45 @@ async def run_phase(
                         log.warning("duplicate read (count=%d): %s",
                                     _read_counts[_path], _path)
 
+            # Corrective guidance is embedded in the tool result content rather
+            # than injected as a separate user message.  A standalone user message
+            # after a tool message is rejected by the Mistral/oMLX API as an
+            # invalid conversation structure, causing an unhandled exception.
+            _corrective = ""
+            _tool_result_appended = False
+
+            # P1c: edit pattern-not-found — targeted file-read instruction
+            _edit_pattern_failed = (
+                tc["name"] in ("edit", "edit_file")
+                and any(s in result for s in _EDIT_PATTERN_ERRORS)
+            )
+            if _edit_pattern_failed:
+                _ep_path = tc["arguments"].get("path", "")
+                log.warning("edit pattern mismatch tool=%s path=%s", tc["name"], _ep_path)
+                console.print(
+                    f"[yellow][ael] edit pattern mismatch: {escape(tc['name'])}: "
+                    f"{escape(result[:200])}[/yellow]"
+                )
+                _ep_msg = (
+                    f"\n\nThe edit failed because the old_text pattern was not found in "
+                    f"{_ep_path or 'the target file'}. "
+                    "Read the file first to get its exact current content, "
+                    "then construct your edit pattern from what you observe."
+                )
+                if _ep_path and _ep_path.endswith(".py"):
+                    _ep_proc = subprocess.run(
+                        ["python", "-m", "py_compile", _ep_path],
+                        capture_output=True,
+                        text=True,
+                    )
+                    if _ep_proc.returncode != 0:
+                        _ep_msg += (
+                            f"\n\nAdditional: syntax error detected:\n\n"
+                            f"{_ep_proc.stderr.strip()}"
+                        )
+                _corrective = _ep_msg
             # P1a: MCP error handling (extended pattern match)
-            if _is_mcp_error(result):
+            elif _is_mcp_error(result):
                 mcp_error_count += 1
                 console.print(
                     f"[red][ael] MCP error "
@@ -622,14 +663,14 @@ async def run_phase(
                     "MCP error %d/%d tool=%s error=%s",
                     mcp_error_count, mcp_error_threshold, tc["name"], result,
                 )
-                messages.append({
-                    "role": "user",
-                    "content": (
-                        "The previous tool call failed with a validation error. "
-                        "Review the required parameters for the tool and reissue "
-                        "the call with all required arguments correctly specified."
-                    ),
-                })
+                _corrective = (
+                    "\n\nThe previous tool call failed with a validation error. "
+                    "Review the required parameters for the tool and reissue "
+                    "the call with all required arguments correctly specified."
+                )
+                messages.append({"role": "tool", "content": result + _corrective,
+                                  "tool_call_id": tc["id"]})
+                _tool_result_appended = True
                 if mcp_error_count >= mcp_error_threshold:
                     blocked_msg = (
                         f"# RALPH-BLOCKED\n\n"
@@ -649,6 +690,33 @@ async def run_phase(
                     return 1
             else:
                 mcp_error_count = 0
+                # P4: post-write Python syntax check
+                if tc["name"] in ("write", "edit", "write_file", "create_file"):
+                    _py_path = tc["arguments"].get("path", "")
+                    if _py_path and _py_path.endswith(".py"):
+                        proc = subprocess.run(
+                            ["python", "-m", "py_compile", _py_path],
+                            capture_output=True,
+                            text=True,
+                        )
+                        if proc.returncode != 0:
+                            err = proc.stderr.strip()
+                            log.warning("syntax error in %s: %s", _py_path, err)
+                            console.print(
+                                f"[red][ael] syntax error: {escape(_py_path)}: "
+                                f"{escape(err[:200])}[/red]"
+                            )
+                            _corrective = (
+                                f"\n\nSyntax error detected in {_py_path}:\n\n"
+                                f"{err}\n\n"
+                                "Correct the file before continuing."
+                            )
+
+            # Append tool result with any corrective guidance embedded.
+            # P1a appends directly (before threshold check); skip here for that path.
+            if not _tool_result_appended:
+                messages.append({"role": "tool", "content": result + _corrective,
+                                  "tool_call_id": tc["id"]})
 
         # Check for work-complete signal written by the model via MCP
         if os.path.exists(os.path.join(state_dir, "work-complete.txt")):
@@ -660,6 +728,121 @@ async def run_phase(
     console.print(f"\n[red][ael] max iterations ({max_iterations}) reached[/red]")
     log.warning("max iterations %d reached", max_iterations)
     return 1
+
+
+def run_preflight_check(task: str, log: logging.Logger) -> str:
+    """
+    Evaluate deterministic success criteria from the task document before
+    the first worker iteration.
+
+    Attempts two extraction strategies:
+      Pass 1: YAML block containing a 'success_criteria' list.
+      Pass 2: plain list under a '## N.0 Success Criteria' section heading.
+
+    For each criterion, deterministic checks are applied where possible:
+      - File path + grep string:  run grep; mark satisfied/unsatisfied.
+      - .py file + 'no syntax':   run py_compile; mark satisfied/unsatisfied.
+      - Otherwise:                mark as 'unchecked'.
+
+    Returns a [PRE-FLIGHT] summary string to prepend to the worker task,
+    or an empty string if no criteria block is found.
+    """
+    criteria: list[str] = []
+
+    # Pass 1: YAML block with success_criteria key
+    blocks = re.findall(r"```yaml\n(.*?)```", task, re.DOTALL)
+    for block in blocks:
+        try:
+            doc = yaml.safe_load(block)
+            raw = (doc or {}).get("success_criteria")
+            if isinstance(raw, list) and raw:
+                criteria = [str(c).strip() for c in raw if str(c).strip()]
+                log.debug("preflight: found %d criteria in YAML block", len(criteria))
+                break
+        except Exception:
+            pass
+
+    # Pass 2: plain list under ## N.0 Success Criteria heading
+    if not criteria:
+        section = re.search(
+            r"##\s+[\d.]+\s+Success Criteria.*?\n(.*?)(?=\n##\s|\Z)",
+            task, re.DOTALL | re.IGNORECASE,
+        )
+        if section:
+            for line in section.group(1).splitlines():
+                item = re.sub(r"^\s*[-*\d.]+\s*", "", line).strip()
+                if item:
+                    criteria.append(item)
+            log.debug("preflight: found %d criteria in section heading", len(criteria))
+
+    if not criteria:
+        log.debug("preflight: no success_criteria found — skipping")
+        return ""
+
+    lines = []
+    satisfied = 0
+    unchecked = 0
+    for i, criterion in enumerate(criteria, 1):
+        # Grep check: criterion mentions a file path and a quoted string
+        grep_match = re.search(
+            r"([\w./\-]+\.\w+).*?(?:contains?|has)\s+[\'\"]([^\'\"]+)[\'\"]",
+            criterion, re.IGNORECASE,
+        )
+        # py_compile check: criterion mentions a .py file and 'no syntax'
+        syntax_match = re.search(
+            r"([\w./\-]+\.py).*?no\s+syntax",
+            criterion, re.IGNORECASE,
+        )
+        if syntax_match:
+            path = syntax_match.group(1)
+            try:
+                proc = subprocess.run(
+                    ["python", "-m", "py_compile", path],
+                    capture_output=True, text=True,
+                )
+                if proc.returncode == 0:
+                    lines.append(f"  [{i}] SATISFIED  {criterion}")
+                    satisfied += 1
+                else:
+                    lines.append(f"  [{i}] REMAINING  {criterion}")
+                    lines.append(f"       syntax: {proc.stderr.strip()[:120]}")
+            except Exception as exc:
+                lines.append(f"  [{i}] UNCHECKED  {criterion} (error: {exc})")
+                unchecked += 1
+        elif grep_match:
+            path, pattern = grep_match.group(1), grep_match.group(2)
+            try:
+                proc = subprocess.run(
+                    ["grep", "-qF", pattern, path],
+                    capture_output=True,
+                )
+                if proc.returncode == 0:
+                    lines.append(f"  [{i}] SATISFIED  {criterion}")
+                    satisfied += 1
+                else:
+                    lines.append(f"  [{i}] REMAINING  {criterion}")
+            except Exception as exc:
+                lines.append(f"  [{i}] UNCHECKED  {criterion} (error: {exc})")
+                unchecked += 1
+        else:
+            lines.append(f"  [{i}] UNCHECKED  {criterion}")
+            unchecked += 1
+
+    remaining = len(criteria) - satisfied - unchecked
+    summary = (
+        f"[PRE-FLIGHT]\n"
+        f"Success criteria: {len(criteria)} total, "
+        f"{satisfied} satisfied, {remaining} remaining, {unchecked} unchecked.\n"
+        + "\n".join(lines)
+        + "\n[END PRE-FLIGHT]"
+    )
+    log.info("preflight: %d criteria, %d satisfied, %d remaining, %d unchecked",
+             len(criteria), satisfied, remaining, unchecked)
+    console.print(
+        f"[dim][ael] pre-flight: {len(criteria)} criteria — "
+        f"{satisfied} satisfied, {remaining} remaining, {unchecked} unchecked[/dim]"
+    )
+    return summary
 
 
 async def run_loop(
@@ -679,6 +862,7 @@ async def run_loop(
     budget_abort_pct: float = 0.95,
     mcp_error_threshold: int = 3,
     max_tool_calls_per_iter: int = 10,
+    preflight_check: bool = False,
 ) -> int:
     """Full Ralph Loop: worker/reviewer cycle until SHIP or max_iterations."""
     ctx_line = f"  context:  {context_window:,} tokens\n" if context_window else ""
@@ -695,6 +879,12 @@ async def run_loop(
     clear_state(state_dir,
                 "review-result.txt", "review-feedback.txt",
                 "work-complete.txt", "work-summary.txt", ".ralph-complete")
+
+    # Pre-flight success criteria check (opt-in)
+    if preflight_check:
+        preflight_summary = run_preflight_check(task, log)
+        if preflight_summary:
+            task = preflight_summary + "\n\n" + task
 
     i = 0
     _extra = 0
@@ -795,6 +985,7 @@ async def main_async(args: argparse.Namespace) -> int:
     phase_max_iter    = config["loop"].get("phase_max_iterations", max_iter)
     mcp_error_thresh      = config["loop"].get("mcp_error_threshold", 3)
     max_tool_calls        = config["loop"].get("max_tool_calls_per_iteration", 10)
+    do_preflight          = config["loop"].get("preflight_check", False)
     model          = args.model or omlx_cfg["default_model"]
 
     # Resolve context budget config
@@ -902,7 +1093,8 @@ async def main_async(args: argparse.Namespace) -> int:
                                 budget_warn_pct=budget_warn,
                                 budget_abort_pct=budget_abort,
                                 mcp_error_threshold=mcp_error_thresh,
-                                max_tool_calls_per_iter=max_tool_calls)
+                                max_tool_calls_per_iter=max_tool_calls,
+                                preflight_check=do_preflight)
     finally:
         log.info("AEL end rc=%d", rc)
         await mcp.close()
@@ -926,6 +1118,8 @@ def main() -> None:
     args = p.parse_args()
     rc = asyncio.run(main_async(args))
     # os._exit bypasses asyncio teardown, preventing MCP stdio subprocess hang
+    for h in logging.getLogger("ael").handlers:
+        h.flush()
     os._exit(rc)
 
 

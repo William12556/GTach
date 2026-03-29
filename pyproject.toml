@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gtach"
-version = "0.1.1"
+version = "0.2.0"
 authors = [
     {name = "GTach Project Contributors"},
 ]
@@ -34,6 +34,7 @@ keywords = ["gpio", "tachometer", "raspberry-pi", "embedded", "cross-platform"]
 dependencies = [
     "PyYAML>=6.0",
     "click>=8.0",
+    "pyserial>=3.5",
 ]
 
 [project.optional-dependencies]

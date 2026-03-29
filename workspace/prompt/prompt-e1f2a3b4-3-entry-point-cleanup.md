@@ -1,4 +1,4 @@
-# Prompt: Comm Transport Abstraction — Entry Point and Cleanup
+# Prompt: Comm Transport Abstraction — Entry Point and Cleanup (Revised)
 
 Created: 2026 March 24
 
@@ -27,7 +27,7 @@ prompt_info:
   source_ref: "change-e1f2a3b4-comm-transport-abstraction.md"
   date: "2026-03-24"
   priority: "high"
-  iteration: 1
+  iteration: 2
   sequence: "3 of 3"
   coupled_docs:
     change_ref: "change-e1f2a3b4"
@@ -49,7 +49,9 @@ tactical_execution:
 
 notes: >
   Context window: 393,216 tokens (Devstral-Small-2-24B-Instruct-2512).
-  max_iterations: 20 — orchestrator uses this for both outer loop and inner phase.
+  max_iterations: 5 — outer Ralph Loop cycles (worker+reviewer pairs).
+  phase_max_iterations: 50 (config.yaml) — inner tool-call iterations per phase.
+  Iteration 2: app.py partially complete from prior run. See §2.0 for current state.
 ```
 
 ---
@@ -59,15 +61,17 @@ notes: >
 ```yaml
 context:
   purpose: >
-    Update application entry point, configuration, and supporting files to
-    complete the transport abstraction change. Wire select_transport() into
-    GTachApplication. Strip OOS dead code from main.py. Update pyproject.toml
-    dependencies. Fix watchdog critical thread name. Delete bluetooth.py.
+    Complete the transport abstraction change. app.py is partially updated
+    from a prior run — two defects remain. Remaining files not yet touched:
+    main.py, pyproject.toml, watchdog.py, bluetooth.py.
 
-  integration: >
-    Prompts 1 and 2 created and updated comm domain files. This prompt
-    completes the change by updating the application layer and removing
-    the now-defunct bluetooth.py.
+  app_py_current_state: >
+    DONE: imports updated, __init__ args parameter, _start_normal_mode transport wiring,
+    get_primary_device() setup detection.
+    DEFECT 1 (shutdown): hasattr(self,'_bluetooth') block still present — replace with
+      hasattr(self,'_transport') calling self._transport.disconnect().
+    DEFECT 2 (_start_normal_mode): reconnect thread target is self._obd.reconnect_indefinitely
+      — must be self._transport.reconnect_indefinitely.
 
   project_root: "/Users/williamwatson/Documents/GitHub/GTach"
   entry_point: "gtach.main:main (pyproject.toml [project.scripts])"
@@ -80,123 +84,85 @@ context:
 ```yaml
 specification:
   description: >
-    Modify four files and delete one:
-      1. src/gtach/app.py          — wire select_transport(); fix setup detection; update shutdown
-      2. src/gtach/main.py         — remove OOS dead code; add new CLI flags; simplify logging
-      3. pyproject.toml            — swap bleak for pyserial; bump version to 0.2.0
-      4. src/gtach/core/watchdog.py — 'bluetooth' -> 'transport' in critical_threads
-      DELETE: src/gtach/comm/bluetooth.py
+    Fix 2 defects in app.py, rewrite main.py, patch pyproject.toml,
+    patch watchdog.py (one line), delete bluetooth.py.
 
   requirements:
     functional:
 
-      - id: "app.py"
+      - id: "app.py — defect fixes only"
         changes:
-          - "Remove: from .comm import BluetoothManager"
-          - "Add: from .comm import select_transport; from .utils.platform import get_platform_type"
-          - "GTachApplication.__init__: add 'args' parameter (argparse.Namespace, default None)"
-          - "Store self._args = args or argparse.Namespace()"
-          - "Remove self._bluetooth = BluetoothManager(...) line"
-          - "_start_normal_mode(): add transport instantiation before OBDProtocol:"
-          - "  platform_type = get_platform_type()"
-          - "  self._transport = select_transport(platform_type, self._args)"
-          - "  self._obd = OBDProtocol(self._transport, self._thread_manager)"
-          - "  self._transport.reconnect_indefinitely called via threading.Thread or directly in OBDProtocol loop — OBDProtocol already handles waiting; no explicit reconnect call needed in app"
-          - "Setup mode detection: replace self._device_store.is_setup_complete() with self._device_store.get_primary_device() is None"
-          - "shutdown(): replace self._bluetooth.stop() with self._transport.disconnect() wrapped in hasattr check"
-          - "import argparse at top of file"
+          - "DEFECT 1 shutdown(): replace the '_bluetooth' hasattr block:"
+          - "  FROM: if hasattr(self, '_bluetooth'): self._bluetooth.stop()"
+          - "  TO:   if hasattr(self, '_transport'): self._transport.disconnect()"
+          - "DEFECT 2 _start_normal_mode(): fix reconnect thread target:"
+          - "  FROM: target=self._obd.reconnect_indefinitely"
+          - "  TO:   target=self._transport.reconnect_indefinitely"
+          - "No other changes to app.py"
 
-      - id: "main.py"
+      - id: "main.py — full rewrite"
         changes:
-          - "REWRITE parse_arguments(): keep --config, --debug, --version ('0.2.0'), --validate-config, --validate-dependencies"
-          - "ADD to parse_arguments(): --macos (store_true), --transport (choices=['tcp','serial','rfcomm'], default=None), --obd-host (default='localhost'), --obd-port (type=int, default=35000), --serial-port (default=None)"
-          - "REMOVE from parse_arguments(): --service, --test-hardware, --validate-logging, --logging-health-check"
-          - "SIMPLIFY setup_logging(debug): replace entire session/validation machinery with basicConfig call — if debug: level=DEBUG, handlers=[StreamHandler]; else: level=WARNING, handlers=[NullHandler()]. That is all."
-          - "REMOVE all functions: validate_logging_configuration, test_logging_functionality, perform_logging_health_check, test_logging_thread_safety, create_logging_fallback_handler, setup_logging_with_validation, print_logging_validation_report, test_hardware"
-          - "main(): remove --service, --test-hardware, --validate-logging, --logging-health-check handling; pass args to GTachApplication: app = GTachApplication(config_file, args.debug, args)"
-          - "GTachApplication import and instantiation: pass args as third positional argument"
-          - "Result: ~80-100 lines total"
+          - "REWRITE to ~80-100 lines total"
+          - "Keep: --config, --debug, --version='0.2.0', --validate-config, --validate-dependencies"
+          - "ADD: --macos (store_true), --transport (choices=['tcp','serial','rfcomm']), --obd-host (default='localhost'), --obd-port (int, default=35000), --serial-port (default=None)"
+          - "REMOVE: --service, --test-hardware, --validate-logging, --logging-health-check and all their handler functions"
+          - "setup_logging(debug): if debug: basicConfig(DEBUG, StreamHandler); else: addHandler(NullHandler()) — nothing else"
+          - "main(): GTachApplication(config_file, args.debug, args)"
 
       - id: "pyproject.toml"
         changes:
           - "version: '0.1.1' -> '0.2.0'"
-          - "dependencies: remove 'bleak' if present; add 'pyserial>=3.5'"
+          - "dependencies: add 'pyserial>=3.5'; remove 'bleak' if present"
           - "No other changes"
 
-      - id: "watchdog.py"
+      - id: "watchdog.py — one line only"
         changes:
-          - "critical_threads: replace 'bluetooth' with 'transport' in the set literal"
-          - "One line change only: self.critical_threads = {'display', 'transport', 'main'}"
+          - "self.critical_threads = {'display', 'transport', 'main'}"
           - "No other changes"
 
       - id: "bluetooth.py"
         changes:
-          - "DELETE the file src/gtach/comm/bluetooth.py"
-          - "Use MCP filesystem delete or write an empty file if delete unavailable"
+          - "Overwrite with single line: # Removed — replaced by transport abstraction"
 ```
 
 ---
 
 ## 4.0 Design
 
-### 4.1 app.py — _start_normal_mode skeleton
+### 4.1 app.py — two surgical edits
 
 ```python
-from .comm import select_transport
-from .utils.platform import get_platform_type
-import argparse
+# DEFECT 1: In shutdown(), replace:
+#   if hasattr(self, '_bluetooth'):
+#       self._bluetooth.stop()
+# WITH:
+#   if hasattr(self, '_transport'):
+#       self._transport.disconnect()
 
-class GTachApplication:
-    def __init__(self, config_path=None, debug=False, args=None):
-        ...
-        self._args = args or argparse.Namespace()
-        ...
-
-    def _start_normal_mode(self):
-        self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
-        self._display.start()
-
-        platform_type = get_platform_type()
-        self._transport = select_transport(platform_type, self._args)
-        self._obd = OBDProtocol(self._transport, self._thread_manager)
-
-        self._watchdog.start()
-        # Transport connects via OBDProtocol._protocol_loop (waits for is_connected)
-        # Start reconnect loop in background thread:
-        import threading
-        self._reconnect_thread = threading.Thread(
-            target=self._transport.reconnect_indefinitely,
-            name='transport',
-            daemon=True
-        )
-        self._reconnect_thread.start()
-        self._obd.start()
-
-    def _start_setup_mode(self):
-        # Setup detection already handled upstream; no transport needed here
-        ...
-
-    def start(self):
-        if self._device_store.get_primary_device() is None:   # was is_setup_complete()
-            self._start_setup_mode()
-        else:
-            self._start_normal_mode()
-
-    def shutdown(self):
-        ...
-        if hasattr(self, '_transport'):
-            self._transport.disconnect()
-        ...
+# DEFECT 2: In _start_normal_mode(), replace:
+#   transport_thread = threading.Thread(target=self._obd.reconnect_indefinitely, ...)
+# WITH:
+#   transport_thread = threading.Thread(target=self._transport.reconnect_indefinitely, ...)
 ```
 
-### 4.2 main.py — skeleton
+### 4.2 main.py — complete replacement
 
 ```python
+#!/usr/bin/env python3
+# Copyright (c) 2025 William Watson
+#
+# This file is part of GTach.
+# GTach is licensed under the MIT License.
+# See the LICENSE file in the project root for full license text.
+
+"""GTach application entry point."""
+
 import sys
 import logging
 import argparse
 from pathlib import Path
 from typing import Optional
+
 
 def setup_logging(debug: bool = False) -> None:
     if debug:
@@ -207,6 +173,7 @@ def setup_logging(debug: bool = False) -> None:
     else:
         logging.getLogger().addHandler(logging.NullHandler())
 
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='GTach — real-time engine tachometer')
     parser.add_argument('--config', type=Path)
@@ -214,14 +181,13 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--version', action='version', version='GTach 0.2.0')
     parser.add_argument('--validate-config', action='store_true')
     parser.add_argument('--validate-dependencies', action='store_true')
-    # Transport flags
-    parser.add_argument('--macos', action='store_true',
-                        help='Activate macOS development mode')
+    parser.add_argument('--macos', action='store_true')
     parser.add_argument('--transport', choices=['tcp', 'serial', 'rfcomm'], default=None)
     parser.add_argument('--obd-host', default='localhost')
     parser.add_argument('--obd-port', type=int, default=35000)
     parser.add_argument('--serial-port', default=None)
     return parser.parse_args()
+
 
 def find_configuration_file() -> Optional[Path]:
     import os
@@ -236,6 +202,7 @@ def find_configuration_file() -> Optional[Path]:
         return system
     return None
 
+
 def main() -> int:
     args = parse_arguments()
     config_file = args.config or find_configuration_file()
@@ -248,7 +215,6 @@ def main() -> int:
         return 0 if v.can_start_application() else 1
 
     if args.validate_config:
-        # basic config load check
         try:
             from .utils.config import ConfigManager
             ConfigManager(config_file).load_config()
@@ -262,6 +228,7 @@ def main() -> int:
     app.run()
     return 0
 
+
 if __name__ == '__main__':
     sys.exit(main())
 ```
@@ -273,21 +240,23 @@ if __name__ == '__main__':
 ```yaml
 deliverable:
   format_requirements:
-    - "Modify files in place using MCP filesystem tools"
-    - "Delete bluetooth.py using MCP filesystem delete tool"
-    - "If filesystem delete unavailable, overwrite bluetooth.py with a single comment: '# Removed — replaced by transport abstraction'"
+    - "app.py: two surgical edits using edit tool"
+    - "main.py: full file replacement using write tool"
+    - "pyproject.toml: two targeted edits using edit tool"
+    - "watchdog.py: one targeted edit using edit tool"
+    - "bluetooth.py: overwrite with stub using write tool"
 
   files:
     - path: "src/gtach/app.py"
-      action: "modify"
+      action: "edit (2 lines)"
     - path: "src/gtach/main.py"
-      action: "rewrite"
+      action: "write (full replacement)"
     - path: "pyproject.toml"
-      action: "modify"
+      action: "edit (2 changes)"
     - path: "src/gtach/core/watchdog.py"
-      action: "modify (one line)"
+      action: "edit (1 line)"
     - path: "src/gtach/comm/bluetooth.py"
-      action: "delete"
+      action: "write (stub)"
 ```
 
 ---
@@ -296,17 +265,15 @@ deliverable:
 
 ```yaml
 success_criteria:
-  - "app.py: no reference to BluetoothManager; select_transport() called in _start_normal_mode"
-  - "app.py: setup detection uses get_primary_device() is None"
-  - "app.py: transport thread registered under name 'transport'"
-  - "app.py: shutdown calls self._transport.disconnect()"
-  - "main.py: --macos, --transport, --obd-host, --obd-port, --serial-port args present"
+  - "app.py: shutdown() contains hasattr(self,'_transport') calling self._transport.disconnect(); no _bluetooth reference"
+  - "app.py: _start_normal_mode() reconnect thread target is self._transport.reconnect_indefinitely"
+  - "main.py: total line count 80-100; --macos, --transport, --obd-host, --obd-port, --serial-port present"
   - "main.py: --service, --test-hardware, --validate-logging, --logging-health-check absent"
-  - "main.py: setup_logging contains only basicConfig or NullHandler — no session machinery"
+  - "main.py: setup_logging contains only basicConfig or NullHandler"
   - "main.py: version string '0.2.0'"
-  - "pyproject.toml: version '0.2.0'; pyserial>=3.5 in dependencies; bleak absent"
-  - "watchdog.py: critical_threads = {'display', 'transport', 'main'}"
-  - "bluetooth.py: deleted or replaced with stub comment"
+  - "pyproject.toml: version '0.2.0'; pyserial>=3.5 in dependencies"
+  - "watchdog.py: self.critical_threads = {'display', 'transport', 'main'}"
+  - "bluetooth.py: contains only stub comment"
   - "python -c 'from gtach.main import main' imports without error"
 ```
 
@@ -346,41 +313,55 @@ element_registry:
 
 ## 8.0 Tactical Brief
 
-```
-TASK: Modify 4 files, delete 1 file. Prerequisites: prompts 1 and 2 complete.
+```yaml
+tactical_brief: |
+  TASK: Fix 2 defects in app.py, rewrite main.py, patch 2 files, stub bluetooth.py.
+  Prerequisites: prompts 1 and 2 complete. app.py imports and _start_normal_mode are done.
 
-FILE 1: src/gtach/app.py
-- Remove: from .comm import BluetoothManager
-- Add: from .comm import select_transport; from .utils.platform import get_platform_type; import argparse
-- GTachApplication.__init__(self, config_path=None, debug=False, args=None): store self._args = args or argparse.Namespace()
-- _start_normal_mode(): after display.start() add:
-    platform_type = get_platform_type()
-    self._transport = select_transport(platform_type, self._args)
-    self._obd = OBDProtocol(self._transport, self._thread_manager)
-    start reconnect_indefinitely in threading.Thread(name='transport', daemon=True)
-    self._obd.start()
-- start(): replace is_setup_complete() with get_primary_device() is None
-- shutdown(): replace self._bluetooth.stop() with self._transport.disconnect() (hasattr guard)
+  FILE 1: src/gtach/app.py — TWO EDITS ONLY
+  Read the file first. Make both edits in a single edit call with two entries.
+  EDIT A — shutdown(): replace
+    if hasattr(self, '_bluetooth'):
+        self._bluetooth.stop()
+  WITH
+    if hasattr(self, '_transport'):
+        self._transport.disconnect()
+  EDIT B — _start_normal_mode(): replace
+    target=self._obd.reconnect_indefinitely
+  WITH
+    target=self._transport.reconnect_indefinitely
 
-FILE 2: src/gtach/main.py  — REWRITE to ~80-100 lines
-- Keep: --config, --debug, --version='0.2.0', --validate-config, --validate-dependencies
-- ADD: --macos (store_true), --transport (choices tcp/serial/rfcomm), --obd-host (default localhost), --obd-port (int, default 35000), --serial-port (default None)
-- REMOVE: --service, --test-hardware, --validate-logging, --logging-health-check and all associated functions
-- setup_logging: if debug: basicConfig(DEBUG); else: addHandler(NullHandler()) — nothing else
-- main(): GTachApplication(config_file, args.debug, args)
+  FILE 2: src/gtach/main.py — FULL REPLACEMENT via write tool
+  Do NOT edit. Write the entire file at once:
+  - Header: MIT license block + module docstring
+  - setup_logging(debug): if debug: basicConfig(DEBUG); else: NullHandler()
+  - parse_arguments(): --config, --debug, --version='0.2.0', --validate-config,
+    --validate-dependencies, --macos, --transport (choices tcp/serial/rfcomm),
+    --obd-host (default localhost), --obd-port (int default 35000), --serial-port
+  - find_configuration_file(): check GTACH_CONFIG env, ~/.config/gtach/config.yaml, /etc/gtach/config.yaml
+  - main(): setup_logging; validate_dependencies if flag; validate_config if flag;
+    GTachApplication(config_file, args.debug, args).run()
+  - if __name__=='__main__': sys.exit(main())
+  Target: 80-100 lines total.
 
-FILE 3: pyproject.toml
-- version: '0.1.1' -> '0.2.0'
-- dependencies: add 'pyserial>=3.5'; remove 'bleak' if present
+  FILE 3: pyproject.toml — ONE edit call, two entries
+  ENTRY A: version = "0.1.1"  ->  version = "0.2.0"
+  ENTRY B: dependencies block — add 'pyserial>=3.5' (remove 'bleak' if present)
 
-FILE 4: src/gtach/core/watchdog.py
-- ONE LINE: self.critical_threads = {'display', 'transport', 'main'}
+  FILE 4: src/gtach/core/watchdog.py — ONE edit
+  Replace: self.critical_threads = {'display', 'bluetooth', 'main'}
+  With:    self.critical_threads = {'display', 'transport', 'main'}
 
-DELETE: src/gtach/comm/bluetooth.py
-- Delete file or overwrite with: # Removed — replaced by transport abstraction
+  FILE 5: src/gtach/comm/bluetooth.py — write tool
+  Overwrite entire file with single line:
+  # Removed — replaced by transport abstraction
 
-SUCCESS: python -c 'from gtach.main import main' imports without error.
-         pyproject.toml version == '0.2.0'. bluetooth.py absent or stub only.
+  SUCCESS:
+  - app.py: _bluetooth absent from shutdown(); _transport.reconnect_indefinitely in thread target
+  - main.py: 80-100 lines; version 0.2.0; transport flags present; no --service or --test-hardware
+  - pyproject.toml: version 0.2.0; pyserial present
+  - watchdog.py: critical_threads has 'transport' not 'bluetooth'
+  - bluetooth.py: stub only
 ```
 
 ---
@@ -390,6 +371,7 @@ SUCCESS: python -c 'from gtach.main import main' imports without error.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-24 | William Watson | Initial prompt |
+| 2.0 | 2026-03-27 | William Watson | Narrowed to remaining work after partial prior run; fixed defect descriptions; explicit write vs edit guidance in brief |
 
 ---
 

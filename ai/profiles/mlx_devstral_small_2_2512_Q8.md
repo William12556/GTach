@@ -1,4 +1,4 @@
-Created: 2026 March 13
+Created: 2026 March 12
 
 # Implementation Profile: Apple Silicon + MLX (Devstral Small 2 2512)
 
@@ -154,6 +154,8 @@ Worker and reviewer roles are differentiated by prompt engineering within the sa
 .ael/ralph/
 ```
 
+**Setup guide:** [Apple Silicon + MLX Setup Guide](../../../docs/setup-apple-silicon-mlx.md).
+
 [Return to Table of Contents](<#table of contents>)
 
 ---
@@ -162,7 +164,7 @@ Worker and reviewer roles are differentiated by prompt engineering within the sa
 
 | Version | Date | Description |
 |---|---|---|
-| 1.0 | 2026-03-13 | Initial document for GTach project |
+| 1.0 | 2026-03-12 | Initial document |
 
 ---
 

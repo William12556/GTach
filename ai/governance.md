@@ -209,9 +209,6 @@ python ai/ael/src/orchestrator.py --mode loop \
     - Tactical Domain: Consults workspace/knowledge/ before implementing changes
     - Both domains: Add newly discovered patterns and solutions to knowledge base
     - Knowledge documents contain: problem statements, solutions, examples, rationale
-    - Behavioral standards: workspace/knowledge/behavioral-standards.yaml defines deterministic behavioral constraints for autonomous execution
-    - Behavioral standards: Referenced in T04 prompts via behavioral_standards.source field
-    - Behavioral standards: Enforcement levels (strict, advisory, disabled) control constraint application
     - Knowledge base prevents repeated problem-solving across development cycles
   - §1.1.17 Templates
     - Templates T01-T06 are external documents in ai/templates/ directory
@@ -805,6 +802,17 @@ pip install dist/*.whl
       - Strategic Domain: Documents platform-specific limitations in test documentation
       - Mocking strategy must isolate tests from platform differences
       - Integration/system tests require target hardware availability
+  - §1.7.18 Test Constraint Summary
+
+    | Constraint | Rule |
+    |---|---|
+    | Unit tests | Mandatory for every component |
+    | System/acceptance/performance tests | Target platform only |
+    | Progressive validation | Stages 1→2→3 in order, no skipping |
+    | Document closure | Requires Stage 3 regression pass |
+    | Coupling mismatch | Blocks workflow — resolve before proceeding |
+    | External dependencies in unit tests | Always mocked |
+    | Ephemeral scripts | Removed at document closure |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -929,6 +937,9 @@ pip install dist/*.whl
     - Strategic Domain: Checks whether context-budget.md exists in AEL state directory before authoring tactical_brief; if absent, instructs human to run `python ai/ael/src/budget.py` from project root before proceeding
     - Strategic Domain: Reads context-budget.md and adjusts brief size to fit within available context headroom
     - Strategic Domain: Verifies tactical_brief field is non-empty before issuing AEL command; an empty or placeholder brief causes orchestrator fallback to full raw document, inflating context and risking saturation
+    - Strategic Domain: Ensures tactical_brief is authored in a ```yaml fenced block with tactical_brief as the root key; the orchestrator scans only ```yaml blocks — plain text or non-YAML fenced blocks are not detected and cause fallback to raw document; when using per-section YAML blocks, §8.0 must be a dedicated ```yaml block (not ```text) with tactical_brief: as the sole root key
+    - Strategic Domain: config.yaml `loop.max_iterations` controls the number of outer Ralph Loop cycles (worker + reviewer pass pairs); `loop.phase_max_iterations` controls the number of inner tool-call iterations per phase; these are distinct values and must not be conflated in T04 prompt notes
+    - Strategic Domain: AEL end is logged as `INFO AEL end rc=N` in the .LOG file on all exits including unexpected termination; absence of this line in a log indicates unclean exit (signal, crash, or resource failure); log review should check for this line before concluding outcome
     - Strategic Domain: Before specifying any target file path in a T04 prompt, reads the project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms the named file is in the deployment path
     - Strategic Domain: Embeds element_registry field in T04 prompt from name registry master, scoped to elements relevant to the code generation task
     - Strategic Domain: Prompt references source change UUID in coupled_docs.change_ref field
@@ -1177,6 +1188,10 @@ flowchart TD
 | 8.1     | 2026-03-20 | Added context budget: AEL orchestrator resolves context window from model config.json on disk; warn/abort thresholds enforced per phase iteration; context-budget.md written to state directory at startup for Strategic Domain; P09 §1.10.2 directive: Strategic Domain reads context-budget.md before authoring tactical_brief |
 | 8.2     | 2026-03-20 | Added entry point verification directive to P04 §1.5.1 and P09 §1.10.2: Strategic Domain reads project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms target file is in deployment path before specifying any file_path in T03 issue or T04 prompt; resolves issue c3e5b7d9 |
 | 8.3     | 2026-03-24 | Added tactical_brief verification directive to P09 §1.10.2: Strategic Domain must verify tactical_brief is non-empty before issuing AEL command; T04 template v1.6 removes governance-only fields and fixes placeholder |
+| 8.4     | 2026-03-25 | Added tactical_brief format constraint to P09 §1.10.2: tactical_brief must be authored in a ```yaml block with tactical_brief as root key; per-section prompts must not use ```text for §8.0; plain text blocks are invisible to orchestrator extract_tactical_brief function |
+| 8.5     | 2026-03-25 | Orchestrator improvements from AEL log analysis: (1) extract_tactical_brief adds section-header fallback (Pass 2) recovering brief from plain fenced block under ## N.N Tactical Brief heading; fallback emits WARNING not DEBUG; (2) main_async pre-initialises rc=1 and logs `AEL end rc=N` in finally block to distinguish clean vs unclean termination; P09 §1.10.2: added directives clarifying max_iterations (outer cycles) vs phase_max_iterations (inner tool-call iterations) and AEL end log semantics |
+| 8.6     | 2026-03-26 | Added P06 §1.7.18 Test Constraint Summary: quick-reference constraint table consolidated from testing-standards.md |
+| 8.7     | 2026-03-26 | Removed behavioral standards directives from P00 §1.1.16: behavioral-standards.yaml, schema, and validator deprecated — no operational function in orchestrator; content duplicates governance protocols |
 
 ---
 [Return to Table of Contents](<#table of contents>)

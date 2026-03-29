@@ -44,7 +44,8 @@ tactical_execution:
 
 notes: >
   Context window: 393,216 tokens (Devstral-Small-2-24B-Instruct-2512).
-  max_iterations: 20 — orchestrator uses this for both outer loop and inner phase tool-call iterations.
+  max_iterations: 20 — outer Ralph Loop cycles (worker+reviewer pairs).
+  phase_max_iterations: set in config.yaml — inner tool-call iterations per phase.
   Previous run failed at 5 iterations (insufficient for 4 file writes + reads).
 ```
 
@@ -315,49 +316,50 @@ element_registry:
 
 ## 8.0 Tactical Brief
 
-```
-TASK: Create 4 new Python files in src/gtach/comm/. Do NOT modify any existing files.
+```yaml
+tactical_brief: |
+  TASK: Create 4 new Python files in src/gtach/comm/. Do NOT modify any existing files.
 
-FILES TO CREATE:
-1. src/gtach/comm/transport.py
-   - TransportState(Enum): DISCONNECTED, CONNECTING, CONNECTED, ERROR
-   - TransportError(Exception) + subclasses: ConnectionError, TimeoutError, ProtocolError
-   - OBDTransport(ABC): abstract connect()->bool, disconnect()->None,
-     send_command(str,float=2.0)->Optional[str], is_connected()->bool,
-     state property->TransportState; concrete reconnect_indefinitely(retry_delay=5.0)
-     loops connect() until success or self._shutdown.is_set()
-   - select_transport(platform_type: PlatformType, args: argparse.Namespace) -> OBDTransport
-     Checks args.transport ('tcp'->TCPTransport, 'serial'->SerialTransport,
-     'rfcomm'->RFCOMMTransport from DeviceStore); auto-detects platform if no arg
-     (MACOS->SerialTransport, RASPBERRY_PI_*->RFCOMMTransport); raises TransportError
-     for unsupported platform.
+  FILES TO CREATE:
+  1. src/gtach/comm/transport.py
+     - TransportState(Enum): DISCONNECTED, CONNECTING, CONNECTED, ERROR
+     - TransportError(Exception) + subclasses: ConnectionError, TimeoutError, ProtocolError
+     - OBDTransport(ABC): abstract connect()->bool, disconnect()->None,
+       send_command(str,float=2.0)->Optional[str], is_connected()->bool,
+       state property->TransportState; concrete reconnect_indefinitely(retry_delay=5.0)
+       loops connect() until success or self._shutdown.is_set()
+     - select_transport(platform_type: PlatformType, args: argparse.Namespace) -> OBDTransport
+       Checks args.transport ('tcp'->TCPTransport, 'serial'->SerialTransport,
+       'rfcomm'->RFCOMMTransport from DeviceStore); auto-detects platform if no arg
+       (MACOS->SerialTransport, RASPBERRY_PI_*->RFCOMMTransport); raises TransportError
+       for unsupported platform.
 
-2. src/gtach/comm/rfcomm.py
-   - RFCOMMTransport(OBDTransport): __init__(mac_address, channel=1, retry_delay=5.0)
-   - connect(): socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM), settimeout(10),
-     connect((mac,channel)), settimeout(None), return True; OSError->False
-   - send_command(): encode cmd+'\r', sendall, recv loop until '>' in buf,
-     settimeout(timeout); socket.timeout->None; OSError/empty->DISCONNECTED,None
-   - GUARD: AF_BLUETOOTH may not exist on macOS — guard import with try/except
+  2. src/gtach/comm/rfcomm.py
+     - RFCOMMTransport(OBDTransport): __init__(mac_address, channel=1, retry_delay=5.0)
+     - connect(): socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM), settimeout(10),
+       connect((mac,channel)), settimeout(None), return True; OSError->False
+     - send_command(): encode cmd+'\r', sendall, recv loop until '>' in buf,
+       settimeout(timeout); socket.timeout->None; OSError/empty->DISCONNECTED,None
+     - GUARD: AF_BLUETOOTH may not exist on macOS — guard import with try/except
 
-3. src/gtach/comm/tcp_transport.py
-   - TCPTransport(OBDTransport): __init__(host='localhost', port=35000, retry_delay=5.0)
-   - connect(): socket(AF_INET, SOCK_STREAM); identical send_command pattern to RFCOMM
+  3. src/gtach/comm/tcp_transport.py
+     - TCPTransport(OBDTransport): __init__(host='localhost', port=35000, retry_delay=5.0)
+     - connect(): socket(AF_INET, SOCK_STREAM); identical send_command pattern to RFCOMM
 
-4. src/gtach/comm/serial_transport.py
-   - SerialTransport(OBDTransport): __init__(port=None, baudrate=38400, retry_delay=5.0)
-   - _discover_port(): serial.tools.list_ports, match 'ELM'/'OBD'/'OBDII' case-insensitive
-   - connect(): resolve port or discover; serial.Serial(port,baudrate,timeout=2)
-   - send_command(): write cmd+'\r', read_until(b'>'), SerialException->DISCONNECTED,None
+  4. src/gtach/comm/serial_transport.py
+     - SerialTransport(OBDTransport): __init__(port=None, baudrate=38400, retry_delay=5.0)
+     - _discover_port(): serial.tools.list_ports, match 'ELM'/'OBD'/'OBDII' case-insensitive
+     - connect(): resolve port or discover; serial.Serial(port,baudrate,timeout=2)
+     - send_command(): write cmd+'\r', read_until(b'>'), SerialException->DISCONNECTED,None
 
-CONSTRAINTS:
-- All files: MIT license header, type annotations, logging.getLogger('<ClassName>')
-- threading.RLock guards _state + socket/serial handle in all transports
-- send_command returns None (never raises) on timeout or disconnection
-- RFCOMMTransport instantiation must succeed on macOS (guard AF_BLUETOOTH)
-- SerialTransport(port=None) must instantiate without error
+  CONSTRAINTS:
+  - All files: MIT license header, type annotations, logging.getLogger('<ClassName>')
+  - threading.RLock guards _state + socket/serial handle in all transports
+  - send_command returns None (never raises) on timeout or disconnection
+  - RFCOMMTransport instantiation must succeed on macOS (guard AF_BLUETOOTH)
+  - SerialTransport(port=None) must instantiate without error
 
-DELIVERABLES: Write files directly to disk via MCP filesystem tools.
+  DELIVERABLES: Write files directly to disk via MCP filesystem tools.
 ```
 
 ---

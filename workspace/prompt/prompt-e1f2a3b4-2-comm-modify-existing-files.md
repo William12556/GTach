@@ -46,7 +46,8 @@ tactical_execution:
 
 notes: >
   Context window: 393,216 tokens (Devstral-Small-2-24B-Instruct-2512).
-  max_iterations: 20 — orchestrator uses this for both outer loop and inner phase.
+  max_iterations: 20 — outer Ralph Loop cycles (worker+reviewer pairs).
+  phase_max_iterations: set in config.yaml — inner tool-call iterations per phase.
 ```
 
 ---
@@ -300,39 +301,40 @@ element_registry:
 
 ## 8.0 Tactical Brief
 
-```
-TASK: Modify 4 existing files in src/gtach/comm/. Do NOT create new files.
-Prerequisite: transport.py, rfcomm.py, tcp_transport.py, serial_transport.py must exist.
+```yaml
+tactical_brief: |
+  TASK: Modify 4 existing files in src/gtach/comm/. Do NOT create new files.
+  Prerequisite: transport.py, rfcomm.py, tcp_transport.py, serial_transport.py must exist.
 
-FILE 1: src/gtach/comm/obd.py
-- Remove: from .bluetooth import BluetoothManager
-- Add: from .transport import OBDTransport
-- OBDProtocol.__init__(self, transport: OBDTransport, thread_manager)
-- Replace all self.bluetooth.* with self.transport.*
-- OBDResponse dataclass and all other logic unchanged
+  FILE 1: src/gtach/comm/obd.py
+  - Remove: from .bluetooth import BluetoothManager
+  - Add: from .transport import OBDTransport
+  - OBDProtocol.__init__(self, transport: OBDTransport, thread_manager)
+  - Replace all self.bluetooth.* with self.transport.*
+  - OBDResponse dataclass and all other logic unchanged
 
-FILE 2: src/gtach/comm/models.py
-- BluetoothDevice keeps only: name(str), mac_address(str), device_type(str='UNKNOWN'), last_connected(Optional[datetime]=None)
-- Remove: address, connection_count, signal_strength, metadata fields
-- __post_init__: uppercase mac_address PRESERVING colons (not stripping them)
-- to_dict/from_dict: serialise/deserialise these 4 fields only
+  FILE 2: src/gtach/comm/models.py
+  - BluetoothDevice keeps only: name(str), mac_address(str), device_type(str='UNKNOWN'), last_connected(Optional[datetime]=None)
+  - Remove: address, connection_count, signal_strength, metadata fields
+  - __post_init__: uppercase mac_address PRESERVING colons (not stripping them)
+  - to_dict/from_dict: serialise/deserialise these 4 fields only
 
-FILE 3: src/gtach/comm/device_store.py
-- Fix import: from .models import BluetoothDevice  (was from ..display.setup_models)
-- Rename save_paired_device() -> save_device()
-- Remove: set_primary_device, is_setup_complete, mark_setup_complete,
-  is_first_run, get_discovery_timeout, set_discovery_timeout, clear_all_devices
-- _save_config(): write to config_path+'.tmp' then os.replace(tmp, config_path)
-- Remove 'setup' block from default config structure
-- get_primary_device(): use new BluetoothDevice field names (mac_address not address)
+  FILE 3: src/gtach/comm/device_store.py
+  - Fix import: from .models import BluetoothDevice  (was from ..display.setup_models)
+  - Rename save_paired_device() -> save_device()
+  - Remove: set_primary_device, is_setup_complete, mark_setup_complete,
+    is_first_run, get_discovery_timeout, set_discovery_timeout, clear_all_devices
+  - _save_config(): write to config_path+'.tmp' then os.replace(tmp, config_path)
+  - Remove 'setup' block from default config structure
+  - get_primary_device(): use new BluetoothDevice field names (mac_address not address)
 
-FILE 4: src/gtach/comm/__init__.py
-- Remove: from .bluetooth import BluetoothManager, BluetoothState; remove stale comments
-- Add imports: OBDTransport, TransportState, TransportError, select_transport,
-  RFCOMMTransport, TCPTransport, SerialTransport
-- __all__: BluetoothManager absent; all new transport names present
+  FILE 4: src/gtach/comm/__init__.py
+  - Remove: from .bluetooth import BluetoothManager, BluetoothState; remove stale comments
+  - Add imports: OBDTransport, TransportState, TransportError, select_transport,
+    RFCOMMTransport, TCPTransport, SerialTransport
+  - __all__: BluetoothManager absent; all new transport names present
 
-SUCCESS: python -c 'from gtach.comm import OBDTransport, OBDProtocol, BluetoothDevice' imports cleanly.
+  SUCCESS: python -c 'from gtach.comm import OBDTransport, OBDProtocol, BluetoothDevice' imports cleanly.
 ```
 
 ---

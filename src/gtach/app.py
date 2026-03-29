@@ -14,21 +14,24 @@ Manages component lifecycle and initialization.
 import signal
 import logging
 import atexit
+import threading
 from typing import NoReturn
+import argparse
 from .core import ThreadManager, WatchdogMonitor
-from .comm import BluetoothManager, OBDProtocol
+from .comm import OBDProtocol, select_transport
 from .comm.device_store import DeviceStore
 from .display import DisplayManager
 from .display.setup import SetupDisplayManager
-from .utils import ConfigManager, TerminalRestorer
+from .utils import ConfigManager, TerminalRestorer, get_platform_type
 
 class GTachApplication:
     """Main application controller"""
     
-    def __init__(self, config_path: str = None, debug: bool = False):
+    def __init__(self, config_path: str = None, debug: bool = False, args=None):
         """Initialize application components"""
         self._config_manager = ConfigManager(config_path)
         self.logger = logging.getLogger(__name__)
+        self._args = args or argparse.Namespace()
         
         # Initialize terminal restorer as early as possible
         self._terminal_restorer = TerminalRestorer()
@@ -60,7 +63,7 @@ class GTachApplication:
             config = self._config_manager.load_config()
             
             # Check if setup is needed
-            if not self._device_store.is_setup_complete():
+            if self._device_store.get_primary_device() is None:
                 self.logger.info("Setup required - entering setup mode")
                 self._setup_mode = True
                 self._start_setup_mode()
@@ -100,13 +103,18 @@ class GTachApplication:
         self._display.start()  # This automatically starts the splash screen
         self.logger.info("Splash screen activated for normal mode")
         
-        # Initialize other components while splash is showing
-        self._bluetooth = BluetoothManager(self._thread_manager, self._device_store)
-        self._obd = OBDProtocol(self._bluetooth, self._thread_manager)
+        # Initialize transport and OBD protocol
+        platform_type = get_platform_type()
+        self._transport = select_transport(platform_type, self._args)
+        self._obd = OBDProtocol(self._transport, self._thread_manager)
         
         # Start background components during splash screen
         self._watchdog.start()
-        self._bluetooth.start()
+        
+        # Start reconnect_indefinitely in a daemon thread
+        transport_thread = threading.Thread(target=self._transport.reconnect_indefinitely, name='transport', daemon=True)
+        transport_thread.start()
+        
         self._obd.start()
         
         self.logger.info("Background components initialized while splash screen displays")
@@ -134,8 +142,8 @@ class GTachApplication:
                 self._display.stop()
             if hasattr(self, '_obd'):
                 self._obd.stop()
-            if hasattr(self, '_bluetooth'):
-                self._bluetooth.stop()
+            if hasattr(self, '_transport'):
+                self._transport.disconnect()
             if hasattr(self, '_watchdog'):
                 self._watchdog.stop()
             if hasattr(self, '_thread_manager'):
