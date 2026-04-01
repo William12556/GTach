@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: gtach
-Version: 0.1.1
+Version: 0.2.0
 Summary: GPIO-based Tachometer Application for Raspberry Pi with cross-platform development support
 Author: GTach Project Contributors
 License: MIT
@@ -25,6 +25,7 @@ Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: PyYAML>=6.0
 Requires-Dist: click>=8.0
+Requires-Dist: pyserial>=3.5
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: pytest-cov>=4.0; extra == "dev"

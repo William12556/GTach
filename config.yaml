@@ -1,0 +1,5 @@
+fps_limit: 60
+mode: DIGITAL
+rpm_danger: 7000
+rpm_warning: 6500
+touch_long_press: 1.0

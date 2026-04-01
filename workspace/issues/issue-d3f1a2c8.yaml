@@ -1,0 +1,107 @@
+# T03 Issue - macOS Testing Session 2026-03-31
+
+issue_info:
+  id: "issue-d3f1a2c8"
+  title: "pygame not declared as macOS dependency"
+  date: "2026-03-31"
+  reporter: "William Watson"
+  status: "open"
+  severity: "high"
+  type: "defect"
+  iteration: 1
+  coupled_docs:
+    change_ref: ""
+    change_iteration: null
+
+source:
+  origin: "test_result"
+  test_ref: ""
+  description: >
+    Discovered during first macOS local test run of GTach v0.2.0 with
+    --transport tcp. Application fails to import at startup due to missing
+    pygame module.
+
+affected_scope:
+  components:
+    - name: "DisplayRenderingEngine"
+      file_path: "src/gtach/display/rendering/engine.py"
+    - name: "pyproject.toml"
+      file_path: "pyproject.toml"
+  designs: []
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "GTach installed via pip install -e . on macOS without pygame"
+  steps:
+    - "python -m gtach --transport tcp --obd-host 192.168.0.147 --obd-port 35000 --debug"
+  frequency: "always"
+  reproducibility_conditions: "macOS, no pygame installed"
+  preconditions: ""
+  test_data: ""
+  error_output: |
+    File ".../src/gtach/display/rendering/engine.py", line 23, in <module>
+        import pygame
+    ModuleNotFoundError: No module named 'pygame'
+
+behavior:
+  expected: "Application starts and connects to TCP emulator"
+  actual: "Import fails at startup with ModuleNotFoundError for pygame"
+  impact: "macOS development mode is completely non-functional"
+  workaround: "pip install pygame manually before running"
+
+environment:
+  python_version: "3.11"
+  os: "macOS (Apple Silicon)"
+  dependencies:
+    - library: "pygame"
+      version: "not installed"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    pygame is imported unconditionally in engine.py but is absent from all
+    dependency groups in pyproject.toml. No macos optional-dependency group
+    exists. The pi group covers RPi.GPIO and gpiozero but no equivalent
+    group exists for macOS development dependencies.
+  technical_notes: >
+    Resolution requires two steps: (1) add a macos optional-dependency group
+    to pyproject.toml containing pygame, (2) verify engine.py import is
+    compatible with the pygame version available on macOS/Apple Silicon.
+  related_issues: []
+
+resolution:
+  assigned_to: ""
+  target_date: ""
+  approach: >
+    Add [project.optional-dependencies] macos group to pyproject.toml
+    with pygame>=2.0. Install via: pip install -e ".[macos]"
+  change_ref: ""
+  resolved_date: ""
+  resolved_by: ""
+  fix_description: ""
+
+verification:
+  verified_date: ""
+  verified_by: ""
+  test_results: ""
+  closure_notes: ""
+
+prevention:
+  preventive_measures: "Include macos dependency group in initial pyproject.toml setup"
+  process_improvements: "Add platform-specific dependency validation to pre-run checklist"
+
+notes: >
+  Running issue log for the macOS local testing session started 2026-03-31.
+  Additional issues will be appended as separate documents as discovered.
+
+version_history:
+  - version: "1.0"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created"
+
+metadata:
+  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"

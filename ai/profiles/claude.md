@@ -1,6 +1,6 @@
-Created: 2026 February 18
+Created: 2026 March 31
 
-# Implementation Profile: Claude
+# Implementation Profile: Claude Code (Optional)
 
 ---
 
@@ -10,7 +10,7 @@ Created: 2026 February 18
 - [Placeholder Mappings](<#placeholder mappings>)
 - [Strategic Domain](<#strategic domain>)
 - [Tactical Domain](<#tactical domain>)
-- [Autonomous Execution Loop](<#autonomous execution loop>)
+- [Invocation](<#invocation>)
 - [Project Setup](<#project setup>)
 - [Version History](<#version history>)
 
@@ -18,13 +18,15 @@ Created: 2026 February 18
 
 ## Overview
 
-This profile maps governance abstract placeholders to Claude-based tooling.
+This profile maps governance abstract placeholders to Claude Code tooling. It is an optional alternative to the MLX/Devstral profile, intended for use when the local inference stack is unavailable.
+
+Claude Code fulfils both the worker and reviewer roles in a single manual pass. There is no automated AEL loop; the human operator controls the workflow and performs the review gate.
 
 | Concern | Implementation |
 |---|---|
 | Strategic Domain | Claude Desktop (preferred) |
 | Tactical Domain | Claude Code |
-| AEL mechanism | Goose / Ralph Loop |
+| AEL mechanism | Manual — human invokes Claude Code per task |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -35,7 +37,7 @@ This profile maps governance abstract placeholders to Claude-based tooling.
 | Placeholder | Resolved Value |
 |---|---|
 | `<tactical_config>/` | `.claude/` |
-| `<skills_dir>/` | `skills/` (within `.claude/`) |
+| `<skills_dir>/` | `.claude/` |
 | `<tactical_context>` | `CLAUDE.md` |
 | Local context file | `CLAUDE.local.md` |
 
@@ -49,8 +51,6 @@ This profile maps governance abstract placeholders to Claude-based tooling.
 
 Any frontier model with sufficient reasoning capability may substitute. The Strategic Domain role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
-Context file update mechanism: `# key` during Claude Code sessions updates `CLAUDE.md` in place.
-
 [Return to Table of Contents](<#table of contents>)
 
 ---
@@ -60,8 +60,6 @@ Context file update mechanism: `# key` during Claude Code sessions updates `CLAU
 **Implementation:** Claude Code
 
 Configuration directory: `.claude/`
-
-Skills directory: `.claude/skills/`
 
 Context file: `CLAUDE.md` at project root (checked into git).
 
@@ -75,20 +73,22 @@ Local context file: `CLAUDE.local.md` at project root (`.gitignore`'d).
 
 ---
 
-## Autonomous Execution Loop
+## Invocation
 
-**Implementation:** Goose / Ralph Loop
+Claude Code fulfils both the worker and reviewer roles in a single manual pass. There is no worker/reviewer cycle; the human operator performs the review gate.
 
-State directory: `.goose/ralph/` (ephemeral, per-task)
+**Procedure:**
 
-**Prerequisites:**
-- Goose installed: `pip install goose-ai` or per Goose documentation
-- Ralph Loop recipe: `~/.config/goose/recipes/ralph-loop.sh`
+1. Strategic Domain authors and approves the T04 prompt per the standard workflow.
+2. Open Claude Code in the project root.
+3. Issue the following instruction, substituting the actual T04 file path:
 
-**Invocation:**
-```bash
-~/.config/goose/recipes/ralph-loop.sh ./workspace/prompt/prompt-<uuid>-<n>.md
 ```
+implement workspace/prompt/prompt-<uuid>-<n>.md
+```
+
+4. Claude Code reads the T04 prompt from disk and implements the task.
+5. The human operator reviews the result and accepts or requests changes.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -97,23 +97,20 @@ State directory: `.goose/ralph/` (ephemeral, per-task)
 ## Project Setup
 
 **.gitignore additions:**
+
 ```
-# Claude profile - Tactical Domain
+# Claude Code profile - Tactical Domain
 CLAUDE.local.md
 .claude/settings.json
-.goose/ralph/
 ```
 
-**Directory structure additions (within `<project name>/`):**
+**Directory structure additions (within project root):**
+
 ```
 ├── .claude/
-│   ├── skills/
-│   │   ├── governance/
-│   │   ├── testing/
-│   │   ├── validation/
-│   │   └── audit/
-│   └── commands/
+│   └── settings.json
 ├── CLAUDE.md
+└── CLAUDE.local.md
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -124,7 +121,7 @@ CLAUDE.local.md
 
 | Version | Date | Description |
 |---|---|---|
-| 1.0 | 2026-02-18 | Initial document |
+| 1.0 | 2026-03-31 | Initial document; Claude Code as optional alternative to MLX/Devstral profile; manual single-pass invocation via T04 file path |
 
 ---
 

@@ -51,6 +51,7 @@ ael/
 - Python 3.11+
 - oMLX running on `http://127.0.0.1:8000`
 - MCP servers configured in `config.yaml`
+- Model: Devstral Small 2 (Q8) — purpose-built for agentic coding and multi-file editing; the AEL parser (`parser.py`) is tuned to Mistral's tool-call format, which Devstral uses natively
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -233,6 +234,7 @@ tests/test_integration.py                     SKIPPED [oMLX not reachable]
 | 1.3 | 2026-03-20 | Added budget.py; added --mode reset; updated Configuration and Usage sections; context.models_dir note |
 | 1.4 | 2026-03-25 | Added `format_tool_signatures()` to orchestrator.py: injects tool parameter signatures into `{{TOOLS}}` system prompt placeholder to prevent model tool-call hallucination |
 | 1.5 | 2026-03-25 | Added `mcp-grep` server to `config.yaml` MCP server definitions |
+| 1.6 | 2026-03-31 | Added Devstral model requirement with rationale to Requirements section |
 
 ---
 

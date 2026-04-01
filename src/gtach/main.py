@@ -20,15 +20,47 @@ from .utils import ConfigManager
 
 def setup_logging(debug: bool) -> None:
     """Configure logging based on debug flag.
-    
+
+    In debug mode: logs to stderr and, on macOS, to a rotating file at
+    workspace/logs/gtach-debug.log relative to the project root.
+
     Args:
         debug: If True, enable DEBUG level logging
     """
     if debug:
+        import platform
+        from logging.handlers import RotatingFileHandler
+        from pathlib import Path
+
+        fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        formatter = logging.Formatter(fmt)
+
+        handlers = [logging.StreamHandler()]
+
+        # On macOS add a rotating file handler for post-mortem inspection
+        if platform.system() == 'Darwin':
+            # Resolve log path relative to project root (two levels up from main.py)
+            project_root = Path(__file__).resolve().parent.parent.parent
+            log_dir = project_root / 'workspace' / 'logs'
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = log_dir / 'gtach-debug.log'
+
+            file_handler = RotatingFileHandler(
+                log_path,
+                maxBytes=5 * 1024 * 1024,  # 5 MB
+                backupCount=3,
+                encoding='utf-8'
+            )
+            file_handler.setFormatter(formatter)
+            handlers.append(file_handler)
+
+            # Print log path so it's visible in the terminal
+            print(f'[GTach] Debug log: {log_path}', file=sys.stderr)
+
         logging.basicConfig(
             level=logging.DEBUG,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[logging.StreamHandler()]
+            format=fmt,
+            handlers=handlers
         )
     else:
         # In production, use NullHandler to avoid logging to stderr

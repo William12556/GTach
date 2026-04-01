@@ -63,7 +63,12 @@ class GTachApplication:
             config = self._config_manager.load_config()
             
             # Check if setup is needed
-            if self._device_store.get_primary_device() is None:
+            # If --transport is explicitly specified, bypass device store check
+            transport_forced = getattr(self._args, 'transport', None) is not None
+            if transport_forced:
+                self.logger.info("Transport explicitly specified - skipping setup mode")
+                self._start_normal_mode()
+            elif self._device_store.get_primary_device() is None:
                 self.logger.info("Setup required - entering setup mode")
                 self._setup_mode = True
                 self._start_setup_mode()
@@ -121,9 +126,14 @@ class GTachApplication:
 
     def run(self) -> NoReturn:
         """Run application main loop"""
+        import platform as _platform
         try:
             self.start()
-            signal.pause()
+            if _platform.system() == 'Darwin' and hasattr(self, '_display'):
+                # macOS: display loop must own the main thread (Cocoa requirement)
+                self._display.run_main_thread_loop()
+            else:
+                signal.pause()
         except KeyboardInterrupt:
             self.logger.info("Shutting down...")
         except Exception as e:
@@ -133,22 +143,32 @@ class GTachApplication:
 
     def shutdown(self) -> None:
         """Shutdown application components"""
+        if getattr(self, '_shutdown_called', False):
+            return
+        self._shutdown_called = True
+
         self.logger.info("Shutting down application")
-        
+
         try:
+            # Shutdown order is important:
+            # 1. Watchdog first — prevents recovery attempts on dying threads
+            # 2. Display — closes pygame window
+            # 3. Transport — closes socket, unblocks any OBD thread blocked on recv
+            # 4. OBD — safe to join now that socket is closed
+            # 5. Thread manager — final cleanup
+            if hasattr(self, '_watchdog'):
+                self._watchdog.stop()
             if hasattr(self, '_setup_manager'):
                 self._setup_manager.stop_setup()
             if hasattr(self, '_display'):
                 self._display.stop()
-            if hasattr(self, '_obd'):
-                self._obd.stop()
             if hasattr(self, '_transport'):
                 self._transport.disconnect()
-            if hasattr(self, '_watchdog'):
-                self._watchdog.stop()
+            if hasattr(self, '_obd'):
+                self._obd.stop()
             if hasattr(self, '_thread_manager'):
                 self._thread_manager.shutdown()
-                
+
             # Terminal restoration will happen via atexit
         except Exception as e:
             self.logger.error(f"Shutdown error: {e}", exc_info=True)

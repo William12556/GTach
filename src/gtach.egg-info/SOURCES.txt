@@ -16,7 +16,11 @@ src/gtach/comm/device_store.py
 src/gtach/comm/models.py
 src/gtach/comm/obd.py
 src/gtach/comm/pairing.py
+src/gtach/comm/rfcomm.py
+src/gtach/comm/serial_transport.py
 src/gtach/comm/system_bluetooth.py
+src/gtach/comm/tcp_transport.py
+src/gtach/comm/transport.py
 src/gtach/core/__init__.py
 src/gtach/core/thread.py
 src/gtach/core/watchdog.py

@@ -1,0 +1,98 @@
+issue_info:
+  id: "issue-e3c7b9a4"
+  title: "Splash screen loops forever — _save_config() persists SPLASH mode"
+  date: "2026-03-31"
+  reporter: "William Watson"
+  status: "closed"
+  severity: "high"
+  type: "defect"
+  iteration: 1
+  coupled_docs:
+    change_ref: ""
+    change_iteration: null
+
+source:
+  origin: "test_result"
+  test_ref: ""
+  description: >
+    Splash screen repeats indefinitely. Log shows 'Splash completed -
+    transitioning to SPLASH' every 4 seconds. The post-splash mode is
+    SPLASH instead of DIGITAL.
+
+affected_scope:
+  components:
+    - name: "DisplayManager._load_config"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._save_config"
+      file_path: "src/gtach/display/manager.py"
+  designs: []
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "GTach running on macOS, no pre-existing config.yaml in CWD"
+  steps:
+    - "Run application once (config.yaml is created by _save_config)"
+    - "Run application again"
+  frequency: "always"
+  reproducibility_conditions: >
+    First run: _load_config() falls back, creates config.yaml with mode=SPLASH.
+    Subsequent runs: config.yaml is loaded, saved_mode=SPLASH, _post_splash_mode=SPLASH.
+  error_output: |
+    DisplayManager - INFO - Splash completed - transitioning to SPLASH
+    (repeats every 4 seconds indefinitely)
+
+behavior:
+  expected: "Splash displays once, then transitions to DIGITAL mode"
+  actual: "Splash loops forever, normal display mode never reached"
+  impact: "Application is unusable after splash — display never transitions"
+  workaround: "None without code fix"
+
+environment:
+  python_version: "3.11"
+  os: "macOS (Apple Silicon)"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    _load_config() fallback (no config file found) sets self.config.mode=SPLASH
+    and _post_splash_mode=DIGITAL, then calls _save_config(). _save_config()
+    saves self.config.mode which is SPLASH at that point. On next run, the saved
+    config.yaml is loaded, saved_mode=SPLASH, and _post_splash_mode is set to
+    SPLASH. When the splash screen completes, config.mode is set to
+    _post_splash_mode which is SPLASH, restarting the splash.
+  technical_notes: >
+    Fix: _save_config() must never persist SPLASH as the display mode.
+    When self.config.mode is SPLASH, save self._post_splash_mode instead.
+  related_issues: []
+
+resolution:
+  assigned_to: ""
+  target_date: ""
+  approach: >
+    In _save_config(): save _post_splash_mode when current mode is SPLASH,
+    otherwise save config.mode as before.
+  change_ref: ""
+  resolved_date: "2026-03-31"
+  resolved_by: "William Watson"
+  fix_description: >-
+    _save_config() now saves _post_splash_mode when current mode is
+    SPLASH, preventing SPLASH from being persisted. Stale config.yaml
+    corrected to mode: DIGITAL.
+
+verification:
+  verified_date: "2026-03-31"
+  verified_by: "William Watson"
+  test_results: "Splash displays once then transitions to DIGITAL."
+  closure_notes: "Fixed under trivial change exemption."
+
+version_history:
+  - version: "1.0"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created"
+
+metadata:
+  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"

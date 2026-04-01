@@ -10,11 +10,14 @@
 from .config import ConfigManager, OBDConfig
 from .terminal import TerminalRestorer
 from .dependencies import DependencyValidator, validate_dependencies
+from .platform import get_platform_type, PlatformType
 
 __all__ = [
     'ConfigManager',
     'OBDConfig',
     'TerminalRestorer',
     'DependencyValidator',
-    'validate_dependencies'
+    'validate_dependencies',
+    'get_platform_type',
+    'PlatformType'
 ]

@@ -247,14 +247,25 @@ class DisplayManager:
             self._post_splash_mode = DisplayMode.DIGITAL
     
     def _save_config(self) -> None:
-        """Save current configuration"""
+        """Save current configuration.
+
+        Never persists SPLASH as the display mode — saves _post_splash_mode
+        instead so that the next startup transitions correctly to the last
+        active mode rather than looping the splash screen.
+        """
         if not YAML_AVAILABLE:
             self.logger.debug("YAML not available - configuration will not be persisted")
             return
-            
+
         try:
+            # Do not persist the transient SPLASH mode
+            mode_to_save = (
+                self._post_splash_mode
+                if self.config.mode == DisplayMode.SPLASH
+                else self.config.mode
+            )
             config_data = {
-                'mode': self.config.mode.name,
+                'mode': mode_to_save.name,
                 'rpm_warning': self.config.rpm_warning,
                 'rpm_danger': self.config.rpm_danger,
                 'fps_limit': self.config.fps_limit,
@@ -262,15 +273,30 @@ class DisplayManager:
             }
             with open(self.config_path, 'w') as f:
                 yaml.dump(config_data, f)
-                
+
         except Exception as e:
             self.logger.error(f"Config save failed: {e}")
     
     def start(self) -> None:
-        """Start display manager"""
+        """Start display manager.
+
+        On macOS the display loop must run on the main thread (Cocoa constraint).
+        The thread is not started here in that case; call run_main_thread_loop()
+        from the main thread after all other components are initialised.
+        """
+        import platform as _platform
         self.start_splash()
-        self.display_thread.start()
+        if _platform.system() != 'Darwin':
+            self.display_thread.start()
         self.logger.info("Display manager started")
+
+    def run_main_thread_loop(self) -> None:
+        """Run the display loop on the calling thread.
+
+        Must be called from the main thread on macOS (Cocoa UI requirement).
+        Blocks until the display loop exits.
+        """
+        self._display_loop()
     
     def start_splash(self) -> None:
         """Start the splash screen"""
@@ -288,8 +314,13 @@ class DisplayManager:
     
     def stop(self) -> None:
         """Stop display manager"""
+        import platform as _platform
         self._shutdown_event.set()
-        self.display_thread.join()
+        if _platform.system() != 'Darwin':
+            # On macOS the display loop runs on the main thread via
+            # run_main_thread_loop() so display_thread is never started.
+            # Joining an unstarted thread raises RuntimeError.
+            self.display_thread.join()
         
         # Clean up components
         try:
@@ -311,6 +342,12 @@ class DisplayManager:
         
         while not self._shutdown_event.is_set():
             try:
+                # Process pygame events (required on macOS to keep window responsive)
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self._shutdown_event.set()
+                        break
+
                 # Record frame start for performance monitoring
                 frame_id = self.performance_monitor.record_frame_start()
                 
@@ -408,13 +445,15 @@ class DisplayManager:
     def _draw_digital_mode(self) -> None:
         """Draw digital RPM display using rendering engine"""
         try:
-            # Get RPM data
+            # Drain queue — keep only the latest value to avoid display lag
             try:
-                rpm_data = self.thread_manager.message_queue.get_nowait()
-                rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
+                while True:
+                    rpm_data = self.thread_manager.message_queue.get_nowait()
+                    self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
             except:
-                rpm = 0
-            
+                pass
+            rpm = getattr(self, '_last_rpm', 0)
+
             # Determine color based on thresholds
             if rpm >= self.config.rpm_danger:
                 color = (255, 0, 0)  # Red
@@ -441,13 +480,15 @@ class DisplayManager:
     def _draw_gauge_mode(self) -> None:
         """Draw analog gauge display using rendering engine"""
         try:
-            # Get RPM data
+            # Drain queue — keep only the latest value to avoid display lag
             try:
-                rpm_data = self.thread_manager.message_queue.get_nowait()
-                rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
+                while True:
+                    rpm_data = self.thread_manager.message_queue.get_nowait()
+                    self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
             except:
-                rpm = 0
-            
+                pass
+            rpm = getattr(self, '_last_rpm', 0)
+
             # Gauge parameters
             center = (240, 240)
             radius = 200

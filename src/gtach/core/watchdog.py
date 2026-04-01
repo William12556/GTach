@@ -88,7 +88,7 @@ class WatchdogMonitor:
         self._recovery_lock = threading.Lock()
         
         # Critical threads that trigger shutdown if recovery fails
-        self.critical_threads = {'display', 'transport', 'main'
+        self.critical_threads = {'display', 'transport', 'main'}
         
         # Control events
         self._stop_event = threading.Event()

@@ -1,5 +1,6 @@
 PyYAML>=6.0
 click>=8.0
+pyserial>=3.5
 
 [dev]
 pytest>=7.0

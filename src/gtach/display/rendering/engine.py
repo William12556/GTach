@@ -47,6 +47,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         self.fb_size = 0
         self.use_mmap = False
         self.framebuffer_path = '/dev/fb0'
+        self.use_window = False  # True on macOS: use pygame window instead of framebuffer
         
         # Display constants for HyperPixel 2" Round
         self.display_center = (240, 240)
@@ -88,10 +89,22 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     self._initialized = True
                     return True
                 
-                # Initialize pygame
-                os.putenv('SDL_VIDEODRIVER', 'dummy')
-                pygame.display.init()
-                pygame.font.init()
+                # Initialize pygame — platform-dependent display mode
+                import platform as _platform
+                self.use_window = (_platform.system() == 'Darwin')
+                
+                if self.use_window:
+                    # macOS: open a real pygame window
+                    pygame.display.init()
+                    pygame.font.init()
+                    self.window_surface = pygame.display.set_mode(surface_size)
+                    pygame.display.set_caption('GTach')
+                    self.logger.info("macOS mode: pygame window opened")
+                else:
+                    # Linux/Pi: off-screen rendering to framebuffer
+                    os.putenv('SDL_VIDEODRIVER', 'dummy')
+                    pygame.display.init()
+                    pygame.font.init()
                 
                 # Verify font initialization
                 if not pygame.font.get_init():
@@ -102,8 +115,9 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 self.main_surface = pygame.Surface(surface_size)
                 self.back_surface = pygame.Surface(surface_size)
                 
-                # Initialize framebuffer
-                self._initialize_framebuffer()
+                # Initialize framebuffer (Linux/Pi only)
+                if not self.use_window:
+                    self._initialize_framebuffer()
                 
                 self._initialized = True
                 self.logger.info(f"Rendering engine initialized: {surface_size}, framebuffer: {framebuffer_path}")
@@ -298,7 +312,10 @@ class DisplayRenderingEngine(RenderingEngineInterface):
     
     def write_to_framebuffer(self) -> bool:
         """
-        Write main surface to hardware framebuffer.
+        Write main surface to display output.
+
+        On macOS uses pygame.display.flip() to update the window.
+        On Linux/Pi writes to the hardware framebuffer device.
         
         Returns:
             bool: True if write successful
@@ -307,7 +324,17 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             start_time = time.time()
             
             try:
-                if not self.main_surface or not self.fb:
+                if not self.main_surface:
+                    return False
+
+                # macOS: blit to window surface and flip
+                if self.use_window:
+                    self.window_surface.blit(self.main_surface, (0, 0))
+                    pygame.display.flip()
+                    self._stats.buffer_writes += 1
+                    return True
+
+                if not self.fb:
                     return False
                 
                 # Convert surface to proper format

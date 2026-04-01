@@ -28,10 +28,11 @@ readiness:
   
 # Loop control
 loop:
-  max_iterations: 5         # Ralph Loop outer cycles (worker + reviewer passes)
-  phase_max_iterations: 50  # tool-call iterations per phase (work or review)
+  max_iterations: 5         # Ralph Loop outer iterations (work+review cycles)
+  phase_max_iterations: 50  # Inner tool-call iterations per phase
   mcp_error_threshold: 3    # Write RALPH-BLOCKED.md after this many consecutive MCP errors per phase
   max_tool_calls_per_iteration: 10  # Truncate tool calls per iteration beyond this count
+  preflight_check: false             # Evaluate success criteria before first worker iteration
   state_dir: ".ael/ralph"
   
 # Context budget

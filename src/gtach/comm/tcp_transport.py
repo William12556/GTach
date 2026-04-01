@@ -85,6 +85,7 @@ class TCPTransport(OBDTransport):
         try:
             # Prepare the command
             encoded_cmd = (command.strip() + '\r').encode('ascii')
+            logger.debug("TX: %r", encoded_cmd)
             self._sock.sendall(encoded_cmd)
             
             # Set timeout for response
@@ -108,9 +109,10 @@ class TCPTransport(OBDTransport):
             response = buf.decode('ascii', errors='ignore').strip()
             # Remove the trailing '>' prompt
             response = response.rstrip('>').strip()
+            logger.debug("RX: %r", response)
             return response
         except socket.timeout:
-            logger.warning("Timeout waiting for response from device")
+            logger.warning("Timeout waiting for response from device (cmd=%r, timeout=%.1fs)", command, timeout)
             return None
         except OSError as e:
             logger.error("Error communicating with device: %s", e)

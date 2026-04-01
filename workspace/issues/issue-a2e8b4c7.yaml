@@ -1,0 +1,94 @@
+issue_info:
+  id: "issue-a2e8b4c7"
+  title: "No macOS development configuration file"
+  date: "2026-03-31"
+  reporter: "William Watson"
+  status: "open"
+  severity: "high"
+  type: "defect"
+  iteration: 1
+  coupled_docs:
+    change_ref: ""
+    change_iteration: null
+
+source:
+  origin: "test_result"
+  test_ref: ""
+  description: >
+    Application fails to start on macOS because no config file exists at
+    any of the three searched locations. No macOS development config is
+    provided in the project.
+
+affected_scope:
+  components:
+    - name: "main.find_configuration_file"
+      file_path: "src/gtach/main.py"
+  designs: []
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "GTach installed on macOS with no prior config"
+  steps:
+    - "python -m gtach --transport tcp --obd-host 192.168.0.147 --obd-port 35000 --debug"
+  frequency: "always"
+  reproducibility_conditions: "Fresh macOS install, no GTACH_CONFIG set"
+  error_output: |
+    FileNotFoundError: Configuration file not found. Please set GTACH_CONFIG
+    environment variable or create a config file at ~/.config/gtach/config.yaml
+    or /etc/gtach/config.yaml
+
+behavior:
+  expected: "Application finds or falls back to a development config"
+  actual: "FileNotFoundError raised, application exits"
+  impact: "Application cannot start without manual config creation"
+  workaround: >
+    Use --config flag:
+    python -m gtach --config deprecated/config/config.yaml --transport tcp ...
+
+environment:
+  python_version: "3.11"
+  os: "macOS (Apple Silicon)"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    find_configuration_file() searches three fixed paths but no config file
+    is created by the install process on macOS. The deprecated/config/config.yaml
+    exists in the project but is not referenced or installed. No macos-specific
+    or development-mode config is included in the project.
+  technical_notes: >
+    Resolution options: (1) add a config/config-dev.yaml to the project and
+    document its use, (2) add fallback to project root config in
+    find_configuration_file(), or (3) create ~/.config/gtach/config.yaml
+    as part of macOS setup instructions. Option 1 is preferred for
+    repeatability.
+  related_issues: []
+
+resolution:
+  assigned_to: ""
+  target_date: ""
+  approach: >
+    Create workspace/config/config-macos-dev.yaml for macOS development use.
+    Document use of --config flag in macOS testing procedure.
+  change_ref: ""
+  resolved_date: ""
+  resolved_by: ""
+  fix_description: ""
+
+verification:
+  verified_date: ""
+  verified_by: ""
+  test_results: ""
+  closure_notes: ""
+
+version_history:
+  - version: "1.0"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created"
+
+metadata:
+  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"

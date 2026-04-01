@@ -84,35 +84,33 @@ class OBDProtocol:
     def _initialize_protocol(self) -> bool:
         """Initialize OBD protocol and configure ELM327"""
         try:
-            self._send_command(b"ATZ")
+            # ATZ resets the adapter — allow extra time for emulator/hardware reset
+            self._send_command(b"ATZ", timeout=5.0)
             self._send_command(b"ATE0")
-            self._send_command(b"ATSP0")
-            self._send_command(b"ATSP8")
+            self._send_command(b"ATL0")  # Line feeds off
+            self._send_command(b"ATS0")  # Spaces off
+            self._send_command(b"ATSP0") # Auto protocol
             
             response = self._send_command(b"0100")
             if not response or response.startswith('7F'):
                 raise Exception("No connection to vehicle")
-                
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Initialization failed: {e}")
             return False
 
-    def _send_command(self, command: bytes) -> Optional[str]:
-        """Send command to ELM327 device using Bleak interface"""
+    def _send_command(self, command: bytes, timeout: float = None) -> Optional[str]:
+        """Send command to ELM327 device."""
         try:
             if not self.transport.is_connected():
                 return None
-                
-            # Convert bytes command to string for Bleak interface
+
             command_str = command.decode('ascii')
-            
-            # Use the new Bleak-based send_command method
-            response = self.transport.send_command(command_str, timeout=self.timeout)
-            
-            return response
-            
+            effective_timeout = timeout if timeout is not None else self.timeout
+            return self.transport.send_command(command_str, timeout=effective_timeout)
+
         except Exception as e:
             self.logger.error(f"Command error: {e}")
             return None
@@ -125,8 +123,13 @@ class OBDProtocol:
                 return None
                 
             if len(response) >= 8 and response.startswith('41'):
-                data = bytes.fromhex(response.replace(' ', ''))
-                
+                # Strip whitespace and non-hex characters (echo, \r\n, prompts)
+                import re
+                hex_str = re.sub(r'[^0-9A-Fa-f]', '', response)
+                if len(hex_str) < 8:
+                    return None
+                data = bytes.fromhex(hex_str)
+
                 return OBDResponse(
                     pid=self.RPM_PID,
                     data=data[2:4],

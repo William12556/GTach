@@ -392,7 +392,7 @@ pip list
       - Ensure Anthropic API key is configured
       - Create `CLAUDE.md` at project root with project context
       - Create `.claude/` directory structure per §1.2.6
-      - Reference: [claude.md](claude.md)
+      - Reference: [claude.md](deprecated/claude.md)
     - **AEL setup (both profiles)**:
       - Install AEL dependencies: `pip install -r ai/ael/requirements.txt`
       - Configure `ai/ael/config.yaml` with inference endpoint and MCP server definitions

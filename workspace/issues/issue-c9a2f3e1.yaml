@@ -1,0 +1,118 @@
+issue_info:
+  id: "issue-c9a2f3e1"
+  title: "Display loop runs on background thread — crashes on macOS (NSInternalInconsistencyException)"
+  date: "2026-03-31"
+  reporter: "William Watson"
+  status: "closed"
+  severity: "critical"
+  type: "defect"
+  iteration: 1
+  coupled_docs:
+    change_ref: ""
+    change_iteration: null
+
+source:
+  origin: "test_result"
+  test_ref: ""
+  description: >
+    Application crashes on macOS with NSInternalInconsistencyException immediately
+    after the display thread starts. The macOS Cocoa framework requires all UI
+    operations (window creation, event polling, display flip) to execute on the
+    main thread. GTach's display loop runs in a background thread, violating
+    this constraint.
+
+affected_scope:
+  components:
+    - name: "DisplayManager._display_loop"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager.start"
+      file_path: "src/gtach/display/manager.py"
+    - name: "GTachApplication.run"
+      file_path: "src/gtach/app.py"
+  designs: []
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "GTach running on macOS with pygame window mode enabled (issue-b1d4e7f9 fix applied)"
+  steps:
+    - >
+      python -m gtach --config workspace/config/config-macos-dev.yaml
+      --transport tcp --obd-host 192.168.0.147 --obd-port 35000 --debug
+  frequency: "always"
+  reproducibility_conditions: "macOS — any version. Not present on Linux/Pi."
+  error_output: |
+    NSInternalInconsistencyException:
+    'nextEventMatchingMask should only be called from the Main Thread!'
+    Stack: Cocoa_PumpEvents -> SDL_PumpEvents -> pg_event_get
+    Called from thread: DisplayManager (background thread)
+    Result: zsh abort
+
+behavior:
+  expected: "480x480 pygame window displays on macOS without crashing"
+  actual: "Application aborts immediately after display thread starts"
+  impact: "macOS development mode non-functional"
+  workaround: "None without architectural change"
+
+environment:
+  python_version: "3.11"
+  os: "macOS (Apple Silicon)"
+  dependencies:
+    - library: "pygame"
+      version: "2.6.1"
+    - library: "SDL"
+      version: "2.28.4"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    DisplayManager.__init__ creates display_thread pointing to _display_loop.
+    DisplayManager.start() calls display_thread.start(), moving _display_loop
+    to a background thread. On macOS, SDL calls NSApplication APIs
+    (nextEventMatchingMask) which are restricted to the main thread by Cocoa.
+    The existing Linux/Pi design is correct for that platform (framebuffer
+    output requires no main thread constraint) but incompatible with macOS.
+  technical_notes: >
+    Fix: On macOS, do not start the display thread. Instead, expose
+    run_main_thread_loop() on DisplayManager which calls _display_loop()
+    directly. In app.run(), on macOS, call self._display.run_main_thread_loop()
+    instead of signal.pause(). The main thread then owns the display loop
+    for the lifetime of the application. All other threads (OBD, watchdog,
+    transport) remain background threads as before. Linux/Pi path unchanged.
+  related_issues:
+    - issue_ref: "issue-b1d4e7f9"
+      relationship: "blocked_by"
+
+resolution:
+  assigned_to: ""
+  target_date: ""
+  approach: >
+    1. DisplayManager.start(): on macOS skip display_thread.start()
+    2. DisplayManager: add run_main_thread_loop() calling _display_loop() directly
+    3. GTachApplication.run(): on macOS call self._display.run_main_thread_loop()
+       instead of signal.pause()
+  change_ref: ""
+  resolved_date: "2026-03-31"
+  resolved_by: "William Watson"
+  fix_description: >-
+    DisplayManager.start(): skip display_thread.start() on macOS.
+    Added run_main_thread_loop() calling _display_loop() directly.
+    GTachApplication.run(): on macOS calls run_main_thread_loop()
+    instead of signal.pause().
+
+verification:
+  verified_date: "2026-03-31"
+  verified_by: "William Watson"
+  test_results: "No NSInternalInconsistencyException. Window renders correctly."
+  closure_notes: "Fixed under trivial change exemption."
+
+version_history:
+  - version: "1.0"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created"
+
+metadata:
+  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"
