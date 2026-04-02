@@ -82,6 +82,15 @@ class DisplayManager:
             name='DisplayManager'
         )
         self.thread_manager.register_thread('display', self.display_thread)
+
+        # macOS mouse-as-touch simulation
+        import platform as _plat
+        self._is_macos = _plat.system() == 'Darwin'
+        if self._is_macos:
+            self._mouse_down_pos = None
+            self._mouse_down_time = None
+            self._mouse_dragging = False
+            self._mouse_current_pos = None
     
     def _initialize_components(self) -> None:
         """Initialize the extracted components"""
@@ -347,6 +356,21 @@ class DisplayManager:
                     if event.type == pygame.QUIT:
                         self._shutdown_event.set()
                         break
+                    elif self._is_macos:
+                        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                            self._mouse_down_pos = event.pos
+                            self._mouse_down_time = time.monotonic()
+                            self._mouse_dragging = True
+                            self._mouse_current_pos = event.pos
+                            if self.gesture_handler:
+                                self.gesture_handler.start_gesture_tracking(event.pos, self._mouse_down_time)
+                        elif event.type == pygame.MOUSEMOTION and self._mouse_dragging and event.buttons[0]:
+                            self._mouse_current_pos = event.pos
+                        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self._mouse_dragging:
+                            self._dispatch_mouse_gesture(event.pos)
+                            self._mouse_dragging = False
+                            self._mouse_down_pos = None
+                            self._mouse_down_time = None
 
                 # Record frame start for performance monitoring
                 frame_id = self.performance_monitor.record_frame_start()
@@ -762,11 +786,11 @@ class DisplayManager:
     def _draw_status_indicator(self) -> None:
         """Draw connection status indicator"""
         try:
-            # Check bluetooth thread status
-            if 'bluetooth' not in self.thread_manager.threads:
+            # Check transport thread status
+            if 'transport' not in self.thread_manager.threads:
                 status = ConnectionStatus.DISCONNECTED
             else:
-                thread_status = self.thread_manager.threads['bluetooth'].status
+                thread_status = self.thread_manager.threads['transport'].status
                 if thread_status == ThreadStatus.RUNNING:
                     status = ConnectionStatus.CONNECTED
                 elif thread_status == ThreadStatus.STARTING:
@@ -835,6 +859,26 @@ class DisplayManager:
         """Check if in setup mode"""
         return self._in_setup_mode
     
+    def _dispatch_mouse_gesture(self, up_pos: Tuple[int, int]) -> None:
+        """Classify and dispatch a completed mouse gesture (macOS only)."""
+        if self._mouse_down_pos is None or self._mouse_down_time is None:
+            return
+        hold = time.monotonic() - self._mouse_down_time
+        long_press_threshold = getattr(self.config, 'touch_long_press', 1.0)
+        if hold >= long_press_threshold:
+            self.logger.debug('Mouse long-press at %s (%.2fs)', self._mouse_down_pos, hold)
+            self._handle_long_press(self._mouse_down_pos, up_pos)
+            return
+        if self.gesture_handler:
+            gesture = self.gesture_handler.end_gesture_tracking(up_pos, time.monotonic())
+            if gesture:
+                self.logger.debug('Mouse gesture: %s', gesture.gesture_type.name)
+                self.gesture_handler.handle_gesture_event(gesture)
+                return
+        # Fall through: treat as tap
+        self.logger.debug('Mouse tap at %s', up_pos)
+        self.handle_touch_event(up_pos)
+
     def handle_touch_event(self, pos: Tuple[int, int]) -> Optional[object]:
         """Handle touch events using touch coordinator"""
         try:

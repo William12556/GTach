@@ -54,12 +54,7 @@ class DeviceStore:
         if not YAML_AVAILABLE:
             self.logger.debug("YAML not available - using default config")
             self.config = {
-                'paired_devices': {},
-                'setup': {
-                    'completed': False,
-                    'first_run': True,
-                    'discovery_timeout': 30
-                }
+                'paired_devices': {}
             }
             return
             
@@ -69,23 +64,13 @@ class DeviceStore:
                     self.config = yaml.safe_load(f) or {}
             else:
                 self.config = {
-                    'paired_devices': {},
-                    'setup': {
-                        'completed': False,
-                        'first_run': True,
-                        'discovery_timeout': 30
-                    }
+                    'paired_devices': {}
                 }
                 self._save_config()
         except Exception as e:
             self.logger.error(f"Failed to load device config: {e}")
             self.config = {
-                'paired_devices': {},
-                'setup': {
-                    'completed': False,
-                    'first_run': True,
-                    'discovery_timeout': 30
-                }
+                'paired_devices': {}
             }
     
     def _save_config(self) -> None:
@@ -162,14 +147,14 @@ class DeviceStore:
         try:
             secondary_devices = self.config.get('paired_devices', {}).get('secondary', {})
             for mac_address, device_data in secondary_devices.items():
+                last_connected = None
+                if device_data.get('last_connected'):
+                    last_connected = datetime.fromisoformat(device_data['last_connected'])
                 device = BluetoothDevice(
                     name=device_data['name'],
                     mac_address=device_data['mac_address'],
-                    device_type=device_data.get('device_type', 'ELM327'),
-                    signal_strength=device_data.get('signal_strength', 0),
-                    last_seen=datetime.fromisoformat(device_data.get('last_connected', datetime.now().isoformat())),
-                    is_paired=True,
-                    connection_verified=device_data.get('connection_verified', False)
+                    device_type=device_data.get('device_type', 'UNKNOWN'),
+                    last_connected=last_connected
                 )
                 devices.append(device)
         except Exception as e:
@@ -200,83 +185,6 @@ class DeviceStore:
         except Exception as e:
             self.logger.error(f"Failed to remove device {mac_address}: {e}")
             return False
-    
-    def set_primary_device(self, mac_address: str) -> bool:
-        """Set a device as primary by MAC address"""
-        try:
-            # Check if it's already primary
-            primary = self.config.get('paired_devices', {}).get('primary')
-            if primary and primary.get('mac_address') == mac_address:
-                return True
-            
-            # Find device in secondary devices
-            secondary_devices = self.config.get('paired_devices', {}).get('secondary', {})
-            if mac_address in secondary_devices:
-                device_data = secondary_devices[mac_address]
-                
-                # Move current primary to secondary if it exists
-                if primary:
-                    if 'secondary' not in self.config['paired_devices']:
-                        self.config['paired_devices']['secondary'] = {}
-                    self.config['paired_devices']['secondary'][primary['mac_address']] = primary
-                
-                # Set new primary
-                self.config['paired_devices']['primary'] = device_data
-                
-                # Remove from secondary
-                del secondary_devices[mac_address]
-                
-                self._save_config()
-                self.logger.info(f"Set primary device: {mac_address}")
-                return True
-            
-            return False
-        except Exception as e:
-            self.logger.error(f"Failed to set primary device {mac_address}: {e}")
-            return False
-    
-    def is_setup_complete(self) -> bool:
-        """Check if initial setup is complete"""
-        return self.config.get('setup', {}).get('completed', False)
-    
-    def mark_setup_complete(self) -> None:
-        """Mark initial setup as complete"""
-        try:
-            if 'setup' not in self.config:
-                self.config['setup'] = {}
-            self.config['setup']['completed'] = True
-            self.config['setup']['first_run'] = False
-            self._save_config()
-            self.logger.info("Setup marked as complete")
-        except Exception as e:
-            self.logger.error(f"Failed to mark setup complete: {e}")
-    
-    def is_first_run(self) -> bool:
-        """Check if this is the first run"""
-        return self.config.get('setup', {}).get('first_run', True)
-    
-    def get_discovery_timeout(self) -> int:
-        """Get discovery timeout setting"""
-        return self.config.get('setup', {}).get('discovery_timeout', 30)
-    
-    def set_discovery_timeout(self, timeout: int) -> None:
-        """Set discovery timeout setting"""
-        try:
-            if 'setup' not in self.config:
-                self.config['setup'] = {}
-            self.config['setup']['discovery_timeout'] = timeout
-            self._save_config()
-        except Exception as e:
-            self.logger.error(f"Failed to set discovery timeout: {e}")
-    
-    def clear_all_devices(self) -> None:
-        """Clear all paired devices"""
-        try:
-            self.config['paired_devices'] = {}
-            self._save_config()
-            self.logger.info("Cleared all devices")
-        except Exception as e:
-            self.logger.error(f"Failed to clear devices: {e}")
     
     def get_device_by_mac(self, mac_address: str) -> Optional[BluetoothDevice]:
         """Get a specific device by MAC address"""

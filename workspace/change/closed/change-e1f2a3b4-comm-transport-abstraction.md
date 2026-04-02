@@ -28,7 +28,7 @@ change_info:
   title: "Comm Layer Transport Abstraction and macOS Development Mode"
   date: "2026-03-24"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "high"
   iteration: 1
   version_bump: "0.1.1 -> 0.2.0 (MINOR)"
@@ -40,7 +40,7 @@ change_info:
 ### 1.1 Document References
 
 - **Domain Design**: [design-7d3e9f5a-domain_comm.md](<design-7d3e9f5a-domain_comm.md>) v2.0
-- **Requirements**: [requirements-gtach-master.md](<../requirements/requirements-gtach-master.md>) v0.9
+- **Requirements**: [requirements-gtach-master.md](<requirements-gtach-master.md>) v0.9
 - **Component — OBDTransport**: [design-b1c2d3e4-component_comm_transport.md](<design-b1c2d3e4-component_comm_transport.md>)
 - **Component — RFCOMMTransport**: [design-c2d3e4f5-component_comm_rfcomm_transport.md](<design-c2d3e4f5-component_comm_rfcomm_transport.md>)
 - **Component — TCPTransport**: [design-d3e4f5a6-component_comm_tcp_transport.md](<design-d3e4f5a6-component_comm_tcp_transport.md>)
@@ -513,12 +513,36 @@ implementation:
 
 ```yaml
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-04-01"
+  implemented_by: "William Watson"
+  verification_date: "2026-04-01"
+  verified_by: "William Watson"
+  test_results: "macOS TCPTransport: window opens, renders at 60fps, RPM data received from emulator. Seven defects found and resolved under trivial change exemption (issues a2e8b4c7, b1d4e7f9, c9a2f3e1, d3f1a2c8, d5f8a2b3, e3c7b9a4, e5b2c9d1, f7c3a1e6). Pi/RFCOMM not yet tested."
+  issues_found:
+    - issue_ref: "issue-a2e8b4c7"
+      title: "No macOS development configuration file"
+      resolution: "Created workspace/config/config-macos-dev.yaml"
+    - issue_ref: "issue-b1d4e7f9"
+      title: "SDL dummy driver on macOS — no window shown"
+      resolution: "Platform-aware rendering path in engine.py"
+    - issue_ref: "issue-c9a2f3e1"
+      title: "Display loop on background thread (NSInternalInconsistencyException)"
+      resolution: "Display loop moved to main thread on macOS"
+    - issue_ref: "issue-d3f1a2c8"
+      title: "pygame not declared as macOS dependency"
+      resolution: "Added [macos] optional-dependency group to pyproject.toml"
+    - issue_ref: "issue-d5f8a2b3"
+      title: "DisplayManager.stop() joins never-started thread on macOS"
+      resolution: "Guarded display_thread.join() on Darwin"
+    - issue_ref: "issue-e3c7b9a4"
+      title: "Splash screen loops forever"
+      resolution: "_save_config() saves _post_splash_mode when mode is SPLASH"
+    - issue_ref: "issue-e5b2c9d1"
+      title: "get_platform_type not exported from utils __init__.py"
+      resolution: "Added to utils/__init__.py"
+    - issue_ref: "issue-f7c3a1e6"
+      title: "__main__.py missing from gtach package"
+      resolution: "Created src/gtach/__main__.py"
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -575,6 +599,7 @@ traceability:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-24 | William Watson | Initial change document |
+| 1.1 | 2026-04-01 | William Watson | Status updated to implemented; verification section populated with macOS test results and issue references |
 
 ---
 

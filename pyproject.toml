@@ -50,6 +50,9 @@ pi = [
     "RPi.GPIO>=0.7.1",
     "gpiozero>=1.6",
 ]
+macos = [
+    "pygame>=2.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/user/GTach"

@@ -3,7 +3,7 @@ issue_info:
   title: "No macOS development configuration file"
   date: "2026-03-31"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -71,9 +71,9 @@ resolution:
     Create workspace/config/config-macos-dev.yaml for macOS development use.
     Document use of --config flag in macOS testing procedure.
   change_ref: ""
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-04-01"
+  resolved_by: "William Watson"
+  fix_description: "workspace/config/config-macos-dev.yaml created. Use: python -m gtach --config workspace/config/config-macos-dev.yaml --transport tcp --obd-host <host> --obd-port <port>"
 
 verification:
   verified_date: ""

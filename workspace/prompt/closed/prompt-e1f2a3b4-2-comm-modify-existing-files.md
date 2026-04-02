@@ -344,6 +344,7 @@ tactical_brief: |
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-24 | William Watson | Initial prompt |
+| 1.1 | 2026-04-01 | William Watson | Closed — all success criteria met; implementation complete |
 
 ---
 

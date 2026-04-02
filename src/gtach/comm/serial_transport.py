@@ -14,6 +14,7 @@ serial communication for direct connection to an ELM327 OBD-II adapter.
 """
 
 import logging
+import platform
 import threading
 from typing import Optional
 
@@ -160,6 +161,11 @@ class SerialTransport(OBDTransport):
         patterns = ['ELM', 'OBD', 'OBDII']
         
         for port in list_ports.comports():
+            # On macOS, skip /dev/tty.* — use /dev/cu.* for outgoing connections.
+            # tty.* blocks waiting for an incoming carrier; cu.* is non-blocking.
+            if platform.system() == 'Darwin' and '/dev/tty.' in port.device:
+                continue
+
             # Check device name and description (case-insensitive)
             device_name = port.device
             description = getattr(port, 'description', '')

@@ -372,6 +372,7 @@ tactical_brief: |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-24 | William Watson | Initial prompt |
 | 2.0 | 2026-03-27 | William Watson | Narrowed to remaining work after partial prior run; fixed defect descriptions; explicit write vs edit guidance in brief |
+| 2.1 | 2026-04-01 | William Watson | Closed — app.py, watchdog.py, bluetooth.py, pyproject.toml criteria met; main.py not simplified per brief (deviation accepted: rotating file handler retained for macOS development mode; functional) |
 
 ---
 

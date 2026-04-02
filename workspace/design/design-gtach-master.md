@@ -30,7 +30,7 @@ Created: 2025-12-29
 ```yaml
 project_info:
   name: "GTach"
-  version: "0.1.0-alpha.1"
+  version: "0.2.0"
   date: "2025-12-29"
   author: "William Watson"
   description: "Real-time automotive tachometer display for embedded circular touch screens"
@@ -56,7 +56,6 @@ GTach provides real-time engine RPM monitoring via OBD-II Bluetooth interface wi
 - Setup wizard for initial Bluetooth device pairing
 - Cross-platform development (macOS) to deployment (Raspberry Pi) pipeline
 - Thread-safe concurrent operation with watchdog monitoring
-- Session-based configuration and logging management
 - Graceful degradation with hardware mock fallbacks
 
 ### 2.3 Out of Scope
@@ -76,7 +75,7 @@ GTach provides real-time engine RPM monitoring via OBD-II Bluetooth interface wi
 | ELM327 | Microcontroller chip implementing OBD-II to RS-232 protocol translation |
 | OBD-II | On-Board Diagnostics version 2 - standardized vehicle diagnostic interface |
 | PID | Parameter ID - OBD-II data request identifier (e.g., 0x0C for RPM) |
-| BLE | Bluetooth Low Energy - wireless communication protocol |
+| BLE | Bluetooth Low Energy — not used; ELM327 adapters use Classic Bluetooth SPP (RFCOMM) exclusively |
 | Framebuffer | Direct video memory access for display rendering |
 | HyperPixel | Pimoroni circular touch display for Raspberry Pi |
 
@@ -93,18 +92,18 @@ GTach is a Python-based embedded application implementing a real-time automotive
 ### 3.2 Context Flow
 
 ```
-Vehicle ECU → ELM327 Adapter → Bluetooth → BluetoothManager → OBDProtocol → DisplayManager → Framebuffer → User
-                                                    ↓
-                                              ThreadManager ← WatchdogMonitor
-                                                    ↓
-                                              ConfigManager
+Vehicle ECU → ELM327 Adapter → Bluetooth/Serial/TCP → OBDTransport → OBDProtocol → DisplayManager → Framebuffer → User
+                                                                   ↓
+                                                             ThreadManager ← WatchdogMonitor
+                                                                   ↓
+                                                             ConfigManager
 ```
 
 ### 3.3 Primary Functions
 
 1. **Bluetooth Device Management**: Scan, discover, connect to ELM327 OBD-II adapters
 2. **OBD Protocol Handling**: Initialize ELM327, request RPM data (PID 0x0C), parse responses
-3. **Display Rendering**: Double-buffered 60 FPS rendering to framebuffer with mode switching
+3. **Display Rendering**: Double-buffered 30 FPS rendering to framebuffer with mode switching
 4. **Touch Input Processing**: Gesture recognition (swipe, long-press) for mode navigation
 5. **Thread Lifecycle Management**: Atomic state transitions with automatic restart on failure
 6. **Watchdog Monitoring**: Health checks with escalating recovery procedures
@@ -131,8 +130,8 @@ implementation:
   language: "Python 3.9+"
   framework: "None (pure Python with minimal dependencies)"
   libraries:
-    - "bleak: Cross-platform Bluetooth (async)"
     - "pygame: Display rendering and event handling"
+    - "pyserial: Serial port communication for macOS Bluetooth transport"
     - "PyYAML: Configuration file parsing (optional)"
   standards:
     - "PEP 8: Python style guide"
@@ -227,11 +226,10 @@ GTachApplication (Coordinator)
     │   └── AsyncSyncBridge
     ├── WatchdogMonitor
     │   └── ThreadManager (reference)
-    ├── BluetoothManager
-    │   ├── ThreadManager (reference)
-    │   └── DeviceStore
+    ├── OBDTransport (RFCOMMTransport | SerialTransport | TCPTransport)
+    │   └── DeviceStore (MAC address lookup on Pi)
     ├── OBDProtocol
-    │   ├── BluetoothManager (reference)
+    │   ├── OBDTransport (reference)
     │   └── ThreadManager (reference)
     └── DisplayManager
         ├── ThreadManager (reference)
@@ -248,7 +246,7 @@ technology_stack:
   language: "Python 3.9+"
   runtime: "CPython interpreter"
   async_framework: "asyncio (standard library)"
-  bluetooth: "Bleak (cross-platform BLE/Classic)"
+  bluetooth: "Standard library socket AF_BLUETOOTH/RFCOMM (Pi/Linux); pyserial (macOS); TCP socket (emulator)"
   display: "Pygame (SDL2 wrapper)"
   configuration: "PyYAML (optional, graceful fallback)"
   data_store: "YAML files (device persistence)"
@@ -317,14 +315,19 @@ GTach/
 **Purpose**: Bluetooth connectivity and OBD-II protocol handling
 
 **Components**:
-- `BluetoothManager`: Bleak-based cross-platform Bluetooth with state management
+- `OBDTransport`: Abstract base class defining the uniform transport interface
+- `RFCOMMTransport`: Classic Bluetooth RFCOMM socket transport (Pi/Linux production path)
+- `SerialTransport`: pyserial transport for macOS paired ELM327 (/dev/cu.*)
+- `TCPTransport`: TCP socket transport for ircama ELM327 emulator (development)
 - `OBDProtocol`: ELM327 initialization and RPM data acquisition
-- `DeviceStore`: YAML-based persistent device storage
-- `BluetoothDevice`: Device model with connection metadata
+- `DeviceStore`: YAML-based persistent device storage (stores MAC address for RFCOMMTransport)
+- `BluetoothDevice`: Simplified device model (name, mac_address, device_type, last_connected)
+- `BluetoothPairing`: Classic BT device discovery and pairing via bluetoothctl (setup mode only)
 
 **Key Patterns**:
-- State Machine: BluetoothState (DISCONNECTED → SCANNING → CONNECTING → CONNECTED)
+- State Machine: TransportState (DISCONNECTED → CONNECTING → CONNECTED → ERROR)
 - Repository: DeviceStore for device persistence
+- Factory: select_transport() selects concrete transport from platform/CLI args
 - Adapter: OBDProtocol adapting ELM327 to application interface
 
 ### 8.3 Display Domain
@@ -378,26 +381,20 @@ GTach/
 ```yaml
 entity:
   name: "BluetoothDevice"
-  purpose: "Represents a discovered or paired Bluetooth OBD-II adapter"
+  purpose: "Represents a paired Bluetooth OBD-II adapter stored in DeviceStore"
   attributes:
     - name: "name"
       type: "str"
       constraints: "Required, max 64 characters"
-    - name: "address"
+    - name: "mac_address"
       type: "str"
-      constraints: "Required, MAC address format (XX:XX:XX:XX:XX:XX)"
+      constraints: "Required, MAC address format (AA:BB:CC:DD:EE:FF uppercase)"
     - name: "device_type"
       type: "str"
-      constraints: "Optional, e.g., 'ELM327', 'OBDLink'"
-    - name: "signal_strength"
-      type: "int"
-      constraints: "Optional, RSSI in dBm"
-    - name: "connection_verified"
-      type: "bool"
-      constraints: "Default False"
-    - name: "last_seen"
+      constraints: "Optional, auto-detected from name; e.g., 'ELM327', 'OBD', 'UNKNOWN'"
+    - name: "last_connected"
       type: "datetime"
-      constraints: "Auto-updated on detection"
+      constraints: "Optional, ISO 8601 format in YAML storage"
 ```
 
 #### 9.1.2 OBDResponse
@@ -464,9 +461,7 @@ storage:
     - name: "secondary_devices"
       type: "List[BluetoothDevice]"
       constraints: "Backup devices"
-    - name: "setup_complete"
-      type: "bool"
-      constraints: "Setup wizard completion flag"
+
 ```
 
 #### 9.2.2 Configuration
@@ -514,17 +509,17 @@ class ThreadManager:
     def shutdown(self) -> None
 ```
 
-#### 10.1.2 BluetoothManager Interface
+#### 10.1.2 OBDTransport Interface
 
 ```python
-class BluetoothManager:
-    async def scan_devices(self, timeout: float = 10.0) -> List[BluetoothDevice]
-    async def connect(self, device: BluetoothDevice) -> bool
-    async def disconnect(self) -> None
-    async def send_command(self, command: str) -> str
-    def get_state(self) -> BluetoothState
-    def start(self) -> None
-    def stop(self) -> None
+class OBDTransport(ABC):
+    def connect(self) -> bool
+    def disconnect(self) -> None
+    def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]
+    def is_connected(self) -> bool
+    def reconnect_indefinitely(self, retry_delay: float = 5.0) -> None
+
+def select_transport(platform_type: PlatformType, args: argparse.Namespace) -> OBDTransport
 ```
 
 #### 10.1.3 DisplayManager Interface
@@ -616,8 +611,8 @@ Exception
 ```yaml
 logging:
   levels:
-    - "DEBUG: Development diagnostics (conditional on debug flag)"
-    - "INFO: Operational events (production default)"
+    - "DEBUG: Development diagnostics (--debug flag only; not active in production)"
+    - "INFO: Operational events (active only in debug mode; no log output in production)"
     - "WARNING: Recoverable issues"
     - "ERROR: Failures requiring attention"
     - "CRITICAL: System-wide failures"
@@ -628,7 +623,7 @@ logging:
     - "Message"
     - "Exception traceback (for errors)"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-  session_based: "Debug logs written to session-specific files"
+  session_based: "Not used; debug logs written to workspace/logs/ on macOS or ~/.local/share/gtach/logs/ on Pi"
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -712,9 +707,10 @@ graph TB
         end
         
         subgraph "Communication Domain"
-            BT[BluetoothManager]
+            TR[OBDTransport]
             OBD[OBDProtocol]
             DS[DeviceStore]
+            BP[BluetoothPairing]
         end
         
         subgraph "Display Domain"
@@ -739,8 +735,8 @@ graph TB
     end
     
     ECU -->|OBD-II| ELM
-    ELM -->|Bluetooth| BT
-    BT --> OBD
+    ELM -->|Bluetooth/Serial/TCP| TR
+    TR --> OBD
     OBD --> DM
     DM --> RE
     RE --> FB
@@ -749,18 +745,18 @@ graph TB
     
     APP --> TM
     APP --> WD
-    APP --> BT
+    APP --> TR
     APP --> OBD
     APP --> DM
     APP --> CM
     
     TM --> ASB
     WD --> TM
-    BT --> DS
-    BT --> TM
+    TR --> TM
+    BP -.->|setup mode| DS
     OBD --> TM
     DM --> TM
-    DM --> TR
+    DM --> TermR[TerminalRestorer]
 ```
 
 ### 13.2 Thread State Machine
@@ -791,27 +787,27 @@ stateDiagram-v2
     RESTARTING --> STOPPED: max restarts exceeded
 ```
 
-### 13.3 Bluetooth State Machine
+### 13.3 Transport State Machine
 
 ```mermaid
 stateDiagram-v2
     [*] --> DISCONNECTED
     
-    DISCONNECTED --> SCANNING: scan_devices()
-    DISCONNECTED --> CONNECTING: connect() with known device
-    
-    SCANNING --> DISCONNECTED: scan complete/timeout
-    SCANNING --> CONNECTING: device selected
-    
+    DISCONNECTED --> CONNECTING: connect()
     CONNECTING --> CONNECTED: connection success
     CONNECTING --> DISCONNECTED: connection failed
-    CONNECTING --> ERROR: critical error
+    CONNECTING --> ERROR: unexpected error
     
-    CONNECTED --> DISCONNECTED: disconnect() or lost
+    CONNECTED --> DISCONNECTED: disconnect() or connection lost
     CONNECTED --> ERROR: protocol error
     
-    ERROR --> DISCONNECTED: reset
-    ERROR --> SCANNING: retry
+    ERROR --> DISCONNECTED: reset / reconnect attempt
+    
+    note right of DISCONNECTED
+        reconnect_indefinitely() loops
+        DISCONNECTED → CONNECTING
+        until CONNECTED or shutdown
+    end note
 ```
 
 ### 13.4 Display Mode Flow
@@ -820,19 +816,25 @@ stateDiagram-v2
 stateDiagram-v2
     [*] --> SPLASH: application start
     
-    SPLASH --> DIGITAL: splash timeout (setup complete)
-    SPLASH --> SETUP: splash timeout (setup needed)
+    SPLASH --> DIGITAL: splash timeout (device stored)
+    SPLASH --> SETUP: splash timeout (no device stored)
     
-    SETUP --> DIGITAL: setup complete
+    SETUP --> DIGITAL: setup complete (device stored)
     
     DIGITAL --> GAUGE: swipe gesture
-    DIGITAL --> SETTINGS: long press
-    
     GAUGE --> DIGITAL: swipe gesture
-    GAUGE --> SETTINGS: long press
     
-    SETTINGS --> DIGITAL: back gesture
-    SETTINGS --> GAUGE: mode select
+    DIGITAL --> DISCONNECTED: transport connection lost
+    GAUGE --> DISCONNECTED: transport connection lost
+    
+    DISCONNECTED --> DIGITAL: reconnect successful
+    DISCONNECTED --> SETUP: long-press gesture (re-pair, REQ f3a4b5c6)
+    
+    note right of DISCONNECTED
+        Background reconnect runs indefinitely.
+        Long-press clears stored device and
+        starts device discovery.
+    end note
 ```
 
 ### 13.5 Data Flow Diagram
@@ -848,7 +850,7 @@ flowchart LR
     end
     
     subgraph "GTach Application"
-        BT[BluetoothManager]
+        TR[OBDTransport]
         OBD[OBDProtocol]
         Q[Data Queue]
         DM[DisplayManager]
@@ -861,8 +863,8 @@ flowchart LR
     end
     
     ECU -->|CAN Bus| ELM
-    ELM -->|Bluetooth RFCOMM| BT
-    BT -->|Raw Response| OBD
+    ELM -->|Bluetooth RFCOMM / Serial / TCP| TR
+    TR -->|Raw Response| OBD
     OBD -->|Parsed RPM| Q
     Q -->|Read| DM
     DM -->|Render Commands| RE
@@ -945,6 +947,7 @@ The following Tier 3 component design documents provide detailed implementation 
 | 1.1 | 2025-12-29 | William Watson | Added Tier 2 domain document cross-references (Core, Comm, Display, Utils, Provisioning) |
 | 1.2 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references (23 components across 5 domains) |
 | 1.3 | 2026-03-13 | William Watson | C2: memory 256->128 MB. C3: FPS 60->30. C4: DisplayConfig entity updated to fixed band model. C5: removed Provisioning domain (OOS-11). Error strategy updated: indefinite reconnect, no retry limit. |
+| 2.0 | 2026-04-01 | William Watson | Updated to reflect transport abstraction (change e1f2a3b4 / requirements v0.9): removed Bleak/BluetoothManager; added OBDTransport/RFCOMMTransport/SerialTransport/TCPTransport; updated component relationships, entity definition (BluetoothDevice simplified), interface (OBDTransport replaces BluetoothManager), technology stack, context flow. Corrected display mode flow to include DISCONNECTED state and long-press to setup (REQ f3a4b5c6). Corrected logging to no-output-in-production (NFR e1f2a3b4). Removed session-based logging. Renamed §13.3 to Transport State Machine. |
 
 ---
 

@@ -12,6 +12,7 @@ Handles device discovery coordination and setup mode Bluetooth operations.
 """
 
 import logging
+import platform
 import threading
 from typing import Optional, Dict, Any, Callable
 from ...setup_models import PairingStatus, BluetoothDevice
@@ -34,7 +35,11 @@ class BluetoothSetupInterface:
         self._pairing_ready = threading.Event()
         
         # Initialize Bluetooth pairing asynchronously
-        self._init_bluetooth_pairing_async()
+        if platform.system() != 'Darwin':
+            self._init_bluetooth_pairing_async()
+        else:
+            self.logger.info('macOS: skipping BluetoothPairing; using serial discovery')
+            self._pairing_ready.set()
     
     def _init_bluetooth_pairing_async(self) -> None:
         """Initialize Bluetooth pairing asynchronously to prevent UI blocking"""
@@ -129,9 +134,13 @@ class BluetoothSetupInterface:
             self.logger.error(f"Error ensuring pairing initialization: {e}")
             return False
     
-    def start_discovery(self, state, progress_callback=None, device_found_callback=None, 
+    def start_discovery(self, state, progress_callback=None, device_found_callback=None,
                        show_all_devices=False) -> None:
         """Start device discovery using async operation framework"""
+        if platform.system() == 'Darwin':
+            self._start_macos_serial_discovery(state)
+            return
+
         def discovery_task(progress_callback_inner=None):
             """Discover devices in worker thread"""
             try:
@@ -217,6 +226,64 @@ class BluetoothSetupInterface:
             self.logger.error(f"Failed to submit discovery operation: {e}")
             state.pairing_status = PairingStatus.FAILED
     
+    def _start_macos_serial_discovery(self, state) -> None:
+        """Enumerate /dev/cu.* serial ports and populate state.discovered_devices (macOS only)."""
+        def _macos_discovery_task(progress_callback_inner=None):
+            from serial.tools import list_ports
+            from datetime import datetime
+            state.pairing_status = PairingStatus.DISCOVERING
+            state.discovered_devices = []
+            if progress_callback_inner:
+                progress_callback_inner(0.1, 'Scanning serial ports...')
+            matched = []
+            all_cu = []
+            patterns = ['elm', 'obd']
+            for port in list_ports.comports():
+                if '/dev/cu.' not in port.device:
+                    continue
+                all_cu.append(port)
+                name_lower = port.device.lower()
+                desc_lower = (port.description or '').lower()
+                if any(p in name_lower or p in desc_lower for p in patterns):
+                    matched.append(port)
+                    self.logger.debug('macOS: matched port %s (%s)', port.device, port.description)
+                else:
+                    self.logger.debug('macOS: skipping port %s (%s)', port.device, port.description)
+            candidates = matched if matched else all_cu
+            for port in candidates:
+                device = BluetoothDevice(
+                    name=port.description if port.description else port.device,
+                    mac_address=port.device,
+                    signal_strength=0,
+                    device_type='ELM327',
+                    last_seen=datetime.now()
+                )
+                state.discovered_devices.append(device)
+            if progress_callback_inner:
+                progress_callback_inner(1.0, f'{len(state.discovered_devices)} port(s) found')
+            return state.discovered_devices
+
+        def on_complete(operation):
+            if operation.status == OperationStatus.COMPLETED:
+                state.pairing_status = PairingStatus.IDLE
+                self.logger.info('macOS serial discovery complete: %d port(s)', len(state.discovered_devices))
+            elif operation.status == OperationStatus.FAILED:
+                state.pairing_status = PairingStatus.FAILED
+                self.logger.error('macOS serial discovery failed: %s', operation.error)
+            if 'device_discovery' in self._active_operations:
+                del self._active_operations['device_discovery']
+
+        try:
+            operation_id = self.async_manager.submit_operation(
+                OperationType.DEVICE_DISCOVERY, _macos_discovery_task,
+                progress_callback=on_complete
+            )
+            self._active_operations['device_discovery'] = operation_id
+            self.logger.info('macOS serial discovery started (operation: %s)', operation_id)
+        except Exception as e:
+            self.logger.error('Failed to start macOS serial discovery: %s', e, exc_info=True)
+            state.pairing_status = PairingStatus.FAILED
+
     def start_pairing(self, device: BluetoothDevice, state, progress_callback=None) -> None:
         """Start pairing with selected device using async operation framework"""
         def pairing_task(progress_callback_inner=None):

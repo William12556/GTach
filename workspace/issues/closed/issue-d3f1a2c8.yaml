@@ -5,7 +5,7 @@ issue_info:
   title: "pygame not declared as macOS dependency"
   date: "2026-03-31"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -76,9 +76,9 @@ resolution:
     Add [project.optional-dependencies] macos group to pyproject.toml
     with pygame>=2.0. Install via: pip install -e ".[macos]"
   change_ref: ""
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-04-01"
+  resolved_by: "William Watson"
+  fix_description: "Added macos optional-dependency group to pyproject.toml with pygame>=2.0. Install via pip install -e .[macos]"
 
 verification:
   verified_date: ""
