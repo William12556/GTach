@@ -12,6 +12,7 @@ Monitors thread health and triggers recovery actions.
 """
 
 import logging
+import platform
 import threading
 import time
 import signal
@@ -248,6 +249,17 @@ class WatchdogMonitor:
     
     def _attempt_hard_recovery(self, name: str, health: ThreadHealth, timeout: float, force: bool = False) -> None:
         """Attempt hard recovery by restarting the thread"""
+        if platform.system() == 'Darwin' and name == 'display':
+            self.logger.critical(
+                f"Display thread unhealthy on Darwin (timeout: {timeout:.1f}s) — "
+                f"Cocoa main-thread constraint prevents background restart. "
+                f"Initiating graceful shutdown."
+            )
+            self._initiate_graceful_shutdown(
+                f"Display thread timeout on Darwin: {name} ({timeout:.1f}s)"
+            )
+            return
+
         if not force and health.recovery_attempts >= 3:
             self.logger.error(f"Thread {name} exceeded maximum recovery attempts")
             if health.is_critical:
