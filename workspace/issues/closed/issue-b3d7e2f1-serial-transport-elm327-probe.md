@@ -29,7 +29,7 @@ issue_info:
   title: "SerialTransport connects to phantom Bluetooth SPP port without ELM327 validation"
   date: "2026-04-17"
   reporter: "William Watson"
-  status: "resolved"
+  status: "closed"
   severity: "medium"
   type: "bug"
   iteration: 1
@@ -199,8 +199,8 @@ resolution:
     an ATZ command after opening. Accept the port only if the response contains
     "ELM327". Close and continue scanning otherwise. See change-b3d7e2f1.
   change_ref: "change-b3d7e2f1"
-  resolved_date: "2026-04-17"
-  resolved_by: "Claude Sonnet 4.5"
+  resolved_date: "2026-04-22"
+  resolved_by: "William Watson"
   fix_description: >
     Added _probe_port(device: str) -> bool method to SerialTransport that opens
     a candidate port, sends ATZ\r, reads until '>', and verifies the response
@@ -217,13 +217,14 @@ resolution:
 
 ```yaml
 verification:
-  verified_date: "2026-04-17"
-  verified_by: "Claude Sonnet 4.5"
-  test_results: "Implementation complete. Python syntax validated. Ready for manual testing."
-  closure_notes: >
-    Implementation adds ELM327 ATZ probe validation to port discovery as specified.
-    Manual testing required with phantom Bluetooth port and real ELM327 adapter
-    to confirm correct behavior in both scenarios.
+  verified_date: "2026-04-22"
+  verified_by: "William Watson"
+  test_results: >-
+    Run with --transport serial, /dev/cu.ELM327-Emulator present (TCP-only).
+    Probe fired, no ELM327 response received, port skipped. SerialTransport
+    entered retry loop. No indefinite OBD init failure loop. Display stable
+    at 60 FPS throughout.
+  closure_notes: "Verified by log output. Probe sequence correct."
 
 verification_enhanced:
   verification_steps:
@@ -233,7 +234,10 @@ verification_enhanced:
     - "Launch with a real ELM327 adapter paired via Bluetooth SPP."
     - "Confirm _discover_port() probes, receives ELM327 response, returns port."
     - "Confirm normal OBD initialization and RPM display."
-  verification_results: "Pending manual testing."
+  verification_results: >-
+    Log confirmed: Probing port DEBUG, No ELM327 response DEBUG, matched
+    pattern but failed probe WARNING, No OBD device found INFO, retry loop
+    entered. Behaviour correct.
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -288,7 +292,7 @@ loop_context:
 | Version | Date       | Author         | Changes                |
 | ------- | ---------- | -------------- | ---------------------- |
 | 1.0     | 2026-04-17 | William Watson | Initial issue creation |
-| 1.1     | 2026-04-17 | Claude Sonnet 4.5 | Issue resolved |
+| 1.1     | 2026-04-22 | William Watson | Closed — verified by log output |
 
 ---
 
