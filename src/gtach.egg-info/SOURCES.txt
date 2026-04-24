@@ -2,6 +2,7 @@ LICENSE
 README.md
 pyproject.toml
 src/gtach/__init__.py
+src/gtach/__main__.py
 src/gtach/app.py
 src/gtach/main.py
 src/gtach.egg-info/PKG-INFO
@@ -66,8 +67,10 @@ src/gtach/display/setup_components/rendering/device_surfaces.py
 src/gtach/display/setup_components/state/__init__.py
 src/gtach/display/setup_components/state/coordinator.py
 src/gtach/utils/__init__.py
+src/gtach/utils/ack_state.py
 src/gtach/utils/config.py
 src/gtach/utils/dependencies.py
+src/gtach/utils/engine_profiles.py
 src/gtach/utils/home.py
 src/gtach/utils/platform.py
 src/gtach/utils/terminal.py

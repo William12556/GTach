@@ -1,0 +1,49 @@
+# Copyright (c) 2026 William Watson
+#
+# This file is part of GTach.
+#
+# GTach is licensed under the MIT License.
+# See the LICENSE file in the project root for full license text.
+
+# Engine Profile Definitions
+#
+# Each profile defines six RPM threshold values for the colour band system:
+#   - idle_max: Maximum idle RPM (0 to idle_max = blue band)
+#   - torque_start: Start of optimal torque range (idle_max+1 to torque_start-1 = black)
+#   - caution_start: Start of caution zone (torque_start to caution_start-1 = green)
+#   - warning_start: Start of warning zone (caution_start to warning_start-1 = yellow)
+#   - danger_start: Start of danger zone with pulse (warning_start to danger_start-1 = orange)
+#   - redline_rpm: Engine redline (danger_start+ = red band with pulse)
+#
+# Constraints:
+#   - All thresholds must be strictly ascending
+#   - redline_rpm must be <= 15000
+#   - Invalid profiles will fall back to built-in defaults
+
+profiles:
+  abarth_595_turismo:
+    name: "Abarth 595 Turismo 1.4T"
+    idle_max: 999
+    torque_start: 3000
+    caution_start: 4500
+    warning_start: 5500
+    danger_start: 5800
+    redline_rpm: 6000
+
+  generic_turbo_4cyl:
+    name: "Generic Turbocharged 4-cylinder"
+    idle_max: 999
+    torque_start: 2500
+    caution_start: 4000
+    warning_start: 5000
+    danger_start: 5500
+    redline_rpm: 6000
+
+  generic_na_4cyl:
+    name: "Generic Naturally Aspirated 4-cylinder"
+    idle_max: 999
+    torque_start: 2000
+    caution_start: 4500
+    warning_start: 5500
+    danger_start: 6000
+    redline_rpm: 6500

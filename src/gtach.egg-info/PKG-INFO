@@ -36,6 +36,8 @@ Requires-Dist: mypy>=1.0; extra == "dev"
 Provides-Extra: pi
 Requires-Dist: RPi.GPIO>=0.7.1; extra == "pi"
 Requires-Dist: gpiozero>=1.6; extra == "pi"
+Provides-Extra: macos
+Requires-Dist: pygame>=2.0; extra == "macos"
 Dynamic: license-file
 
 # GTach - Retro styled ODBII/ELM327 based Tachometer
