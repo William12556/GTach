@@ -64,7 +64,8 @@ class GTachApplication:
             
             # Check if setup is needed
             # If --transport is explicitly specified, bypass device store check
-            transport_forced = getattr(self._args, 'transport', None) is not None
+            transport_arg = getattr(self._args, 'transport', None)
+            transport_forced = transport_arg in ('tcp', 'serial')
             if transport_forced:
                 self.logger.info("Transport explicitly specified - skipping setup mode")
                 self._start_normal_mode()
@@ -92,7 +93,7 @@ class GTachApplication:
         
         # Initialize setup manager while splash is showing
         self._setup_manager = SetupDisplayManager(
-            self._display.main_surface,
+            self._display.rendering_engine.main_surface,
             self._thread_manager,
             self._display.touch_handler
         )

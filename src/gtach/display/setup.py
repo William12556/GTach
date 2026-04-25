@@ -108,7 +108,7 @@ class SetupDisplayManager:
     def _on_state_change(self, changed_fields: List[str]) -> None:
         """Handle state changes from state coordinator"""
         # Invalidate cache for dynamic content changes
-        if any(field in changed_fields for field in ['discovered_devices', 'pairing_status', 'selected_device']):
+        if any(field in changed_fields for field in ['discovered_devices', 'pairing_status', 'selected_device', 'error_message']):
             self._invalidate_render_cache()
         self.logger.debug(f"State change handled: {changed_fields}")
     
@@ -124,7 +124,7 @@ class SetupDisplayManager:
         # Determine starting screen through state coordinator
         from ..comm.device_store import DeviceStore
         device_store = DeviceStore()
-        if device_store.is_first_run():
+        if device_store.get_primary_device() is None:
             self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
         else:
             self.state_coordinator.transition_to_screen(SetupScreen.CURRENT_DEVICE)
@@ -274,6 +274,15 @@ class SetupDisplayManager:
             surface.blit(btn_text, btn_text_rect)
         
         new_regions.append(("start", start_btn))
+
+        # Show error message if previous discovery found nothing
+        state = self.state_coordinator.get_state()
+        if state.error_message:
+            font_small = get_minimal_font()
+            if font_small:
+                msg = font_small.render("No devices found", True, self.colors['warning'])
+                surface.blit(msg, msg.get_rect(center=(240, 405)))
+
         self._update_touch_regions_safe(new_regions)
     
     def _render_discovery_screen(self, surface, state: SetupState) -> None:
@@ -597,7 +606,7 @@ class SetupDisplayManager:
                 return SetupAction.COMPLETE
             
         except Exception as e:
-            self.logger.error(f"Error handling touch action {action}: {e}")
+            self.logger.error(f"Error handling touch action {action}: {e}", exc_info=True)
         
         return None
     

@@ -28,15 +28,12 @@ class SetupStateCoordinator:
         if initial_state:
             self.state = initial_state
         else:
-            from ....comm.device_store import DeviceStore
-            device_store = DeviceStore()
             self.state = SetupState(
                 current_screen=SetupScreen.WELCOME,
                 discovered_devices=[],
                 selected_device=None,
                 pairing_status=PairingStatus.IDLE,
-                setup_complete=False,
-                discovery_timeout=device_store.get_discovery_timeout()
+                setup_complete=False
             )
         
         # UI state management

@@ -192,6 +192,8 @@ class BluetoothSetupInterface:
                     devices = operation.result
                     state.discovered_devices = devices
                     state.pairing_status = PairingStatus.IDLE
+                    if not devices:
+                        state.error_message = "No devices found. Ensure your ELM327 adapter is powered on and discoverable."
                     self.logger.info(f"Discovery completed with {len(devices)} devices")
                 elif operation.status == OperationStatus.FAILED:
                     self.logger.error(f"Discovery failed: {operation.error}")

@@ -183,7 +183,10 @@ class DisplayManager:
             # Touch handler compatibility
             try:
                 from .touch import TouchHandler
-                self.touch_handler = TouchHandler(self)
+                from .touch_interface import create_touch_interface
+                _touch_interface = create_touch_interface()
+                _touch_interface.start()
+                self.touch_handler = TouchHandler(self, touch_interface=_touch_interface)
             except ImportError as e:
                 self.logger.warning(f"TouchHandler not available: {e}")
                 self.touch_handler = None
@@ -425,11 +428,15 @@ class DisplayManager:
                 splash_success = self._splash_screen.render(back_surface)
                 
                 if self._splash_screen.is_complete():
-                    self.config.mode = self._post_splash_mode
-                    self.logger.info(f"Splash completed - transitioning to {self._post_splash_mode.name}")
-                    
                     if self._in_setup_mode:
-                        self.logger.info("Setup mode was requested during splash")
+                        self.config.mode = self._post_splash_mode
+                        self.logger.info("Splash completed - entering setup mode")
+                    elif self._ack_state_manager.is_acknowledged(self.config.rpm_bands, self.config.engine_profile):
+                        self.config.mode = self._post_splash_mode
+                        self.logger.info(f"Splash completed - transitioning to {self._post_splash_mode.name}")
+                    else:
+                        self.config.mode = DisplayMode.ACKNOWLEDGEMENT
+                        self.logger.info("Splash completed - showing acknowledgement screen")
                     
                     try:
                         self._splash_screen.reset()

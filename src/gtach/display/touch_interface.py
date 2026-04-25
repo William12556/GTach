@@ -794,13 +794,21 @@ class MockTouchInterface(TouchInterface):
             self.logger.info("📊 No touch events simulated during this session")
 
 
+_touch_interface_singleton: Optional[TouchInterface] = None
+_touch_interface_lock = threading.Lock()
+
+
 def create_touch_interface() -> TouchInterface:
     """
     Factory function to create appropriate touch interface based on platform.
-    
-    Uses enhanced cross-platform detection with automatic fallback handling.
-    The HyperPixelTouchInterface now handles both real hardware and mock
-    implementation internally.
+
+    Returns the same instance on every call (singleton). This ensures all
+    callers share one hardware-connected interface and one callback chain.
+    """    
+    global _touch_interface_singleton
+    with _touch_interface_lock:
+        if _touch_interface_singleton is not None:
+            return _touch_interface_singleton
     
     Returns:
         TouchInterface: Platform-appropriate touch interface instance
@@ -852,6 +860,8 @@ def create_touch_interface() -> TouchInterface:
             logger.info("🔄 Creating cross-platform HyperPixel touch interface...")
             interface = HyperPixelTouchInterface()
             logger.info("✅ HyperPixel touch interface created successfully")
+            with _touch_interface_lock:
+                _touch_interface_singleton = interface
             return interface
             
         except Exception as e:

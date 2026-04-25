@@ -28,36 +28,23 @@ from .models import DisplayMode
 class TouchHandler:
     """Handles touch input and gestures using the touch interface abstraction layer"""
     
-    def __init__(self, display_manager):
+    def __init__(self, display_manager, touch_interface=None):
         """Initialize touch handler
-        
+
         Args:
             display_manager: Display manager instance
+            touch_interface: Pre-initialised touch interface; if provided, skips self-initialisation
         """
         self.logger = logging.getLogger('TouchHandler')
         self.display_manager = display_manager
         self._touch_start: Optional[Tuple[float, int, int]] = None
-        
-        # Initialize touch interface using abstraction layer
-        self.touch_interface = self._initialize_touch_interface()
+
+        if touch_interface is not None:
+            self.touch_interface = touch_interface
+        else:
+            self.touch_interface = self._initialize_touch_interface()
+
         self._setup_touch_handler()
-        
-        # Start the touch interface
-        if self.touch_interface:
-            try:
-                self.touch_interface.start()
-                self.logger.info("Touch interface started successfully")
-                
-                # Enable simulation for mock interfaces
-                if hasattr(self.touch_interface, 'enable_simulation'):
-                    self.touch_interface.enable_simulation()
-                    self.logger.info("Touch simulation enabled for development")
-                elif hasattr(self.touch_interface, '_using_mock') and self.touch_interface._using_mock:
-                    self.logger.info("Using mock HyperPixel implementation")
-                    
-            except Exception as e:
-                self.logger.error(f"Failed to start touch interface: {e}")
-                self.touch_interface = None
 
     def _initialize_touch_interface(self):
         """Initialize touch interface using the abstraction layer"""
@@ -139,7 +126,14 @@ class TouchHandler:
                     
                 start_time, start_x, start_y = self._touch_start
                 duration = current_time - start_time
-                
+                self.logger.debug(f"Touch end: duration={duration:.3f}s, pos=({x},{y}), start=({start_x},{start_y})")
+
+                # Skip gesture handler in setup mode - route directly
+                if self.display_manager.is_in_setup_mode():
+                    self._touch_start = None
+                    self._handle_short_press(x, y, start_x, start_y)
+                    return
+
                 # Try gesture recognition first
                 gesture_handled = False
                 if hasattr(self.display_manager, 'gesture_handler') and self.display_manager.gesture_handler:
@@ -175,8 +169,9 @@ class TouchHandler:
     def _handle_short_press(self, x: int, y: int, start_x: int, start_y: int) -> None:
         """Handle short press and swipe events"""
         try:
-            # Check if we're in setup mode first
-            if self.display_manager.is_in_setup_mode():
+            in_setup = self.display_manager.is_in_setup_mode()
+            self.logger.debug(f"Short press at ({x}, {y}), in_setup_mode={in_setup}")
+            if in_setup:
                 self._handle_setup_touch(x, y)
                 return
             
