@@ -783,7 +783,7 @@ class DisplayManager:
             font = self._get_cached_font(20)
             if font:
                 self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, "✓", font, (255, 255, 255),
+                    RenderTarget.BACK_BUFFER, "\u2713", font, (255, 255, 255),
                     (372, 322), center=True
                 )
                 
