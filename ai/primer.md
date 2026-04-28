@@ -50,6 +50,11 @@ direct conversational access to the other.
 - **Claude Code** — alternative profile. Manual invocation; no automated loop.
   Uses `CLAUDE.md` as tactical context file. See `ai/profiles/claude.md`.
 
+**ael-mcp (Claude Desktop profile, optional)** — standalone MCP server exposing
+`start_ael`, `ael_status`, and `reset_ael` tools to Claude Desktop. Allows the
+Strategic Domain to launch AEL and query outcome without human terminal relay.
+See P09 §1.10.3 Option B and P01 §1.2.8.
+
 Implementation profiles are defined in `ai/profiles/`. The active profile
 determines the tactical context file name, skills directory, and AEL configuration.
 
@@ -100,6 +105,9 @@ P10  Requirements            →  human approval → baseline
 P02  Design (Tier 1–3)       →  human approval per tier → git tag baseline
 P09  T04 Prompt              →  check context-budget.md → human approval
      AEL  →  SHIP or BLOCKED
+            Option A: human runs terminal command (all profiles)
+            Option B: Strategic Domain calls start_ael / polls ael_status
+                      (Claude Desktop + ael-mcp only)
      Claude Code  →  human-directed execution (no loop)
        SHIP / complete  →  P08 code review → P06 test → progressive validation
        BLOCKED          →  P04 issue → P03 change → P09 new prompt
@@ -216,6 +224,7 @@ any document.
 | Version | Date | Description |
 |---|---|---|
 | 0.1 | 2026-04-27 | Initial draft |
+| 0.2 | 2026-04-28 | Added ael-mcp to §2.0 Architecture; annotated §4.0 Workflow AEL step with Option A/B |
 
 ---
 
