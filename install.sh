@@ -93,7 +93,7 @@ echo "==> Installing from $WHEEL_PATH"
 # Version verification
 # ---------------------------------------------------------------------------
 echo "==> Verifying installation..."
-INSTALLED=$("$VENV_DIR/bin/python" -c "import gtach; print(gtach.__version__)")
+INSTALLED=$("$VENV_DIR/bin/python" -c "import os; os.environ['PYGAME_HIDE_SUPPORT_PROMPT']='1'; import gtach; print(gtach.__version__)")
 
 if [ "$INSTALLED" != "$VERSION" ]; then
     echo "ERROR: Version mismatch - expected $VERSION, got $INSTALLED"
