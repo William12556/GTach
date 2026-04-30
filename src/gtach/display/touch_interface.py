@@ -804,18 +804,17 @@ def create_touch_interface() -> TouchInterface:
 
     Returns the same instance on every call (singleton). This ensures all
     callers share one hardware-connected interface and one callback chain.
-    """    
+
+    Returns:
+        TouchInterface: Platform-appropriate touch interface instance
+
+    Raises:
+        RuntimeError: If no suitable touch interface can be created
+    """
     global _touch_interface_singleton
     with _touch_interface_lock:
         if _touch_interface_singleton is not None:
             return _touch_interface_singleton
-    
-    Returns:
-        TouchInterface: Platform-appropriate touch interface instance
-        
-    Raises:
-        RuntimeError: If no suitable touch interface can be created
-    """
     logger = logging.getLogger('TouchInterfaceFactory')
     
     try:
