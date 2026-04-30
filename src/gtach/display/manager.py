@@ -51,6 +51,7 @@ from .typography import (get_font_manager, get_title_font, get_medium_font, get_
                          get_button_renderer, ButtonSize, ButtonState)
 from ..core import ThreadManager, ThreadStatus
 from ..utils import TerminalRestorer
+from ..utils.ack_state import AcknowledgementStateManager
 
 class DisplayManager:
     """
@@ -82,6 +83,9 @@ class DisplayManager:
             name='DisplayManager'
         )
         self.thread_manager.register_thread('display', self.display_thread)
+
+        # Acknowledgement state manager
+        self._ack_state_manager = AcknowledgementStateManager()
 
         # macOS mouse-as-touch simulation
         import platform as _plat
@@ -431,7 +435,13 @@ class DisplayManager:
                     if self._in_setup_mode:
                         self.config.mode = self._post_splash_mode
                         self.logger.info("Splash completed - entering setup mode")
-                    elif self._ack_state_manager.is_acknowledged(self.config.rpm_bands, self.config.engine_profile):
+                    elif self._ack_state_manager.is_acknowledged(
+                            __import__('types').SimpleNamespace(
+                                idle_max=0, torque_start=0, caution_start=0,
+                                warning_start=self.config.rpm_warning,
+                                danger_start=self.config.rpm_danger,
+                                redline_rpm=self.config.rpm_danger),
+                            self.config.engine_profile):
                         self.config.mode = self._post_splash_mode
                         self.logger.info(f"Splash completed - transitioning to {self._post_splash_mode.name}")
                     else:

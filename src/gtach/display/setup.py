@@ -131,6 +131,7 @@ class SetupDisplayManager:
         
         # Start setup thread
         self._setup_thread = threading.Thread(target=self._setup_loop, name='SetupManager')
+        self.thread_manager.register_thread('setup', self._setup_thread)
         self._setup_thread.start()
     
     def stop_setup(self) -> None:

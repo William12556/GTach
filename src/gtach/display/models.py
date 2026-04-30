@@ -16,10 +16,11 @@ from dataclasses import dataclass
 
 class DisplayMode(Enum):
     """Display mode enumeration for different display screens"""
-    SPLASH = auto()    # Application startup splash screen
-    DIGITAL = auto()   # Digital RPM display mode
-    GAUGE = auto()     # Analog gauge RPM display mode
-    SETTINGS = auto()  # Settings configuration screen
+    SPLASH = auto()           # Application startup splash screen
+    DIGITAL = auto()          # Digital RPM display mode
+    GAUGE = auto()            # Analog gauge RPM display mode
+    SETTINGS = auto()         # Settings configuration screen
+    ACKNOWLEDGEMENT = auto()  # RPM threshold acknowledgement screen
 
 class ConnectionStatus(Enum):
     """Connection status for indicator"""
@@ -52,3 +53,4 @@ class DisplayConfig:
     gesture_transition_duration: float = 0.2  # Screen transition time (s)
     gesture_edge_indicator_size: int = 20     # Edge indicator size (px)
     gesture_debug_mode: bool = False          # Show gesture debug visualization
+    engine_profile: str = 'default'           # Engine profile identifier for acknowledgement state
