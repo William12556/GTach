@@ -89,8 +89,8 @@ class MCPClient:
                 await session.__aexit__(None, None, None)
             except Exception:
                 pass
-        for ctx in self._contexts:
-            try:
-                await ctx.__aexit__(None, None, None)
-            except Exception:
-                pass
+        # Note: ctx.__aexit__() is intentionally skipped. Calling it during orchestrator
+        # shutdown raises anyio RuntimeError (cancel scope task mismatch) on Python 3.11.
+        # The stdio subprocess is a short-lived child process; it will be reaped by the OS
+        # when the parent process exits. This is safe for single-run orchestrator sessions.
+        self._contexts.clear()
