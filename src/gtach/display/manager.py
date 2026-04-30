@@ -511,7 +511,18 @@ class DisplayManager:
                     f"{int(rpm)}",
                     font,
                     color,
-                    (240, 240),
+                    (240, 220),
+                    center=True
+                )
+            # Draw RPM multiplier label
+            label_font = get_font_manager().get_font(32)
+            if label_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "RPM \u00d7 1000",
+                    label_font,
+                    (200, 0, 0),
+                    (240, 365),
                     center=True
                 )
             
