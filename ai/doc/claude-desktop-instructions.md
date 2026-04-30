@@ -32,14 +32,14 @@
 - Create a summary list of changes after making changes to all documents and source code.
 - Do not create Claude Desktop artefacts unless requested.
 - Authorship attribution is not required in documentation
-- After completing any set of file changes, provide a ready-to-paste Git commit summary. The summary should be concise, technically precise, and accurately reflect the scope of changes made. Use conventional commit format where appropriate (e.g., docs:, fix:, feat:).
 - This local GTach GitHUb project repository is located in /Users/williamwatson/Documents/GitHub/GTach.
 - It is a clone of https://github.com/William12556/LLM-Governance-and-Orchestration
-- You have access to GitHub MCP server tools. Use them to insure all source code changes are committed and pushed to GitHub.
+- Work in the local filesystem with Filesystem MCP server tools when creating, adding or changing documents.
+- After creating, adding or changing documents in the local filesystem, provide a ready-to-paste Git commit summary and push terminal command. The summary should be concise, technically precise, and accurately reflect the scope of changes made. Use conventional commit format where appropriate (e.g., docs:, fix:, feat:).
 - Review /Users/williamwatson/Documents/GitHub/GTach/ai/governance.md at the start of each new conversation/chat.
 - Review 'workspace/requirements/requirements-gtach-master' and 'workspace/design/design-gtach-master' at the start of each new conversation.
 - Insure LLM Governance and Orchestration framework '/Users/williamwatson/Documents/GitHub/GTach/ai' version matches '/Users/williamwatson/Documents/GitHub/LLM-Governance-and-Orchestration/framework/ai'
 - Related project information is available in '/Users/williamwatson/Documents/GitHub/ELM327', '/Users/williamwatson/Documents/GitHub/ELM327-emulator' and '/Users/williamwatson/Documents/GitHub/python-OBD'.
 - MacOS GTach logs to ~/Documents/GitHub/GTach/gtach.log.
 - The ELM327 emulator is hosted on a Raspberry PI 4 with Debian Linux 12. Its address is 'ELM327-Emulator.local'.
-- Read /Users/williamwatson/Documents/GitHub/GTach/ai/primer.md throughly at the start of all new chats/conversation. 
+- Read /Users/williamwatson/Documents/GitHub/GTach/ai/primer.md throughly at the start of all new chats/conversation.
