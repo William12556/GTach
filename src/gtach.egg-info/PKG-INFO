@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: gtach
-Version: 0.2.1
+Version: 0.2.2
 Summary: GPIO-based Tachometer Application for Raspberry Pi with cross-platform development support
 Author: GTach Project Contributors
 License: MIT
