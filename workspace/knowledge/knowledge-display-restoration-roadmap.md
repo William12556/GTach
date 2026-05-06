@@ -38,7 +38,7 @@ Source of truth for original confirmed changes: conversation `83922674` (2026-04
 | `src/gtach/display/splash.py` | ✅ Version text removed from automotive mode (f1a3c5e7) |
 | `pyproject.toml` | ✅ Font package-data added — Michroma now included in wheel (d7f2b4e6) |
 | `setup_original_backup.py` import check | ✅ Confirmed not imported at runtime — not a factor |
-| `src/gtach/display/manager.py` | ❌ Framebuffer clear on splash complete NOT applied (b2d4f6a8) |
+| `src/gtach/display/manager.py` | ✅ Framebuffer clear on splash complete — fix present in source; Pi requires redeploy |
 | `src/gtach/display/manager.py` | ❌ macOS gesture queue / beach ball fix NOT applied (c3e5a7b9) |
 | `src/gtach/app.py` | ❌ SIGINT pygame.QUIT injection NOT applied (c3e5a7b9) |
 | `src/gtach/core/watchdog.py` | ❌ Self-join RuntimeError in stop() on Darwin (e4a6c8f2) |
@@ -99,28 +99,20 @@ defect. §4.2 stale cache diagnosis revised accordingly (see §5.4).
 
 ## 4.0 Open Tasks
 
-### 4.1 Pi — Framebuffer Clear on Splash Complete ❌
+### 4.1 Pi — Framebuffer Clear on Splash Complete ✅ (source only)
 
 **Issue:** `issue-b2d4f6a8`  
 **Change:** `change-b2d4f6a8`  
-**Prompt:** `workspace/prompt/prompt-b2d4f6a8-pi-clear-framebuffer-on-splash.md`
 
-**Not applied.** This is the root cause of the Pi splash/welcome alternation.
-On the Pi, the framebuffer is memory-mapped and double-buffered. When the splash
-completes, the back buffer still contains splash content. On each buffer swap the
-display alternates between the splash frame and the welcome frame. The framebuffer
-must be explicitly cleared at splash completion.
+Fix is already present in `src/gtach/display/manager.py` — `clear_surface` and
+`swap_buffers` are called after the mode-transition block and before
+`_splash_screen.reset()`. Pi was running a stale wheel; no code change required.
 
-Fix location: `DisplayManager._draw_splash_mode()` in `src/gtach/display/manager.py`.  
-Insert before `_splash_screen.reset()` call, inside `is_complete()` branch:
-```python
-self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER)
-self.rendering_engine.swap_buffers()
-```
-
-Re-run prompt individually:
-```
-implement workspace/prompt/prompt-b2d4f6a8-pi-clear-framebuffer-on-splash.md
+**Action:** rebuild and redeploy.
+```bash
+./build.sh
+scp dist/*.whl root@gtach.local:/tmp/
+ssh root@gtach.local '/opt/gtach/install.sh'
 ```
 
 ### 4.2 macOS Beach Ball and Ctrl+C Deadlock ❌
@@ -230,9 +222,10 @@ only observable. Prompt c3e5a7b9 must be applied to fix.
 Step 1 — setup_original_backup.py import check    ✅ COMPLETE
          grep confirmed: not imported at runtime.
 
-Step 2 — Pi framebuffer clear (b2d4f6a8)
-         Prompt: workspace/prompt/prompt-b2d4f6a8-pi-clear-framebuffer-on-splash.md
-         Run: implement workspace/prompt/prompt-b2d4f6a8-pi-clear-framebuffer-on-splash.md
+Step 2 — Pi framebuffer clear (b2d4f6a8)    ✅ fix in source
+         No code change needed. Rebuild and redeploy to Pi.
+         ./build.sh && scp dist/*.whl root@gtach.local:/tmp/
+         ssh root@gtach.local '/opt/gtach/install.sh'
          Verify: §7.1
 
 Step 3 — macOS gesture queue + SIGINT fix (c3e5a7b9)
@@ -325,6 +318,7 @@ Confirm: no beach ball on window click, Ctrl+C exits cleanly.
 | 0.2 | 2026-05-06 | Updated after second visual test — recorded completions, failures, new defects, learnings |
 | 0.3 | 2026-05-06 | Added task §4.4 watchdog self-join fix (e4a6c8f2); issue filed |
 | 0.4 | 2026-05-06 | Log analysis (gtach-debug_Mac.log, gtach-debug_PI.log): confirmed setup_original_backup.py not imported; revised §4.2 stale cache diagnosis; Pi alternation attributed to framebuffer double-buffer (b2d4f6a8); §4.2 removed as separate task; §5.4–5.5 added; Step 1 marked complete; task list renumbered |
+| 0.5 | 2026-05-06 | b2d4f6a8 fix confirmed present in source (manager.py); Pi running stale wheel; §4.1 updated to ✅ source-only; §6.0 Step 2 updated — deploy only, no code change |
 
 ---
 
