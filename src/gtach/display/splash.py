@@ -389,7 +389,6 @@ class SplashScreen:
                 # OBD-II icon removed to eliminate grey-to-green rectangle artifact behind gauge
                 # self._draw_obdii_icon(surface, center_x, center_y)
                 self._draw_progress_indicator(surface, center_x, center_y + 20)
-                self._draw_version_text(surface, center_x, center_y + 105)
                 self._draw_border(surface, width, height)
             
             return True

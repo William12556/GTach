@@ -95,6 +95,11 @@ class DisplayManager:
             self._mouse_down_time = None
             self._mouse_dragging = False
             self._mouse_current_pos = None
+            import queue as _queue
+            self._mouse_event_queue = _queue.Queue(maxsize=4)
+            self._gesture_worker_thread = threading.Thread(
+                target=self._gesture_worker, daemon=True, name='GestureWorker')
+            self._gesture_worker_thread.start()
     
     def _initialize_components(self) -> None:
         """Initialize the extracted components"""
@@ -374,7 +379,14 @@ class DisplayManager:
                         elif event.type == pygame.MOUSEMOTION and self._mouse_dragging and event.buttons[0]:
                             self._mouse_current_pos = event.pos
                         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self._mouse_dragging:
-                            self._dispatch_mouse_gesture(event.pos)
+                            try:
+                                self._mouse_event_queue.put_nowait({
+                                    'up_pos': event.pos,
+                                    'down_pos': self._mouse_down_pos,
+                                    'down_time': self._mouse_down_time,
+                                })
+                            except Exception:
+                                pass  # queue full — discard
                             self._mouse_dragging = False
                             self._mouse_down_pos = None
                             self._mouse_down_time = None
@@ -447,7 +459,10 @@ class DisplayManager:
                     else:
                         self.config.mode = DisplayMode.ACKNOWLEDGEMENT
                         self.logger.info("Splash completed - showing acknowledgement screen")
-                    
+
+                    self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER)
+                    self.rendering_engine.swap_buffers()
+
                     try:
                         self._splash_screen.reset()
                     except Exception as e:
@@ -903,7 +918,18 @@ class DisplayManager:
     def is_in_setup_mode(self) -> bool:
         """Check if in setup mode"""
         return self._in_setup_mode
-    
+
+    def _gesture_worker(self) -> None:
+        """Daemon worker: dequeue mouse gesture events and dispatch off main thread."""
+        while not self._shutdown_event.is_set():
+            try:
+                evt = self._mouse_event_queue.get(timeout=0.1)
+                self._mouse_down_pos = evt['down_pos']
+                self._mouse_down_time = evt['down_time']
+                self._dispatch_mouse_gesture(evt['up_pos'])
+            except Exception:
+                pass  # timeout or queue empty — loop
+
     def _dispatch_mouse_gesture(self, up_pos: Tuple[int, int]) -> None:
         """Classify and dispatch a completed mouse gesture (macOS only)."""
         if self._mouse_down_pos is None or self._mouse_down_time is None:

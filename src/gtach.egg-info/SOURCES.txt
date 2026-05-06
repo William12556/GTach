@@ -11,6 +11,8 @@ src/gtach.egg-info/dependency_links.txt
 src/gtach.egg-info/entry_points.txt
 src/gtach.egg-info/requires.txt
 src/gtach.egg-info/top_level.txt
+src/gtach/assets/fonts/BebasNeue-Regular.ttf
+src/gtach/assets/fonts/Michroma-Regular.ttf
 src/gtach/comm/__init__.py
 src/gtach/comm/bluetooth.py
 src/gtach/comm/device_store.py

@@ -185,3 +185,9 @@ class GTachApplication:
         """Handle system signals"""
         self.logger.info(f"Received signal {signum}")
         self.shutdown()
+        try:
+            import pygame as _pg
+            if _pg.get_init():
+                _pg.event.post(_pg.event.Event(_pg.QUIT))
+        except Exception:
+            pass
