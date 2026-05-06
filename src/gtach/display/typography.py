@@ -80,7 +80,7 @@ class TypographyConstants:
     GAUGE_LABEL_SIZE = 16    # Tick mark labels (was 24)
     
     # Specific named constants for DisplayManager
-    FONT_RPM_LARGE = 96      # Digital mode main RPM display
+    FONT_RPM_LARGE = 180     # Digital mode main RPM display
     FONT_RPM_MEDIUM = 28     # Gauge mode center readout
     FONT_LABEL_SMALL = 16    # Labels and small text
     FONT_TITLE = 36          # Settings title
@@ -98,7 +98,7 @@ class TypographyConstants:
     
     # Font validation ranges
     MIN_FONT_SIZE = 12
-    MAX_FONT_SIZE = 96
+    MAX_FONT_SIZE = 180
     
     # Typography scale ratios for responsive sizing
     SCALE_SMALL = 0.8    # For cramped layouts
@@ -137,7 +137,15 @@ class FontManager:
         self._font_cache: Dict[int, pygame.font.Font] = {}
         self._cache_lock = threading.RLock()
         self._initialized = False
-        
+
+        # Resolve Michroma font path
+        import os as _os
+        _font_dir = _os.path.normpath(_os.path.join(_os.path.dirname(__file__), '..', 'assets', 'fonts'))
+        self._michroma_path = _os.path.join(_font_dir, 'Michroma-Regular.ttf')
+        if not _os.path.exists(self._michroma_path):
+            self.logger.warning(f'Michroma font not found at {self._michroma_path}')
+            self._michroma_path = None
+
         # Initialize pygame font system if available
         if PYGAME_AVAILABLE:
             self._initialize_pygame_fonts()
@@ -183,13 +191,19 @@ class FontManager:
         with self._cache_lock:
             if validated_size not in self._font_cache:
                 try:
-                    font = pygame.font.Font(None, validated_size)
+                    if self._michroma_path:
+                        try:
+                            font = pygame.font.Font(self._michroma_path, validated_size)
+                        except Exception:
+                            font = pygame.font.Font(None, validated_size)
+                    else:
+                        font = pygame.font.Font(None, validated_size)
                     self._font_cache[validated_size] = font
                     self.logger.debug(f"Created and cached font size {validated_size}")
                 except Exception as e:
                     self.logger.error(f"Failed to create font size {validated_size}: {e}")
                     return None
-            
+
             return self._font_cache[validated_size]
     
     def get_font_for_category(self, category: FontCategory, scale: float = 1.0) -> Optional[pygame.font.Font]:

@@ -482,7 +482,16 @@ class DisplayManager:
             
         except Exception as e:
             self.logger.error(f"Normal mode render error: {e}")
-    
+
+    def _draw_circular_border(self) -> None:
+        """Draw red circular border on current back-buffer surface"""
+        try:
+            surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
+            if surface:
+                pygame.draw.circle(surface, (200, 0, 0), (240, 240), 238, 4)
+        except Exception as e:
+            self.logger.error(f'Circular border error: {e}')
+
     def _draw_digital_mode(self) -> None:
         """Draw digital RPM display using rendering engine"""
         try:
@@ -508,10 +517,10 @@ class DisplayManager:
             if font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    f"{int(rpm)}",
+                    f"{rpm/1000:.1f}",
                     font,
                     color,
-                    (240, 220),
+                    (240, 215),
                     center=True
                 )
             # Draw RPM multiplier label
@@ -522,10 +531,13 @@ class DisplayManager:
                     "RPM \u00d7 1000",
                     label_font,
                     (200, 0, 0),
-                    (240, 365),
+                    (240, 390),
                     center=True
                 )
-            
+
+            # Draw circular border
+            self._draw_circular_border()
+
         except Exception as e:
             self.logger.error(f"Digital display error: {e}")
     
@@ -558,7 +570,7 @@ class DisplayManager:
             # Draw center hub
             self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, (60, 60, 60), center, 40)
             self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, (100, 100, 100), center, 38)
-            
+
             # Draw digital readout
             font = get_rpm_medium_font()
             if font:
@@ -571,7 +583,10 @@ class DisplayManager:
                     center,
                     center=True
                 )
-                
+
+            # Draw circular border
+            self._draw_circular_border()
+
         except Exception as e:
             self.logger.error(f"Gauge display error: {e}")
     
@@ -686,7 +701,10 @@ class DisplayManager:
                     (240, 420),
                     center=True
                 )
-            
+
+            # Draw circular border
+            self._draw_circular_border()
+
         except Exception as e:
             self.logger.error(f"Settings display error: {e}")
     
@@ -846,11 +864,10 @@ class DisplayManager:
                     (240, 240),
                     center=True
                 )
-            
+
             # Draw border
-            self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, (255, 255, 0),
-                                          (0, 0, 480, 480), width=3)
-            
+            self._draw_circular_border()
+
         except Exception as e:
             self.logger.error(f"Setup mode fallback error: {e}")
     
