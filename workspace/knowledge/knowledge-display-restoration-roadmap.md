@@ -40,6 +40,7 @@ Source of truth for original confirmed changes: conversation `83922674` (2026-04
 | `src/gtach/display/manager.py` | ❌ Framebuffer clear on splash complete NOT applied (b2d4f6a8) |
 | `src/gtach/display/manager.py` | ❌ macOS gesture queue / beach ball fix NOT applied (c3e5a7b9) |
 | `src/gtach/app.py` | ❌ SIGINT pygame.QUIT injection NOT applied (c3e5a7b9) |
+| `src/gtach/core/watchdog.py` | ❌ Self-join RuntimeError in stop() on Darwin (e4a6c8f2) |
 | `src/gtach/display/setup.py` | ❌ WELCOME render cache stale layout — new defect discovered |
 | `src/gtach/comm/sim_transport.py` | ❌ Not yet created (enhancement c7e2f1a9) |
 | `src/gtach/comm/sim_bluetooth.py` | ❌ Not yet created (enhancement c7e2f1a9) |
@@ -157,10 +158,26 @@ thread-safety violation on macOS.
 Re-run prompt for `c3e5a7b9`. Also file a separate trivial-exemption fix for the
 self-join in `watchdog.py`.
 
-### 4.4 Sim Mode (c7e2f1a9) ❌
+### 4.4 Watchdog Self-Join on Darwin (e4a6c8f2) ❌
+
+**Issue:** `issue-e4a6c8f2`  
+**Trivial exemption applies** (§1.4.12) — single function, net delta ~3 lines, no interface change.
+
+Fix location: `WatchdogMonitor.stop()` in `src/gtach/core/watchdog.py`.  
+Guard the join call to prevent self-join when shutdown is triggered by the watchdog thread itself:
+```python
+if threading.current_thread() is not self._thread:
+    self._thread.join(timeout=5.0)
+    if self._thread.is_alive():
+        self.logger.warning("Watchdog monitor thread did not stop cleanly")
+```
+The existing unconditional `self._thread.join(timeout=5.0)` and the `is_alive()` warning block
+both need to move inside this guard.
+
+### 4.5 Sim Mode (c7e2f1a9) ❌
 
 Prompt `prompt-c7e2f1a9-sim-mode.md` complete and ready. No dependency on items
-4.1–4.3. Can be implemented independently once the display issues are stable.
+4.1–4.4. Can be implemented independently once the display issues are stable.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -224,8 +241,9 @@ Step 3 — macOS gesture queue + SIGINT fix (c3e5a7b9)
          Run individually: implement workspace/prompt/prompt-c3e5a7b9-macos-gesture-queue-sigint-fix.md
          Verify: §7.3
 
-Step 4 — Watchdog self-join fix (trivial exemption)
-         File: src/gtach/core/watchdog.py
+Step 4 — Watchdog self-join fix (e4a6c8f2, trivial exemption)
+         Issue: workspace/issues/issue-e4a6c8f2-watchdog-self-join-darwin.md
+         File: src/gtach/core/watchdog.py — WatchdogMonitor.stop()
          Guard self-join: if threading.current_thread() is not self._thread
          Verify: §7.4
 
@@ -316,6 +334,7 @@ Confirm: no beach ball on window click, Ctrl+C exits cleanly from terminal.
 |---|---|---|
 | 0.1 | 2026-05-06 | Initial document — full restoration roadmap from conversation audit |
 | 0.2 | 2026-05-06 | Updated after second visual test — recorded completions, failures, new defects, learnings |
+| 0.3 | 2026-05-06 | Added task §4.4 watchdog self-join fix (e4a6c8f2); issue filed |
 
 ---
 
