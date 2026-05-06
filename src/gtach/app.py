@@ -65,10 +65,16 @@ class GTachApplication:
             # Check if setup is needed
             # If --transport is explicitly specified, bypass device store check
             transport_arg = getattr(self._args, 'transport', None)
-            transport_forced = transport_arg in ('tcp', 'serial')
+            transport_forced = transport_arg in ('tcp', 'serial', 'simtcp')
             if transport_forced:
                 self.logger.info("Transport explicitly specified - skipping setup mode")
                 self._start_normal_mode()
+            elif transport_arg == 'simbt':
+                # Simulation mode with Bluetooth setup
+                from .comm.sim_bluetooth import SimBluetoothPairing
+                self.logger.info("Simulation Bluetooth transport - entering setup mode")
+                self._setup_mode = True
+                self._start_setup_mode(pairing_factory=lambda: SimBluetoothPairing())
             elif self._device_store.get_primary_device() is None:
                 self.logger.info("Setup required - entering setup mode")
                 self._setup_mode = True
@@ -82,20 +88,21 @@ class GTachApplication:
             self.shutdown()
             raise
     
-    def _start_setup_mode(self) -> None:
+    def _start_setup_mode(self, pairing_factory=None) -> None:
         """Start application in setup mode with splash screen"""
         self._watchdog.start()
-        
+
         # Initialize display manager with splash screen
         self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
         self._display.start()  # This automatically starts the splash screen
         self.logger.info("Splash screen activated for setup mode")
-        
+
         # Initialize setup manager while splash is showing
         self._setup_manager = SetupDisplayManager(
             self._display.rendering_engine.main_surface,
             self._thread_manager,
-            self._display.touch_handler
+            self._display.touch_handler,
+            pairing_factory=pairing_factory
         )
         self._setup_manager.start_setup()
         

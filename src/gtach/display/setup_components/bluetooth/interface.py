@@ -23,19 +23,21 @@ from ...async_operations import get_async_manager, OperationType, OperationStatu
 
 class BluetoothSetupInterface:
     """Manages Bluetooth operations for setup mode with thread-safe async coordination"""
-    
-    def __init__(self):
+
+    def __init__(self, pairing_factory=None):
         self.logger = logging.getLogger('BluetoothSetupInterface')
         self.device_store = DeviceStore()
         self.async_manager = get_async_manager()
-        
+        self._pairing_factory = pairing_factory
+
         # Bluetooth pairing state
         self.pairing = None
         self._active_operations: Dict[str, str] = {}
         self._pairing_ready = threading.Event()
-        
+
         # Initialize Bluetooth pairing asynchronously
-        if platform.system() != 'Darwin':
+        # If pairing_factory is provided, allow it even on macOS
+        if platform.system() != 'Darwin' or pairing_factory is not None:
             self._init_bluetooth_pairing_async()
         else:
             self.logger.info('macOS: skipping BluetoothPairing; using serial discovery')
@@ -48,8 +50,8 @@ class BluetoothSetupInterface:
             try:
                 if progress_callback:
                     progress_callback(0.2, "Creating BluetoothPairing instance...")
-                
-                pairing = BluetoothPairing()
+
+                pairing = (self._pairing_factory if self._pairing_factory else BluetoothPairing)()
                 
                 if progress_callback:
                     progress_callback(0.8, "Testing Bluetooth adapter...")
@@ -108,7 +110,7 @@ class BluetoothSetupInterface:
         except Exception as e:
             self.logger.error(f"Failed to submit bluetooth initialization operation: {e}")
             try:
-                self.pairing = BluetoothPairing()
+                self.pairing = (self._pairing_factory if self._pairing_factory else BluetoothPairing)()
                 self._pairing_ready.set()
                 self.logger.warning("Fallback to synchronous Bluetooth initialization")
             except Exception as fallback_error:

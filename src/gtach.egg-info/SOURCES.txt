@@ -19,6 +19,8 @@ src/gtach/comm/obd.py
 src/gtach/comm/pairing.py
 src/gtach/comm/rfcomm.py
 src/gtach/comm/serial_transport.py
+src/gtach/comm/sim_bluetooth.py
+src/gtach/comm/sim_transport.py
 src/gtach/comm/system_bluetooth.py
 src/gtach/comm/tcp_transport.py
 src/gtach/comm/transport.py

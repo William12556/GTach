@@ -138,9 +138,14 @@ def select_transport(platform_type: PlatformType, args: argparse.Namespace) -> O
     from .rfcomm import RFCOMMTransport
     from .serial_transport import SerialTransport
     from .tcp_transport import TCPTransport
-    
+
     transport_arg = getattr(args, 'transport', None)
-    
+
+    # Simulation transports for hardware-free testing
+    if transport_arg in ('simtcp', 'simbt'):
+        from .sim_transport import SimTransport
+        return SimTransport()
+
     if transport_arg == 'tcp':
         host = getattr(args, 'obd_host', 'localhost')
         port = getattr(args, 'obd_port', 35000)

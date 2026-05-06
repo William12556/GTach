@@ -50,21 +50,21 @@ class SetupDisplayManager:
     - SetupStateCoordinator: State management
     """
     
-    def __init__(self, surface, thread_manager, touch_handler):
+    def __init__(self, surface, thread_manager, touch_handler, pairing_factory=None):
         self.logger = logging.getLogger('SetupDisplayManager')
         self.surface = surface
         self.thread_manager = thread_manager
         self.touch_handler = touch_handler
-        
+
         # Check pygame availability
         if not PYGAME_AVAILABLE:
             self.logger.warning("Pygame not available - setup display will use minimal functionality")
             self.display_available = False
         else:
             self.display_available = True
-        
+
         # Initialize extracted components
-        self.bluetooth_interface = BluetoothSetupInterface()
+        self.bluetooth_interface = BluetoothSetupInterface(pairing_factory=pairing_factory)
         self.positioning_engine = CircularPositioningEngine()
         self.device_renderer = DeviceSurfaceRenderer()
         self.state_coordinator = SetupStateCoordinator()

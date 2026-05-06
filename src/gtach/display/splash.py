@@ -385,12 +385,11 @@ class SplashScreen:
                 self._draw_version_text(surface, center_x, center_y + 75)
             else:
                 # Full automotive mode - optimized spacing for minimalist design
-                self._draw_title_text(surface, center_x, center_y - 65)
-                self._draw_subtitle_text(surface, center_x, center_y - 40)
+                self._draw_title_text(surface, center_x, center_y - 115)
                 # OBD-II icon removed to eliminate grey-to-green rectangle artifact behind gauge
                 # self._draw_obdii_icon(surface, center_x, center_y)
-                self._draw_progress_indicator(surface, center_x, center_y + 40)
-                self._draw_version_text(surface, center_x, center_y + 90)
+                self._draw_progress_indicator(surface, center_x, center_y + 20)
+                self._draw_version_text(surface, center_x, center_y + 105)
                 self._draw_border(surface, width, height)
             
             return True
@@ -402,12 +401,15 @@ class SplashScreen:
     def _draw_title_text(self, surface, center_x: int, center_y: int) -> None:
         """Draw the main application title with minimalist typography (FONT_TITLE = 36px, was 56px)."""
         try:
-            # Use typography system for consistent font sizing
-            font_large = self._get_cached_font('title', 48)  # Fallback 48px instead of 56px
+            # Load Michroma font directly at 72px, bypassing typography cache
+            import os
+            _fp = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'fonts', 'Michroma-Regular.ttf'))
+            font_large = pygame.font.Font(_fp, 72) if os.path.exists(_fp) else pygame.font.Font(None, 72)
+
             if font_large is None:
                 self.logger.error("Failed to get title font")
                 return
-                
+
             title_surface = font_large.render(self._app_title, True, self._colors['primary_text'])
             title_rect = title_surface.get_rect(center=(center_x, center_y))
             
@@ -510,13 +512,16 @@ class SplashScreen:
     def _draw_version_text(self, surface, center_x: int, center_y: int) -> None:
         """Draw version information with label typography (FONT_LABEL_SMALL = 16px, was 24px)."""
         try:
-            # Use typography system for consistent label sizing
-            font_small = self._get_cached_font('label', 20)  # Fallback 20px instead of 24px
-            if font_small is None:
+            # Load Michroma font directly at 40px, bypassing typography cache
+            import os
+            _fp = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'fonts', 'Michroma-Regular.ttf'))
+            font_ver = pygame.font.Font(_fp, 40) if os.path.exists(_fp) else pygame.font.Font(None, 40)
+
+            if font_ver is None:
                 self.logger.error("Failed to get label font for version")
                 return
-                
-            version_surface = font_small.render(self._version_text, True, self._colors['secondary_text'])
+
+            version_surface = font_ver.render(self._version_text, True, self._colors['secondary_text'])
             version_rect = version_surface.get_rect(center=(center_x, center_y))
             surface.blit(version_surface, version_rect)
             
@@ -535,15 +540,9 @@ class SplashScreen:
     def _draw_border(self, surface, width: int, height: int) -> None:
         """Draw decorative border around the splash screen."""
         try:
-            border_thickness = 2
-            border_color = self._colors['border']
-            
-            # Draw border rectangle
-            border_rect = pygame.Rect(border_thickness, border_thickness, 
-                                    width - 2 * border_thickness, 
-                                    height - 2 * border_thickness)
-            pygame.draw.rect(surface, border_color, border_rect, border_thickness)
-            
+            # Draw red circular border matching manager.py _draw_circular_border
+            pygame.draw.circle(surface, (200, 0, 0), (width // 2, height // 2), min(width, height) // 2 - 2, 4)
+
         except Exception as e:
             self.logger.error(f"Border rendering failed: {e}")
     
