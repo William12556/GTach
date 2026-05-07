@@ -311,8 +311,10 @@ class DisplayManager:
     def stop(self) -> None:
         """Stop display manager"""
         self._shutdown_event.set()
-        self.display_thread.join()
-        
+        self.display_thread.join(timeout=5.0)
+        if self.display_thread.is_alive():
+            self.logger.warning("Display thread did not stop cleanly within timeout")
+
         # Clean up components
         try:
             self.performance_monitor.stop_monitoring()
