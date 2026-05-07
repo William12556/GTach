@@ -20,6 +20,7 @@ import threading
 import uuid
 import time
 import weakref
+import importlib.resources
 from dataclasses import dataclass, field, asdict
 from typing import Optional, List, Dict, Any, Union, Callable
 from pathlib import Path
@@ -45,6 +46,95 @@ except ImportError:
 
 # Import OBDII_HOME utilities
 from .home import get_config_file, get_home_path, ensure_directories
+
+
+def load_engine_profile(profile_name: str = 'abarth_595_turismo'):
+    """Load engine profile from engine_profiles.yaml.
+
+    Args:
+        profile_name: Name of the engine profile to load
+
+    Returns:
+        RPMBands instance with the loaded profile, or default on error
+
+    Raises:
+        ImportError: If RPMBands cannot be imported
+    """
+    logger = logging.getLogger(f'{__name__}.load_engine_profile')
+
+    # Import RPMBands here to avoid circular imports
+    try:
+        from ..display.models import RPMBands
+    except ImportError as e:
+        logger.error(f"Cannot import RPMBands: {e}", exc_info=True)
+        raise
+
+    try:
+        # Try to load engine_profiles.yaml from assets directory
+        profile_path = None
+
+        # Method 1: Try importlib.resources (Python 3.9+)
+        try:
+            if sys.version_info >= (3, 9):
+                import importlib.resources as pkg_resources
+                files = pkg_resources.files('gtach.assets')
+                profile_path = files / 'engine_profiles.yaml'
+            else:
+                # Fallback for older Python versions
+                import pkg_resources as pkg_res
+                profile_path = Path(pkg_res.resource_filename('gtach.assets', 'engine_profiles.yaml'))
+        except Exception as e:
+            logger.debug(f"importlib.resources failed: {e}")
+
+        # Method 2: Try relative path from this file
+        if profile_path is None or not Path(profile_path).exists():
+            config_dir = Path(__file__).parent.parent / 'assets'
+            profile_path = config_dir / 'engine_profiles.yaml'
+
+        if not Path(profile_path).exists():
+            logger.warning(f"Engine profiles file not found at {profile_path}, using defaults")
+            return RPMBands()
+
+        # Load YAML file
+        if not YAML_AVAILABLE:
+            logger.warning("YAML not available, using default RPM bands")
+            return RPMBands()
+
+        with open(profile_path, 'r') as f:
+            data = yaml.safe_load(f)
+
+        if not data or 'profiles' not in data:
+            logger.warning(f"Invalid engine profiles file format, using defaults")
+            return RPMBands()
+
+        # Get the requested profile
+        profiles = data.get('profiles', {})
+        if profile_name not in profiles:
+            logger.warning(f"Profile '{profile_name}' not found, using defaults")
+            return RPMBands()
+
+        profile_data = profiles[profile_name]
+
+        # Construct RPMBands from profile
+        try:
+            rpm_bands = RPMBands(
+                idle_max=profile_data.get('idle_max', 999),
+                torque_start=profile_data.get('torque_start', 3000),
+                caution_start=profile_data.get('caution_start', 4500),
+                warning_start=profile_data.get('warning_start', 5500),
+                danger_start=profile_data.get('danger_start', 5800),
+                redline_rpm=profile_data.get('redline_rpm', 6000)
+            )
+            logger.debug(f"Loaded engine profile '{profile_name}': {rpm_bands}")
+            return rpm_bands
+
+        except (KeyError, ValueError) as e:
+            logger.error(f"Error constructing RPMBands from profile '{profile_name}': {e}", exc_info=True)
+            return RPMBands()
+
+    except Exception as e:
+        logger.error(f"Unexpected error loading engine profile: {e}", exc_info=True)
+        return RPMBands()
 
 
 class RWLock:

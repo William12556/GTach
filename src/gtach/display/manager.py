@@ -232,25 +232,58 @@ class DisplayManager:
                 with open(self.config_path, 'r') as f:
                     config_data = yaml.safe_load(f)
                     saved_mode = DisplayMode[config_data.get('mode', 'DIGITAL')]
+                    engine_profile = config_data.get('engine_profile', 'abarth_595_turismo')
+
+                    # Load engine profile RPM bands
+                    from ..utils.config import load_engine_profile
+                    rpm_bands = load_engine_profile(engine_profile)
+
                     self.config = DisplayConfig(
                         mode=DisplayMode.SPLASH,  # Always start with splash
                         rpm_warning=config_data.get('rpm_warning', 6500),
                         rpm_danger=config_data.get('rpm_danger', 7000),
                         fps_limit=config_data.get('fps_limit', 60),
-                        touch_long_press=config_data.get('touch_long_press', 1.0)
+                        touch_long_press=config_data.get('touch_long_press', 1.0),
+                        engine_profile=engine_profile,
+                        rpm_bands=rpm_bands
                     )
                     self._post_splash_mode = saved_mode
             else:
                 if not YAML_AVAILABLE:
                     self.logger.info("YAML not available - using default configuration")
-                self.config = DisplayConfig(mode=DisplayMode.SPLASH)
+
+                # Load default engine profile
+                try:
+                    from ..utils.config import load_engine_profile
+                    rpm_bands = load_engine_profile('abarth_595_turismo')
+                except Exception as e:
+                    self.logger.warning(f"Failed to load engine profile: {e}")
+                    from .models import RPMBands
+                    rpm_bands = RPMBands()
+
+                self.config = DisplayConfig(
+                    mode=DisplayMode.SPLASH,
+                    rpm_bands=rpm_bands
+                )
                 self._post_splash_mode = DisplayMode.DIGITAL
                 if YAML_AVAILABLE:
                     self._save_config()
-                    
+
         except Exception as e:
             self.logger.error(f"Config load failed: {e}", exc_info=True)
-            self.config = DisplayConfig(mode=DisplayMode.SPLASH)
+
+            # Fallback to defaults
+            try:
+                from ..utils.config import load_engine_profile
+                rpm_bands = load_engine_profile('abarth_595_turismo')
+            except Exception:
+                from .models import RPMBands
+                rpm_bands = RPMBands()
+
+            self.config = DisplayConfig(
+                mode=DisplayMode.SPLASH,
+                rpm_bands=rpm_bands
+            )
             self._post_splash_mode = DisplayMode.DIGITAL
     
     def _save_config(self) -> None:
@@ -276,7 +309,8 @@ class DisplayManager:
                 'rpm_warning': self.config.rpm_warning,
                 'rpm_danger': self.config.rpm_danger,
                 'fps_limit': self.config.fps_limit,
-                'touch_long_press': self.config.touch_long_press
+                'touch_long_press': self.config.touch_long_press,
+                'engine_profile': self.config.engine_profile
             }
             with open(self.config_path, 'w') as f:
                 yaml.dump(config_data, f)
@@ -411,11 +445,7 @@ class DisplayManager:
                         self.config.mode = self._post_splash_mode
                         self.logger.info("Splash completed - entering setup mode")
                     elif self._ack_state_manager.is_acknowledged(
-                            __import__('types').SimpleNamespace(
-                                idle_max=0, torque_start=0, caution_start=0,
-                                warning_start=self.config.rpm_warning,
-                                danger_start=self.config.rpm_danger,
-                                redline_rpm=self.config.rpm_danger),
+                            self.config.rpm_bands,
                             self.config.engine_profile):
                         self.config.mode = self._post_splash_mode
                         self.logger.info(f"Splash completed - transitioning to {self._post_splash_mode.name}")
@@ -470,37 +500,95 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f'Circular border error: {e}')
 
+    def _get_band_colour(self, rpm: float) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
+        """Get background and text colours for the given RPM value.
+
+        Returns colour based on RPM bands with pulse effect at danger threshold.
+
+        Args:
+            rpm: Current RPM value
+
+        Returns:
+            Tuple of (bg_colour, text_colour) as RGB tuples
+        """
+        try:
+            bands = self.config.rpm_bands
+
+            # Determine base colours by RPM band
+            if rpm < bands.idle_max:
+                bg_colour = (0, 0, 80)
+                text_colour = (100, 100, 255)
+            elif rpm < bands.torque_start:
+                bg_colour = (0, 0, 0)
+                text_colour = (255, 255, 255)
+            elif rpm < bands.caution_start:
+                bg_colour = (0, 50, 0)
+                text_colour = (0, 220, 0)
+            elif rpm < bands.warning_start:
+                bg_colour = (60, 60, 0)
+                text_colour = (255, 255, 0)
+            elif rpm < bands.danger_start:
+                bg_colour = (70, 35, 0)
+                text_colour = (255, 165, 0)
+            else:  # rpm >= bands.danger_start
+                bg_colour = (80, 0, 0)
+                text_colour = (255, 0, 0)
+
+                # 2 Hz pulse in danger zone
+                if PYGAME_AVAILABLE:
+                    ticks = pygame.time.get_ticks()
+                    if (ticks // 500) % 2 == 0:
+                        # Darken background by 50%
+                        bg_colour = tuple(int(c * 0.5) for c in bg_colour)
+
+            return (bg_colour, text_colour)
+
+        except Exception as e:
+            self.logger.error(f'Band colour calculation error: {e}')
+            # Fallback to white on black
+            return ((0, 0, 0), (255, 255, 255))
+
     def _draw_digital_mode(self) -> None:
         """Draw digital RPM display using rendering engine"""
         try:
             # Drain queue — keep only the latest value to avoid display lag
+            import queue
             try:
                 while True:
                     rpm_data = self.thread_manager.message_queue.get_nowait()
                     self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
-            except:
+            except queue.Empty:
                 pass
+            except Exception as e:
+                self.logger.debug(f'Queue drain error: {e}')
             rpm = getattr(self, '_last_rpm', 0)
 
-            # Determine color based on thresholds
-            if rpm >= self.config.rpm_danger:
-                color = (255, 0, 0)  # Red
-            elif rpm >= self.config.rpm_warning:
-                color = (255, 165, 0)  # Orange
-            else:
-                color = (255, 255, 255)  # White
-            
-            # Render text using rendering engine
+            # Get band colours for current RPM
+            bg_colour, text_colour = self._get_band_colour(rpm)
+
+            # Fill background with band colour
+            self.rendering_engine.draw_circle(
+                RenderTarget.BACK_BUFFER,
+                bg_colour,
+                (240, 240),
+                238
+            )
+
+            # Debug logging for band transitions
+            self.logger.debug(f'RPM {rpm:.0f} band colour bg={bg_colour}')
+
+            # Render RPM text in band text colour
             font = get_rpm_large_font()
             if font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
                     f"{rpm/1000:.1f}",
                     font,
-                    color,
+                    text_colour,
                     (240, 215),
                     center=True
                 )
+
             # Draw RPM multiplier label
             label_font = get_font_manager().get_font(32)
             if label_font:

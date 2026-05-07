@@ -1,0 +1,33 @@
+# GTach Engine Profiles
+# RPM threshold bands for colour-coded display zones
+# Copyright (c) 2025 William Watson
+#
+# This file is part of GTach.
+# GTach is licensed under the MIT License.
+
+default_profile: abarth_595_turismo
+
+profiles:
+  abarth_595_turismo:
+    idle_max: 999
+    torque_start: 3000
+    caution_start: 4500
+    warning_start: 5500
+    danger_start: 5800
+    redline_rpm: 6000
+
+  generic_turbo_4cyl:
+    idle_max: 800
+    torque_start: 2500
+    caution_start: 5000
+    warning_start: 6000
+    danger_start: 6500
+    redline_rpm: 7000
+
+  generic_na_4cyl:
+    idle_max: 750
+    torque_start: 3000
+    caution_start: 5500
+    warning_start: 6500
+    danger_start: 7000
+    redline_rpm: 7500
