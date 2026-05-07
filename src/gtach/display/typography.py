@@ -46,9 +46,9 @@ class FontCategory(Enum):
 
 class ButtonSize(Enum):
     """Standard button size categories."""
-    LARGE = "large"          # Primary actions (120x40)
-    MEDIUM = "medium"        # Secondary actions (80x35)
-    SMALL = "small"          # Tertiary actions (60x30)
+    LARGE = "large"          # Primary actions (280x100)
+    MEDIUM = "medium"        # Secondary actions (140x60)
+    SMALL = "small"          # Tertiary actions (110x50)
     ICON = "icon"            # Icon-only buttons (40x40)
     FLOATING = "floating"    # Floating action buttons (44x44)
 
@@ -87,8 +87,8 @@ class TypographyConstants:
     FONT_HEADING = 28        # Settings section headers
     
     # Additional constants for SetupDisplayManager
-    FONT_BODY = 20           # Body text and descriptions (was 32px)
-    FONT_BUTTON = 20         # Button text (was 28px)
+    FONT_BODY = 24           # Body text and descriptions
+    FONT_BUTTON = 24         # Button text
     FONT_MINIMAL = 14        # Very small text for compact layouts
     
     # Display constraints
@@ -105,9 +105,9 @@ class TypographyConstants:
     SCALE_LARGE = 1.2    # For emphasis
     
     # Standardized button size constants (width x height in pixels)
-    BUTTON_LARGE = (120, 40)     # Primary actions like "Continue", "Save"
-    BUTTON_MEDIUM = (80, 35)     # Secondary actions like "Back", "Cancel"
-    BUTTON_SMALL = (60, 30)      # Tertiary actions like filter toggles
+    BUTTON_LARGE = (280, 100)    # Primary actions like "Continue", "Save"
+    BUTTON_MEDIUM = (140, 60)    # Secondary actions like "Back", "Cancel"
+    BUTTON_SMALL = (110, 50)     # Tertiary actions like filter toggles
     BUTTON_ICON = (40, 40)       # Icon-only buttons
     BUTTON_FLOATING = (44, 44)   # Floating action buttons (minimum touch target)
     
@@ -117,10 +117,10 @@ class TypographyConstants:
     BUTTON_TOUCH_EXPANSION = 8   # Touch region expansion in all directions (px)
     BUTTON_PRESS_SCALE = 0.95    # Scale factor for pressed state (95% of original)
     
-    # Button font sizes (optimized for compact design)
-    BUTTON_FONT_LARGE = 18       # Font size for BUTTON_LARGE
-    BUTTON_FONT_MEDIUM = 16      # Font size for BUTTON_MEDIUM  
-    BUTTON_FONT_SMALL = 14       # Font size for BUTTON_SMALL
+    # Button font sizes
+    BUTTON_FONT_LARGE = 28       # Font size for BUTTON_LARGE
+    BUTTON_FONT_MEDIUM = 20      # Font size for BUTTON_MEDIUM
+    BUTTON_FONT_SMALL = 18       # Font size for BUTTON_SMALL
     BUTTON_FONT_ICON = 16        # Font size for icon labels/fallback text
 
 

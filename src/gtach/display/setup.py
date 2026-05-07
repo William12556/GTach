@@ -198,6 +198,7 @@ class SetupDisplayManager:
                         surface.blit(cached_surface, (0, 0))
                         self.logger.debug(f"Using cached render for {state.current_screen.name}")
                         self._update_cached_screen_touch_regions()
+                        self._draw_circular_border(surface)
                         return
             
             # Create surface for rendering
@@ -221,7 +222,10 @@ class SetupDisplayManager:
             
             # Copy to target surface
             surface.blit(cache_surface, (0, 0))
-                
+
+            # Draw circular border on target surface every frame (not cached)
+            self._draw_circular_border(surface)
+
         except Exception as e:
             self.logger.error(f"Render error: {e}", exc_info=True)
     
@@ -246,20 +250,27 @@ class SetupDisplayManager:
         else:
             self._render_welcome_screen(surface)  # Fallback
     
+    def _draw_circular_border(self, surface) -> None:
+        """Draw red circular border on the given surface"""
+        try:
+            pygame.draw.circle(surface, (200, 0, 0), (240, 240), 238, 4)
+        except Exception as e:
+            self.logger.error(f'Circular border error: {e}')
+
     def _render_welcome_screen(self, surface) -> None:
         """Render the welcome screen"""
         new_regions = []
-        
+
         # Title
         try:
             font_large = get_title_display_font()
             if font_large:
                 title = font_large.render("Welcome", True, self.colors['text'])
-                title_rect = title.get_rect(center=(240, 100))
+                title_rect = title.get_rect(center=(240, 80))
                 surface.blit(title, title_rect)
         except Exception as e:
             self.logger.error(f"Error rendering welcome title: {e}")
-        
+
         # Description
         font_medium = get_body_font()
         if font_medium:
@@ -267,74 +278,71 @@ class SetupDisplayManager:
                 "Setup your Bluetooth",
                 "ELM327 OBD-II adapter"
             ]
-            
             y_pos = 160
             for line in desc_lines:
                 text = font_medium.render(line, True, self.colors['text'])
                 text_rect = text.get_rect(center=(240, y_pos))
                 surface.blit(text, text_rect)
-                y_pos += 30
-        
-        # Start button
-        start_btn = pygame.Rect(140, 320, 200, 60)
+                y_pos += 32
+
+        # Start button — 280x100, centred, bottom at y=430 (safe within circular boundary)
+        start_btn = pygame.Rect(100, 330, 280, 100)
         pygame.draw.rect(surface, self.colors['primary'], start_btn, border_radius=10)
-        
+
         btn_font = get_button_font()
         if btn_font:
             btn_text = btn_font.render("Start Setup", True, (255, 255, 255))
             btn_text_rect = btn_text.get_rect(center=start_btn.center)
             surface.blit(btn_text, btn_text_rect)
-        
+
         new_regions.append(("start", start_btn))
 
-        # Show error message if previous discovery found nothing
+        # Error message
         state = self.state_coordinator.get_state()
         if state.error_message:
             font_small = get_minimal_font()
             if font_small:
                 msg = font_small.render("No devices found", True, self.colors['warning'])
-                surface.blit(msg, msg.get_rect(center=(240, 405)))
+                surface.blit(msg, msg.get_rect(center=(240, 450)))
 
         self._update_touch_regions_safe(new_regions)
     
     def _render_discovery_screen(self, surface, state: SetupState) -> None:
         """Render the discovery screen"""
         new_regions = []
-        
+
         # Title
         font_heading = get_heading_font()
         if font_heading:
             title = font_heading.render("Discovering Devices...", True, self.colors['text'])
             title_rect = title.get_rect(center=(240, 80))
             surface.blit(title, title_rect)
-        
+
         # Progress info
         progress_info = self.bluetooth_interface.get_active_operation_progress()
         if progress_info['has_active_operations']:
             # Progress bar
             progress_rect = pygame.Rect(90, 180, 300, 20)
             pygame.draw.rect(surface, self.colors['border'], progress_rect, border_radius=10)
-            
             progress_fill = pygame.Rect(90, 180, int(300 * progress_info['progress']), 20)
             pygame.draw.rect(surface, self.colors['primary'], progress_fill, border_radius=10)
-            
             # Progress text
             font_small = get_minimal_font()
             if font_small and progress_info['message']:
                 msg_text = font_small.render(progress_info['message'], True, self.colors['text_dim'])
                 msg_rect = msg_text.get_rect(center=(240, 220))
                 surface.blit(msg_text, msg_rect)
-        
-        # Cancel button
-        cancel_btn = pygame.Rect(190, 350, 100, 40)
+
+        # Cancel button — 140x60, centred, bottom at y=405
+        cancel_btn = pygame.Rect(170, 345, 140, 60)
         pygame.draw.rect(surface, self.colors['warning'], cancel_btn, border_radius=8)
-        
+
         btn_font = get_button_font()
         if btn_font:
             cancel_text = btn_font.render("Cancel", True, (255, 255, 255))
             cancel_text_rect = cancel_text.get_rect(center=cancel_btn.center)
             surface.blit(cancel_text, cancel_text_rect)
-        
+
         new_regions.append(("cancel", cancel_btn))
         self._update_touch_regions_safe(new_regions)
     
@@ -389,23 +397,23 @@ class SetupDisplayManager:
                 no_devices_rect = no_devices.get_rect(center=(240, 200))
                 surface.blit(no_devices, no_devices_rect)
         
-        # Back and Retry buttons
-        back_btn = pygame.Rect(90, 400, 100, 40)
+        # Back and Retry buttons — 130x60 each, bottom at y=405 (safe within circular boundary)
+        back_btn = pygame.Rect(80, 345, 130, 60)
         pygame.draw.rect(surface, self.colors['border'], back_btn, border_radius=8)
-        
-        retry_btn = pygame.Rect(290, 400, 100, 40)
+
+        retry_btn = pygame.Rect(270, 345, 130, 60)
         pygame.draw.rect(surface, self.colors['primary'], retry_btn, border_radius=8)
-        
+
         btn_font = get_button_font()
         if btn_font:
             back_text = btn_font.render("Back", True, self.colors['text'])
             back_text_rect = back_text.get_rect(center=back_btn.center)
             surface.blit(back_text, back_text_rect)
-            
+
             retry_text = btn_font.render("Retry", True, (255, 255, 255))
             retry_text_rect = retry_text.get_rect(center=retry_btn.center)
             surface.blit(retry_text, retry_text_rect)
-        
+
         new_regions.extend([("back", back_btn), ("retry", retry_btn)])
         self._update_touch_regions_safe(new_regions)
     
@@ -475,33 +483,35 @@ class SetupDisplayManager:
         
         # Action buttons
         if state.pairing_status == PairingStatus.SUCCESS:
-            continue_btn = pygame.Rect(140, 380, 200, 60)
+            # Continue button — 280x100, centred, bottom at y=430
+            continue_btn = pygame.Rect(100, 330, 280, 100)
             pygame.draw.rect(surface, self.colors['success'], continue_btn, border_radius=10)
-            
+
             btn_font = get_button_font()
             if btn_font:
                 btn_text = btn_font.render("Continue", True, (255, 255, 255))
                 btn_text_rect = btn_text.get_rect(center=continue_btn.center)
                 surface.blit(btn_text, btn_text_rect)
-            
+
             new_regions.append(("continue", continue_btn))
         elif state.pairing_status == PairingStatus.FAILED:
-            retry_btn = pygame.Rect(90, 380, 120, 50)
+            # Retry / Back — 130x60 each, bottom at y=405
+            retry_btn = pygame.Rect(80, 345, 130, 60)
             pygame.draw.rect(surface, self.colors['warning'], retry_btn, border_radius=8)
-            
-            back_btn = pygame.Rect(270, 380, 120, 50)
+
+            back_btn = pygame.Rect(270, 345, 130, 60)
             pygame.draw.rect(surface, self.colors['border'], back_btn, border_radius=8)
-            
+
             btn_font = get_button_font()
             if btn_font:
                 retry_text = btn_font.render("Retry", True, (255, 255, 255))
                 retry_text_rect = retry_text.get_rect(center=retry_btn.center)
                 surface.blit(retry_text, retry_text_rect)
-                
+
                 back_text = btn_font.render("Back", True, self.colors['text'])
                 back_text_rect = back_text.get_rect(center=back_btn.center)
                 surface.blit(back_text, back_text_rect)
-            
+
             new_regions.extend([("retry", retry_btn), ("back", back_btn)])
         
         self._update_touch_regions_safe(new_regions)
@@ -516,15 +526,16 @@ class SetupDisplayManager:
             title_rect = title.get_rect(center=(240, 120))
             surface.blit(title, title_rect)
         
-        complete_btn = pygame.Rect(140, 320, 200, 60)
+        # Complete button — 280x100, centred, bottom at y=430
+        complete_btn = pygame.Rect(100, 330, 280, 100)
         pygame.draw.rect(surface, self.colors['success'], complete_btn, border_radius=10)
-        
+
         btn_font = get_button_font()
         if btn_font:
             btn_text = btn_font.render("Complete", True, (255, 255, 255))
             btn_text_rect = btn_text.get_rect(center=complete_btn.center)
             surface.blit(btn_text, btn_text_rect)
-        
+
         new_regions.append(("complete", complete_btn))
         self._update_touch_regions_safe(new_regions)
     
@@ -636,11 +647,9 @@ class SetupDisplayManager:
     
     def _update_cached_screen_touch_regions(self) -> None:
         """Update touch regions for cached screens"""
-        # For cached screens, we need to reconstruct touch regions
-        # This is a simplified version - in production, you'd want to cache these too
         state = self.state_coordinator.get_state()
         if state.current_screen == SetupScreen.WELCOME:
-            start_btn = pygame.Rect(140, 320, 200, 60)
+            start_btn = pygame.Rect(100, 330, 280, 100)
             self._update_touch_regions_safe([("start", start_btn)])
     
     def _invalidate_render_cache(self, screen_type: SetupScreen = None) -> None:
