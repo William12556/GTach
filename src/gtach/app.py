@@ -52,6 +52,7 @@ class GTachApplication:
         
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
+        self._stop_event = threading.Event()
         
         # Ensure cleanup on exit
         atexit.register(self.shutdown)
@@ -155,8 +156,8 @@ class GTachApplication:
         """Run application main loop"""
         try:
             self.start()
-            signal.pause()
-        except KeyboardInterrupt:
+            self._stop_event.wait()
+        except (KeyboardInterrupt, SystemExit):
             self.logger.info("Shutting down...")
         except Exception as e:
             self.logger.error(f"Runtime error: {e}", exc_info=True)
@@ -198,10 +199,5 @@ class GTachApplication:
     def _signal_handler(self, signum: int, frame) -> None:
         """Handle system signals"""
         self.logger.info(f"Received signal {signum}")
-        self.shutdown()
-        try:
-            import pygame as _pg
-            if _pg.get_init():
-                _pg.event.post(_pg.event.Event(_pg.QUIT))
-        except Exception:
-            pass
+        self._stop_event.set()
+        raise SystemExit(0)

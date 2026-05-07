@@ -105,7 +105,7 @@ class TypographyConstants:
     SCALE_LARGE = 1.2    # For emphasis
     
     # Standardized button size constants (width x height in pixels)
-    BUTTON_LARGE = (280, 100)    # Primary actions like "Continue", "Save"
+    BUTTON_LARGE = (260, 90)     # Primary actions like "Continue", "Save"
     BUTTON_MEDIUM = (140, 60)    # Secondary actions like "Back", "Cancel"
     BUTTON_SMALL = (110, 50)     # Tertiary actions like filter toggles
     BUTTON_ICON = (40, 40)       # Icon-only buttons
