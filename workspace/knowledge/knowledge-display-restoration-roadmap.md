@@ -40,7 +40,7 @@ Source of truth for original confirmed changes: conversation `83922674` (2026-04
 | `src/gtach/core/watchdog.py` | ✅ Self-join guard applied (e4a6c8f2) |
 | `src/gtach/display/setup_models.py` | ✅ SetupAction.START_DISCOVERY and COMPLETE added |
 | All macOS runtime code | ✅ Removed (f3a1c9e2) — Pi is sole runtime target |
-| Pi — visual confirmation | ❌ Pending deploy and test |
+| Pi — visual confirmation | ✅ Confirmed — 2026-05-07 gtach-debug_PI.log |
 | `src/gtach/comm/sim_transport.py` | ❌ Not yet created (c7e2f1a9) |
 | `src/gtach/comm/sim_bluetooth.py` | ❌ Not yet created (c7e2f1a9) |
 
@@ -99,32 +99,29 @@ Issues `c3e5a7b9` and related macOS tasks are superseded.
 loop (subsequently `pump()` removed — it blocked on macOS). Final state: `poll()`
 loop only. `pygame.time.Clock.tick()` replaced with `time.sleep()` for frame pacing.
 
+### 3.10 Pi Visual Confirmation ✅
+
+Confirmed 2026-05-07 via `gtach-debug_PI.log`:
+- Splash completes after 4.00s, transitions to WELCOME
+- Michroma font loaded without WARNING
+- WELCOME cache hits at ~56 FPS, 16.6ms frame, 41.7MB mem
+- Tap at (246, 361) → `START_DISCOVERY` → `WELCOME → DISCOVERY` — no errors
+- Bluetooth discovery runs cleanly (0 devices found — ELM327 not present, expected)
+- Cancel tap → `DISCOVERY → WELCOME` clean
+- No splash ghost, no alternation, no crashes
+
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
 ## 4.0 Open Tasks
 
-### 4.1 Pi — Visual Confirmation ❌
-
-Deploy current wheel to Pi and confirm:
-- No splash ghost on transition to WELCOME
-- WELCOME screen layout correct (Michroma font, circular border)
-- "Start Setup" tap navigates to DISCOVERY (no `AttributeError`)
-- No splash/WELCOME alternation
-
-```bash
-./build.sh
-scp dist/*.whl root@gtach.local:/tmp/
-ssh root@gtach.local '/opt/gtach/install.sh'
-ssh root@gtach.local 'gtach --debug 2>&1 | tee /opt/gtach/gtach-debug.log'
-```
-
-### 4.2 Sim Mode ❌
+### 4.1 Sim Mode ❌
 
 Prompt `workspace/prompt/prompt-c7e2f1a9-sim-mode.md` complete and ready.
 Adds `--transport simtcp` and `--transport simbt` flags.
-Deferred until Pi visual confirmation is stable.
+Next implementation target.
+
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -176,13 +173,11 @@ Step 4 — Watchdog self-join (e4a6c8f2)            ✅ COMPLETE
 Step 5 — SetupAction enum additions               ✅ COMPLETE
 Step 6 — macOS runtime removal (f3a1c9e2)         ✅ COMPLETE
 
-Step 7 — Pi visual confirmation                   ❌ NEXT
-         Deploy and confirm: no splash ghost, WELCOME layout correct,
-         START_DISCOVERY tap works.
-         Commands: §4.1
+Step 7 — Pi visual confirmation                   ✅ COMPLETE
+         Confirmed 2026-05-07 via gtach-debug_PI.log.
+         See §3.10.
 
-Step 8 — Sim mode (c7e2f1a9)                      ❌ DEFERRED
-         After Step 7 confirmed stable.
+Step 8 — Sim mode (c7e2f1a9)                      ❌ NEXT
          Prompt: workspace/prompt/prompt-c7e2f1a9-sim-mode.md
 ```
 
@@ -229,6 +224,7 @@ grep "current_thread" src/gtach/core/watchdog.py        # expect match
 | 0.4 | 2026-05-06 | Log analysis; revised stale cache diagnosis; Pi alternation attributed to framebuffer |
 | 0.5 | 2026-05-06 | b2d4f6a8 confirmed in source; Pi deploy only |
 | 0.6 | 2026-05-07 | Major update: macOS removed; SetupAction enum fixed; watchdog guard applied; display loop fixed; all closed items marked complete; roadmap reduced to two remaining items |
+| 0.7 | 2026-05-07 | Step 7 closed: Pi visual confirmation passed via gtach-debug_PI.log; sim mode now NEXT |
 
 ---
 
