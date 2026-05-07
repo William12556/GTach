@@ -41,8 +41,8 @@ Source of truth for original confirmed changes: conversation `83922674` (2026-04
 | `src/gtach/display/setup_models.py` | ✅ SetupAction.START_DISCOVERY and COMPLETE added |
 | All macOS runtime code | ✅ Removed (f3a1c9e2) — Pi is sole runtime target |
 | Pi — visual confirmation | ✅ Confirmed — 2026-05-07 gtach-debug_PI.log |
-| `src/gtach/comm/sim_transport.py` | ❌ Not yet created (c7e2f1a9) |
-| `src/gtach/comm/sim_bluetooth.py` | ❌ Not yet created (c7e2f1a9) |
+| `src/gtach/comm/sim_transport.py` | ✅ Created (c7e2f1a9) |
+| `src/gtach/comm/sim_bluetooth.py` | ✅ Created (c7e2f1a9) |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -116,12 +116,6 @@ Confirmed 2026-05-07 via `gtach-debug_PI.log`:
 
 ## 4.0 Open Tasks
 
-### 4.1 Sim Mode ❌
-
-Prompt `workspace/prompt/prompt-c7e2f1a9-sim-mode.md` complete and ready.
-Adds `--transport simtcp` and `--transport simbt` flags.
-Next implementation target.
-
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -177,8 +171,9 @@ Step 7 — Pi visual confirmation                   ✅ COMPLETE
          Confirmed 2026-05-07 via gtach-debug_PI.log.
          See §3.10.
 
-Step 8 — Sim mode (c7e2f1a9)                      ❌ NEXT
-         Prompt: workspace/prompt/prompt-c7e2f1a9-sim-mode.md
+Step 8 — Sim mode (c7e2f1a9)                      ✅ COMPLETE
+         Confirmed 2026-05-07 via gtach-simbt.log.
+         SimTransport cycling 010C RPM at ~9Hz after full setup wizard flow.
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -225,6 +220,7 @@ grep "current_thread" src/gtach/core/watchdog.py        # expect match
 | 0.5 | 2026-05-06 | b2d4f6a8 confirmed in source; Pi deploy only |
 | 0.6 | 2026-05-07 | Major update: macOS removed; SetupAction enum fixed; watchdog guard applied; display loop fixed; all closed items marked complete; roadmap reduced to two remaining items |
 | 0.7 | 2026-05-07 | Step 7 closed: Pi visual confirmation passed via gtach-debug_PI.log; sim mode now NEXT |
+| 0.8 | 2026-05-07 | Step 8 closed: sim mode confirmed via gtach-simbt.log; all steps complete |}
 
 ---
 
