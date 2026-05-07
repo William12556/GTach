@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: gtach
-Version: 0.2.23
+Version: 0.2.24
 Summary: GPIO-based Tachometer Application for Raspberry Pi with cross-platform development support
 Author: GTach Project Contributors
 License: MIT
@@ -40,78 +40,109 @@ Provides-Extra: macos
 Requires-Dist: pygame>=2.0; extra == "macos"
 Dynamic: license-file
 
-# GTach - Retro styled ODBII/ELM327 based Tachometer
+# GTach - Retro styled OBD-II/ELM327 based Tachometer
 
 **Created**: 2025 08 08
 
 ## Overview
 
-GTach is an experimental embedded application under development for Raspberry Pi deployment with Pimoroni Hyperpixel 2.1" Round touchscreen display. The project implements real-time tachometer functionality through a circular interface for the 480x480 pixel round display.
+GTach is an experimental embedded application under development for Raspberry Pi deployment with a Pimoroni HyperPixel Round 480×480 circular touchscreen display. The project implements real-time tachometer functionality via an ELM327 OBD-II adapter.
 
-**Important Notice**: This software is currently very unproven and in early development stages. The implementation is experimental in nature, serving as a learning exercise in AI-assisted development workflows, protocol-driven project management, and cross-platform embedded systems development. Actual fitness for purpose is not guaranteed.
-
-This project represents a first attempt at AI-supported software development using Claude Desktop, Claude Code and Codestral 22b AI tools. The objective is to establish a sort of AI orchestration framework to guide software development. A kind of AI wrangler if you will.
-
-What you see from this point on is completely AI generated.
-
-## Quick Start
-
-### Development Environment
-```bash
-git clone [repository-url] GTach
-cd GTach
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .[dev]
-python3 -m pytest tests/ -v
-```
-
-### Raspberry Pi Deployment
-```bash
-# Build distribution wheel (Mac)
-./build.sh
-
-# Transfer to Pi
-scp dist/gtach-*.whl pi@PI_IP:/tmp/
-
-# Install on Pi
-ssh pi@PI_IP "./install.sh gtach-X.Y.Z-py3-none-any.whl"
-```
-
-## Requirements
-
-### Development
-- Python 3.9+
-- Modern development machine
-- Git version control
-
-### Deployment  
-- Raspberry Pi (any model)
-- Pimoroni Hyperpixel 2.1" Round display (480x480 pixels)
-- MicroSD card (8GB minimum)
-
-## Documentation
-
-### Project Structure
-- `ai/` - Governance framework and templates
-- `workspace/design/` - Architecture and component design documents
-- `workspace/` - Development artifacts (issues, changes, tests, audits)
-- `src/` - Source code
-- `tests/` - Test suite
-- `docs/` - Technical documentation
-
-## Project Status
-
-**Development Stage**: Early experimental development  
-**Hardware Platform**: Raspberry Pi with Hyperpixel 2.1" Round Display  
-**Cross-Platform**: Framework designed, validation in progress  
-**Testing**: Multi-layer testing architecture implemented  
-**AI Integration**: Claude Desktop and Claude Code workflow active
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+**Notice**: This software is experimental and in early development. Fitness for purpose is not guaranteed.
 
 ---
 
-**Warning**: This is experimental software. Actual fitness for purpose is not guaranteed.
+## Table of Contents
+
+- [Requirements](<#requirements>)
+- [Development Setup](<#development setup>)
+- [Build and Deploy](<#build and deploy>)
+- [Running GTach](<#running gtach>)
+- [Project Structure](<#project structure>)
+- [Version History](<#version history>)
+
+---
+
+## 1. Requirements
+
+### 1.1 Deployment
+
+- Raspberry Pi Zero 2W
+- Pimoroni HyperPixel Round display (480×480)
+- ELM327 OBD-II adapter (Bluetooth SPP)
+
+---
+
+## 2. Development Setup
+
+```bash
+git clone https://github.com/William12556/GTach GTach
+```
+
+---
+
+## 3. Build and Deploy
+
+### 3.1 Transfer install script to Pi
+
+```bash
+scp install.sh root@gtach.local:/opt/gtach/
+```
+
+### 3.2 Build wheel and transfer to Pi
+
+```bash
+./build.sh && scp dist/gtach-0.2.22-py3-none-any.whl root@gtach.local:/tmp/
+```
+
+### 3.3 Install on Pi
+
+```bash
+/opt/gtach/install.sh /tmp/gtach-0.2.22-py3-none-any.whl
+```
+
+### 3.4 Retrieve log from Pi
+
+```bash
+scp root@gtach.local:/opt/gtach/gtach-debug_PI.log ~/Documents/GitHub/GTach/
+```
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 4. Running GTach
+
+```bash
+gtach --debug 2>&1 | tee /opt/gtach/gtach-debug_PI.log
+```
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 5. Project Structure
+
+```
+ai/           Governance framework
+src/          Source code
+tests/        Test suite
+docs/         Technical documentation
+workspace/    Development artefacts (issues, changes, design, requirements)
+```
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## Version History
+
+| Version | Date       | Notes                                    |
+|---------|------------|------------------------------------------|
+| 1.2     | 2026-05-07 | Removed macOS runtime support            |
+| 1.1     | 2026-05-06 | Updated build/deploy workflow            |
+| 1.0     | 2025-08-08 | Initial README                           |
+
+---
+
+Copyright (c) 2026 William Watson. MIT License.
