@@ -64,7 +64,6 @@ class CacheEvictionPolicy(Enum):
 class PlatformType(Enum):
     """Platform types for optimization."""
     RASPBERRY_PI = "raspberry_pi"
-    MACOS = "macos"
     LINUX = "linux"
     WINDOWS = "windows"
     UNKNOWN = "unknown"

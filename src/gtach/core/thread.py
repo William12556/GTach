@@ -157,15 +157,7 @@ class ThreadManager:
         self._state_lock = threading.RLock()  # Reentrant lock for nested operations
         self._shutdown_event = threading.Event()
         self._cleanup_lock = threading.Lock()  # Separate lock for cleanup operations
-        
-        # Platform optimization
-        if platform_optimized:
-            import platform
-            if platform.system() == 'Darwin':  # macOS development
-                num_workers = min(num_workers * 2, 8)  # Higher concurrency for testing
-            else:  # Raspberry Pi deployment 
-                num_workers = min(num_workers, 4)  # Conservative for Pi Zero 2W
-                
+
         # Thread pool for background tasks with proper cleanup
         self.worker_pool = ThreadPoolExecutor(
             max_workers=num_workers,

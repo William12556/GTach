@@ -284,10 +284,7 @@ class ConfigValidator:
         if self._platform_info['is_pi']:
             # Raspberry Pi specific validation
             platform_result['pi_validation'] = self._validate_pi_constraints(config)
-        elif self._platform_info['is_mac']:
-            # macOS specific validation  
-            platform_result['mac_validation'] = self._validate_mac_constraints(config)
-            
+
         result['platform_specific'] = platform_result
         
     def _validate_pi_constraints(self, config: 'OBDConfig') -> Dict[str, Any]:
@@ -331,7 +328,6 @@ class ConfigValidator:
             'system': system,
             'machine': machine,
             'is_pi': system == 'Linux' and machine.startswith(('arm', 'aarch')),
-            'is_mac': system == 'Darwin',
             'is_arm': machine.startswith(('arm', 'aarch')),
         }
 
@@ -1596,13 +1592,10 @@ class ConfigManager:
                 (machine.startswith('arm') or machine.startswith('aarch')))
         
         # Determine if running on Mac
-        is_mac = system == 'Darwin'
-        
         platform_info = {
             'system': system,
             'machine': machine,
             'is_pi': is_pi,
-            'is_mac': is_mac,
             'is_arm': machine.startswith(('arm', 'aarch')),
             'description': f"{system}/{machine}"
         }

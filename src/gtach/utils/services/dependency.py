@@ -326,9 +326,7 @@ class DependencyService:
                     return False
                 elif requirement == 'linux' and not platform_info.get('is_linux', False):
                     return False
-                elif requirement == 'macos' and not platform_info.get('is_macos', False):
-                    return False
-            
+
             return True
             
         except Exception as e:

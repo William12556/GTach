@@ -23,12 +23,7 @@ GTach is an experimental embedded application under development for Raspberry Pi
 
 ## 1. Requirements
 
-### 1.1 Development (macOS)
-
-- Python 3.9+
-- Git
-
-### 1.2 Deployment
+### 1.1 Deployment
 
 - Raspberry Pi Zero 2W
 - Pimoroni HyperPixel Round display (480×480)
@@ -40,10 +35,6 @@ GTach is an experimental embedded application under development for Raspberry Pi
 
 ```bash
 git clone https://github.com/William12556/GTach GTach
-cd GTach
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .[dev]
 ```
 
 ---
@@ -80,16 +71,8 @@ scp root@gtach.local:/opt/gtach/gtach-debug_PI.log ~/Documents/GitHub/GTach/
 
 ## 4. Running GTach
 
-### 4.1 Pi
-
 ```bash
 gtach --debug 2>&1 | tee /opt/gtach/gtach-debug_PI.log
-```
-
-### 4.2 Mac (development)
-
-```bash
-python -m gtach --macos --debug 2>&1 | tee gtach-debug_Mac.log
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -112,10 +95,11 @@ workspace/    Development artefacts (issues, changes, design, requirements)
 
 ## Version History
 
-| Version | Date       | Notes                          |
-|---------|------------|--------------------------------|
-| 1.1     | 2026-05-06 | Updated build/deploy workflow  |
-| 1.0     | 2025-08-08 | Initial README                 |
+| Version | Date       | Notes                                    |
+|---------|------------|------------------------------------------|
+| 1.2     | 2026-05-07 | Removed macOS runtime support            |
+| 1.1     | 2026-05-06 | Updated build/deploy workflow            |
+| 1.0     | 2025-08-08 | Initial README                           |
 
 ---
 

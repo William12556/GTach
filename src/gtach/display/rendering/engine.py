@@ -47,7 +47,6 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         self.fb_size = 0
         self.use_mmap = False
         self.framebuffer_path = '/dev/fb0'
-        self.use_window = False  # True on macOS: use pygame window instead of framebuffer
         
         # Display constants for HyperPixel 2" Round
         self.display_center = (240, 240)
@@ -89,23 +88,9 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     self._initialized = True
                     return True
                 
-                # Initialize pygame — platform-dependent display mode
-                import platform as _platform
-                self.use_window = False  # macOS now uses dummy driver, same as Pi
-                
-                if _platform.system() == 'Darwin':
-                    # macOS: headless SDL dummy driver.
-                    # Cocoa window event handling causes SDL_PollEvent to block
-                    # on SDL 2.28.x / Apple Silicon — not worth working around
-                    # for a non-target platform. Logic is verified via logs;
-                    # visual output is verified on the Pi.
-                    os.environ['SDL_VIDEODRIVER'] = 'dummy'
-                    self.use_window = False
-                    self.logger.info("macOS mode: headless (SDL dummy driver)")
-                else:
-                    # Linux/Pi: off-screen rendering to framebuffer
-                    os.putenv('SDL_VIDEODRIVER', 'dummy')
-                
+                # Initialize pygame — headless SDL dummy driver
+                os.environ['SDL_VIDEODRIVER'] = 'dummy'
+
                 pygame.display.init()
                 pygame.font.init()
                 
@@ -117,10 +102,9 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 # Create surfaces
                 self.main_surface = pygame.Surface(surface_size)
                 self.back_surface = pygame.Surface(surface_size)
-                
-                # Initialize framebuffer (Linux/Pi only)
-                if not self.use_window:
-                    self._initialize_framebuffer()
+
+                # Initialize framebuffer
+                self._initialize_framebuffer()
                 
                 self._initialized = True
                 self.logger.info(f"Rendering engine initialized: {surface_size}, framebuffer: {framebuffer_path}")

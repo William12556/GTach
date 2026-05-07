@@ -86,8 +86,6 @@ class DisplayManager:
 
         # Acknowledgement state manager
         self._ack_state_manager = AcknowledgementStateManager()
-
-        self._is_macos = False  # headless on macOS; no mouse events
     
     def _initialize_components(self) -> None:
         """Initialize the extracted components"""
@@ -345,28 +343,6 @@ class DisplayManager:
                     if event.type == pygame.QUIT:
                         self._shutdown_event.set()
                         break
-                    elif self._is_macos:
-                        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                            self._mouse_down_pos = event.pos
-                            self._mouse_down_time = time.monotonic()
-                            self._mouse_dragging = True
-                            self._mouse_current_pos = event.pos
-                            if self.gesture_handler:
-                                self.gesture_handler.start_gesture_tracking(event.pos, self._mouse_down_time)
-                        elif event.type == pygame.MOUSEMOTION and self._mouse_dragging and event.buttons[0]:
-                            self._mouse_current_pos = event.pos
-                        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1 and self._mouse_dragging:
-                            try:
-                                self._mouse_event_queue.put_nowait({
-                                    'up_pos': event.pos,
-                                    'down_pos': self._mouse_down_pos,
-                                    'down_time': self._mouse_down_time,
-                                })
-                            except Exception:
-                                pass  # queue full — discard
-                            self._mouse_dragging = False
-                            self._mouse_down_pos = None
-                            self._mouse_down_time = None
 
                 # Record frame start for performance monitoring
                 frame_id = self.performance_monitor.record_frame_start()
@@ -903,37 +879,6 @@ class DisplayManager:
     def is_in_setup_mode(self) -> bool:
         """Check if in setup mode"""
         return self._in_setup_mode
-
-    def _gesture_worker(self) -> None:
-        """Daemon worker: dequeue mouse gesture events and dispatch off main thread."""
-        while not self._shutdown_event.is_set():
-            try:
-                evt = self._mouse_event_queue.get(timeout=0.1)
-                self._mouse_down_pos = evt['down_pos']
-                self._mouse_down_time = evt['down_time']
-                self._dispatch_mouse_gesture(evt['up_pos'])
-            except Exception:
-                pass  # timeout or queue empty — loop
-
-    def _dispatch_mouse_gesture(self, up_pos: Tuple[int, int]) -> None:
-        """Classify and dispatch a completed mouse gesture (macOS only)."""
-        if self._mouse_down_pos is None or self._mouse_down_time is None:
-            return
-        hold = time.monotonic() - self._mouse_down_time
-        long_press_threshold = getattr(self.config, 'touch_long_press', 1.0)
-        if hold >= long_press_threshold:
-            self.logger.debug('Mouse long-press at %s (%.2fs)', self._mouse_down_pos, hold)
-            self._handle_long_press(self._mouse_down_pos, up_pos)
-            return
-        if self.gesture_handler:
-            gesture = self.gesture_handler.end_gesture_tracking(up_pos, time.monotonic())
-            if gesture:
-                self.logger.debug('Mouse gesture: %s', gesture.gesture_type.name)
-                self.gesture_handler.handle_gesture_event(gesture)
-                return
-        # Fall through: treat as tap
-        self.logger.debug('Mouse tap at %s', up_pos)
-        self.handle_touch_event(up_pos)
 
     def handle_touch_event(self, pos: Tuple[int, int]) -> Optional[object]:
         """Handle touch events using touch coordinator"""

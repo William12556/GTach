@@ -31,7 +31,6 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--version', action='version', version='GTach 0.2.0')
     parser.add_argument('--validate-config', action='store_true')
     parser.add_argument('--validate-dependencies', action='store_true')
-    parser.add_argument('--macos', action='store_true')
     parser.add_argument('--transport', choices=['tcp', 'serial', 'rfcomm', 'simtcp', 'simbt'], default=None)
     parser.add_argument('--obd-host', default='localhost')
     parser.add_argument('--obd-port', type=int, default=35000)

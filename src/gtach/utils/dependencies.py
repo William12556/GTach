@@ -100,7 +100,6 @@ class DependencyValidator:
             'machine': machine,
             'python_version': python_version,
             'is_raspberry_pi': False,
-            'is_macos': system == 'Darwin',
             'is_linux': system == 'Linux',
             'is_development': False
         }
@@ -116,8 +115,7 @@ class DependencyValidator:
         
         # Determine if this is a development environment
         platform_info['is_development'] = (
-            platform_info['is_macos'] or 
-            (platform_info['is_linux'] and not platform_info['is_raspberry_pi'])
+            platform_info['is_linux'] and not platform_info['is_raspberry_pi']
         )
         
         if self.debug:
@@ -247,8 +245,6 @@ class DependencyValidator:
                 return True  # No platform restriction
             
             if "raspberry_pi" in dep.platforms and self.platform_info['is_raspberry_pi']:
-                return True
-            if "macos" in dep.platforms and self.platform_info['is_macos']:
                 return True
             if "linux" in dep.platforms and self.platform_info['is_linux']:
                 return True

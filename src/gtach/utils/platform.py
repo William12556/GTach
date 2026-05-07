@@ -460,15 +460,8 @@ class PlatformDetector:
                 'machine': machine,
                 'platform': platform.platform()
             }
-            
-            if system == 'Darwin':
-                return DetectionResult(
-                    DetectionMethod.SYSTEM_PLATFORM,
-                    PlatformType.MACOS,
-                    0.9,
-                    evidence
-                )
-            elif system == 'Windows':
+
+            if system == 'Windows':
                 return DetectionResult(
                     DetectionMethod.SYSTEM_PLATFORM,
                     PlatformType.WINDOWS,
