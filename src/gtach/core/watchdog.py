@@ -112,7 +112,7 @@ class WatchdogMonitor:
         
         self._stop_event.set()
         
-        if self._thread.is_alive():
+        if threading.current_thread() is not self._thread and self._thread.is_alive():
             self._thread.join(timeout=5.0)
             if self._thread.is_alive():
                 self.logger.warning("Watchdog monitor thread did not stop cleanly")
