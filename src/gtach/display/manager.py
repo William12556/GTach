@@ -357,16 +357,19 @@ class DisplayManager:
             self.logger.warning("Pygame not available - display loop disabled")
             return
         
-        clock = pygame.time.Clock()
-        
         self.logger.info("Display loop started with component architecture")
         
         while not self._shutdown_event.is_set():
             try:
+                _frame_start = time.monotonic()
                 # Process pygame events (required on macOS to keep window responsive)
                 # Use pump()+poll() instead of event.get() to avoid blocking on
                 # macOS/Cocoa when a click arrives mid-frame.
+                _pt = time.time()
                 pygame.event.pump()
+                _pdt = time.time() - _pt
+                if _pdt > 0.05:
+                    self.logger.warning(f'event.pump() blocked for {_pdt:.3f}s')
                 while True:
                     event = pygame.event.poll()
                     if event.type == pygame.NOEVENT:
@@ -418,7 +421,15 @@ class DisplayManager:
                 self.rendering_engine.write_to_framebuffer()
                 
                 # Tick clock and record frame end
-                clock.tick(self.config.fps_limit)
+                # pygame.time.Clock.tick() uses SDL_Delay which can block
+                # indefinitely on macOS when the Cocoa run loop stalls.
+                # Use time.sleep() for reliable frame pacing on all platforms.
+                _frame_end = time.monotonic()
+                _frame_elapsed = _frame_end - _frame_start
+                _frame_target = 1.0 / self.config.fps_limit
+                _sleep = _frame_target - _frame_elapsed
+                if _sleep > 0:
+                    time.sleep(_sleep)
                 self.performance_monitor.record_frame_end(frame_id)
                 
                 # Periodic performance logging

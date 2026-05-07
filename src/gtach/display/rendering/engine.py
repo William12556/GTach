@@ -336,7 +336,11 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     self._stats.buffer_writes += 1
                     self._lock.release()
                     try:
+                        _t = time.time()
                         pygame.display.flip()
+                        _dt = time.time() - _t
+                        if _dt > 0.05:
+                            self.logger.warning(f'flip() blocked for {_dt:.3f}s')
                     finally:
                         self._lock.acquire()
                     return True
