@@ -328,10 +328,17 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     return False
 
                 # macOS: blit to window surface and flip
+                # flip() must be called outside the lock — on macOS it enters
+                # the Cocoa compositor which may need to dispatch a pending
+                # mouse event, and that can deadlock if the lock is held.
                 if self.use_window:
                     self.window_surface.blit(self.main_surface, (0, 0))
-                    pygame.display.flip()
                     self._stats.buffer_writes += 1
+                    self._lock.release()
+                    try:
+                        pygame.display.flip()
+                    finally:
+                        self._lock.acquire()
                     return True
 
                 if not self.fb:
