@@ -87,19 +87,7 @@ class DisplayManager:
         # Acknowledgement state manager
         self._ack_state_manager = AcknowledgementStateManager()
 
-        # macOS mouse-as-touch simulation
-        import platform as _plat
-        self._is_macos = _plat.system() == 'Darwin'
-        if self._is_macos:
-            self._mouse_down_pos = None
-            self._mouse_down_time = None
-            self._mouse_dragging = False
-            self._mouse_current_pos = None
-            import queue as _queue
-            self._mouse_event_queue = _queue.Queue(maxsize=4)
-            self._gesture_worker_thread = threading.Thread(
-                target=self._gesture_worker, daemon=True, name='GestureWorker')
-            self._gesture_worker_thread.start()
+        self._is_macos = False  # headless on macOS; no mouse events
     
     def _initialize_components(self) -> None:
         """Initialize the extracted components"""
@@ -299,21 +287,14 @@ class DisplayManager:
             self.logger.error(f"Config save failed: {e}")
     
     def start(self) -> None:
-        """Start display manager.
-
-        On macOS the display loop must run on the main thread (Cocoa constraint).
-        The thread is not started here; call run_main_thread_loop() from the
-        main thread after all other components are initialised.
-        """
-        import platform as _platform
+        """Start display manager."""
         self.start_splash()
-        if _platform.system() != 'Darwin':
-            self.display_thread.start()
+        self.display_thread.start()
         self.logger.info("Display manager started")
 
     def run_main_thread_loop(self) -> None:
-        """Run the display loop on the calling thread (macOS only)."""
-        self._display_loop()
+        """Retained for API compatibility."""
+        pass
     
     def start_splash(self) -> None:
         """Start the splash screen"""
@@ -331,10 +312,8 @@ class DisplayManager:
     
     def stop(self) -> None:
         """Stop display manager"""
-        import platform as _platform
         self._shutdown_event.set()
-        if _platform.system() != 'Darwin':
-            self.display_thread.join()
+        self.display_thread.join()
         
         # Clean up components
         try:
