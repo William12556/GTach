@@ -239,7 +239,7 @@ class BluetoothSetupInterface:
                     if status == PairingStatus.FAILED:
                         state.error_message = message
                     
-                    if status == PairingStatus.PAIRING:
+                    if status == PairingStatus.CONNECTING:
                         if progress_callback:
                             progress_callback(0.5, f"Pairing with {device.name}...")
                         if progress_callback_inner:
