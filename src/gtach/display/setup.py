@@ -50,7 +50,7 @@ class SetupDisplayManager:
     - SetupStateCoordinator: State management
     """
     
-    def __init__(self, surface, thread_manager, touch_handler, pairing_factory=None):
+    def __init__(self, surface, thread_manager, touch_handler, pairing_factory=None, on_complete=None):
         self.logger = logging.getLogger('SetupDisplayManager')
         self.surface = surface
         self.thread_manager = thread_manager
@@ -68,6 +68,7 @@ class SetupDisplayManager:
         self.positioning_engine = CircularPositioningEngine()
         self.device_renderer = DeviceSurfaceRenderer()
         self.state_coordinator = SetupStateCoordinator()
+        self._on_complete = on_complete
         
         # UI state and threading
         self.touch_regions = []  # Protected by _touch_regions_lock
@@ -157,12 +158,22 @@ class SetupDisplayManager:
                 
                 # Handle auto-discovery if needed
                 state = self.state_coordinator.get_state()
-                if (state.current_screen == SetupScreen.DISCOVERY and 
-                    state.pairing_status == PairingStatus.IDLE):
-                    self.bluetooth_interface.start_discovery(
-                        state, 
-                        show_all_devices=self.state_coordinator.show_all_devices
-                    )
+                if state.current_screen == SetupScreen.COMPLETE:
+                    if self._on_complete:
+                        self.logger.info("Setup complete — invoking on_complete callback")
+                        self._on_complete()
+                    break
+                if (state.current_screen == SetupScreen.DISCOVERY and
+                        state.pairing_status == PairingStatus.IDLE):
+                    if state.discovered_devices:
+                        # Discovery complete — advance to device list
+                        self.state_coordinator.transition_to_screen(SetupScreen.DEVICE_LIST)
+                    elif 'device_discovery' not in self.bluetooth_interface._active_operations:
+                        # No active operation — start discovery
+                        self.bluetooth_interface.start_discovery(
+                            state,
+                            show_all_devices=self.state_coordinator.show_all_devices
+                        )
                 
                 time.sleep(0.05)
                 
@@ -198,7 +209,7 @@ class SetupDisplayManager:
             
             # Cache static screens
             should_cache = state.current_screen in [
-                SetupScreen.WELCOME, SetupScreen.PAIRING, SetupScreen.TEST, 
+                SetupScreen.WELCOME, SetupScreen.TEST,
                 SetupScreen.COMPLETE, SetupScreen.CURRENT_DEVICE, SetupScreen.CONFIRMATION
             ]
             
@@ -422,7 +433,7 @@ class SetupDisplayManager:
         
         # Status indicator
         center = (240, 220)
-        if state.pairing_status == PairingStatus.PAIRING:
+        if state.pairing_status == PairingStatus.CONNECTING:
             # Animated spinner
             angle = self.state_coordinator.animation_time * 180
             for i in range(8):
@@ -452,7 +463,7 @@ class SetupDisplayManager:
         font_small = get_minimal_font()
         if font_small:
             status_messages = {
-                PairingStatus.PAIRING: "Connecting...",
+                PairingStatus.CONNECTING: "Connecting...",
                 PairingStatus.SUCCESS: "Connected successfully!",
                 PairingStatus.FAILED: state.error_message or "Connection failed"
             }

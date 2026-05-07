@@ -102,13 +102,32 @@ class GTachApplication:
             self._display.rendering_engine.main_surface,
             self._thread_manager,
             self._display.touch_handler,
-            pairing_factory=pairing_factory
+            pairing_factory=pairing_factory,
+            on_complete=self._on_setup_complete
         )
         self._setup_manager.start_setup()
         
         # Set display to setup mode (will transition after splash completes)
         self._display.set_setup_mode(self._setup_manager)
     
+    def _on_setup_complete(self) -> None:
+        """Called by SetupDisplayManager when setup finishes"""
+        self.logger.info("Setup complete — transitioning to normal mode")
+        self._display.exit_setup_mode()
+        self._start_obd()
+
+    def _start_obd(self) -> None:
+        """Start transport and OBD protocol against the existing display"""
+        platform_type = get_platform_type()
+        self._transport = select_transport(platform_type, self._args)
+        self._obd = OBDProtocol(self._transport, self._thread_manager)
+        transport_thread = threading.Thread(
+            target=self._transport.reconnect_indefinitely, name='transport', daemon=True
+        )
+        transport_thread.start()
+        self._obd.start()
+        self.logger.info("OBD protocol started after setup")
+
     def _start_normal_mode(self) -> None:
         """Start application in normal mode with splash screen"""
         # Initialize display manager first with splash screen
