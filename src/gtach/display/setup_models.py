@@ -101,3 +101,5 @@ class SetupAction(Enum):
     EXIT_SETUP = auto()
     TOGGLE_FILTER = auto()
     CONNECT_MANUAL = auto()
+    START_DISCOVERY = auto()
+    COMPLETE = auto()

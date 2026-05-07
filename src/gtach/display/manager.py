@@ -364,7 +364,13 @@ class DisplayManager:
         while not self._shutdown_event.is_set():
             try:
                 # Process pygame events (required on macOS to keep window responsive)
-                for event in pygame.event.get():
+                # Use pump()+poll() instead of event.get() to avoid blocking on
+                # macOS/Cocoa when a click arrives mid-frame.
+                pygame.event.pump()
+                while True:
+                    event = pygame.event.poll()
+                    if event.type == pygame.NOEVENT:
+                        break
                     if event.type == pygame.QUIT:
                         self._shutdown_event.set()
                         break
