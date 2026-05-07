@@ -156,7 +156,8 @@ class GTachApplication:
         """Run application main loop"""
         try:
             self.start()
-            self._stop_event.wait()
+            while not self._stop_event.is_set():
+                self._stop_event.wait(timeout=0.5)
         except (KeyboardInterrupt, SystemExit):
             self.logger.info("Shutting down...")
         except Exception as e:
