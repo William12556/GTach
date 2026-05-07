@@ -362,14 +362,10 @@ class DisplayManager:
         while not self._shutdown_event.is_set():
             try:
                 _frame_start = time.monotonic()
-                # Process pygame events (required on macOS to keep window responsive)
-                # Use pump()+poll() instead of event.get() to avoid blocking on
-                # macOS/Cocoa when a click arrives mid-frame.
-                _pt = time.time()
-                pygame.event.pump()
-                _pdt = time.time() - _pt
-                if _pdt > 0.05:
-                    self.logger.warning(f'event.pump() blocked for {_pdt:.3f}s')
+                # Process pygame events — poll() is non-blocking unlike pump().
+                # pump() calls into the Cocoa run loop and can block on macOS;
+                # poll() drains one event at a time and returns NOEVENT immediately
+                # when the queue is empty.
                 while True:
                     event = pygame.event.poll()
                     if event.type == pygame.NOEVENT:
