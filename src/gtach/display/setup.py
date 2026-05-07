@@ -138,13 +138,9 @@ class SetupDisplayManager:
     def stop_setup(self) -> None:
         """Stop the setup process and cancel all async operations"""
         self._shutdown_event.set()
-        
-        # Cancel Bluetooth operations
         self.bluetooth_interface.cancel_operations()
-        
         if self._setup_thread:
-            self._setup_thread.join()
-        
+            self._setup_thread.join(timeout=5.0)
         self.logger.info("Setup stopped - all operations cancelled")
     
     def _setup_loop(self) -> None:
@@ -314,7 +310,7 @@ class SetupDisplayManager:
         # Title
         font_heading = get_heading_font()
         if font_heading:
-            title = font_heading.render("Discovering Devices...", True, self.colors['text'])
+            title = font_heading.render("Scanning...", True, self.colors['text'])
             title_rect = title.get_rect(center=(240, 80))
             surface.blit(title, title_rect)
 

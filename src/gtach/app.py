@@ -200,4 +200,3 @@ class GTachApplication:
         """Handle system signals"""
         self.logger.info(f"Received signal {signum}")
         self._stop_event.set()
-        raise SystemExit(0)

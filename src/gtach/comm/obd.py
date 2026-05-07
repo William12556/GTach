@@ -54,7 +54,7 @@ class OBDProtocol:
     def stop(self) -> None:
         """Stop protocol handler"""
         self.shutdown_event.set()
-        self.obd_thread.join()
+        self.obd_thread.join(timeout=5.0)
         self.logger.info("OBD protocol handler stopped")
 
     def _protocol_loop(self) -> None:
