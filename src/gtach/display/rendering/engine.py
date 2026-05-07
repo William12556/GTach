@@ -91,20 +91,19 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 
                 # Initialize pygame — platform-dependent display mode
                 import platform as _platform
-                self.use_window = (_platform.system() == 'Darwin')
+                self.use_window = False  # macOS now uses dummy driver, same as Pi
                 
-                if self.use_window:
-                    # macOS: open a real pygame window
-                    pygame.display.init()
-                    pygame.font.init()
-                    self.window_surface = pygame.display.set_mode(surface_size)
-                    pygame.display.set_caption('GTach')
-                    self.logger.info("macOS mode: pygame window opened")
+                if _platform.system() == 'Darwin':
+                    # macOS: use SDL dummy driver to avoid Cocoa event loop
+                    # blocking. No visible window — headless dev mode.
+                    os.putenv('SDL_VIDEODRIVER', 'dummy')
+                    self.logger.info("macOS mode: SDL dummy driver (headless)")
                 else:
                     # Linux/Pi: off-screen rendering to framebuffer
                     os.putenv('SDL_VIDEODRIVER', 'dummy')
-                    pygame.display.init()
-                    pygame.font.init()
+                
+                pygame.display.init()
+                pygame.font.init()
                 
                 # Verify font initialization
                 if not pygame.font.get_init():
@@ -326,20 +325,6 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             try:
                 if not self.main_surface:
                     return False
-
-                # macOS: blit to window surface and flip
-                # flip() must be called outside the lock — on macOS it enters
-                # the Cocoa compositor which may need to dispatch a pending
-                # mouse event, and that can deadlock if the lock is held.
-                if self.use_window:
-                    self.window_surface.blit(self.main_surface, (0, 0))
-                    self._stats.buffer_writes += 1
-                    self._lock.release()
-                    try:
-                        pygame.display.flip()
-                    finally:
-                        self._lock.acquire()
-                    return True
 
                 if not self.fb:
                     return False
