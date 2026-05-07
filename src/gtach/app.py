@@ -134,9 +134,13 @@ class GTachApplication:
 
     def run(self) -> NoReturn:
         """Run application main loop"""
+        import platform as _platform
         try:
             self.start()
-            signal.pause()
+            if _platform.system() == 'Darwin' and hasattr(self, '_display'):
+                self._display.run_main_thread_loop()
+            else:
+                signal.pause()
         except KeyboardInterrupt:
             self.logger.info("Shutting down...")
         except Exception as e:

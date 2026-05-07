@@ -299,14 +299,21 @@ class DisplayManager:
             self.logger.error(f"Config save failed: {e}")
     
     def start(self) -> None:
-        """Start display manager."""
+        """Start display manager.
+
+        On macOS the display loop must run on the main thread (Cocoa constraint).
+        The thread is not started here; call run_main_thread_loop() from the
+        main thread after all other components are initialised.
+        """
+        import platform as _platform
         self.start_splash()
-        self.display_thread.start()
+        if _platform.system() != 'Darwin':
+            self.display_thread.start()
         self.logger.info("Display manager started")
 
     def run_main_thread_loop(self) -> None:
-        """Retained for API compatibility — no longer needed."""
-        pass
+        """Run the display loop on the calling thread (macOS only)."""
+        self._display_loop()
     
     def start_splash(self) -> None:
         """Start the splash screen"""
@@ -324,8 +331,10 @@ class DisplayManager:
     
     def stop(self) -> None:
         """Stop display manager"""
+        import platform as _platform
         self._shutdown_event.set()
-        self.display_thread.join()
+        if _platform.system() != 'Darwin':
+            self.display_thread.join()
         
         # Clean up components
         try:

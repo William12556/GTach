@@ -94,10 +94,18 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 self.use_window = False  # macOS now uses dummy driver, same as Pi
                 
                 if _platform.system() == 'Darwin':
-                    # macOS: use SDL dummy driver to avoid Cocoa event loop
-                    # blocking. No visible window — headless dev mode.
-                    os.putenv('SDL_VIDEODRIVER', 'dummy')
-                    self.logger.info("macOS mode: SDL dummy driver (headless)")
+                    # SDL 2.28.x on macOS/Apple Silicon: the Metal renderer
+                    # synchronises with the Cocoa window server on every
+                    # PollEvent call, causing stalls when a mouse button is
+                    # held between frames. Force software renderer to remove
+                    # that synchronisation path.
+                    os.environ['SDL_RENDER_DRIVER'] = 'software'
+                    self.use_window = True
+                    pygame.display.init()
+                    pygame.font.init()
+                    self.window_surface = pygame.display.set_mode(surface_size)
+                    pygame.display.set_caption('GTach')
+                    self.logger.info("macOS mode: pygame window (software renderer)")
                 else:
                     # Linux/Pi: off-screen rendering to framebuffer
                     os.putenv('SDL_VIDEODRIVER', 'dummy')
@@ -325,6 +333,18 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             try:
                 if not self.main_surface:
                     return False
+
+                # macOS: blit to window surface and flip outside the lock
+                # to avoid blocking the Cocoa compositor while holding it.
+                if self.use_window:
+                    self.window_surface.blit(self.main_surface, (0, 0))
+                    self._stats.buffer_writes += 1
+                    self._lock.release()
+                    try:
+                        pygame.display.flip()
+                    finally:
+                        self._lock.acquire()
+                    return True
 
                 if not self.fb:
                     return False
