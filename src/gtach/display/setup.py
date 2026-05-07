@@ -607,6 +607,10 @@ class SetupDisplayManager:
             
             elif action == "retry":
                 self.state_coordinator.handle_setup_action(SetupAction.RETRY)
+                # Re-start pairing with the same device
+                state = self.state_coordinator.get_state()
+                if state.selected_device:
+                    self.bluetooth_interface.start_pairing(state.selected_device, state)
                 return SetupAction.RETRY
             
             elif action == "cancel":
