@@ -409,6 +409,10 @@ class DisplayManager:
                 
                 # Swap buffers and write to framebuffer
                 self.rendering_engine.swap_buffers()
+                # Drain any Cocoa events that arrived during the render phase
+                # to prevent pygame.display.flip() blocking on macOS.
+                if self._is_macos:
+                    pygame.event.pump()
                 self.rendering_engine.write_to_framebuffer()
                 
                 # Tick clock and record frame end
