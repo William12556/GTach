@@ -308,7 +308,7 @@ class BluetoothPairing:
                 sock.connect((device.mac_address, 1))
                 
                 if status_callback:
-                    status_callback(PairingStatus.TESTING, "Testing connection...")
+                    status_callback(PairingStatus.CONNECTING, "Testing connection...")
                 
                 # Test basic communication
                 if self._test_basic_communication(sock):

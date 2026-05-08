@@ -184,7 +184,7 @@ class SimBluetoothPairing:
 
             # Step 2: Testing
             if status_callback:
-                status_callback(PairingStatus.TESTING, 'Testing...')
+                status_callback(PairingStatus.CONNECTING, 'Testing...')
             time.sleep(1.0)
 
             if self._cancel_pairing.is_set():

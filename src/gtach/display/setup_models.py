@@ -32,7 +32,6 @@ class PairingStatus(Enum):
     IDLE = auto()
     DISCOVERING = auto()
     CONNECTING = auto()
-    TESTING = auto()
     SUCCESS = auto()
     FAILED = auto()
 
