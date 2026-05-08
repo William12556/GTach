@@ -539,6 +539,7 @@ class DisplayManager:
                 # 2 Hz black flash in danger zone — peripheral shift cue
                 if int(time.monotonic() * 2) % 2 == 0:
                     bg_colour = (0, 0, 0)
+                    text_colour = (200, 0, 0)  # Match 'RPM × 1000' label colour
 
             return (bg_colour, text_colour)
 
