@@ -22,7 +22,6 @@ class SetupScreen(Enum):
     DISCOVERY = auto()
     DEVICE_LIST = auto()
     PAIRING = auto()
-    TEST = auto()
     COMPLETE = auto()
     CURRENT_DEVICE = auto()
     DEVICE_MANAGEMENT = auto()

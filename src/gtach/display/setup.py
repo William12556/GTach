@@ -64,10 +64,10 @@ class SetupDisplayManager:
             self.display_available = True
 
         # Initialize extracted components
-        self.bluetooth_interface = BluetoothSetupInterface(pairing_factory=pairing_factory)
+        self.state_coordinator = SetupStateCoordinator()
+        self.bluetooth_interface = BluetoothSetupInterface(pairing_factory=pairing_factory, state_coordinator=self.state_coordinator)
         self.positioning_engine = CircularPositioningEngine()
         self.device_renderer = DeviceSurfaceRenderer()
-        self.state_coordinator = SetupStateCoordinator()
         self._on_complete = on_complete
         
         # UI state and threading
@@ -206,7 +206,7 @@ class SetupDisplayManager:
             
             # Cache static screens
             should_cache = state.current_screen in [
-                SetupScreen.WELCOME, SetupScreen.TEST,
+                SetupScreen.WELCOME,
                 SetupScreen.COMPLETE, SetupScreen.CURRENT_DEVICE, SetupScreen.CONFIRMATION
             ]
             
@@ -235,8 +235,6 @@ class SetupDisplayManager:
             self._render_device_list_screen(surface, state)
         elif state.current_screen == SetupScreen.PAIRING:
             self._render_pairing_screen(surface, state)
-        elif state.current_screen == SetupScreen.TEST:
-            self._render_test_screen(surface, state)
         elif state.current_screen == SetupScreen.COMPLETE:
             self._render_complete_screen(surface, state)
         elif state.current_screen == SetupScreen.CURRENT_DEVICE:
@@ -392,7 +390,17 @@ class SetupDisplayManager:
                 no_devices = font_body.render("No devices found", True, self.colors['text_dim'])
                 no_devices_rect = no_devices.get_rect(center=(240, 200))
                 surface.blit(no_devices, no_devices_rect)
-        
+
+        # Error message rendering (e.g., from failed OBD verification)
+        if state.error_message:
+            font_minimal = get_minimal_font()
+            if font_minimal:
+                error_text = font_minimal.render(state.error_message, True, self.colors['danger'])
+                error_rect = error_text.get_rect(center=(240, 310))
+                surface.blit(error_text, error_rect)
+                # Clear error message after rendering
+                self.state_coordinator.update_state(error_message=None)
+
         # Back and Retry buttons — 130x60 each, bottom at y=400
         back_btn = pygame.Rect(80, 340, 130, 60)
         pygame.draw.rect(surface, self.colors['border'], back_btn, border_radius=8)
@@ -512,28 +520,6 @@ class SetupDisplayManager:
         
         self._update_touch_regions_safe(new_regions)
     
-    def _render_test_screen(self, surface, state: SetupState) -> None:
-        """Render the test screen"""
-        new_regions = []
-        
-        font_heading = get_heading_font()
-        if font_heading:
-            title = font_heading.render("Testing Connection", True, self.colors['text'])
-            title_rect = title.get_rect(center=(240, 120))
-            surface.blit(title, title_rect)
-        
-        # Complete button — 260x90, centred, bottom at y=420
-        complete_btn = pygame.Rect(110, 330, 260, 90)
-        pygame.draw.rect(surface, self.colors['success'], complete_btn, border_radius=10)
-
-        btn_font = get_button_font()
-        if btn_font:
-            btn_text = btn_font.render("Complete", True, (255, 255, 255))
-            btn_text_rect = btn_text.get_rect(center=complete_btn.center)
-            surface.blit(btn_text, btn_text_rect)
-
-        new_regions.append(("complete", complete_btn))
-        self._update_touch_regions_safe(new_regions)
     
     def _render_complete_screen(self, surface, state: SetupState) -> None:
         """Render the completion screen"""

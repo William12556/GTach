@@ -187,26 +187,22 @@ class SetupStateCoordinator:
     def _handle_back_navigation(self) -> bool:
         """Handle back navigation between screens"""
         current = self.state.current_screen
-        
+
         if current == SetupScreen.DEVICE_LIST:
             self.transition_to_screen(SetupScreen.DISCOVERY)
         elif current == SetupScreen.PAIRING:
             self.transition_to_screen(SetupScreen.DEVICE_LIST)
-        elif current == SetupScreen.TEST:
-            self.transition_to_screen(SetupScreen.DEVICE_LIST)
-        elif current == SetupScreen.COMPLETE:
-            self.transition_to_screen(SetupScreen.TEST)
         elif current in [SetupScreen.DISCOVERY, SetupScreen.WELCOME]:
             self.transition_to_screen(SetupScreen.WELCOME)
         else:
             self.transition_to_screen(SetupScreen.WELCOME)
-        
+
         return True
     
     def _handle_next_navigation(self) -> bool:
         """Handle next navigation between screens"""
         current = self.state.current_screen
-        
+
         if current == SetupScreen.WELCOME:
             self.transition_to_screen(SetupScreen.DISCOVERY)
         elif current == SetupScreen.DISCOVERY:
@@ -221,18 +217,10 @@ class SetupStateCoordinator:
             else:
                 self.logger.warning("NEXT from device list without selected device")
                 return False
-        elif current == SetupScreen.PAIRING:
-            if self.state.pairing_status == PairingStatus.SUCCESS:
-                self.transition_to_screen(SetupScreen.TEST)
-            else:
-                self.logger.warning("NEXT from pairing without successful pairing")
-                return False
-        elif current == SetupScreen.TEST:
-            self.complete_setup()
         else:
             self.logger.warning(f"NEXT navigation not defined for screen: {current.name}")
             return False
-        
+
         return True
     
     def register_screen_transition_callback(self, callback: Callable[[SetupScreen, SetupScreen], None]) -> None:
@@ -415,7 +403,6 @@ class SetupStateCoordinator:
                 SetupScreen.DISCOVERY: 0.2,
                 SetupScreen.DEVICE_LIST: 0.4,
                 SetupScreen.PAIRING: 0.6,
-                SetupScreen.TEST: 0.8,
                 SetupScreen.COMPLETE: 1.0
             }
             

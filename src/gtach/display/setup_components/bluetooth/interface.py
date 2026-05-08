@@ -23,11 +23,12 @@ from ...async_operations import get_async_manager, OperationType, OperationStatu
 class BluetoothSetupInterface:
     """Manages Bluetooth operations for setup mode with thread-safe async coordination"""
 
-    def __init__(self, pairing_factory=None):
+    def __init__(self, pairing_factory=None, state_coordinator=None):
         self.logger = logging.getLogger('BluetoothSetupInterface')
         self.device_store = DeviceStore()
         self.async_manager = get_async_manager()
         self._pairing_factory = pairing_factory
+        self._state_coordinator = state_coordinator
 
         # Bluetooth pairing state
         self.pairing = None
@@ -118,16 +119,49 @@ class BluetoothSetupInterface:
             if not self._pairing_ready.wait(timeout=10.0):
                 self.logger.error("Timeout waiting for Bluetooth pairing initialization")
                 return False
-            
+
             if self.pairing is None:
                 self.logger.error("Bluetooth pairing initialization failed")
                 return False
-            
+
             self.logger.debug("Bluetooth pairing ready for use")
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Error ensuring pairing initialization: {e}")
+            return False
+
+    def verify_obd_connection(self, state) -> bool:
+        """Verify OBD connection using ATZ probe over RFCOMM
+
+        Args:
+            state: SetupState instance
+
+        Returns:
+            bool: True if OBD verification succeeds, False otherwise
+        """
+        from ....comm.rfcomm import RFCOMMTransport
+        try:
+            device = self.device_store.get_primary_device()
+            if device is None:
+                self.logger.error("OBD verify: no primary device in store")
+                return False
+
+            transport = RFCOMMTransport(device.mac_address, channel=1)
+            connected = transport.connect()
+            if not connected:
+                self.logger.warning("OBD verify: RFCOMM connect failed")
+                return False
+
+            try:
+                response = transport.send_command('ATZ', timeout=5.0)
+                ok = response is not None and len(response.strip()) > 0
+                self.logger.info(f"OBD verify: {'pass' if ok else 'fail'} response={response!r}")
+                return ok
+            finally:
+                transport.disconnect()
+        except Exception as e:
+            self.logger.error(f"OBD verify exception: {e}")
             return False
     
     def start_discovery(self, state, progress_callback=None, device_found_callback=None,
@@ -272,6 +306,20 @@ class BluetoothSetupInterface:
                     if success:
                         state.pairing_status = PairingStatus.SUCCESS
                         self.logger.info(f"Successfully paired with device: {device.name}")
+
+                        # Verify OBD connection automatically after pairing success
+                        if self.verify_obd_connection(state):
+                            if self._state_coordinator is not None:
+                                self._state_coordinator.complete_setup()
+                            else:
+                                self.logger.warning("OBD verify passed but state_coordinator is None")
+                        else:
+                            state.error_message = 'OBD check failed'
+                            if self._state_coordinator is not None:
+                                from ...setup_models import SetupScreen
+                                self._state_coordinator.transition_to_screen(SetupScreen.DEVICE_LIST)
+                            else:
+                                self.logger.warning("OBD verify failed but state_coordinator is None")
                     else:
                         state.pairing_status = PairingStatus.FAILED
                         self.logger.error(f"Failed to pair with device: {device.name}")
@@ -282,10 +330,10 @@ class BluetoothSetupInterface:
                 else:
                     self.logger.warning(f"Pairing ended with status: {operation.status}")
                     state.pairing_status = PairingStatus.FAILED
-                
+
                 if 'device_pairing' in self._active_operations:
                     del self._active_operations['device_pairing']
-                    
+
             except Exception as e:
                 self.logger.error(f"Error in pairing callback: {e}")
                 state.pairing_status = PairingStatus.FAILED
