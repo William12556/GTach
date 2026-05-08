@@ -158,6 +158,7 @@ class SetupDisplayManager:
                     if self._on_complete:
                         self.logger.info("Setup complete — invoking on_complete callback")
                         self._on_complete()
+                    self.thread_manager.stop_thread('setup')
                     break
                 if (state.current_screen == SetupScreen.DISCOVERY and
                         state.pairing_status == PairingStatus.IDLE):

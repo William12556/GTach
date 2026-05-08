@@ -44,7 +44,7 @@ class OBDProtocol:
             target=self._protocol_loop,
             name='OBDProtocol'
         )
-        self.thread_manager.register_thread('obd_protocol', self.obd_thread)
+        self.thread_manager.register_thread('obd_protocol', self.obd_thread, stop_func=self.stop)
 
     def start(self) -> None:
         """Start protocol handler"""
@@ -54,7 +54,8 @@ class OBDProtocol:
     def stop(self) -> None:
         """Stop protocol handler"""
         self.shutdown_event.set()
-        self.obd_thread.join(timeout=5.0)
+        if self.obd_thread.is_alive():
+            self.obd_thread.join(timeout=5.0)
         self.logger.info("OBD protocol handler stopped")
 
     def _protocol_loop(self) -> None:
@@ -71,6 +72,7 @@ class OBDProtocol:
                     continue
                 
                 while self.transport.is_connected():
+                    self.thread_manager.update_heartbeat('obd_protocol')
                     rpm_data = self._request_rpm()
                     if rpm_data:
                         self.thread_manager.message_queue.put(rpm_data)

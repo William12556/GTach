@@ -58,6 +58,7 @@ class ThreadInfo:
     target_func: Optional[Callable] = None
     target_args: tuple = field(default_factory=tuple)
     target_kwargs: dict = field(default_factory=dict)
+    stop_func: Optional[Callable] = None
     creation_time: float = field(default_factory=time.time)
     restart_future: Optional[Future] = None
     
@@ -196,11 +197,11 @@ class ThreadManager:
             if self._operation_count % 100 == 0:  # Log every 100 operations
                 self.logger.debug(f"Sync overhead: {overhead:.4f}ms (op #{self._operation_count})")
     
-    def register_thread(self, name: str, thread: threading.Thread) -> None:
+    def register_thread(self, name: str, thread: threading.Thread, stop_func=None) -> None:
         """Register a new thread for management with atomic state transition"""
         if self._shutdown_event.is_set():
             raise RuntimeError("Cannot register thread during shutdown")
-            
+
         with self._sync_timing():
             with self._state_lock:
                 if name in self.threads:
@@ -208,15 +209,16 @@ class ThreadManager:
                     if old_thread.status in {ThreadStatus.RUNNING, ThreadStatus.STARTING}:
                         self.logger.warning(f"Thread {name} already exists and is active")
                         return
-                        
+
                 thread_info = ThreadInfo(
                     thread=thread,
                     status=ThreadStatus.STARTING,
                     last_heartbeat=time.time()
                 )
+                thread_info.stop_func = stop_func
                 self.threads[name] = thread_info
                 self._resource_tracker.add(thread_info)
-                
+
         self.logger.debug(f"Registered thread: {name} (TID: {thread.ident})")
 
     def update_heartbeat(self, name: str) -> None:
@@ -369,13 +371,21 @@ class ThreadManager:
                 with self._state_lock:
                     if self._shutdown_event.is_set():
                         return
-                        
+
                     if name not in self.threads:
                         self.logger.warning(f"Cannot restart {name}: thread no longer registered")
                         return
-                        
+
                     thread_info = self.threads[name]
-                    
+
+                    # Call stop_func if available before restarting
+                    if thread_info.stop_func is not None:
+                        try:
+                            self.logger.debug(f"Calling stop_func for {name} before restart")
+                            thread_info.stop_func()
+                        except Exception as e:
+                            self.logger.error(f"stop_func failed for {name}: {e}")
+
                     # Verify we're still in a restartable state
                     if thread_info.status not in {ThreadStatus.FAILED, ThreadStatus.STOPPED}:
                         self.logger.debug(f"Thread {name} status changed to {thread_info.status}, restart cancelled")
