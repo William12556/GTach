@@ -26,7 +26,7 @@ class SimTransport(OBDTransport):
     """Simulation transport returning synthetic ELM327 responses.
 
     This transport allows full GTach application testing without hardware.
-    RPM values sweep from 800 to 6500 RPM on a ~12 second sine wave period.
+    RPM values sweep from 800 to 6500 RPM on a ~60 second sine wave period.
     All standard ELM327 init commands return canonical responses.
     """
 
@@ -130,10 +130,10 @@ class SimTransport(OBDTransport):
         Returns:
             str: ELM327-formatted RPM response (e.g., '41 0C 1A 2B').
         """
-        # Sine wave: 800 + 2850 * (1 + sin(t * 2π / 12))
-        # Results in range 800-6500 RPM over ~12 second period
+        # Sine wave: 800 + 2850 * (1 + sin(t * 2π / 60))
+        # Results in range 800-6500 RPM over ~60 second period
         t = time.time()
-        rpm = 800 + 2850 * (1 + math.sin(t * 2 * math.pi / 12.0))
+        rpm = 800 + 2850 * (1 + math.sin(t * 2 * math.pi / 60.0))
 
         # Encode RPM as ELM327 hex: RPM = ((A * 256) + B) / 4
         # Therefore: A = (rpm * 4) >> 8, B = (rpm * 4) & 0xFF
