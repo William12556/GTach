@@ -536,13 +536,38 @@ class SetupDisplayManager:
     def _render_current_device_screen(self, surface, state: SetupState) -> None:
         """Render the current device screen"""
         new_regions = []
-        
+
         font_heading = get_heading_font()
         if font_heading:
             title = font_heading.render("Current Device", True, self.colors['text'])
-            title_rect = title.get_rect(center=(240, 120))
+            title_rect = title.get_rect(center=(240, 80))
             surface.blit(title, title_rect)
-        
+
+        # Show stored device name
+        from ..comm.device_store import DeviceStore
+        device = DeviceStore().get_primary_device()
+        font_body = get_body_font()
+        if font_body:
+            name = device.name if device else "Unknown"
+            name_text = font_body.render(name, True, self.colors['text'])
+            surface.blit(name_text, name_text.get_rect(center=(240, 160)))
+
+        # Continue button — use existing device
+        continue_btn = pygame.Rect(110, 230, 260, 70)
+        pygame.draw.rect(surface, self.colors['success'], continue_btn, border_radius=10)
+
+        # New Setup button — clear and restart
+        new_setup_btn = pygame.Rect(110, 330, 260, 70)
+        pygame.draw.rect(surface, self.colors['border'], new_setup_btn, border_radius=10)
+
+        btn_font = get_button_font()
+        if btn_font:
+            cont_text = btn_font.render("Continue", True, (255, 255, 255))
+            surface.blit(cont_text, cont_text.get_rect(center=continue_btn.center))
+            new_text = btn_font.render("New Setup", True, self.colors['text'])
+            surface.blit(new_text, new_text.get_rect(center=new_setup_btn.center))
+
+        new_regions.extend([("current_continue", continue_btn), ("new_setup", new_setup_btn)])
         self._update_touch_regions_safe(new_regions)
     
     def _render_manual_entry_screen(self, surface) -> None:
@@ -608,6 +633,21 @@ class SetupDisplayManager:
             
             elif action == "cancel":
                 self.state_coordinator.handle_setup_action(SetupAction.CANCEL)
+                return SetupAction.CANCEL
+
+            elif action == "current_continue":
+                # Use existing paired device — skip straight to complete
+                self.state_coordinator.complete_setup()
+                return SetupAction.COMPLETE
+
+            elif action == "new_setup":
+                # Clear stored device and restart setup
+                from ..comm.device_store import DeviceStore
+                dev = DeviceStore().get_primary_device()
+                if dev:
+                    DeviceStore().remove_device(dev.mac_address)
+                self.state_coordinator.reset_discovery()
+                self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
                 return SetupAction.CANCEL
             
             elif action == "complete":

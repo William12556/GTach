@@ -189,7 +189,10 @@ class SetupStateCoordinator:
         current = self.state.current_screen
 
         if current == SetupScreen.DEVICE_LIST:
-            self.transition_to_screen(SetupScreen.DISCOVERY)
+            self.reset_discovery()
+            self.transition_to_screen(SetupScreen.WELCOME)
+        elif current == SetupScreen.CURRENT_DEVICE:
+            self.transition_to_screen(SetupScreen.WELCOME)
         elif current == SetupScreen.PAIRING:
             self.transition_to_screen(SetupScreen.DEVICE_LIST)
         elif current in [SetupScreen.DISCOVERY, SetupScreen.WELCOME]:
