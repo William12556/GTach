@@ -142,8 +142,10 @@ class BluetoothSetupInterface:
         """
         import socket as _socket
         from ....comm.rfcomm import RFCOMMTransport
-        if not hasattr(_socket, 'AF_BLUETOOTH'):
-            self.logger.info("OBD verify: AF_BLUETOOTH unavailable — simulation pass-through")
+        # Skip RFCOMM probe in simulation mode (pairing_factory injected)
+        # or when AF_BLUETOOTH is unavailable
+        if self._pairing_factory is not None or not hasattr(_socket, 'AF_BLUETOOTH'):
+            self.logger.info("OBD verify: simulation mode or no AF_BLUETOOTH — pass-through")
             return True
         try:
             device = self.device_store.get_primary_device()

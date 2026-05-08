@@ -60,7 +60,8 @@ class GTachApplication:
     def start(self) -> None:
         """Start application components"""
         try:
-            self.logger.info("Starting GTach application")
+            from . import __version__
+            self.logger.info(f"Starting GTach application v{__version__}")
             config = self._config_manager.load_config()
             
             # Check if setup is needed
