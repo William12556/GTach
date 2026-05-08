@@ -172,8 +172,8 @@ class ThreadManager:
         self._active_futures: Set[Future] = set()
         self._resource_tracker = weakref.WeakSet()
         
-        # Message queue for thread communication
-        self.message_queue = queue.Queue()
+        # Message queue for thread communication — bounded to prevent stale data accumulation
+        self.message_queue = queue.Queue(maxsize=5)
         self.data_available = threading.Event()
         
         # Performance monitoring

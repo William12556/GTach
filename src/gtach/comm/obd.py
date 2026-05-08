@@ -12,6 +12,7 @@ Manages OBD communication and data processing.
 """
 
 import logging
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -75,24 +76,38 @@ class OBDProtocol:
                     self.thread_manager.update_heartbeat('obd_protocol')
                     rpm_data = self._request_rpm()
                     if rpm_data:
-                        self.thread_manager.message_queue.put(rpm_data)
+                        try:
+                            self.thread_manager.message_queue.put_nowait(rpm_data)
+                        except Exception:
+                            # Queue full — discard oldest, insert newest
+                            try:
+                                self.thread_manager.message_queue.get_nowait()
+                            except Exception:
+                                pass
+                            try:
+                                self.thread_manager.message_queue.put_nowait(rpm_data)
+                            except Exception:
+                                pass
                         self.thread_manager.data_available.set()
                     time.sleep(0.1)
                     
             except Exception as e:
                 self.logger.error(f"Protocol error: {e}", exc_info=True)
+                self.thread_manager.update_heartbeat('obd_protocol')
                 time.sleep(1.0)
 
     def _initialize_protocol(self) -> bool:
         """Initialize OBD protocol and configure ELM327"""
         try:
             # ATZ resets the adapter — allow extra time for emulator/hardware reset
+            self.thread_manager.update_heartbeat('obd_protocol')
             self._send_command(b"ATZ", timeout=5.0)
+            self.thread_manager.update_heartbeat('obd_protocol')
             self._send_command(b"ATE0")
             self._send_command(b"ATL0")  # Line feeds off
             self._send_command(b"ATS0")  # Spaces off
             self._send_command(b"ATSP0") # Auto protocol
-            
+            self.thread_manager.update_heartbeat('obd_protocol')
             response = self._send_command(b"0100")
             if not response or response.startswith('7F'):
                 raise Exception("No connection to vehicle")
@@ -126,7 +141,6 @@ class OBDProtocol:
                 
             if len(response) >= 8 and response.startswith('41'):
                 # Strip whitespace and non-hex characters (echo, \r\n, prompts)
-                import re
                 hex_str = re.sub(r'[^0-9A-Fa-f]', '', response)
                 if len(hex_str) < 8:
                     return None

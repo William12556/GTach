@@ -577,25 +577,30 @@ class DisplayManager:
             # Debug logging for band transitions
             self.logger.debug(f'RPM {rpm:.0f} band colour bg={bg_colour}')
 
+            # Cache font references — FontManager caches internally but
+            # the attribute lookup and call overhead adds up at 60 Hz
+            if not hasattr(self, '_rpm_font_large'):
+                self._rpm_font_large = get_rpm_large_font()
+            if not hasattr(self, '_rpm_label_font'):
+                self._rpm_label_font = get_font_manager().get_font(32)
+
             # Render RPM text in band text colour
-            font = get_rpm_large_font()
-            if font:
+            if self._rpm_font_large:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
                     f"{rpm/1000:.1f}",
-                    font,
+                    self._rpm_font_large,
                     text_colour,
                     (240, 215),
                     center=True
                 )
 
             # Draw RPM multiplier label
-            label_font = get_font_manager().get_font(32)
-            if label_font:
+            if self._rpm_label_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
                     "RPM \u00d7 1000",
-                    label_font,
+                    self._rpm_label_font,
                     (200, 0, 0),
                     (240, 390),
                     center=True
