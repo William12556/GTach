@@ -114,6 +114,10 @@ class GTachApplication:
     
     def _on_setup_complete(self) -> None:
         """Called by SetupDisplayManager when setup finishes"""
+        if getattr(self, '_obd_started', False):
+            self.logger.warning("_on_setup_complete called more than once — ignoring")
+            return
+        self._obd_started = True
         self.logger.info("Setup complete — transitioning to normal mode")
         self._display.exit_setup_mode()
         self._start_obd()
