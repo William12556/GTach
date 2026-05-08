@@ -36,6 +36,7 @@ class SimTransport(OBDTransport):
         self.logger = logging.getLogger('SimTransport')
         self._connected = False
         self._state = TransportState.DISCONNECTED
+        self._start_time = time.time()
 
     def connect(self) -> bool:
         """Establish simulated connection (always succeeds immediately).
@@ -132,7 +133,8 @@ class SimTransport(OBDTransport):
         """
         # Sine wave: 800 + 2850 * (1 + sin(t * 2π / 60))
         # Results in range 800-6500 RPM over ~60 second period
-        t = time.time()
+        # Elapsed time from start ensures sweep begins near minimum at launch
+        t = time.time() - self._start_time
         rpm = 800 + 2850 * (1 + math.sin(t * 2 * math.pi / 60.0))
 
         # Encode RPM as ELM327 hex: RPM = ((A * 256) + B) / 4
