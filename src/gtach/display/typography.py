@@ -96,6 +96,9 @@ class TypographyConstants:
     DISPLAY_HEIGHT = 480
     DISPLAY_CENTER = (240, 240)
     
+    # Font rendering flags
+    FONT_BOLD = False        # Set True to apply synthetic bold to all UI fonts
+
     # Font validation ranges
     MIN_FONT_SIZE = 12
     MAX_FONT_SIZE = 180
@@ -198,6 +201,8 @@ class FontManager:
                             font = pygame.font.Font(None, validated_size)
                     else:
                         font = pygame.font.Font(None, validated_size)
+                    if TypographyConstants.FONT_BOLD:
+                        font.set_bold(True)
                     self._font_cache[validated_size] = font
                     self.logger.debug(f"Created and cached font size {validated_size}")
                 except Exception as e:
@@ -667,8 +672,11 @@ def get_minimal_font(scale: float = 1.0) -> Optional[pygame.font.Font]:
 
 
 def get_rpm_large_font() -> Optional[pygame.font.Font]:
-    """Get font for large RPM display (digital mode)."""
-    return get_font_manager().get_font(TypographyConstants.FONT_RPM_LARGE)
+    """Get font for large RPM display (digital mode). Bold for readability."""
+    font = get_font_manager().get_font(TypographyConstants.FONT_RPM_LARGE)
+    if font:
+        font.set_bold(True)
+    return font
 
 
 def get_rpm_medium_font() -> Optional[pygame.font.Font]:
