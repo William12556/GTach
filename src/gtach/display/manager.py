@@ -520,19 +520,19 @@ class DisplayManager:
                 text_colour = (255, 255, 255)
             elif rpm < bands.torque_start:
                 bg_colour = (0, 0, 255)
-                text_colour = (255, 255, 255)
+                text_colour = (0, 0, 0)
             elif rpm < bands.caution_start:
                 bg_colour = (0, 255, 0)
-                text_colour = (255, 255, 255)
+                text_colour = (0, 0, 0)
             elif rpm < bands.warning_start:
                 bg_colour = (255, 255, 0)
                 text_colour = (0, 0, 0)
             elif rpm < bands.danger_start:
                 bg_colour = (255, 128, 0)
-                text_colour = (255, 255, 255)
+                text_colour = (0, 0, 0)
             else:  # rpm >= bands.danger_start
                 bg_colour = (255, 0, 0)
-                text_colour = (255, 255, 255)
+                text_colour = (0, 0, 0)
 
                 # 2 Hz pulse in danger zone
                 if PYGAME_AVAILABLE:
