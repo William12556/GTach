@@ -503,7 +503,8 @@ class DisplayManager:
     def _get_band_colour(self, rpm: float) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
         """Get background and text colours for the given RPM value.
 
-        Returns colour based on RPM bands with pulse effect at danger threshold.
+        Returns colour based on RPM bands. In the danger zone a 2 Hz black
+        flash provides a high-contrast peripheral shift cue.
 
         Args:
             rpm: Current RPM value
@@ -532,14 +533,12 @@ class DisplayManager:
                 text_colour = (0, 0, 0)
             else:  # rpm >= bands.danger_start
                 bg_colour = (255, 0, 0)
-                text_colour = (0, 0, 0)
+                text_colour = (255, 0, 0)
 
-                # 2 Hz pulse in danger zone
-                if PYGAME_AVAILABLE:
-                    ticks = pygame.time.get_ticks()
-                    if (ticks // 500) % 2 == 0:
-                        # Darken background by 50%
-                        bg_colour = tuple(int(c * 0.5) for c in bg_colour)
+                # 2 Hz black flash in danger zone — maximises peripheral contrast
+                # Uses time.monotonic() for platform reliability
+                if int(time.monotonic() * 2) % 2 == 0:
+                    bg_colour = (0, 0, 0)
 
             return (bg_colour, text_colour)
 
