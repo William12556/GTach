@@ -532,13 +532,13 @@ class DisplayManager:
             elif rpm < bands.danger_start:
                 bg_colour = (255, 128, 0)
                 text_colour = (0, 0, 0)
-
-                # 2 Hz black flash in warning zone — peripheral shift cue
-                if int(time.monotonic() * 2) % 2 == 0:
-                    bg_colour = (0, 0, 0)
             else:  # rpm >= bands.danger_start
                 bg_colour = (255, 0, 0)
                 text_colour = (0, 0, 0)
+
+                # 2 Hz black flash in danger zone — peripheral shift cue
+                if int(time.monotonic() * 2) % 2 == 0:
+                    bg_colour = (0, 0, 0)
 
             return (bg_colour, text_colour)
 
