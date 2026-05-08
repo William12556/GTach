@@ -31,16 +31,18 @@ class OBDResponse:
 class OBDProtocol:
     """Handles OBD protocol communication"""
     
-    def __init__(self, transport: OBDTransport, thread_manager: ThreadManager):
+    def __init__(self, transport: OBDTransport, thread_manager: ThreadManager, poll_interval_s: float = 0.05):
         self.logger = logging.getLogger('OBDProtocol')
         self.transport = transport
         self.thread_manager = thread_manager
         self.shutdown_event = threading.Event()
-        
+
         self.PROMPT = b'>'
         self.RPM_PID = 0x0C
         self.timeout = 1.0
-        
+        self.poll_interval_s = poll_interval_s
+        self._adapter_initialised = False
+
         self.obd_thread = threading.Thread(
             target=self._protocol_loop,
             name='OBDProtocol'
@@ -54,6 +56,7 @@ class OBDProtocol:
 
     def stop(self) -> None:
         """Stop protocol handler"""
+        self._adapter_initialised = False
         self.shutdown_event.set()
         if self.obd_thread.is_alive():
             self.obd_thread.join(timeout=5.0)
@@ -89,8 +92,11 @@ class OBDProtocol:
                             except Exception:
                                 pass
                         self.thread_manager.data_available.set()
-                    time.sleep(0.1)
-                    
+                    time.sleep(self.poll_interval_s)
+
+                self._adapter_initialised = False
+                self.logger.debug("Transport disconnected — adapter init flag reset")
+
             except Exception as e:
                 self.logger.error(f"Protocol error: {e}", exc_info=True)
                 self.thread_manager.update_heartbeat('obd_protocol')
@@ -101,8 +107,9 @@ class OBDProtocol:
         try:
             # ATZ resets the adapter — allow extra time for emulator/hardware reset
             self.thread_manager.update_heartbeat('obd_protocol')
-            self._send_command(b"ATZ", timeout=5.0)
-            self.thread_manager.update_heartbeat('obd_protocol')
+            if not self._adapter_initialised:
+                self._send_command(b"ATZ", timeout=5.0)
+                self.thread_manager.update_heartbeat('obd_protocol')
             self._send_command(b"ATE0")
             self._send_command(b"ATL0")  # Line feeds off
             self._send_command(b"ATS0")  # Spaces off
@@ -112,6 +119,7 @@ class OBDProtocol:
             if not response or response.startswith('7F'):
                 raise Exception("No connection to vehicle")
 
+            self._adapter_initialised = True
             return True
 
         except Exception as e:

@@ -903,18 +903,15 @@ class DisplayManager:
     def _draw_status_indicator(self) -> None:
         """Draw connection status indicator"""
         try:
-            # Check transport thread status
-            if 'transport' not in self.thread_manager.threads:
-                status = ConnectionStatus.DISCONNECTED
+            # Check transport thread status via locked public accessor
+            thread_status = self.thread_manager.get_thread_status('transport')
+            if thread_status == ThreadStatus.RUNNING:
+                status = ConnectionStatus.CONNECTED
+            elif thread_status == ThreadStatus.STARTING:
+                status = ConnectionStatus.CONNECTING
             else:
-                thread_status = self.thread_manager.threads['transport'].status
-                if thread_status == ThreadStatus.RUNNING:
-                    status = ConnectionStatus.CONNECTED
-                elif thread_status == ThreadStatus.STARTING:
-                    status = ConnectionStatus.CONNECTING
-                else:
-                    status = ConnectionStatus.DISCONNECTED
-            
+                status = ConnectionStatus.DISCONNECTED
+
             color = pygame.Color(status.value)
             self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, 
                                             (color.r, color.g, color.b), (20, 20), 5)

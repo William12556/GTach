@@ -126,7 +126,10 @@ class GTachApplication:
         """Start transport and OBD protocol against the existing display"""
         platform_type = get_platform_type()
         self._transport = select_transport(platform_type, self._args)
-        self._obd = OBDProtocol(self._transport, self._thread_manager)
+        transport_arg = getattr(self._args, 'transport', None)
+        _fast_transports = ('simbt', 'simtcp', 'tcp')
+        _poll_interval = 0.02 if transport_arg in _fast_transports else 0.05
+        self._obd = OBDProtocol(self._transport, self._thread_manager, poll_interval_s=_poll_interval)
         transport_thread = threading.Thread(
             target=self._transport.reconnect_indefinitely, name='transport', daemon=True
         )
