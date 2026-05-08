@@ -131,7 +131,7 @@ class SetupDisplayManager:
             self.state_coordinator.transition_to_screen(SetupScreen.CURRENT_DEVICE)
         
         # Start setup thread
-        self._setup_thread = threading.Thread(target=self._setup_loop, name='SetupManager')
+        self._setup_thread = threading.Thread(target=self._setup_loop, name='SetupManager', daemon=True)
         self.thread_manager.register_thread('setup', self._setup_thread)
         self._setup_thread.start()
     

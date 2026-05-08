@@ -80,7 +80,8 @@ class DisplayManager:
         # Display thread setup
         self.display_thread = threading.Thread(
             target=self._display_loop,
-            name='DisplayManager'
+            name='DisplayManager',
+            daemon=True
         )
         self.thread_manager.register_thread('display', self.display_thread)
 
