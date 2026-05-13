@@ -21,7 +21,7 @@ Created: 2026 April 27
 ## 1.0 Purpose
 
 This document is a concise operational primer for the Strategic Domain. It distils
-[governance.md](governance.md) into actionable guidance. Governance.md is authoritative;
+[governance.md](governance.md) into actionable guidance. 'governance.md' is authoritative;
 this document provides orientation and quick reference only.
 
 Prime Directive: Follow the [workflow](workflow.md).
