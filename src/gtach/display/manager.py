@@ -500,20 +500,24 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Normal mode render error: {e}")
 
-    def _draw_circular_border(self) -> None:
-        """Draw red circular border on current back-buffer surface"""
+    def _draw_shift_border(self, colour: Tuple[int, int, int], width: int = 12) -> None:
+        """Draw circular border with given colour and width.
+
+        Args:
+            colour: RGB border colour tuple
+            width: Border width in pixels (default 12)
+        """
         try:
             surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
             if surface:
-                pygame.draw.circle(surface, (200, 0, 0), (240, 240), 238, 4)
+                pygame.draw.circle(surface, colour, (240, 240), 238, width)
         except Exception as e:
-            self.logger.error(f'Circular border error: {e}')
+            self.logger.error(f'Shift border error: {e}', exc_info=True)
 
     def _get_band_colour(self, rpm: float) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
         """Get background and text colours for the given RPM value.
 
-        Returns colour based on RPM bands. In the danger zone a 2 Hz black
-        flash provides a high-contrast peripheral shift cue.
+        Returns colour based on RPM bands.
 
         Args:
             rpm: Current RPM value
@@ -544,17 +548,43 @@ class DisplayManager:
                 bg_colour = (255, 0, 0)
                 text_colour = (0, 0, 0)
 
-                # 2 Hz black flash in danger zone — peripheral shift cue
-                if int(time.monotonic() * 2) % 2 == 0:
-                    bg_colour = (0, 0, 0)
-                    text_colour = (200, 0, 0)  # Match 'RPM × 1000' label colour
-
             return (bg_colour, text_colour)
 
         except Exception as e:
-            self.logger.error(f'Band colour calculation error: {e}')
+            self.logger.error(f'Band colour calculation error: {e}', exc_info=True)
             # Fallback to white on black
             return ((0, 0, 0), (255, 255, 255))
+
+    def _get_shift_cue(self, rpm: float) -> Tuple[Tuple[int, int, int], int, bool, Tuple[int, int, int]]:
+        """Determine shift cue state from RPM.
+
+        Two shift states: upshift (green) and safe downshift (blue).
+        RPM alone is insufficient to determine unsafe downshift.
+
+        Args:
+            rpm: Current RPM value
+
+        Returns:
+            Tuple of (border_colour, border_width, flash_centre, centre_colour)
+        """
+        try:
+            bands = self.config.rpm_bands
+            flash = int(time.monotonic() * 2) % 2 == 0
+
+            if rpm >= bands.caution_start:
+                # Upshift cue — green border 12 px, flashing green/dark centre
+                centre = (0, 160, 0) if flash else (10, 10, 10)
+                return (0, 180, 0), 12, True, centre
+            elif rpm <= bands.torque_start:
+                # Safe downshift — blue border 12 px, blue centre, no flash
+                return (0, 100, 255), 12, False, (0, 40, 100)
+            else:
+                # Normal operation — dark border 5 px, dark centre, no flash
+                return (170, 0, 0), 5, False, (26, 26, 26)
+
+        except Exception as e:
+            self.logger.error(f'Shift cue calculation error: {e}', exc_info=True)
+            return ((170, 0, 0), 5, False, (26, 26, 26))
 
     def _draw_digital_mode(self) -> None:
         """Draw digital RPM display using rendering engine"""
@@ -614,8 +644,8 @@ class DisplayManager:
                     center=True
                 )
 
-            # Draw circular border
-            self._draw_circular_border()
+            # Draw shift border
+            self._draw_shift_border((200, 0, 0), 5)
 
         except Exception as e:
             self.logger.error(f"Digital display error: {e}")
@@ -663,8 +693,8 @@ class DisplayManager:
                     center=True
                 )
 
-            # Draw circular border
-            self._draw_circular_border()
+            # Draw shift border
+            self._draw_shift_border((200, 0, 0), 5)
 
         except Exception as e:
             self.logger.error(f"Gauge display error: {e}")
@@ -848,30 +878,31 @@ class DisplayManager:
                 outer_y = center[1] + outer_radius * math.sin(angle_rad)
                 pygame.draw.line(surface, (60, 60, 60), (inner_x, inner_y), (outer_x, outer_y), 2)
 
-            # 6. Draw red outer border circle
-            pygame.draw.circle(surface, (170, 0, 0), center, border_radius, 5)
+            # 6. Draw shift border with dynamic colour and width based on RPM
+            border_colour, border_width, _, _ = self._get_shift_cue(rpm)
+            self._draw_shift_border(border_colour, border_width)
 
             # 7. Draw inner arc edge ring (subtle dark stroke)
             pygame.draw.circle(surface, (40, 40, 40), center, inner_radius, 2)
 
             # 8. Draw major tick marks and numerals (1000-7000 RPM)
-            tick_font = self._get_cached_font(40)
+            tick_font = self._get_cached_font(52)
             for rpm_tick in range(1000, 8000, 1000):
                 if rpm_tick <= max_rpm:
                     angle_rad = rpm_to_angle_rad(rpm_tick)
-                    # Tick mark - 20px long radial line on outer edge
-                    tick_start_x = center[0] + (outer_radius - 20) * math.cos(angle_rad)
-                    tick_start_y = center[1] + (outer_radius - 20) * math.sin(angle_rad)
+                    # Tick mark - 28px long radial line on outer edge
+                    tick_start_x = center[0] + (outer_radius - 28) * math.cos(angle_rad)
+                    tick_start_y = center[1] + (outer_radius - 28) * math.sin(angle_rad)
                     tick_end_x = center[0] + outer_radius * math.cos(angle_rad)
                     tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
                     pygame.draw.line(surface, (0, 0, 0),
-                                   (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 5)
+                                   (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 7)
 
-                    # Numeral - positioned 42px inward from outer radius
+                    # Numeral - positioned 58px inward from outer radius
                     if tick_font:
                         numeral = str(rpm_tick // 1000)
-                        num_x = center[0] + (outer_radius - 42) * math.cos(angle_rad)
-                        num_y = center[1] + (outer_radius - 42) * math.sin(angle_rad)
+                        num_x = center[0] + (outer_radius - 58) * math.cos(angle_rad)
+                        num_y = center[1] + (outer_radius - 58) * math.sin(angle_rad)
                         self.rendering_engine.render_text(
                             RenderTarget.BACK_BUFFER, numeral, tick_font, (0, 0, 0),
                             (int(num_x), int(num_y)), center=True
@@ -916,30 +947,16 @@ class DisplayManager:
                     (240, 420), center=True
                 )
 
-            # 12. Compute danger flash state
-            flash_on = False
-            if rpm >= bands.danger_start:
-                flash_on = int(time.monotonic() * 2) % 2 == 0
-
-            # 13. Draw centre circle with flash-conditional fill
+            # 12-14. Draw centre circle with shift cue colour
+            _, _, flash_centre, centre_colour = self._get_shift_cue(rpm)
             center_radius = 99
-            if flash_on:
-                center_bg = (136, 0, 0)
-                center_text_color = (255, 204, 204)
-            else:
-                center_bg = (26, 26, 26) if rpm >= bands.danger_start else (26, 26, 26)
-                center_text_color = (200, 0, 0)
+            pygame.draw.circle(surface, centre_colour, center, center_radius)
 
-            if rpm >= bands.danger_start and not flash_on:
-                center_bg = (10, 10, 10)
-
-            pygame.draw.circle(surface, center_bg, center, center_radius)
-
-            # 14. Draw 'GTach' label in centre circle
+            # Draw 'GTach' label in centre circle (always white text)
             gtach_font = self._get_cached_font(42)
             if gtach_font:
                 self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, "GTach", gtach_font, center_text_color,
+                    RenderTarget.BACK_BUFFER, "GTach", gtach_font, (255, 255, 255),
                     center, center=True
                 )
 
@@ -990,8 +1007,8 @@ class DisplayManager:
                     center=True
                 )
 
-            # Draw circular border
-            self._draw_circular_border()
+            # Draw shift border
+            self._draw_shift_border((200, 0, 0), 5)
 
         except Exception as e:
             self.logger.error(f"Settings display error: {e}")
@@ -1151,7 +1168,7 @@ class DisplayManager:
                 )
 
             # Draw border
-            self._draw_circular_border()
+            self._draw_shift_border((200, 0, 0), 5)
 
         except Exception as e:
             self.logger.error(f"Setup mode fallback error: {e}")
