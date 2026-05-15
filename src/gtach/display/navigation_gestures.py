@@ -112,8 +112,8 @@ class NavigationGestureHandler:
         """Setup navigation action callbacks for different screens."""
         self._navigation_callbacks = {
             # Main display mode navigation
-            'main_left': lambda: self._change_display_mode(DisplayMode.DIGITAL),
-            'main_right': lambda: self._change_display_mode(DisplayMode.GAUGE),
+            'main_left': lambda: self._cycle_display_mode(direction=-1),
+            'main_right': lambda: self._cycle_display_mode(direction=1),
             'main_up': lambda: self._show_edge_feedback("No upward navigation available"),
             'main_down': lambda: self._handle_main_down_swipe(),
             
@@ -308,13 +308,15 @@ class NavigationGestureHandler:
         """Start tracking a potential gesture."""
         try:
             with self._gesture_lock:
-                self._gesture_in_progress = True
-                self._gesture_start_time = timestamp
-                self._gesture_start_pos = pos
-                
+                # Only record on first touch down; ignore intermediate move events
+                if not self._gesture_in_progress:
+                    self._gesture_in_progress = True
+                    self._gesture_start_time = timestamp
+                    self._gesture_start_pos = pos
+
                 # Show edge indicators if near edge
                 self._update_edge_indicators(pos)
-                
+
         except Exception as e:
             self.logger.error(f"Error starting gesture tracking: {e}")
     
@@ -419,6 +421,21 @@ class NavigationGestureHandler:
             self.logger.info(f"Display mode changed to {mode.name}")
         except Exception as e:
             self.logger.error(f"Error changing display mode: {e}")
+
+    def _cycle_display_mode(self, direction: int) -> None:
+        """Cycle through DIGITAL, RADIAL, GAUGE in the given direction (+1 or -1)."""
+        try:
+            _cycle = [DisplayMode.DIGITAL, DisplayMode.RADIAL, DisplayMode.GAUGE]
+            current = self.display_manager.config.mode
+            try:
+                idx = _cycle.index(current)
+            except ValueError:
+                idx = 0
+            next_mode = _cycle[(idx + direction) % len(_cycle)]
+            self.display_manager.change_mode(next_mode)
+            self.logger.info(f"Display mode cycled to {next_mode.name}")
+        except Exception as e:
+            self.logger.error(f"Error cycling display mode: {e}")
     
     def _handle_main_down_swipe(self) -> None:
         """Handle down swipe in main display."""

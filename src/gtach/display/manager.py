@@ -764,9 +764,9 @@ class DisplayManager:
 
             # Arc geometry constants
             center = (240, 240)
-            outer_radius = 198
-            inner_radius = 88
-            border_radius = 208
+            outer_radius = 225
+            inner_radius = 100
+            border_radius = 236
             max_rpm = 7000
 
             # Angle conversion: clock degrees to canvas radians
@@ -855,7 +855,7 @@ class DisplayManager:
             pygame.draw.circle(surface, (40, 40, 40), center, inner_radius, 2)
 
             # 8. Draw major tick marks and numerals (1000-7000 RPM)
-            tick_font = self._get_cached_font(13)
+            tick_font = self._get_cached_font(40)
             for rpm_tick in range(1000, 8000, 1000):
                 if rpm_tick <= max_rpm:
                     angle_rad = rpm_to_angle_rad(rpm_tick)
@@ -864,16 +864,16 @@ class DisplayManager:
                     tick_start_y = center[1] + (outer_radius - 20) * math.sin(angle_rad)
                     tick_end_x = center[0] + outer_radius * math.cos(angle_rad)
                     tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
-                    pygame.draw.line(surface, (220, 220, 220),
-                                   (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 2)
+                    pygame.draw.line(surface, (0, 0, 0),
+                                   (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 5)
 
-                    # Numeral - positioned 40px inward from outer radius
+                    # Numeral - positioned 42px inward from outer radius
                     if tick_font:
                         numeral = str(rpm_tick // 1000)
-                        num_x = center[0] + (outer_radius - 40) * math.cos(angle_rad)
-                        num_y = center[1] + (outer_radius - 40) * math.sin(angle_rad)
+                        num_x = center[0] + (outer_radius - 42) * math.cos(angle_rad)
+                        num_y = center[1] + (outer_radius - 42) * math.sin(angle_rad)
                         self.rendering_engine.render_text(
-                            RenderTarget.BACK_BUFFER, numeral, tick_font, (220, 220, 220),
+                            RenderTarget.BACK_BUFFER, numeral, tick_font, (0, 0, 0),
                             (int(num_x), int(num_y)), center=True
                         )
 
@@ -909,11 +909,11 @@ class DisplayManager:
                                (ind_inner_x, ind_inner_y), (ind_outer_x, ind_outer_y), 3)
 
             # 11. Draw 'RPM x 1000' label in inert arc
-            label_font = self._get_cached_font(32)
+            label_font = self._get_cached_font(16)
             if label_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER, "RPM \u00d7 1000", label_font, (200, 0, 0),
-                    (240, 395), center=True
+                    (240, 420), center=True
                 )
 
             # 12. Compute danger flash state
@@ -922,7 +922,7 @@ class DisplayManager:
                 flash_on = int(time.monotonic() * 2) % 2 == 0
 
             # 13. Draw centre circle with flash-conditional fill
-            center_radius = 87
+            center_radius = 99
             if flash_on:
                 center_bg = (136, 0, 0)
                 center_text_color = (255, 204, 204)

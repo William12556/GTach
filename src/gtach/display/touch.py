@@ -113,12 +113,9 @@ class TouchHandler:
         try:
             current_time = timestamp if timestamp else time.time()
             
-            if state:  # Touch start
-                self._touch_start = (current_time, x, y)
-                
-                # Start gesture tracking if gesture handler is available
-                if hasattr(self.display_manager, 'gesture_handler') and self.display_manager.gesture_handler:
-                    self.display_manager.gesture_handler.start_gesture_tracking((x, y), current_time)
+            if state:  # Touch down/move
+                if self._touch_start is None:  # Only record on first touch down
+                    self._touch_start = (current_time, x, y)
                     
             else:  # Touch end
                 if not self._touch_start:
@@ -134,22 +131,19 @@ class TouchHandler:
                     self._handle_short_press(x, y, start_x, start_y)
                     return
 
-                # Try gesture recognition first
-                gesture_handled = False
+                # Always reset gesture handler state, then use direct swipe logic
                 if hasattr(self.display_manager, 'gesture_handler') and self.display_manager.gesture_handler:
-                    gesture_event = self.display_manager.gesture_handler.end_gesture_tracking((x, y), current_time)
-                    
-                    if gesture_event:
-                        gesture_handled = self.display_manager.gesture_handler.handle_gesture_event(gesture_event)
-                        self.logger.debug(f"Gesture handled: {gesture_handled}")
-                
-                # Fall back to traditional touch handling if gesture wasn't handled
-                if not gesture_handled:
-                    if duration >= self.display_manager.config.touch_long_press:
-                        self._handle_long_press(x, y)
-                    else:
-                        self._handle_short_press(x, y, start_x, start_y)
-                    
+                    try:
+                        self.display_manager.gesture_handler.cancel_gesture()
+                    except Exception:
+                        pass
+
+                # Direct swipe/press handling - no gesture handler intermediary
+                if duration >= self.display_manager.config.touch_long_press:
+                    self._handle_long_press(x, y)
+                else:
+                    self._handle_short_press(x, y, start_x, start_y)
+
                 self._touch_start = None
                 
         except Exception as e:
@@ -182,12 +176,22 @@ class TouchHandler:
             # Detect left/right swipe
             swipe_threshold = 100
             dx = x - start_x
-            
+
             if abs(dx) >= swipe_threshold:
                 if dx > 0:  # Right swipe
-                    self.display_manager.change_mode(DisplayMode.GAUGE)
+                    if self.display_manager.config.mode == DisplayMode.DIGITAL:
+                        self.display_manager.change_mode(DisplayMode.RADIAL)
+                    elif self.display_manager.config.mode == DisplayMode.RADIAL:
+                        self.display_manager.change_mode(DisplayMode.GAUGE)
+                    else:
+                        self.display_manager.change_mode(DisplayMode.DIGITAL)
                 else:  # Left swipe
-                    self.display_manager.change_mode(DisplayMode.DIGITAL)
+                    if self.display_manager.config.mode == DisplayMode.DIGITAL:
+                        self.display_manager.change_mode(DisplayMode.GAUGE)
+                    elif self.display_manager.config.mode == DisplayMode.GAUGE:
+                        self.display_manager.change_mode(DisplayMode.RADIAL)
+                    else:
+                        self.display_manager.change_mode(DisplayMode.DIGITAL)
                     
         except Exception as e:
             self.logger.error(f"Short press handling error: {e}")
@@ -238,9 +242,11 @@ class TouchHandler:
             
             # Handle different setting controls
             if setting_id == "mode":
-                # Toggle between DIGITAL and GAUGE modes
+                # Cycle through DIGITAL, GAUGE, and RADIAL modes
                 if config.mode == DisplayMode.DIGITAL:
                     config.mode = DisplayMode.GAUGE
+                elif config.mode == DisplayMode.GAUGE:
+                    config.mode = DisplayMode.RADIAL
                 else:
                     config.mode = DisplayMode.DIGITAL
             
