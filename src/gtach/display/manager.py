@@ -137,6 +137,9 @@ class DisplayManager:
                 self.config.mode = DisplayMode.GAUGE
                 return TouchAction.MODE_CHANGE
             elif self.config.mode == DisplayMode.GAUGE:
+                self.config.mode = DisplayMode.RADIAL
+                return TouchAction.MODE_CHANGE
+            elif self.config.mode == DisplayMode.RADIAL:
                 self.config.mode = DisplayMode.DIGITAL
                 return TouchAction.MODE_CHANGE
             return TouchAction.NONE
@@ -148,6 +151,9 @@ class DisplayManager:
         """Handle right swipe gesture"""
         try:
             if self.config.mode == DisplayMode.DIGITAL:
+                self.config.mode = DisplayMode.RADIAL
+                return TouchAction.MODE_CHANGE
+            elif self.config.mode == DisplayMode.RADIAL:
                 self.config.mode = DisplayMode.GAUGE
                 return TouchAction.MODE_CHANGE
             elif self.config.mode == DisplayMode.GAUGE:
@@ -232,7 +238,7 @@ class DisplayManager:
             if YAML_AVAILABLE and os.path.exists(self.config_path):
                 with open(self.config_path, 'r') as f:
                     config_data = yaml.safe_load(f)
-                    saved_mode = DisplayMode[config_data.get('mode', 'DIGITAL')]
+                    saved_mode = DisplayMode[config_data.get('mode', 'RADIAL')]
                     engine_profile = config_data.get('engine_profile', 'abarth_595_turismo')
 
                     # Load engine profile RPM bands
@@ -266,7 +272,7 @@ class DisplayManager:
                     mode=DisplayMode.SPLASH,
                     rpm_bands=rpm_bands
                 )
-                self._post_splash_mode = DisplayMode.DIGITAL
+                self._post_splash_mode = DisplayMode.RADIAL
                 if YAML_AVAILABLE:
                     self._save_config()
 
@@ -285,7 +291,7 @@ class DisplayManager:
                 mode=DisplayMode.SPLASH,
                 rpm_bands=rpm_bands
             )
-            self._post_splash_mode = DisplayMode.DIGITAL
+            self._post_splash_mode = DisplayMode.RADIAL
     
     def _save_config(self) -> None:
         """Save current configuration.
@@ -483,12 +489,14 @@ class DisplayManager:
                 self._draw_digital_mode()
             elif self.config.mode == DisplayMode.GAUGE:
                 self._draw_gauge_mode()
+            elif self.config.mode == DisplayMode.RADIAL:
+                self._draw_radial_mode()
             elif self.config.mode == DisplayMode.SETTINGS:
                 self._draw_settings_mode()
-            
+
             # Always draw status indicator
             self._draw_status_indicator()
-            
+
         except Exception as e:
             self.logger.error(f"Normal mode render error: {e}")
 
@@ -730,6 +738,215 @@ class DisplayManager:
             return (255, 165, 0)  # Orange
         else:
             return (255, 255, 255)  # White
+
+    def _draw_radial_mode(self) -> None:
+        """Draw radial arc RPM display using rendering engine"""
+        try:
+            # Drain queue — keep only the latest value to avoid display lag
+            import queue
+            try:
+                while True:
+                    rpm_data = self.thread_manager.message_queue.get_nowait()
+                    self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
+            except queue.Empty:
+                pass
+            except Exception as e:
+                self.logger.debug(f'Queue drain error: {e}')
+
+            rpm = getattr(self, '_last_rpm', 0)
+            # Clamp RPM to valid range
+            rpm = max(0, min(7000, rpm))
+
+            # Get back buffer surface
+            surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
+            if not surface:
+                return
+
+            # Arc geometry constants
+            center = (240, 240)
+            outer_radius = 198
+            inner_radius = 88
+            border_radius = 208
+            max_rpm = 7000
+
+            # Angle conversion: clock degrees to canvas radians
+            # Active arc: 210 deg (7 o'clock) to 150 deg (5 o'clock) via top = 300 deg sweep
+            start_clock_deg = 210
+            end_clock_deg = 150
+            active_sweep_deg = 300
+
+            def clock_to_canvas_rad(clock_deg):
+                """Convert clock angle to canvas radians"""
+                return math.radians(clock_deg - 90)
+
+            def rpm_to_angle_rad(rpm_val):
+                """Convert RPM to canvas angle in radians"""
+                clock_deg = start_clock_deg + (rpm_val / max_rpm) * active_sweep_deg
+                return clock_to_canvas_rad(clock_deg)
+
+            def draw_donut_arc(color, start_angle_rad, end_angle_rad):
+                """Draw a donut arc segment using polygon approximation"""
+                num_points = 60
+                angle_step = (end_angle_rad - start_angle_rad) / num_points
+
+                points = []
+                # Outer arc points
+                for i in range(num_points + 1):
+                    angle = start_angle_rad + i * angle_step
+                    x = center[0] + outer_radius * math.cos(angle)
+                    y = center[1] + outer_radius * math.sin(angle)
+                    points.append((x, y))
+
+                # Inner arc points (reverse order)
+                for i in range(num_points, -1, -1):
+                    angle = start_angle_rad + i * angle_step
+                    x = center[0] + inner_radius * math.cos(angle)
+                    y = center[1] + inner_radius * math.sin(angle)
+                    points.append((x, y))
+
+                if len(points) > 2:
+                    pygame.draw.polygon(surface, color, points)
+
+            # 1. Draw black background circle
+            pygame.draw.circle(surface, (10, 10, 10), center, border_radius)
+
+            # 2. Draw headroom arc (full active zone in light grey)
+            start_angle_rad = clock_to_canvas_rad(start_clock_deg)
+            end_angle_rad = clock_to_canvas_rad(start_clock_deg + active_sweep_deg)
+            draw_donut_arc((96, 96, 96), start_angle_rad, end_angle_rad)
+
+            # 3. Draw inert bottom arc (5 o'clock to 7 o'clock, 60 deg, dark grey)
+            # 5 o'clock = 150 deg, 7 o'clock = 210 deg, short path clockwise
+            inert_start_rad = clock_to_canvas_rad(150)
+            inert_end_rad = clock_to_canvas_rad(210)
+            draw_donut_arc((28, 28, 28), inert_start_rad, inert_end_rad)
+
+            # 4. Draw coloured fill arcs per RPMBands up to current rpm
+            bands = self.config.rpm_bands
+            band_thresholds = [
+                (0, bands.idle_max, (0, 0, 255)),  # Blue
+                (bands.idle_max, bands.torque_start, (0, 0, 255)),  # Blue
+                (bands.torque_start, bands.caution_start, (0, 255, 0)),  # Green
+                (bands.caution_start, bands.warning_start, (255, 255, 0)),  # Yellow
+                (bands.warning_start, bands.danger_start, (255, 128, 0)),  # Orange
+                (bands.danger_start, max_rpm, (255, 0, 0))  # Red
+            ]
+
+            for band_start, band_end, color in band_thresholds:
+                if rpm > band_start:
+                    segment_end = min(rpm, band_end)
+                    seg_start_rad = rpm_to_angle_rad(band_start)
+                    seg_end_rad = rpm_to_angle_rad(segment_end)
+                    draw_donut_arc(color, seg_start_rad, seg_end_rad)
+
+            # 5. Draw zone boundary lines at 5 o'clock and 7 o'clock
+            for boundary_deg in [150, 210]:
+                angle_rad = clock_to_canvas_rad(boundary_deg)
+                inner_x = center[0] + inner_radius * math.cos(angle_rad)
+                inner_y = center[1] + inner_radius * math.sin(angle_rad)
+                outer_x = center[0] + outer_radius * math.cos(angle_rad)
+                outer_y = center[1] + outer_radius * math.sin(angle_rad)
+                pygame.draw.line(surface, (60, 60, 60), (inner_x, inner_y), (outer_x, outer_y), 2)
+
+            # 6. Draw red outer border circle
+            pygame.draw.circle(surface, (170, 0, 0), center, border_radius, 5)
+
+            # 7. Draw inner arc edge ring (subtle dark stroke)
+            pygame.draw.circle(surface, (40, 40, 40), center, inner_radius, 2)
+
+            # 8. Draw major tick marks and numerals (1000-7000 RPM)
+            tick_font = self._get_cached_font(13)
+            for rpm_tick in range(1000, 8000, 1000):
+                if rpm_tick <= max_rpm:
+                    angle_rad = rpm_to_angle_rad(rpm_tick)
+                    # Tick mark - 20px long radial line on outer edge
+                    tick_start_x = center[0] + (outer_radius - 20) * math.cos(angle_rad)
+                    tick_start_y = center[1] + (outer_radius - 20) * math.sin(angle_rad)
+                    tick_end_x = center[0] + outer_radius * math.cos(angle_rad)
+                    tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
+                    pygame.draw.line(surface, (220, 220, 220),
+                                   (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 2)
+
+                    # Numeral - positioned 40px inward from outer radius
+                    if tick_font:
+                        numeral = str(rpm_tick // 1000)
+                        num_x = center[0] + (outer_radius - 40) * math.cos(angle_rad)
+                        num_y = center[1] + (outer_radius - 40) * math.sin(angle_rad)
+                        self.rendering_engine.render_text(
+                            RenderTarget.BACK_BUFFER, numeral, tick_font, (220, 220, 220),
+                            (int(num_x), int(num_y)), center=True
+                        )
+
+            # 9. Draw band boundary marks at thresholds
+            boundary_colors = [
+                (bands.idle_max, (0, 0, 255)),  # Blue
+                (bands.torque_start, (0, 255, 0)),  # Green
+                (bands.caution_start, (255, 255, 0)),  # Yellow
+                (bands.warning_start, (255, 128, 0)),  # Orange
+                (bands.danger_start, (255, 0, 0)),  # Red
+                (bands.redline_rpm, (255, 0, 0))  # Red
+            ]
+
+            for threshold_rpm, color in boundary_colors:
+                if 0 < threshold_rpm <= max_rpm:
+                    angle_rad = rpm_to_angle_rad(threshold_rpm)
+                    # 28px long colored radial line
+                    mark_start_x = center[0] + (outer_radius - 28) * math.cos(angle_rad)
+                    mark_start_y = center[1] + (outer_radius - 28) * math.sin(angle_rad)
+                    mark_end_x = center[0] + outer_radius * math.cos(angle_rad)
+                    mark_end_y = center[1] + outer_radius * math.sin(angle_rad)
+                    pygame.draw.line(surface, color,
+                                   (mark_start_x, mark_start_y), (mark_end_x, mark_end_y), 3)
+
+            # 10. Draw white indicator line at current RPM
+            if rpm > 0:
+                current_angle_rad = rpm_to_angle_rad(rpm)
+                ind_inner_x = center[0] + inner_radius * math.cos(current_angle_rad)
+                ind_inner_y = center[1] + inner_radius * math.sin(current_angle_rad)
+                ind_outer_x = center[0] + outer_radius * math.cos(current_angle_rad)
+                ind_outer_y = center[1] + outer_radius * math.sin(current_angle_rad)
+                pygame.draw.line(surface, (255, 255, 255),
+                               (ind_inner_x, ind_inner_y), (ind_outer_x, ind_outer_y), 3)
+
+            # 11. Draw 'RPM x 1000' label in inert arc
+            label_font = self._get_cached_font(32)
+            if label_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER, "RPM \u00d7 1000", label_font, (200, 0, 0),
+                    (240, 395), center=True
+                )
+
+            # 12. Compute danger flash state
+            flash_on = False
+            if rpm >= bands.danger_start:
+                flash_on = int(time.monotonic() * 2) % 2 == 0
+
+            # 13. Draw centre circle with flash-conditional fill
+            center_radius = 87
+            if flash_on:
+                center_bg = (136, 0, 0)
+                center_text_color = (255, 204, 204)
+            else:
+                center_bg = (26, 26, 26) if rpm >= bands.danger_start else (26, 26, 26)
+                center_text_color = (200, 0, 0)
+
+            if rpm >= bands.danger_start and not flash_on:
+                center_bg = (10, 10, 10)
+
+            pygame.draw.circle(surface, center_bg, center, center_radius)
+
+            # 14. Draw 'GTach' label in centre circle
+            gtach_font = self._get_cached_font(42)
+            if gtach_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER, "GTach", gtach_font, center_text_color,
+                    center, center=True
+                )
+
+            self.logger.debug(f'Radial mode: RPM={rpm:.0f}')
+
+        except Exception as e:
+            self.logger.error(f"Radial display error: {e}", exc_info=True)
     
     def _draw_settings_mode(self) -> None:
         """Draw settings interface using touch coordinator"""
