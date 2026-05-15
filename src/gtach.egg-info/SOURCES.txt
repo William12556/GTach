@@ -74,7 +74,6 @@ src/gtach/utils/__init__.py
 src/gtach/utils/ack_state.py
 src/gtach/utils/config.py
 src/gtach/utils/dependencies.py
-src/gtach/utils/engine_profiles.py
 src/gtach/utils/home.py
 src/gtach/utils/platform.py
 src/gtach/utils/terminal.py
