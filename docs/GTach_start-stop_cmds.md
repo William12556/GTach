@@ -3,15 +3,15 @@
 scp install.sh root@gtach.local:/opt/gtach/
 
 ## Build and transfer GTach to the Pi
-cd /Users/williamwatson/Documents/GitHub/GTach && ./build.sh && scp dist/*.whl root@gtach.local:/tmp/
+cd ~/Documents/GitHub/GTach && ./build.sh && scp dist/*.whl root@gtach.local:/tmp/
 
 ## Transfer GTach log back to the Mac from the Pi
-scp root@gtach.local:/opt/gtach/gtach*.log ~/Documents/GitHub/GTach/
+scp root@gtach.local:/opt/gtach/gtach-simbt.log ~/Documents/GitHub/GTach/
 
 # Pi:
 
 ## Install GTach on the Pi
-cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.27-py3-none-any.whl
+cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.40-py3-none-any.whl
 
 ## Run GTach on the Pi
 cd /opt/gtach
