@@ -52,7 +52,7 @@
     - Strategic Domain: Plan and control: design, change, test and launching of code generation
       - Implementation options: Claude Desktop, API-based LLM
     - Tactical Domain: Execute: code generation
-      - Implementation options: Ralph Loop (AEL), custom agents, direct invocation
+      - Implementation options: Ralph Loop (AEL), Claude Code, claude-omlx, custom agents, direct invocation
     - Communication: MCP filesystem (model-independent)
   - §1.1.5 Forbidden
     - Both domains: Unrequested creation, addition, removal or change of source code and documents is forbidden
@@ -393,7 +393,14 @@ pip list
       - Ensure Anthropic API key is configured
       - Create `CLAUDE.md` at project root with project context
       - Create `.claude/` directory structure per §1.2.6
-      - Reference: [claude.md](deprecated/claude.md)
+      - Reference: [claude.md](profiles/claude.md)
+    - **claude-omlx profile** (Tactical Domain = Claude Code CLI → oMLX → Devstral):
+      - Ensure oMLX is running on `http://127.0.0.1:8000` with Devstral loaded
+      - Install Claude Code: `npm install -g @anthropic-ai/claude-code`
+      - No Anthropic API key required
+      - Create `CLAUDE.md` at project root with project context
+      - Create `.claude/` directory structure per §1.2.6
+      - Reference: [claude-omlx.md](profiles/claude-omlx.md)
     - **ael-mcp setup (Claude Desktop profile, optional)**:
       - Clone: `git clone https://github.com/William12556/ael-mcp`
       - Verify `mcp` package: `python3 -m pip show mcp`; install if absent: `pip3 install mcp`
@@ -1134,6 +1141,7 @@ See [workflow.md](workflow.md).
 | 8.7     | 2026-03-26 | Removed behavioral standards directives from P00 §1.1.16: behavioral-standards.yaml, schema, and validator deprecated — no operational function in orchestrator; content duplicates governance protocols |
 | 8.8     | 2026-03-29 | Extracted §2.0 Workflow flowchart to workflow.md; replaced §2.0 body with link; updated ToC entry and Prime Directive cross-reference |
 | 8.9     | 2026-04-28 | Added ael-mcp integration: P00 §1.1.11 Claude Desktop Interface directive; P09 §1.10.3 Option A/B AEL execution (human executes or Strategic Domain launches via ael-mcp); P01 §1.2.8 ael-mcp setup steps for Claude Desktop profile |
+| 9.0     | 2026-04-30 | Added claude-omlx as Tactical Domain implementation option: §1.1.4 implementation options; §1.2.8 claude-omlx profile setup steps; fixed claude.md reference path (deprecated/ → profiles/) |
 
 ---
 [Return to Table of Contents](<#table of contents>)

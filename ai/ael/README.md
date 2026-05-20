@@ -5,6 +5,7 @@
 ## Table of Contents
 
 - [Overview](<#overview>)
+- [Tactical Profiles](<#tactical profiles>)
 - [Structure](<#structure>)
 - [Requirements](<#requirements>)
 - [Installation](<#installation>)
@@ -21,6 +22,26 @@
 The AEL orchestrator is a standalone Python tool loop implementing the Ralph Loop pattern. It connects directly to MCP servers, sends tool definitions to an oMLX inference endpoint, parses model tool calls in both OpenAI and Mistral plain-text formats, dispatches tools, injects results into message history, and iterates until the model produces a response containing no tool calls.
 
 This component replaces Goose as the Autonomous Execution Loop (AEL) for the oMLX/Devstral stack. It addresses the tool dispatch failure present in oMLX and other inference servers by owning the full tool loop externally.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## Tactical Profiles
+
+Three Tactical Domain profiles are available. AEL is the primary profile; the others are manual alternatives.
+
+| Aspect | AEL (Primary) | Claude Code | claude-omlx |
+|---|---|---|---|
+| Execution | Automated Ralph Loop | Manual, human-directed | Manual, human-directed |
+| Worker/Reviewer | Automated cycle | Single pass; human reviews | Single pass; human reviews |
+| Inference | oMLX → Devstral (local) | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
+| Loop control | `orchestrator.py` | Human operator | Human operator |
+| Context file | `config.yaml` | `CLAUDE.md` | `CLAUDE.md` |
+| State directory | `.ael/ralph/` | `.claude/` | `.claude/` |
+| Profile | `mlx_devstral_small_2_2512_Q8.md` | `claude.md` | `claude-omlx.md` |
+
+See `ai/profiles/` for profile documents.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -236,6 +257,7 @@ tests/test_integration.py                     SKIPPED [oMLX not reachable]
 | 1.5 | 2026-03-25 | Added `mcp-grep` server to `config.yaml` MCP server definitions |
 | 1.6 | 2026-03-31 | Added Devstral model requirement with rationale to Requirements section |
 | 1.7 | 2026-04-30 | Updated canonical model quantisation from Q8 to 6bit; memory constraints on M4 Mac Mini (64GB) preclude Q8 with adequate KV headroom |
+| 1.8 | 2026-04-30 | Added Tactical Profiles section with comparison table |
 
 ---
 

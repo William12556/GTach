@@ -8,6 +8,7 @@ Created: 2026 April 27
 
 [1.0 Purpose](<#1.0 purpose>)
 [2.0 Architecture](<#2.0 architecture>)
+[2.1 Tactical Profiles](<#2.1 tactical profiles>)
 [3.0 Responsibilities](<#3.0 responsibilities>)
 [4.0 Workflow](<#4.0 workflow>)
 [5.0 Protocol Reference](<#5.0 protocol reference>)
@@ -57,6 +58,19 @@ See P09 §1.10.3 Option B and P01 §1.2.8.
 
 Implementation profiles are defined in `ai/profiles/`. The active profile
 determines the tactical context file name, skills directory, and AEL configuration.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 2.1 Tactical Profiles
+
+| Aspect | AEL (Primary) | Claude Code | claude-omlx |
+|---|---|---|---|
+| Execution | Automated Ralph Loop | Manual | Manual |
+| Inference | oMLX → Devstral (local) | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
+| Loop control | `orchestrator.py` | Human operator | Human operator |
+| Profile | `mlx_devstral_small_2_2512_Q8.md` | `claude.md` | `claude-omlx.md` |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -225,6 +239,7 @@ any document.
 |---|---|---|
 | 0.1 | 2026-04-27 | Initial draft |
 | 0.2 | 2026-04-28 | Added ael-mcp to §2.0 Architecture; annotated §4.0 Workflow AEL step with Option A/B |
+| 0.3 | 2026-04-30 | Added §2.1 Tactical Profiles with comparison table |
 
 ---
 
