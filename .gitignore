@@ -48,9 +48,6 @@ test.txt
 *.pdf
 project_information.md
 
-
-
-
-
 # FreeCAD
 *.FCBak
+**/*.FCBak
