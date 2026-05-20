@@ -71,12 +71,13 @@ class GTachApplication:
             if transport_forced:
                 self.logger.info("Transport explicitly specified - skipping setup mode")
                 self._start_normal_mode()
-            elif transport_arg == 'simbt':
-                # Simulation mode with Bluetooth setup
+            elif transport_arg in ('simbt', 'rfcomm'):
+                # Bluetooth transport — always enter setup mode for device pairing
                 from .comm.sim_bluetooth import SimBluetoothPairing
-                self.logger.info("Simulation Bluetooth transport - entering setup mode")
+                pairing_factory = (lambda: SimBluetoothPairing()) if transport_arg == 'simbt' else None
+                self.logger.info(f"{transport_arg} transport - entering setup mode")
                 self._setup_mode = True
-                self._start_setup_mode(pairing_factory=lambda: SimBluetoothPairing())
+                self._start_setup_mode(pairing_factory=pairing_factory)
             elif self._device_store.get_primary_device() is None:
                 self.logger.info("Setup required - entering setup mode")
                 self._setup_mode = True

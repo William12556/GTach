@@ -51,7 +51,6 @@ from .typography import (get_font_manager, get_title_font, get_medium_font, get_
                          get_button_renderer, ButtonSize, ButtonState)
 from ..core import ThreadManager, ThreadStatus
 from ..utils import TerminalRestorer
-from ..utils.ack_state import AcknowledgementStateManager
 
 class DisplayManager:
     """
@@ -85,8 +84,6 @@ class DisplayManager:
         )
         self.thread_manager.register_thread('display', self.display_thread)
 
-        # Acknowledgement state manager
-        self._ack_state_manager = AcknowledgementStateManager()
     
     def _initialize_components(self) -> None:
         """Initialize the extracted components"""
@@ -133,6 +130,11 @@ class DisplayManager:
     def _handle_swipe_left(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
         """Handle left swipe gesture"""
         try:
+            # Block navigation when OBD not connected
+            if self.thread_manager.get_thread_status('transport') != ThreadStatus.RUNNING:
+                self.logger.debug('Swipe blocked: OBD not connected')
+                return TouchAction.NONE
+
             if self.config.mode == DisplayMode.DIGITAL:
                 self.config.mode = DisplayMode.RADIAL
                 return TouchAction.MODE_CHANGE
@@ -147,6 +149,11 @@ class DisplayManager:
     def _handle_swipe_right(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
         """Handle right swipe gesture"""
         try:
+            # Block navigation when OBD not connected
+            if self.thread_manager.get_thread_status('transport') != ThreadStatus.RUNNING:
+                self.logger.debug('Swipe blocked: OBD not connected')
+                return TouchAction.NONE
+
             if self.config.mode == DisplayMode.DIGITAL:
                 self.config.mode = DisplayMode.RADIAL
                 return TouchAction.MODE_CHANGE
@@ -454,17 +461,8 @@ class DisplayManager:
                 splash_success = self._splash_screen.render(back_surface)
                 
                 if self._splash_screen.is_complete():
-                    if self._in_setup_mode:
-                        self.config.mode = self._post_splash_mode
-                        self.logger.info("Splash completed - entering setup mode")
-                    elif self._ack_state_manager.is_acknowledged(
-                            self.config.rpm_bands,
-                            self.config.engine_profile):
-                        self.config.mode = self._post_splash_mode
-                        self.logger.info(f"Splash completed - transitioning to {self._post_splash_mode.name}")
-                    else:
-                        self.config.mode = DisplayMode.ACKNOWLEDGEMENT
-                        self.logger.info("Splash completed - showing acknowledgement screen")
+                    self.config.mode = self._post_splash_mode
+                    self.logger.info(f"Splash completed - transitioning to {self._post_splash_mode.name}")
 
                     self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER)
                     self.rendering_engine.swap_buffers()
@@ -497,7 +495,6 @@ class DisplayManager:
                 self._draw_radial_mode()
             elif self.config.mode == DisplayMode.SETTINGS:
                 self._draw_settings_mode()
-
             # Always draw status indicator
             self._draw_status_indicator()
 
@@ -907,7 +904,7 @@ class DisplayManager:
 
         except Exception as e:
             self.logger.error(f"Settings display error: {e}")
-    
+
     def _render_mode_selector(self) -> None:
         """Render mode selector using touch coordinator"""
         try:

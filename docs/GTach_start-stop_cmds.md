@@ -14,7 +14,7 @@ cd ~/Documents/GitHub/GTach && ./build.sh && scp dist/*.whl root@gtach.local:/tm
 ## Transfer GTach log back to the Mac from the Pi
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/gtach-simbt.log ~/Documents/GitHub/GTach/
+cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/gtach-debug.log ~/Documents/GitHub/GTach/
 ```
 
 # Pi:
@@ -22,14 +22,14 @@ cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/gtach-simbt.log ~
 ## Install GTach on the Pi
 
 ```shell
-cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.44-py3-none-any.whl
+cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.45-py3-none-any.whl
 ```
 
 ## Run GTach on the Pi
 
 ```shell
 cd /opt/gtach
-gtach --debug 2>&1 | tee /opt/gtach/gtach-debug_PI.log
+gtach --transport rfcom --debug 2>&1 | tee /opt/gtach/gtach-debug.log
 ```
 
 ### or

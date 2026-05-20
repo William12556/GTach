@@ -637,7 +637,20 @@ class SetupDisplayManager:
                 return SetupAction.CANCEL
 
             elif action == "current_continue":
-                # Use existing paired device — skip straight to complete
+                # Verify the stored device is reachable before completing
+                from ..comm.device_store import DeviceStore
+                from ..comm.rfcomm import RFCOMMTransport
+                device = DeviceStore().get_primary_device()
+                if device:
+                    probe = RFCOMMTransport(device.mac_address)
+                    reachable = probe.connect()
+                    if reachable:
+                        probe.disconnect()
+                    else:
+                        self.logger.warning(f"Stored device {device.mac_address} not reachable — returning to welcome")
+                        self.state_coordinator.update_state(error_message="Device not available")
+                        self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
+                        return SetupAction.CANCEL
                 self.state_coordinator.complete_setup()
                 return SetupAction.COMPLETE
 

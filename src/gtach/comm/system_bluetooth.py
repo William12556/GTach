@@ -130,10 +130,10 @@ class SystemBluetoothManager:
 
         try:
             result = subprocess.run(
-                ['hcitool', 'scan', '--flush'],
+                ['hcitool', 'scan', '--flush', '--length', str(duration)],
                 capture_output=True,
                 text=True,
-                timeout=duration + 2
+                timeout=duration * 2 + 5
             )
             # hcitool scan output lines: "\t<MAC>\t<Name>"
             for line in result.stdout.splitlines():

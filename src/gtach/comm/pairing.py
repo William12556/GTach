@@ -348,39 +348,54 @@ class BluetoothPairing:
         finally:
             self._pairing_active = False
     
+    def _recv_until_prompt(self, sock, timeout: float = 5.0) -> str:
+        """Accumulate recv data until ELM327 prompt '>' or timeout."""
+        sock.settimeout(timeout)
+        buf = ''
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                chunk = sock.recv(1024).decode('utf-8', errors='ignore')
+                if not chunk:
+                    break
+                buf += chunk
+                if '>' in buf:
+                    break
+            except Exception:
+                break
+        return buf
+
     def _test_basic_communication(self, socket: bluetooth.BluetoothSocket) -> bool:
         """Test basic communication with ELM327 device"""
         try:
-            # Clear any existing data
-            socket.settimeout(0.5)
+            # Discard banner / any pending data
+            socket.settimeout(1.0)
             try:
                 while True:
-                    data = socket.recv(1024)
-                    if not data:
+                    if not socket.recv(1024):
                         break
-            except:
+            except Exception:
                 pass
-            
-            # Set longer timeout for actual commands
-            socket.settimeout(3.0)
-            
-            # Send reset command
+
+            # Send reset command and accumulate full response
             socket.send(b'ATZ\r')
-            response = socket.recv(1024).decode('utf-8', errors='ignore')
-            
+            response = self._recv_until_prompt(socket, timeout=5.0)
+            self.logger.debug(f"ATZ response: {repr(response)}")
+
             if 'ELM' not in response:
                 return False
-            
-            # Send echo off command
+
+            # Send echo off
             socket.send(b'ATE0\r')
-            response = socket.recv(1024).decode('utf-8', errors='ignore')
-            
-            # Send protocol auto command
+            self._recv_until_prompt(socket, timeout=3.0)
+
+            # Send protocol auto
             socket.send(b'ATSP0\r')
-            response = socket.recv(1024).decode('utf-8', errors='ignore')
-            
+            response = self._recv_until_prompt(socket, timeout=3.0)
+            self.logger.debug(f"ATSP0 response: {repr(response)}")
+
             return 'OK' in response
-            
+
         except Exception as e:
             self.logger.error(f"Communication test error: {e}")
             return False
