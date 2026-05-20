@@ -505,7 +505,7 @@ class UITestingFramework:
             ],
             expected_outcome={
                 'component': 'display_mode',
-                'mode': 'GAUGE'
+                'mode': 'RADIAL'
             }
         ))
         

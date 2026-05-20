@@ -134,9 +134,6 @@ class DisplayManager:
         """Handle left swipe gesture"""
         try:
             if self.config.mode == DisplayMode.DIGITAL:
-                self.config.mode = DisplayMode.GAUGE
-                return TouchAction.MODE_CHANGE
-            elif self.config.mode == DisplayMode.GAUGE:
                 self.config.mode = DisplayMode.RADIAL
                 return TouchAction.MODE_CHANGE
             elif self.config.mode == DisplayMode.RADIAL:
@@ -154,9 +151,6 @@ class DisplayManager:
                 self.config.mode = DisplayMode.RADIAL
                 return TouchAction.MODE_CHANGE
             elif self.config.mode == DisplayMode.RADIAL:
-                self.config.mode = DisplayMode.GAUGE
-                return TouchAction.MODE_CHANGE
-            elif self.config.mode == DisplayMode.GAUGE:
                 self.config.mode = DisplayMode.DIGITAL
                 return TouchAction.MODE_CHANGE
             return TouchAction.NONE
@@ -238,7 +232,19 @@ class DisplayManager:
             if YAML_AVAILABLE and os.path.exists(self.config_path):
                 with open(self.config_path, 'r') as f:
                     config_data = yaml.safe_load(f)
-                    saved_mode = DisplayMode[config_data.get('mode', 'RADIAL')]
+                    saved_mode_str = config_data.get('mode', 'RADIAL')
+
+                    # Try to parse saved mode with GAUGE fallback to RADIAL
+                    try:
+                        saved_mode = DisplayMode[saved_mode_str]
+                        # If GAUGE was stored, substitute with RADIAL
+                        if saved_mode_str == 'GAUGE':
+                            saved_mode = DisplayMode.RADIAL
+                    except KeyError:
+                        # GAUGE enum value no longer exists, fall back to RADIAL
+                        self.logger.warning(f"Unknown display mode '{saved_mode_str}', using RADIAL")
+                        saved_mode = DisplayMode.RADIAL
+
                     engine_profile = config_data.get('engine_profile', 'abarth_595_turismo')
 
                     # Load engine profile RPM bands
@@ -487,8 +493,6 @@ class DisplayManager:
         try:
             if self.config.mode == DisplayMode.DIGITAL:
                 self._draw_digital_mode()
-            elif self.config.mode == DisplayMode.GAUGE:
-                self._draw_gauge_mode()
             elif self.config.mode == DisplayMode.RADIAL:
                 self._draw_radial_mode()
             elif self.config.mode == DisplayMode.SETTINGS:
@@ -501,16 +505,21 @@ class DisplayManager:
             self.logger.error(f"Normal mode render error: {e}")
 
     def _draw_shift_border(self, colour: Tuple[int, int, int], width: int = 12) -> None:
-        """Draw circular border with given colour and width.
+        """Draw circular border using two filled circles to avoid anti-aliasing fringe.
+
+        Draws border colour solid to outer_r, then overwrites interior with
+        background colour solid to inner_r, producing a clean hard edge.
 
         Args:
             colour: RGB border colour tuple
-            width: Border width in pixels (default 12)
+            width: Border width in pixels (default 12, ignored — fixed geometry)
         """
         try:
             surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
             if surface:
-                pygame.draw.circle(surface, colour, (240, 240), 238, width)
+                # Outer filled circle only — no inner cutout.
+                # Arcs are drawn on top in _draw_radial_mode.
+                pygame.draw.circle(surface, colour, (240, 240), 244)
         except Exception as e:
             self.logger.error(f'Shift border error: {e}', exc_info=True)
 
@@ -579,12 +588,12 @@ class DisplayManager:
                 # Safe downshift — blue border 12 px, blue centre, no flash
                 return (0, 100, 255), 12, False, (0, 40, 100)
             else:
-                # Normal operation — dark border 5 px, dark centre, no flash
-                return (170, 0, 0), 5, False, (26, 26, 26)
+                # Normal operation — red border 12 px, dark centre, no flash
+                return (200, 0, 0), 12, False, (26, 26, 26)
 
         except Exception as e:
             self.logger.error(f'Shift cue calculation error: {e}', exc_info=True)
-            return ((170, 0, 0), 5, False, (26, 26, 26))
+            return ((200, 0, 0), 12, False, (26, 26, 26))
 
     def _draw_digital_mode(self) -> None:
         """Draw digital RPM display using rendering engine"""
@@ -650,124 +659,6 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Digital display error: {e}")
     
-    def _draw_gauge_mode(self) -> None:
-        """Draw analog gauge display using rendering engine"""
-        try:
-            # Drain queue — keep only the latest value to avoid display lag
-            try:
-                while True:
-                    rpm_data = self.thread_manager.message_queue.get_nowait()
-                    self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
-            except:
-                pass
-            rpm = getattr(self, '_last_rpm', 0)
-
-            # Gauge parameters
-            center = (240, 240)
-            radius = 200
-            max_rpm = 8000
-            
-            # Draw gauge background
-            self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, (30, 30, 30), center, radius)
-            
-            # Draw color zones (simplified for component example)
-            self._draw_gauge_zones(center, radius, max_rpm)
-            
-            # Draw needle
-            self._draw_gauge_needle(center, radius, rpm, max_rpm)
-            
-            # Draw center hub
-            self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, (60, 60, 60), center, 40)
-            self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, (100, 100, 100), center, 38)
-
-            # Draw digital readout
-            font = get_rpm_medium_font()
-            if font:
-                needle_color = self._get_rpm_color(rpm)
-                self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER,
-                    f"{int(rpm)}",
-                    font,
-                    needle_color,
-                    center,
-                    center=True
-                )
-
-            # Draw shift border
-            self._draw_shift_border((200, 0, 0), 5)
-
-        except Exception as e:
-            self.logger.error(f"Gauge display error: {e}")
-    
-    def _draw_gauge_zones(self, center: Tuple[int, int], radius: int, max_rpm: int) -> None:
-        """Draw colored zones on gauge"""
-        try:
-            # Simplified zone drawing using rendering engine primitives
-            # This is a simplified version - full implementation would draw arcs
-            
-            # Warning zone (orange)
-            warning_start_angle = 135 - (self.config.rpm_warning / max_rpm * 270)
-            warning_end_angle = 135 - (self.config.rpm_danger / max_rpm * 270)
-            
-            # Danger zone (red)  
-            danger_start_angle = warning_end_angle
-            danger_end_angle = 45
-            
-            # For simplicity, just draw indicator lines at thresholds
-            self._draw_gauge_threshold_line(center, radius, self.config.rpm_warning, max_rpm, (255, 165, 0))
-            self._draw_gauge_threshold_line(center, radius, self.config.rpm_danger, max_rpm, (255, 0, 0))
-            
-        except Exception as e:
-            self.logger.error(f"Gauge zones error: {e}")
-    
-    def _draw_gauge_threshold_line(self, center: Tuple[int, int], radius: int, 
-                                  rpm: int, max_rpm: int, color: Tuple[int, int, int]) -> None:
-        """Draw threshold indicator line on gauge"""
-        try:
-            angle = 135 - (rpm / max_rpm * 270)
-            angle_rad = math.radians(angle)
-            
-            start_x = center[0] + int((radius - 40) * math.cos(angle_rad))
-            start_y = center[1] - int((radius - 40) * math.sin(angle_rad))
-            end_x = center[0] + int((radius - 10) * math.cos(angle_rad))
-            end_y = center[1] - int((radius - 10) * math.sin(angle_rad))
-            
-            self.rendering_engine.draw_line(RenderTarget.BACK_BUFFER, color, 
-                                          (start_x, start_y), (end_x, end_y), 3)
-            
-        except Exception as e:
-            self.logger.error(f"Gauge threshold line error: {e}")
-    
-    def _draw_gauge_needle(self, center: Tuple[int, int], radius: int, 
-                          rpm: int, max_rpm: int) -> None:
-        """Draw gauge needle"""
-        try:
-            if rpm > max_rpm:
-                rpm = max_rpm
-                
-            needle_angle = 135 - (rpm / max_rpm * 270)
-            needle_angle_rad = math.radians(needle_angle)
-            
-            needle_length = radius - 50
-            needle_tip_x = center[0] + int(needle_length * math.cos(needle_angle_rad))
-            needle_tip_y = center[1] - int(needle_length * math.sin(needle_angle_rad))
-            
-            needle_color = self._get_rpm_color(rpm)
-            
-            self.rendering_engine.draw_line(RenderTarget.BACK_BUFFER, needle_color, 
-                                          center, (needle_tip_x, needle_tip_y), 4)
-            
-        except Exception as e:
-            self.logger.error(f"Gauge needle error: {e}")
-    
-    def _get_rpm_color(self, rpm: int) -> Tuple[int, int, int]:
-        """Get color for RPM value"""
-        if rpm >= self.config.rpm_danger:
-            return (255, 0, 0)  # Red
-        elif rpm >= self.config.rpm_warning:
-            return (255, 165, 0)  # Orange
-        else:
-            return (255, 255, 255)  # White
 
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
@@ -794,7 +685,7 @@ class DisplayManager:
 
             # Arc geometry constants
             center = (240, 240)
-            outer_radius = 225
+            outer_radius = 232  # Butts against inner edge of 12px border at r=238
             inner_radius = 100
             border_radius = 236
             max_rpm = 7000
@@ -837,19 +728,23 @@ class DisplayManager:
                 if len(points) > 2:
                     pygame.draw.polygon(surface, color, points)
 
-            # 1. Draw black background circle
-            pygame.draw.circle(surface, (10, 10, 10), center, border_radius)
+            # 1. Fill corners black (outside circular viewport), draw border
+            #    ring as solid filled circle at r=244, then background at r=232.
+            surface.fill((0, 0, 0))
+            border_colour, _, _, _ = self._get_shift_cue(rpm)
+            self._draw_shift_border(border_colour)
+            pygame.draw.circle(surface, (200, 200, 200), center, 232)
 
             # 2. Draw headroom arc (full active zone in light grey)
             start_angle_rad = clock_to_canvas_rad(start_clock_deg)
             end_angle_rad = clock_to_canvas_rad(start_clock_deg + active_sweep_deg)
-            draw_donut_arc((96, 96, 96), start_angle_rad, end_angle_rad)
+            draw_donut_arc((180, 180, 180), start_angle_rad, end_angle_rad)
 
-            # 3. Draw inert bottom arc (5 o'clock to 7 o'clock, 60 deg, dark grey)
+            # 3. Draw inert bottom arc (5 o'clock to 7 o'clock, 60 deg, light grey)
             # 5 o'clock = 150 deg, 7 o'clock = 210 deg, short path clockwise
             inert_start_rad = clock_to_canvas_rad(150)
             inert_end_rad = clock_to_canvas_rad(210)
-            draw_donut_arc((28, 28, 28), inert_start_rad, inert_end_rad)
+            draw_donut_arc((180, 180, 180), inert_start_rad, inert_end_rad)
 
             # 4. Draw coloured fill arcs per RPMBands up to current rpm
             bands = self.config.rpm_bands
@@ -878,9 +773,7 @@ class DisplayManager:
                 outer_y = center[1] + outer_radius * math.sin(angle_rad)
                 pygame.draw.line(surface, (60, 60, 60), (inner_x, inner_y), (outer_x, outer_y), 2)
 
-            # 6. Draw shift border with dynamic colour and width based on RPM
-            border_colour, border_width, _, _ = self._get_shift_cue(rpm)
-            self._draw_shift_border(border_colour, border_width)
+            # 6. (Border already drawn at step 1)
 
             # 7. Draw inner arc edge ring (subtle dark stroke)
             pygame.draw.circle(surface, (40, 40, 40), center, inner_radius, 2)
@@ -1036,17 +929,18 @@ class DisplayManager:
                 lambda pos: setattr(self.config, 'mode', DisplayMode.DIGITAL)
             )
             
-            # Gauge button
-            gauge_rect = pygame.Rect(selector_x + segment_width, y_pos, segment_width, selector_height)
-            gauge_color = (100, 150, 250) if not is_digital else (80, 80, 80)
-            
-            self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, gauge_color,
-                                          (gauge_rect.x, gauge_rect.y, gauge_rect.width, gauge_rect.height))
-            
+            # Radial button
+            radial_rect = pygame.Rect(selector_x + segment_width, y_pos, segment_width, selector_height)
+            is_radial = self.config.mode == DisplayMode.RADIAL
+            radial_color = (100, 150, 250) if is_radial else (80, 80, 80)
+
+            self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, radial_color,
+                                          (radial_rect.x, radial_rect.y, radial_rect.width, radial_rect.height))
+
             # Register touch region
             self.touch_coordinator.register_button_region(
-                "mode_gauge", gauge_rect, TouchAction.MODE_CHANGE,
-                lambda pos: setattr(self.config, 'mode', DisplayMode.GAUGE)
+                "mode_radial", radial_rect, TouchAction.MODE_CHANGE,
+                lambda pos: setattr(self.config, 'mode', DisplayMode.RADIAL)
             )
             
         except Exception as e:

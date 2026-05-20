@@ -63,7 +63,6 @@ class DisplayMode(Enum):
     """Display mode enumeration for different display screens"""
     SPLASH = auto()           # Application startup splash screen
     DIGITAL = auto()          # Digital RPM display mode
-    GAUGE = auto()            # Analog gauge RPM display mode
     RADIAL = auto()           # Radial arc RPM display mode
     SETTINGS = auto()         # Settings configuration screen
     ACKNOWLEDGEMENT = auto()  # RPM threshold acknowledgement screen

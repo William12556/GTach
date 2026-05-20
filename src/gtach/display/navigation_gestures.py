@@ -423,9 +423,9 @@ class NavigationGestureHandler:
             self.logger.error(f"Error changing display mode: {e}")
 
     def _cycle_display_mode(self, direction: int) -> None:
-        """Cycle through DIGITAL, RADIAL, GAUGE in the given direction (+1 or -1)."""
+        """Cycle through DIGITAL and RADIAL in the given direction (+1 or -1)."""
         try:
-            _cycle = [DisplayMode.DIGITAL, DisplayMode.RADIAL, DisplayMode.GAUGE]
+            _cycle = [DisplayMode.DIGITAL, DisplayMode.RADIAL]
             current = self.display_manager.config.mode
             try:
                 idx = _cycle.index(current)

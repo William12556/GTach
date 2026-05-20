@@ -71,14 +71,10 @@ class TypographyConstants:
     
     # Primary font sizes (reduced from original by ~40%)
     TITLE_SIZE = 36      # Main RPM display (was 120)
-    MEDIUM_SIZE = 28     # Settings headers, mode labels (was 48) 
+    MEDIUM_SIZE = 28     # Settings headers, mode labels (was 48)
     SMALL_SIZE = 20      # Labels, warnings (was 36)
     MINIMAL_SIZE = 16    # Status text, hints (was 24)
-    
-    # Gauge-specific font sizes
-    GAUGE_CENTER_SIZE = 28   # Center RPM readout (was 46)
-    GAUGE_LABEL_SIZE = 16    # Tick mark labels (was 24)
-    
+
     # Specific named constants for DisplayManager
     FONT_RPM_LARGE = 180     # Digital mode main RPM display
     FONT_RPM_MEDIUM = 28     # Gauge mode center readout
@@ -233,24 +229,6 @@ class FontManager:
         scaled_size = int(base_size * scale)
         
         return self.get_font(scaled_size)
-    
-    def get_gauge_font(self, font_type: str = "center") -> Optional[pygame.font.Font]:
-        """
-        Get specialized fonts for gauge mode.
-        
-        Args:
-            font_type: "center" for RPM readout, "label" for tick marks
-            
-        Returns:
-            pygame.font.Font object or None if unavailable
-        """
-        if font_type == "center":
-            return self.get_font(TypographyConstants.GAUGE_CENTER_SIZE)
-        elif font_type == "label":
-            return self.get_font(TypographyConstants.GAUGE_LABEL_SIZE)
-        else:
-            self.logger.warning(f"Unknown gauge font type: {font_type}")
-            return self.get_font(TypographyConstants.SMALL_SIZE)
     
     def _validate_font_size(self, size: int) -> int:
         """
@@ -680,7 +658,7 @@ def get_rpm_large_font() -> Optional[pygame.font.Font]:
 
 
 def get_rpm_medium_font() -> Optional[pygame.font.Font]:
-    """Get font for medium RPM display (gauge center)."""
+    """Get font for medium RPM display."""
     return get_font_manager().get_font(TypographyConstants.FONT_RPM_MEDIUM)
 
 

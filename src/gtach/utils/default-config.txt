@@ -18,7 +18,7 @@ bluetooth:
 
 # Display Settings
 display:
-  mode: "DIGITAL"  # DIGITAL or GAUGE
+  mode: "DIGITAL"  # DIGITAL or RADIAL
   rpm_warning: 6500
   rpm_danger: 7000
   fps_limit: 60

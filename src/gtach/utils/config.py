@@ -327,7 +327,7 @@ class ConfigValidator:
     def _validate_display_config(self, display_config: 'DisplayConfig', result: Dict[str, Any]):
         """Validate display configuration settings"""
         # Validate display mode
-        valid_modes = ['DIGITAL', 'GAUGE']
+        valid_modes = ['DIGITAL', 'RADIAL']
         if display_config.mode not in valid_modes:
             result['errors'].append(f"Invalid display mode '{display_config.mode}', must be one of {valid_modes}")
             result['valid'] = False
@@ -550,7 +550,7 @@ class SplashConfig:
 @dataclass
 class DisplayConfig:
     """Display-specific configuration settings"""
-    mode: str = "DIGITAL"  # DIGITAL or GAUGE
+    mode: str = "DIGITAL"  # DIGITAL or RADIAL
     rpm_warning: int = 6500
     rpm_danger: int = 7000
     fps_limit: int = 60

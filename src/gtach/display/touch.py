@@ -181,14 +181,10 @@ class TouchHandler:
                 if dx > 0:  # Right swipe
                     if self.display_manager.config.mode == DisplayMode.DIGITAL:
                         self.display_manager.change_mode(DisplayMode.RADIAL)
-                    elif self.display_manager.config.mode == DisplayMode.RADIAL:
-                        self.display_manager.change_mode(DisplayMode.GAUGE)
                     else:
                         self.display_manager.change_mode(DisplayMode.DIGITAL)
                 else:  # Left swipe
                     if self.display_manager.config.mode == DisplayMode.DIGITAL:
-                        self.display_manager.change_mode(DisplayMode.GAUGE)
-                    elif self.display_manager.config.mode == DisplayMode.GAUGE:
                         self.display_manager.change_mode(DisplayMode.RADIAL)
                     else:
                         self.display_manager.change_mode(DisplayMode.DIGITAL)
@@ -242,10 +238,8 @@ class TouchHandler:
             
             # Handle different setting controls
             if setting_id == "mode":
-                # Cycle through DIGITAL, GAUGE, and RADIAL modes
+                # Toggle between DIGITAL and RADIAL modes
                 if config.mode == DisplayMode.DIGITAL:
-                    config.mode = DisplayMode.GAUGE
-                elif config.mode == DisplayMode.GAUGE:
                     config.mode = DisplayMode.RADIAL
                 else:
                     config.mode = DisplayMode.DIGITAL
@@ -276,8 +270,8 @@ class TouchHandler:
                 # Save settings and exit settings mode
                 self.display_manager._save_config()
                 self.display_manager.change_mode(
-                    DisplayMode.DIGITAL if config.mode == DisplayMode.DIGITAL 
-                    else DisplayMode.GAUGE
+                    DisplayMode.DIGITAL if config.mode == DisplayMode.DIGITAL
+                    else DisplayMode.RADIAL
                 )
             
             # Add visual feedback for touch interaction
