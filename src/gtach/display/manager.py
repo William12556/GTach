@@ -613,6 +613,11 @@ class DisplayManager:
             # Get band colours for current RPM
             bg_colour, text_colour = self._get_band_colour(rpm)
 
+            # Draw shift border first — filled circle at r=244 forms the
+            # outer ring; subsequent draws render on top of it.
+            border_colour, _, _, _ = self._get_shift_cue(rpm)
+            self._draw_shift_border(border_colour)
+
             # Fill background with band colour
             self.rendering_engine.draw_circle(
                 RenderTarget.BACK_BUFFER,
@@ -648,13 +653,10 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER,
                     "RPM \u00d7 1000",
                     self._rpm_label_font,
-                    (200, 0, 0),
+                    text_colour,
                     (240, 390),
                     center=True
                 )
-
-            # Draw shift border
-            self._draw_shift_border((200, 0, 0), 5)
 
         except Exception as e:
             self.logger.error(f"Digital display error: {e}")

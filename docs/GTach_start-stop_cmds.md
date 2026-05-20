@@ -22,7 +22,7 @@ cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/gtach-simbt.log ~
 ## Install GTach on the Pi
 
 ```shell
-cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.42-py3-none-any.whl
+cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.44-py3-none-any.whl
 ```
 
 ## Run GTach on the Pi
