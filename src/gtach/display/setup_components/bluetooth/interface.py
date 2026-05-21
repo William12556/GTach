@@ -180,10 +180,15 @@ class BluetoothSetupInterface:
                     self.logger.error("Cannot start discovery - Bluetooth pairing not available")
                     state.pairing_status = PairingStatus.FAILED
                     raise RuntimeError("Bluetooth pairing not available")
-                
+
                 if progress_callback_inner:
                     progress_callback_inner(0.1, "Starting device discovery...")
-                
+
+                # Brief settle delay — allows RFCOMM stack to release adapter
+                # after a previous pairing attempt before issuing hcitool scan
+                import time as _time
+                _time.sleep(2.0)
+
                 state.pairing_status = PairingStatus.DISCOVERING
                 state.discovery_progress = 0.0
                 state.discovered_devices = []
@@ -312,6 +317,9 @@ class BluetoothSetupInterface:
                     if success:
                         state.pairing_status = PairingStatus.SUCCESS
                         self.logger.info(f"Successfully paired with device: {device.name}")
+
+                        # Persist device to store before OBD verify
+                        self.device_store.save_device(device, is_primary=True)
 
                         # Verify OBD connection automatically after pairing success
                         if self.verify_obd_connection(state):
