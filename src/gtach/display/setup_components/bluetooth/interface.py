@@ -17,6 +17,7 @@ from typing import Optional, Dict, Any, Callable
 from ...setup_models import PairingStatus, BluetoothDevice
 from ....comm.pairing import BluetoothPairing
 from ....comm.device_store import DeviceStore
+from ....comm.models import BluetoothDevice as CommBluetoothDevice
 from ...async_operations import get_async_manager, OperationType, OperationStatus
 
 
@@ -319,7 +320,14 @@ class BluetoothSetupInterface:
                         self.logger.info(f"Successfully paired with device: {device.name}")
 
                         # Persist device to store before OBD verify
-                        self.device_store.save_device(device, is_primary=True)
+                        # Convert setup BluetoothDevice -> comm BluetoothDevice
+                        # (DeviceStore requires the comm model's last_connected field)
+                        comm_device = CommBluetoothDevice(
+                            name=device.name,
+                            mac_address=device.mac_address,
+                            device_type=device.device_type,
+                        )
+                        self.device_store.save_device(comm_device, is_primary=True)
 
                         # Verify OBD connection automatically after pairing success
                         if self.verify_obd_connection(state):
