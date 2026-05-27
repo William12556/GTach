@@ -922,6 +922,7 @@ The following Tier 3 component design documents provide detailed implementation 
 | [design-e1f2a3b4-component_display_performance_monitor.md](<design-e1f2a3b4-component_display_performance_monitor.md>) | PerformanceMonitor | src/gtach/display/performance.py |
 | [design-f2a3b4c5-component_display_splash_screen.md](<design-f2a3b4c5-component_display_splash_screen.md>) | SplashScreen | src/gtach/display/splash.py |
 | [design-a3b4c5d6-component_display_setup_manager.md](<design-a3b4c5d6-component_display_setup_manager.md>) | SetupDisplayManager | src/gtach/display/setup_manager.py |
+| [design-g1h2i3j4-gesture_reference.md](<design-g1h2i3j4-gesture_reference.md>) | Gesture Reference | src/gtach/display/touch.py, navigation_gestures.py |
 
 ### 15.4 Utilities Domain Components
 
@@ -948,6 +949,7 @@ The following Tier 3 component design documents provide detailed implementation 
 | 1.2 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references (23 components across 5 domains) |
 | 1.3 | 2026-03-13 | William Watson | C2: memory 256->128 MB. C3: FPS 60->30. C4: DisplayConfig entity updated to fixed band model. C5: removed Provisioning domain (OOS-11). Error strategy updated: indefinite reconnect, no retry limit. |
 | 2.0 | 2026-04-01 | William Watson | Updated to reflect transport abstraction (change e1f2a3b4 / requirements v0.9): removed Bleak/BluetoothManager; added OBDTransport/RFCOMMTransport/SerialTransport/TCPTransport; updated component relationships, entity definition (BluetoothDevice simplified), interface (OBDTransport replaces BluetoothManager), technology stack, context flow. Corrected display mode flow to include DISCONNECTED state and long-press to setup (REQ f3a4b5c6). Corrected logging to no-output-in-production (NFR e1f2a3b4). Removed session-based logging. Renamed §13.3 to Transport State Machine. |
+| 2.1 | 2026-05-27 | William Watson | §15.3: added gesture reference document cross-reference. |
 
 ---
 

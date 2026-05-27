@@ -621,6 +621,11 @@ stateDiagram-v2
     DIGITAL --> GAUGE: Swipe left/right
     GAUGE --> DIGITAL: Swipe left/right
     
+    DIGITAL --> DISCONNECTED: Connection lost
+    GAUGE --> DISCONNECTED: Connection lost
+    DISCONNECTED --> DIGITAL: Connection restored
+    DISCONNECTED --> SETUP: Long press (re-pair)
+    
     DIGITAL --> SETTINGS: Long press
     GAUGE --> SETTINGS: Long press
     
@@ -727,6 +732,7 @@ The following Tier 3 component design documents decompose each component:
 | 1.0 | 2025-12-29 | William Watson | Initial domain design document |
 | 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
 | 1.2 | 2026-03-13 | William Watson | C3: fps_limit 60->30. C4: removed rpm_warning/rpm_danger; replaced with fixed 4-band background colour scheme and rpm_max. |
+| 1.3 | 2026-05-27 | William Watson | §8.2: added DISCONNECTED state and transitions (connection lost, connection restored, long-press to SETUP). |
 
 ---
 
