@@ -53,7 +53,7 @@ DisplayManager orchestrates all display operations including rendering, touch ha
 
 1. Initialize and coordinate display components
 2. Run main display loop with frame timing
-3. Manage display mode state machine (SPLASH→DIGITAL/GAUGE/DISCONNECTED→SETTINGS)
+3. Manage display mode state machine (SPLASH→DIGITAL/GAUGE/DISCONNECTED→OPTIONS)
 4. Read RPM data from ThreadManager message queue
 5. Delegate rendering to DisplayRenderingEngine
 6. Delegate touch events to TouchEventCoordinator
@@ -278,8 +278,8 @@ def _on_long_press(self) -> None:
     """Handle long press gesture.
     
     Mode Transitions:
-        DIGITAL/GAUGE -> SETTINGS
-        SETTINGS -> Previous mode
+        DIGITAL/GAUGE -> OPTIONS
+        OPTIONS -> Previous mode
         DISCONNECTED -> SETUP (clears stored device, starts discovery)
     """
 ```
@@ -323,7 +323,7 @@ class DisplayMode(Enum):
     DIGITAL = auto()       # Numeric RPM display
     GAUGE = auto()         # Analog gauge display
     DISCONNECTED = auto()  # Bluetooth connection lost
-    SETTINGS = auto()      # Settings menu
+    OPTIONS = auto()       # Options menu (source code: DisplayMode.SETTINGS — pending rename)
 ```
 
 ### 5.2 Mode Transitions
@@ -338,9 +338,9 @@ class DisplayMode(Enum):
 | GAUGE | DISCONNECTED | Connection lost |
 | DISCONNECTED | DIGITAL/GAUGE | Connection restored |
 | DISCONNECTED | SETUP | Long press (clears stored device) |
-| DIGITAL | SETTINGS | Long press |
-| GAUGE | SETTINGS | Long press |
-| SETTINGS | DIGITAL/GAUGE | Long press |
+| DIGITAL | OPTIONS | Long press |
+| GAUGE | OPTIONS | Long press |
+| OPTIONS | DIGITAL/GAUGE | Long press |
 
 ### 5.3 DisplayConfig
 
@@ -535,7 +535,7 @@ flowchart TD
     MODE -->|DIGITAL| RD[Render Digital]
     MODE -->|GAUGE| RG[Render Gauge]
     MODE -->|DISCONNECTED| RX[Render Disconnected]
-    MODE -->|SETTINGS| RST[Render Settings]
+    MODE -->|OPTIONS| RST[Render Options]
     
     RS --> SWAP
     RD --> SWAP
@@ -558,6 +558,7 @@ flowchart TD
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
 | 1.1 | 2026-03-13 | William Watson | C3: fps_limit 60->30. C4: fixed 4-band background colour scheme; removed rpm_warning/rpm_danger from DisplayConfig; updated frame sequence and colour constants. H1: added DISCONNECTED mode, set_connection_state(), _render_disconnected(), updated transitions. |
+| 1.2 | 2026-05-27 | William Watson | Renamed SETTINGS → OPTIONS throughout. Added naming note re source code identifier lag. Updated DisplayMode enum, mode transitions table, gesture methods, and render loop diagram. |
 
 ---
 

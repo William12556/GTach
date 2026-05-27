@@ -626,11 +626,11 @@ stateDiagram-v2
     DISCONNECTED --> DIGITAL: Connection restored
     DISCONNECTED --> SETUP: Long press (re-pair)
     
-    DIGITAL --> SETTINGS: Long press
-    GAUGE --> SETTINGS: Long press
+    DIGITAL --> OPTIONS: Long press
+    GAUGE --> OPTIONS: Long press
     
-    SETTINGS --> DIGITAL: Long press (exit)
-    SETTINGS --> GAUGE: Long press (exit)
+    OPTIONS --> DIGITAL: Long press (exit)
+    OPTIONS --> GAUGE: Long press (exit)
 ```
 
 ### 8.3 Rendering Pipeline
@@ -733,6 +733,7 @@ The following Tier 3 component design documents decompose each component:
 | 1.1 | 2025-12-29 | William Watson | Added Tier 3 component document cross-references |
 | 1.2 | 2026-03-13 | William Watson | C3: fps_limit 60->30. C4: removed rpm_warning/rpm_danger; replaced with fixed 4-band background colour scheme and rpm_max. |
 | 1.3 | 2026-05-27 | William Watson | §8.2: added DISCONNECTED state and transitions (connection lost, connection restored, long-press to SETUP). |
+| 1.4 | 2026-05-27 | William Watson | §8.2: renamed SETTINGS → OPTIONS. |
 
 ---
 

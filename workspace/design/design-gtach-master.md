@@ -345,7 +345,7 @@ GTach/
 - `SplashScreen`: Automotive-themed startup display
 
 **Key Patterns**:
-- State Machine: DisplayMode (SPLASH → DIGITAL/GAUGE → SETTINGS)
+- State Machine: DisplayMode (SPLASH → DIGITAL/GAUGE → OPTIONS)
 - Factory: Component creation via factory classes
 - Observer: Touch gesture callbacks
 - Double Buffer: Front/back buffer swapping for tear-free rendering
@@ -430,7 +430,7 @@ entity:
   attributes:
     - name: "mode"
       type: "DisplayMode"
-      constraints: "Enum: SPLASH, DIGITAL, GAUGE, SETTINGS"
+      constraints: "Enum: SPLASH, DIGITAL, GAUGE, OPTIONS (source: SETTINGS — pending rename)"
     - name: "rpm_max"
       type: "int"
       constraints: "Default 8000 (gauge scale ceiling)"
@@ -830,6 +830,10 @@ stateDiagram-v2
     DISCONNECTED --> DIGITAL: reconnect successful
     DISCONNECTED --> SETUP: long-press gesture (re-pair, REQ f3a4b5c6)
     
+    DIGITAL --> OPTIONS: long-press gesture
+    GAUGE --> OPTIONS: long-press gesture
+    OPTIONS --> DIGITAL: long-press gesture (exit)
+    
     note right of DISCONNECTED
         Background reconnect runs indefinitely.
         Long-press clears stored device and
@@ -950,6 +954,7 @@ The following Tier 3 component design documents provide detailed implementation 
 | 1.3 | 2026-03-13 | William Watson | C2: memory 256->128 MB. C3: FPS 60->30. C4: DisplayConfig entity updated to fixed band model. C5: removed Provisioning domain (OOS-11). Error strategy updated: indefinite reconnect, no retry limit. |
 | 2.0 | 2026-04-01 | William Watson | Updated to reflect transport abstraction (change e1f2a3b4 / requirements v0.9): removed Bleak/BluetoothManager; added OBDTransport/RFCOMMTransport/SerialTransport/TCPTransport; updated component relationships, entity definition (BluetoothDevice simplified), interface (OBDTransport replaces BluetoothManager), technology stack, context flow. Corrected display mode flow to include DISCONNECTED state and long-press to setup (REQ f3a4b5c6). Corrected logging to no-output-in-production (NFR e1f2a3b4). Removed session-based logging. Renamed §13.3 to Transport State Machine. |
 | 2.1 | 2026-05-27 | William Watson | §15.3: added gesture reference document cross-reference. |
+| 2.2 | 2026-05-27 | William Watson | Renamed SETTINGS → OPTIONS in §8.3, §9.1.3, §13.4. Added OPTIONS transitions to §13.4 display mode flow. |
 
 ---
 
