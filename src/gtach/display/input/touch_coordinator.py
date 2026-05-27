@@ -469,6 +469,14 @@ class TouchEventCoordinator(TouchEventInterface):
         """Handle touch down on button region"""
         try:
             self.logger.debug(f"Button {region.region_id} pressed at {pos}")
+            # Execute callback immediately — handle_touch_up is not called in this
+            # delivery path (TouchHandler routes taps via handle_touch_down only)
+            callback = region.metadata.get('callback')
+            if callback and callable(callback):
+                try:
+                    callback(pos)
+                except Exception as e:
+                    self.logger.error(f"Button callback error for {region.region_id}: {e}")
             return region.action_type
             
         except Exception as e:
