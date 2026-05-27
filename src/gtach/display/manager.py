@@ -51,6 +51,7 @@ from .typography import (get_font_manager, get_title_font, get_medium_font, get_
                          get_button_renderer, ButtonSize, ButtonState)
 from ..core import ThreadManager, ThreadStatus
 from ..utils import TerminalRestorer
+from ..utils.ack_state import AcknowledgementStateManager
 
 class DisplayManager:
     """
@@ -95,17 +96,20 @@ class DisplayManager:
                 self.display_available = False
             else:
                 self.display_available = True
-            
+
             # Initialize touch coordinator
             self.touch_coordinator = TouchEventCoordinator((480, 480))
             self._setup_touch_callbacks()
-            
+
             # Initialize performance monitor
             self.performance_monitor = PerformanceMonitor(target_fps=60)
             self.performance_monitor.start_monitoring()
-            
+
+            # Initialize acknowledgement state manager
+            self._ack_state_manager = AcknowledgementStateManager()
+
             self.logger.info("Display components initialized successfully")
-            
+
         except Exception as e:
             self.logger.error(f"Component initialization failed: {e}", exc_info=True)
             self.display_available = False
@@ -495,6 +499,8 @@ class DisplayManager:
                 self._draw_radial_mode()
             elif self.config.mode == DisplayMode.SETTINGS:
                 self._draw_settings_mode()
+            elif self.config.mode == DisplayMode.ACKNOWLEDGEMENT:
+                self._draw_acknowledgement_mode()
             # Always draw status indicator
             self._draw_status_indicator()
 
@@ -1006,16 +1012,16 @@ class DisplayManager:
         try:
             # Calculate button position in circular layout
             save_rect = pygame.Rect(350, 300, 44, 44)
-            
+
             self.touch_coordinator.register_button_region(
                 "save", save_rect, TouchAction.SETTINGS_CHANGE,
                 lambda pos: self._save_config()
             )
-            
+
             # Draw save button
-            self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, (0, 150, 0), 
+            self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, (0, 150, 0),
                                             (372, 322), 22)
-            
+
             # Checkmark (simplified)
             font = self._get_cached_font(20)
             if font:
@@ -1023,9 +1029,104 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER, "\u2713", font, (255, 255, 255),
                     (372, 322), center=True
                 )
-                
+
         except Exception as e:
             self.logger.error(f"Save button error: {e}")
+
+    def _draw_acknowledgement_mode(self) -> None:
+        """Draw acknowledgement screen with blocking tap-to-dismiss interaction.
+
+        Renders a safety acknowledgement screen with red border, title, warning text,
+        and instruction. Registers a full-screen tap region that triggers dismissal
+        and saves acknowledgement state before transitioning to post-splash mode.
+        """
+        try:
+            # Clear any existing touch regions
+            self.touch_coordinator.clear_regions()
+
+            # Fill background black
+            self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (0, 0, 0))
+
+            # Draw red circular border
+            self._draw_shift_border((200, 0, 0))
+
+            # Render title text 'GTach' centered near top of circle
+            title_font = self._get_cached_font(72)
+            if title_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "GTach",
+                    title_font,
+                    (255, 255, 255),
+                    (240, 120),
+                    center=True
+                )
+
+            # Render body warning text
+            body_font = self._get_cached_font(24)
+            if body_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "OBD tachometer — experimental software",
+                    body_font,
+                    (200, 200, 200),
+                    (240, 240),
+                    center=True
+                )
+
+            # Render instruction text
+            instruction_font = self._get_cached_font(20)
+            if instruction_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "Tap to acknowledge and continue",
+                    instruction_font,
+                    (150, 150, 150),
+                    (240, 360),
+                    center=True
+                )
+
+            # Register full-screen tap region for dismissal
+            # Full 480x480 surface tap area
+            full_screen_rect = pygame.Rect(0, 0, 480, 480)
+            self.touch_coordinator.register_button_region(
+                "acknowledgement_dismiss",
+                full_screen_rect,
+                TouchAction.NAVIGATION,
+                lambda pos: self._on_acknowledgement_dismissed()
+            )
+
+            self.logger.debug("Acknowledgement screen rendered")
+
+        except Exception as e:
+            self.logger.error(f"Acknowledgement mode render error: {e}", exc_info=True)
+
+    def _on_acknowledgement_dismissed(self) -> None:
+        """Handle acknowledgement screen dismissal.
+
+        Saves acknowledgement state with current RPM bands and engine profile,
+        clears touch regions, and transitions to the post-splash display mode.
+        Called when operator taps anywhere on the acknowledgement screen.
+        """
+        try:
+            # Save acknowledgement state
+            self._ack_state_manager.set_acknowledged(
+                self.config.rpm_bands,
+                self.config.engine_profile
+            )
+
+            # Clear touch regions
+            self.touch_coordinator.clear_regions()
+
+            # Transition to post-splash mode
+            self.config.mode = self._post_splash_mode
+
+            self.logger.info(f"Acknowledgement dismissed — transitioning to {self._post_splash_mode.name}")
+
+        except Exception as e:
+            self.logger.error(f"Acknowledgement dismissal error: {e}", exc_info=True)
+            # Fallback: transition anyway to prevent being stuck
+            self.config.mode = self._post_splash_mode
     
     def _draw_status_indicator(self) -> None:
         """Draw connection status indicator"""

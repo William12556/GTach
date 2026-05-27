@@ -17,22 +17,31 @@ cd ~/Documents/GitHub/GTach && ./build.sh && scp dist/*.whl root@gtach.local:/tm
 cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/gtach-debug.log ~/Documents/GitHub/GTach/
 ```
 
+# Transfer ELM327 logs back to the Mac from the emulator
+
+```shell
+cd ~/Documents/GitHub/GTach && scp root@ELM327-Emulator.local:/opt/elm327/elm.log ~/Documents/GitHub/GTach/
+```
+
+```shell
+cd ~/Documents/GitHub/GTach && scp root@ELM327-Emulator.local:/opt/elm327/bt-server.log ~/Documents/GitHub/GTach/
+```
+
 # Pi:
 
 ## Install GTach on the Pi
 
 ```shell
-cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.45-py3-none-any.whl
+cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.47-py3-none-any.whl
 ```
 
 ## Run GTach on the Pi
 
 ```shell
-cd /opt/gtach
-gtach --transport rfcom --debug 2>&1 | tee /opt/gtach/gtach-debug.log
+cd /opt/gtach && gtach --transport rfcomm --debug 2>&1 | tee /opt/gtach/gtach-debug.log
 ```
 
-### or
+### or simulate
 ```shell
-gtach --transport simbt --debug 2>&1 | tee /opt/gtach/gtach-simbt.log
+cd /opt/gtach &&  gtach --transport simbt --debug 2>&1 | tee /opt/gtach/gtach-simbt.log
 ```
