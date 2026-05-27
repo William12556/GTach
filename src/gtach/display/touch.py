@@ -152,11 +152,24 @@ class TouchHandler:
     def _handle_long_press(self, x: int, y: int) -> None:
         """Handle long press events"""
         try:
-            if self.display_manager.config.mode != DisplayMode.SETTINGS:
-                self.display_manager.change_mode(DisplayMode.SETTINGS)
+            # Check if in DISCONNECTED state (transport not running and not in sim mode)
+            from ..core import ThreadStatus
+            thread_status = self.display_manager.thread_manager.get_thread_status('obd_protocol')
+            is_disconnected = (thread_status != ThreadStatus.RUNNING and
+                             not getattr(self.display_manager, '_sim_mode', False))
+
+            if is_disconnected:
+                # Long press from DISCONNECTED transitions to SETUP
+                self.logger.info("Long press from DISCONNECTED - entering SETUP")
+                # Setup mode requires setup manager - for now just log
+                # Actual SETUP entry requires app controller coordination
+                return
+
+            if self.display_manager.config.mode != DisplayMode.OPTIONS:
+                self.display_manager.change_mode(DisplayMode.OPTIONS)
             else:
                 self.display_manager.change_mode(DisplayMode.DIGITAL)
-                
+
         except Exception as e:
             self.logger.error(f"Long press handling error: {e}")
 
@@ -168,9 +181,9 @@ class TouchHandler:
             if in_setup:
                 self._handle_setup_touch(x, y)
                 return
-            
-            if self.display_manager.config.mode == DisplayMode.SETTINGS:
-                self._handle_settings_touch(x, y)
+
+            if self.display_manager.config.mode == DisplayMode.OPTIONS:
+                self._handle_options_touch(x, y)
                 return
                 
             # Detect left/right swipe
@@ -192,39 +205,27 @@ class TouchHandler:
         except Exception as e:
             self.logger.error(f"Short press handling error: {e}")
 
-    def _handle_settings_touch(self, x: int, y: int) -> None:
-        """Handle touch events in settings mode.
-        
-        Processes touch interactions with the settings interface elements,
+    def _handle_options_touch(self, x: int, y: int) -> None:
+        """Handle touch events in options mode.
+
+        Processes touch interactions with the options interface elements,
         updates configuration values, and saves changes when requested.
-        
+
         Args:
             x: Touch x-coordinate
             y: Touch y-coordinate
         """
         try:
-            self.logger.debug(f"Settings touch at ({x}, {y})")
-            
-            # Check if settings_regions exists
-            if not hasattr(self.display_manager, 'settings_regions'):
-                self.logger.warning("Settings regions not defined - touch ignored")
-                return
-            
-            # Log available regions for debugging
-            self.logger.debug(f"Checking {len(self.display_manager.settings_regions)} touch regions")
-            
-            # Check if touch point is within any interactive region
-            for i, (setting_id, region) in enumerate(self.display_manager.settings_regions):
-                self.logger.debug(f"Region {i}: {setting_id} at {region}")
-                if region.collidepoint(x, y):
-                    self.logger.info(f"Touch hit region: {setting_id}")
-                    self._process_settings_touch(setting_id)
-                    return
-                    
-            self.logger.debug("Touch did not hit any interactive region")
-                    
+            self.logger.debug(f"Options touch at ({x}, {y})")
+
+            # Touch handling is now managed by touch_coordinator in DisplayManager
+            # This method is kept for compatibility but delegates to touch_coordinator
+            action = self.display_manager.handle_touch_event((x, y))
+
+            self.logger.debug(f"Options touch action: {action}")
+
         except Exception as e:
-            self.logger.error(f"Settings touch handling error: {e}", exc_info=True)
+            self.logger.error(f"Options touch handling error: {e}", exc_info=True)
 
     def _process_settings_touch(self, setting_id: str) -> None:
         """Process a touch event for a specific settings control.

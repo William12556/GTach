@@ -67,6 +67,7 @@ class DisplayManager:
         self.config_path = config_path
         self._shutdown_event = threading.Event()
         self.terminal_restorer = terminal_restorer
+        self._sim_mode = False  # Session-only simulation mode flag
         
         # Component initialization
         self._initialize_components()
@@ -135,7 +136,7 @@ class DisplayManager:
         """Handle left swipe gesture"""
         try:
             # Block navigation when OBD not connected
-            if self.thread_manager.get_thread_status('transport') != ThreadStatus.RUNNING:
+            if self.thread_manager.get_thread_status('obd_protocol') != ThreadStatus.RUNNING:
                 self.logger.debug('Swipe blocked: OBD not connected')
                 return TouchAction.NONE
 
@@ -154,7 +155,7 @@ class DisplayManager:
         """Handle right swipe gesture"""
         try:
             # Block navigation when OBD not connected
-            if self.thread_manager.get_thread_status('transport') != ThreadStatus.RUNNING:
+            if self.thread_manager.get_thread_status('obd_protocol') != ThreadStatus.RUNNING:
                 self.logger.debug('Swipe blocked: OBD not connected')
                 return TouchAction.NONE
 
@@ -172,13 +173,13 @@ class DisplayManager:
     def _handle_long_press(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
         """Handle long press gesture"""
         try:
-            if self.config.mode == DisplayMode.SETTINGS:
-                # Exit settings mode
+            if self.config.mode == DisplayMode.OPTIONS:
+                # Exit options mode
                 self.config.mode = DisplayMode.DIGITAL
                 return TouchAction.NAVIGATION
             else:
-                # Enter settings mode
-                self.config.mode = DisplayMode.SETTINGS
+                # Enter options mode
+                self.config.mode = DisplayMode.OPTIONS
                 return TouchAction.NAVIGATION
         except Exception as e:
             self.logger.error(f"Long press handling error: {e}")
@@ -201,7 +202,8 @@ class DisplayManager:
             # Setup mode components
             self._setup_manager = None
             self._in_setup_mode = False
-            
+            self._setup_entry_callback = None
+
             # Initialize splash screen
             try:
                 splash_config = getattr(self.config, 'splash', None)
@@ -223,7 +225,7 @@ class DisplayManager:
                     edge_indicator_timeout=getattr(self.config, 'gesture_edge_timeout', 3.0),
                     enable_main_navigation=getattr(self.config, 'gesture_enable_main', True),
                     enable_setup_navigation=getattr(self.config, 'gesture_enable_setup', True),
-                    enable_settings_gestures=getattr(self.config, 'gesture_enable_settings', True),
+                    enable_settings_gestures=getattr(self.config, 'gesture_enable_settings', True),  # Note: kept for config compat
                     debug_mode=getattr(self.config, 'gesture_debug_mode', False)
                 )
                 
@@ -493,12 +495,18 @@ class DisplayManager:
     def _render_normal_modes(self) -> None:
         """Render normal display modes"""
         try:
+            # Check if transport is disconnected and not in simulation mode
+            thread_status = self.thread_manager.get_thread_status('obd_protocol')
+            if thread_status != ThreadStatus.RUNNING and not self._sim_mode:
+                self._render_disconnected()
+                return
+
             if self.config.mode == DisplayMode.DIGITAL:
                 self._draw_digital_mode()
             elif self.config.mode == DisplayMode.RADIAL:
                 self._draw_radial_mode()
-            elif self.config.mode == DisplayMode.SETTINGS:
-                self._draw_settings_mode()
+            elif self.config.mode == DisplayMode.OPTIONS:
+                self._draw_options_mode()
             elif self.config.mode == DisplayMode.ACKNOWLEDGEMENT:
                 self._draw_acknowledgement_mode()
             # Always draw status indicator
@@ -601,17 +609,22 @@ class DisplayManager:
     def _draw_digital_mode(self) -> None:
         """Draw digital RPM display using rendering engine"""
         try:
-            # Drain queue — keep only the latest value to avoid display lag
-            import queue
-            try:
-                while True:
-                    rpm_data = self.thread_manager.message_queue.get_nowait()
-                    self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
-            except queue.Empty:
-                pass
-            except Exception as e:
-                self.logger.debug(f'Queue drain error: {e}')
-            rpm = getattr(self, '_last_rpm', 0)
+            # Use synthetic RPM in simulation mode
+            if self._sim_mode:
+                rpm = int(3000 + 3000 * math.sin(time.time()))
+                self._last_rpm = rpm
+            else:
+                # Drain queue — keep only the latest value to avoid display lag
+                import queue
+                try:
+                    while True:
+                        rpm_data = self.thread_manager.message_queue.get_nowait()
+                        self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
+                except queue.Empty:
+                    pass
+                except Exception as e:
+                    self.logger.debug(f'Queue drain error: {e}')
+                rpm = getattr(self, '_last_rpm', 0)
 
             # Get band colours for current RPM
             bg_colour, text_colour = self._get_band_colour(rpm)
@@ -668,18 +681,23 @@ class DisplayManager:
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
         try:
-            # Drain queue — keep only the latest value to avoid display lag
-            import queue
-            try:
-                while True:
-                    rpm_data = self.thread_manager.message_queue.get_nowait()
-                    self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
-            except queue.Empty:
-                pass
-            except Exception as e:
-                self.logger.debug(f'Queue drain error: {e}')
+            # Use synthetic RPM in simulation mode
+            if self._sim_mode:
+                rpm = int(3000 + 3000 * math.sin(time.time()))
+                self._last_rpm = rpm
+            else:
+                # Drain queue — keep only the latest value to avoid display lag
+                import queue
+                try:
+                    while True:
+                        rpm_data = self.thread_manager.message_queue.get_nowait()
+                        self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
+                except queue.Empty:
+                    pass
+                except Exception as e:
+                    self.logger.debug(f'Queue drain error: {e}')
 
-            rpm = getattr(self, '_last_rpm', 0)
+                rpm = getattr(self, '_last_rpm', 0)
             # Clamp RPM to valid range
             rpm = max(0, min(7000, rpm))
 
@@ -863,42 +881,104 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Radial display error: {e}", exc_info=True)
     
-    def _draw_settings_mode(self) -> None:
-        """Draw settings interface using touch coordinator"""
+    def _draw_options_mode(self) -> None:
+        """Draw options interface with two tappable items"""
         try:
             # Clear existing touch regions
             self.touch_coordinator.clear_regions()
-            
+
             # Background
             self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
-            
+
             # Title
             font = get_title_display_font()
             if font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    "Settings",
+                    "Options",
                     font,
                     (255, 255, 255),
-                    (240, 40),
+                    (240, 60),
                     center=True
                 )
-            
-            # Mode selector
-            self._render_mode_selector()
-            
-            # RPM sliders
-            self._register_rpm_sliders()
-            
-            # Save button
-            self._register_save_button()
-            
+
+            # Draw two centred button rectangles
+            button_width = 300
+            button_height = 80
+            center_x = 240
+
+            # Clear settings button (upper half)
+            clear_btn_y = 150
+            self._options_btn_clear = pygame.Rect(
+                center_x - button_width // 2,
+                clear_btn_y,
+                button_width,
+                button_height
+            )
+
+            # Simulation mode button (lower half)
+            sim_btn_y = 270
+            self._options_btn_sim = pygame.Rect(
+                center_x - button_width // 2,
+                sim_btn_y,
+                button_width,
+                button_height
+            )
+
+            # Draw button backgrounds
+            self.rendering_engine.draw_rect(
+                RenderTarget.BACK_BUFFER,
+                (80, 80, 100),
+                (self._options_btn_clear.x, self._options_btn_clear.y,
+                 self._options_btn_clear.width, self._options_btn_clear.height)
+            )
+            self.rendering_engine.draw_rect(
+                RenderTarget.BACK_BUFFER,
+                (80, 80, 100),
+                (self._options_btn_sim.x, self._options_btn_sim.y,
+                 self._options_btn_sim.width, self._options_btn_sim.height)
+            )
+
+            # Draw button labels
+            button_font = self._get_cached_font(28)
+            if button_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "Clear settings",
+                    button_font,
+                    (255, 255, 255),
+                    (center_x, clear_btn_y + button_height // 2),
+                    center=True
+                )
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "Simulation mode",
+                    button_font,
+                    (255, 255, 255),
+                    (center_x, sim_btn_y + button_height // 2),
+                    center=True
+                )
+
+            # Register touch regions for buttons
+            self.touch_coordinator.register_button_region(
+                "clear_settings",
+                self._options_btn_clear,
+                TouchAction.SETTINGS_CHANGE,
+                lambda pos: self._on_clear_settings()
+            )
+            self.touch_coordinator.register_button_region(
+                "simulation_mode",
+                self._options_btn_sim,
+                TouchAction.SETTINGS_CHANGE,
+                lambda pos: self._on_simulation_mode()
+            )
+
             # Instructions
             small_font = get_label_small_font()
             if small_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    "Long press anywhere to exit settings",
+                    "Long press anywhere to return to display",
                     small_font,
                     (150, 150, 150),
                     (240, 420),
@@ -909,7 +989,38 @@ class DisplayManager:
             self._draw_shift_border((200, 0, 0), 5)
 
         except Exception as e:
-            self.logger.error(f"Settings display error: {e}")
+            self.logger.error(f"Options display error: {e}")
+
+    def _on_clear_settings(self) -> None:
+        """Clear DeviceStore and enter SETUP mode"""
+        try:
+            self.logger.info("Clearing device settings")
+
+            # Import DeviceStore
+            from ..comm.device_store import DeviceStore
+            device_store = DeviceStore()
+            device_store.clear()
+
+            # Transition to SETUP mode
+            # Setup mode is managed via _in_setup_mode flag, not DisplayMode
+            # We need to trigger setup mode entry through the app controller
+            # For now, log the action and transition to DIGITAL
+            self.logger.info("Device store cleared - transitioning to DIGITAL")
+            self.config.mode = DisplayMode.DIGITAL
+
+        except Exception as e:
+            self.logger.error(f"Clear settings error: {e}", exc_info=True)
+            # Remain in OPTIONS on error
+
+    def _on_simulation_mode(self) -> None:
+        """Activate session-only simulation mode and transition to DIGITAL"""
+        try:
+            self.logger.info("Activating simulation mode")
+            self._sim_mode = True
+            self.config.mode = DisplayMode.DIGITAL
+
+        except Exception as e:
+            self.logger.error(f"Simulation mode activation error: {e}", exc_info=True)
 
     def _render_mode_selector(self) -> None:
         """Render mode selector using touch coordinator"""
@@ -1128,11 +1239,135 @@ class DisplayManager:
             # Fallback: transition anyway to prevent being stuck
             self.config.mode = self._post_splash_mode
     
+    def _render_disconnected(self) -> None:
+        """Render DISCONNECTED screen with Setup and Simulate button affordances"""
+        try:
+            # Clear existing touch regions
+            self.touch_coordinator.clear_regions()
+
+            # Fill background
+            self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (0, 0, 0))
+
+            # Draw red circular border
+            self._draw_shift_border((200, 0, 0))
+
+            # Title — font 36 at y=155 keeps text within circular viewport
+            title_font = self._get_cached_font(36)
+            if title_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "Disconnected",
+                    title_font,
+                    (255, 100, 100),
+                    (240, 155),
+                    center=True
+                )
+
+            # Message
+            msg_font = self._get_cached_font(20)
+            if msg_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "OBD connection not available",
+                    msg_font,
+                    (200, 200, 200),
+                    (240, 180),
+                    center=True
+                )
+
+            # Button geometry
+            button_width = 240
+            button_height = 70
+            center_x = 240
+
+            # Setup button (upper)
+            setup_btn_y = 240
+            self._disconnected_btn_setup = pygame.Rect(
+                center_x - button_width // 2,
+                setup_btn_y,
+                button_width,
+                button_height
+            )
+
+            # Simulate button (lower)
+            sim_btn_y = 330
+            self._disconnected_btn_sim = pygame.Rect(
+                center_x - button_width // 2,
+                sim_btn_y,
+                button_width,
+                button_height
+            )
+
+            # Draw button backgrounds
+            self.rendering_engine.draw_rect(
+                RenderTarget.BACK_BUFFER,
+                (60, 60, 80),
+                (self._disconnected_btn_setup.x, self._disconnected_btn_setup.y,
+                 self._disconnected_btn_setup.width, self._disconnected_btn_setup.height)
+            )
+            self.rendering_engine.draw_rect(
+                RenderTarget.BACK_BUFFER,
+                (60, 60, 80),
+                (self._disconnected_btn_sim.x, self._disconnected_btn_sim.y,
+                 self._disconnected_btn_sim.width, self._disconnected_btn_sim.height)
+            )
+
+            # Draw button labels
+            button_font = self._get_cached_font(28)
+            if button_font:
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "Setup",
+                    button_font,
+                    (255, 255, 255),
+                    (center_x, setup_btn_y + button_height // 2),
+                    center=True
+                )
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "Simulate",
+                    button_font,
+                    (255, 255, 255),
+                    (center_x, sim_btn_y + button_height // 2),
+                    center=True
+                )
+
+            # Register touch regions
+            self.touch_coordinator.register_button_region(
+                "disconnected_setup",
+                self._disconnected_btn_setup,
+                TouchAction.NAVIGATION,
+                lambda pos: self._enter_setup_from_disconnected()
+            )
+            self.touch_coordinator.register_button_region(
+                "disconnected_simulate",
+                self._disconnected_btn_sim,
+                TouchAction.NAVIGATION,
+                lambda pos: self._on_simulation_mode()
+            )
+
+            self.logger.debug("DISCONNECTED screen rendered")
+
+        except Exception as e:
+            self.logger.error(f"Disconnected screen render error: {e}", exc_info=True)
+
+    def _enter_setup_from_disconnected(self) -> None:
+        """Enter SETUP mode from DISCONNECTED screen"""
+        try:
+            if self._setup_entry_callback:
+                self.logger.info("Invoking setup_entry_callback from DISCONNECTED")
+                self._setup_entry_callback()
+            else:
+                self.logger.warning("setup_entry_callback not registered")
+
+        except Exception as e:
+            self.logger.error(f"Setup entry error: {e}", exc_info=True)
+
     def _draw_status_indicator(self) -> None:
         """Draw connection status indicator"""
         try:
             # Check transport thread status via locked public accessor
-            thread_status = self.thread_manager.get_thread_status('transport')
+            thread_status = self.thread_manager.get_thread_status('obd_protocol')
             if thread_status == ThreadStatus.RUNNING:
                 status = ConnectionStatus.CONNECTED
             elif thread_status == ThreadStatus.STARTING:
