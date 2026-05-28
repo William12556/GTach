@@ -108,20 +108,23 @@ class OBDProtocol:
         try:
             self.thread_manager.update_heartbeat('obd_protocol')
             if not self._adapter_initialised:
-                # Full init — ATZ resets adapter, then configure and verify
+                # Full init — ATZ resets the adapter (slow on emulator)
                 self._send_command(b"ATZ", timeout=5.0)
                 self.thread_manager.update_heartbeat('obd_protocol')
-                self._send_command(b"ATE0")
-                self._send_command(b"ATL0")  # Line feeds off
-                self._send_command(b"ATS0")  # Spaces off
-                self._send_command(b"ATSP0") # Auto protocol
-                self.thread_manager.update_heartbeat('obd_protocol')
             else:
-                # Adapter already initialised by setup probe — skip AT config commands.
+                # Adapter already reset by setup probe — skip ATZ only.
                 # Settle briefly to allow emulator to accept new RFCOMM connection.
-                self.logger.debug("Skipping AT init — adapter pre-initialised; settling 1.5s")
+                self.logger.debug("Skipping ATZ — adapter pre-initialised; settling 1.5s")
                 time.sleep(1.5)
                 self.thread_manager.update_heartbeat('obd_protocol')
+
+            # Config commands are fast and do not reset the adapter. They must
+            # always run — ATE0 (echo off) is required for correct response parsing.
+            self._send_command(b"ATE0")
+            self._send_command(b"ATL0")  # Line feeds off
+            self._send_command(b"ATS0")  # Spaces off
+            self._send_command(b"ATSP0") # Auto protocol
+            self.thread_manager.update_heartbeat('obd_protocol')
 
             response = self._send_command(b"0100")
             if not response or response.startswith('7F'):

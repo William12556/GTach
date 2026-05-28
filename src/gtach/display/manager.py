@@ -250,11 +250,11 @@ class DisplayManager:
                     # Try to parse saved mode with GAUGE fallback to RADIAL
                     try:
                         saved_mode = DisplayMode[saved_mode_str]
-                        # If GAUGE was stored, substitute with RADIAL
-                        if saved_mode_str == 'GAUGE':
+                        # Transient modes must not be used as post-splash target
+                        _transient = (DisplayMode.SPLASH, DisplayMode.OPTIONS, DisplayMode.ACKNOWLEDGEMENT)
+                        if saved_mode in _transient:
                             saved_mode = DisplayMode.RADIAL
                     except KeyError:
-                        # GAUGE enum value no longer exists, fall back to RADIAL
                         self.logger.warning(f"Unknown display mode '{saved_mode_str}', using RADIAL")
                         saved_mode = DisplayMode.RADIAL
 
@@ -324,10 +324,11 @@ class DisplayManager:
             return
 
         try:
-            # Do not persist the transient SPLASH mode
+            # Do not persist transient modes: SPLASH, OPTIONS, ACKNOWLEDGEMENT
+            _transient = (DisplayMode.SPLASH, DisplayMode.OPTIONS, DisplayMode.ACKNOWLEDGEMENT)
             mode_to_save = (
                 self._post_splash_mode
-                if self.config.mode == DisplayMode.SPLASH
+                if self.config.mode in _transient
                 else self.config.mode
             )
             config_data = {
@@ -890,6 +891,9 @@ class DisplayManager:
             # Background
             self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
 
+            # Border drawn first so all subsequent content renders on top
+            self._draw_shift_border((200, 0, 0))
+
             # Title
             font = get_title_display_font()
             if font:
@@ -978,15 +982,12 @@ class DisplayManager:
             if small_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    "Long press anywhere to return to display",
+                    "Long press to return",
                     small_font,
                     (150, 150, 150),
-                    (240, 420),
+                    (240, 400),
                     center=True
                 )
-
-            # Draw shift border
-            self._draw_shift_border((200, 0, 0), 5)
 
         except Exception as e:
             self.logger.error(f"Options display error: {e}")
@@ -995,32 +996,31 @@ class DisplayManager:
         """Clear DeviceStore and enter SETUP mode"""
         try:
             self.logger.info("Clearing device settings")
-
-            # Import DeviceStore
             from ..comm.device_store import DeviceStore
-            device_store = DeviceStore()
-            device_store.clear()
-
-            # Transition to SETUP mode
-            # Setup mode is managed via _in_setup_mode flag, not DisplayMode
-            # We need to trigger setup mode entry through the app controller
-            # For now, log the action and transition to DIGITAL
-            self.logger.info("Device store cleared - transitioning to DIGITAL")
-            self.config.mode = DisplayMode.DIGITAL
-
+            ds = DeviceStore()
+            device = ds.get_primary_device()
+            if device:
+                ds.remove_device(device.mac_address)
+            if self._setup_entry_callback:
+                self.logger.info("Device store cleared — invoking setup_entry_callback")
+                self._setup_entry_callback()
+            else:
+                self.logger.warning("setup_entry_callback not registered")
         except Exception as e:
             self.logger.error(f"Clear settings error: {e}", exc_info=True)
-            # Remain in OPTIONS on error
 
     def _on_simulation_mode(self) -> None:
-        """Activate session-only simulation mode and transition to DIGITAL"""
+        """Toggle session-only simulation mode.
+
+        On: synthetic RPM in DIGITAL mode. Off: return to RADIAL (real OBD).
+        """
         try:
-            self.logger.info("Activating simulation mode")
-            self._sim_mode = True
-            self.config.mode = DisplayMode.DIGITAL
+            self._sim_mode = not self._sim_mode
+            self.logger.info(f"Simulation mode {'on' if self._sim_mode else 'off'}")
+            self.config.mode = DisplayMode.DIGITAL if self._sim_mode else DisplayMode.RADIAL
 
         except Exception as e:
-            self.logger.error(f"Simulation mode activation error: {e}", exc_info=True)
+            self.logger.error(f"Simulation mode toggle error: {e}", exc_info=True)
 
     def _render_mode_selector(self) -> None:
         """Render mode selector using touch coordinator"""
