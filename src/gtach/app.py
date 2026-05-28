@@ -93,12 +93,18 @@ class GTachApplication:
     
     def _start_setup_mode(self, pairing_factory=None) -> None:
         """Start application in setup mode with splash screen"""
-        self._watchdog.start()
+        # Guard: watchdog may already be running on re-entry
+        if not self._watchdog._thread.is_alive():
+            self._watchdog.start()
 
-        # Initialize display manager with splash screen
-        self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
-        self._display.start()  # This automatically starts the splash screen
-        self.logger.info("Splash screen activated for setup mode")
+        # Reuse existing DisplayManager on re-entry; only create on first call
+        if not hasattr(self, '_display') or self._display is None:
+            self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
+            self._display._setup_entry_callback = self._re_enter_setup
+            self._display.start()
+            self.logger.info("Splash screen activated for setup mode")
+        else:
+            self.logger.info("Reusing existing DisplayManager for setup re-entry")
 
         # Initialize setup manager while splash is showing
         self._setup_manager = SetupDisplayManager(
@@ -121,7 +127,34 @@ class GTachApplication:
         self._obd_started = True
         self.logger.info("Setup complete — transitioning to normal mode")
         self._display.exit_setup_mode()
+        # Stop the setup thread — it has no more work to do
+        if hasattr(self, '_setup_manager'):
+            self._setup_manager.stop_setup()
         self._start_obd()
+
+    def _re_enter_setup(self) -> None:
+        """Re-enter setup mode from DISCONNECTED screen"""
+        try:
+            self.logger.info("Re-entering setup from DISCONNECTED screen")
+            # Stop OBD if running
+            if hasattr(self, '_thread_manager'):
+                self._thread_manager.stop_thread('obd_protocol')
+            # Explicitly disconnect transport — it is not registered with ThreadManager
+            if hasattr(self, '_transport'):
+                try:
+                    self._transport.disconnect()
+                except Exception as e:
+                    self.logger.warning(f"Transport disconnect on re-entry: {e}")
+            self._obd_started = False
+            # Clear stored device
+            if hasattr(self, '_device_store'):
+                device = self._device_store.get_primary_device()
+                if device:
+                    self._device_store.remove_device(device.mac_address)
+            # Re-enter setup
+            self._start_setup_mode()
+        except Exception as e:
+            self.logger.error(f"Re-enter setup error: {e}", exc_info=True)
 
     def _start_obd(self) -> None:
         """Start transport and OBD protocol against the existing display"""
@@ -130,7 +163,7 @@ class GTachApplication:
         transport_arg = getattr(self._args, 'transport', None)
         _fast_transports = ('simbt', 'simtcp', 'tcp')
         _poll_interval = 0.02 if transport_arg in _fast_transports else 0.05
-        self._obd = OBDProtocol(self._transport, self._thread_manager, poll_interval_s=_poll_interval)
+        self._obd = OBDProtocol(self._transport, self._thread_manager, poll_interval_s=_poll_interval, adapter_pre_initialised=True)
         transport_thread = threading.Thread(
             target=self._transport.reconnect_indefinitely, name='transport', daemon=True
         )
@@ -142,6 +175,7 @@ class GTachApplication:
         """Start application in normal mode with splash screen"""
         # Initialize display manager first with splash screen
         self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
+        self._display._setup_entry_callback = self._re_enter_setup
         self._display.start()  # This automatically starts the splash screen
         self.logger.info("Splash screen activated for normal mode")
         

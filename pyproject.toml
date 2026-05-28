@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gtach"
-version = "0.2.57"
+version = "0.2.58"
 authors = [
     {name = "GTach Project Contributors"},
 ]
