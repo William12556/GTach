@@ -31,7 +31,7 @@ class OBDResponse:
 class OBDProtocol:
     """Handles OBD protocol communication"""
     
-    def __init__(self, transport: OBDTransport, thread_manager: ThreadManager, poll_interval_s: float = 0.05):
+    def __init__(self, transport: OBDTransport, thread_manager: ThreadManager, poll_interval_s: float = 0.05, adapter_pre_initialised: bool = False):
         self.logger = logging.getLogger('OBDProtocol')
         self.transport = transport
         self.thread_manager = thread_manager
@@ -41,7 +41,8 @@ class OBDProtocol:
         self.RPM_PID = 0x0C
         self.timeout = 1.0
         self.poll_interval_s = poll_interval_s
-        self._adapter_initialised = False
+        self._adapter_initialised = adapter_pre_initialised
+        self.logger.info(f"OBDProtocol init — adapter_pre_initialised={adapter_pre_initialised}")
 
         self.obd_thread = threading.Thread(
             target=self._protocol_loop,
@@ -71,7 +72,7 @@ class OBDProtocol:
                 if not self.transport.is_connected():
                     time.sleep(0.1)
                     continue
-                
+
                 if not self._initialize_protocol():
                     continue
                 
@@ -105,16 +106,23 @@ class OBDProtocol:
     def _initialize_protocol(self) -> bool:
         """Initialize OBD protocol and configure ELM327"""
         try:
-            # ATZ resets the adapter — allow extra time for emulator/hardware reset
             self.thread_manager.update_heartbeat('obd_protocol')
             if not self._adapter_initialised:
+                # Full init — ATZ resets adapter, then configure and verify
                 self._send_command(b"ATZ", timeout=5.0)
                 self.thread_manager.update_heartbeat('obd_protocol')
-            self._send_command(b"ATE0")
-            self._send_command(b"ATL0")  # Line feeds off
-            self._send_command(b"ATS0")  # Spaces off
-            self._send_command(b"ATSP0") # Auto protocol
-            self.thread_manager.update_heartbeat('obd_protocol')
+                self._send_command(b"ATE0")
+                self._send_command(b"ATL0")  # Line feeds off
+                self._send_command(b"ATS0")  # Spaces off
+                self._send_command(b"ATSP0") # Auto protocol
+                self.thread_manager.update_heartbeat('obd_protocol')
+            else:
+                # Adapter already initialised by setup probe — skip AT config commands.
+                # Settle briefly to allow emulator to accept new RFCOMM connection.
+                self.logger.debug("Skipping AT init — adapter pre-initialised; settling 1.5s")
+                time.sleep(1.5)
+                self.thread_manager.update_heartbeat('obd_protocol')
+
             response = self._send_command(b"0100")
             if not response or response.startswith('7F'):
                 raise Exception("No connection to vehicle")
