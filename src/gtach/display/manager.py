@@ -948,7 +948,7 @@ class DisplayManager:
                     (center_x, clear_btn_y + button_height // 2),
                     center=True
                 )
-                sim_label = "Bluetooth" if self._sim_mode else "Simulation mode"
+                sim_label = "Simulation mode" if self._sim_mode else "Bluetooth"
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
                     sim_label,
