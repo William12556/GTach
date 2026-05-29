@@ -64,7 +64,7 @@ class DisplayMode(Enum):
     SPLASH = auto()           # Application startup splash screen
     DIGITAL = auto()          # Digital RPM display mode
     RADIAL = auto()           # Radial arc RPM display mode
-    SETTINGS = auto()         # Settings configuration screen
+    OPTIONS = auto()          # Options configuration screen
     ACKNOWLEDGEMENT = auto()  # RPM threshold acknowledgement screen
 
 class ConnectionStatus(Enum):
@@ -92,7 +92,7 @@ class DisplayConfig:
     # Gesture enables per context
     gesture_enable_main: bool = True          # Enable gestures in main display
     gesture_enable_setup: bool = True         # Enable gestures in setup mode
-    gesture_enable_settings: bool = True      # Enable gestures in settings
+    gesture_enable_settings: bool = True      # Enable gestures in options
 
     # Visual feedback settings
     gesture_transition_duration: float = 0.2  # Screen transition time (s)

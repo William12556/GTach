@@ -133,18 +133,15 @@ class DisplayManager:
             self.logger.error(f"Touch callback setup failed: {e}")
     
     def _handle_swipe_left(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
-        """Handle left swipe gesture"""
+        """Handle left swipe gesture — DIGITAL → RADIAL"""
         try:
-            # Block navigation when OBD not connected
-            if self.thread_manager.get_thread_status('obd_protocol') != ThreadStatus.RUNNING:
+            # Block navigation when OBD not connected and not in simulation mode
+            if self.thread_manager.get_thread_status('obd_protocol') != ThreadStatus.RUNNING and not self._sim_mode:
                 self.logger.debug('Swipe blocked: OBD not connected')
                 return TouchAction.NONE
 
             if self.config.mode == DisplayMode.DIGITAL:
                 self.config.mode = DisplayMode.RADIAL
-                return TouchAction.MODE_CHANGE
-            elif self.config.mode == DisplayMode.RADIAL:
-                self.config.mode = DisplayMode.DIGITAL
                 return TouchAction.MODE_CHANGE
             return TouchAction.NONE
         except Exception as e:
@@ -152,17 +149,14 @@ class DisplayManager:
             return TouchAction.NONE
     
     def _handle_swipe_right(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
-        """Handle right swipe gesture"""
+        """Handle right swipe gesture — RADIAL → DIGITAL"""
         try:
-            # Block navigation when OBD not connected
-            if self.thread_manager.get_thread_status('obd_protocol') != ThreadStatus.RUNNING:
+            # Block navigation when OBD not connected and not in simulation mode
+            if self.thread_manager.get_thread_status('obd_protocol') != ThreadStatus.RUNNING and not self._sim_mode:
                 self.logger.debug('Swipe blocked: OBD not connected')
                 return TouchAction.NONE
 
-            if self.config.mode == DisplayMode.DIGITAL:
-                self.config.mode = DisplayMode.RADIAL
-                return TouchAction.MODE_CHANGE
-            elif self.config.mode == DisplayMode.RADIAL:
+            if self.config.mode == DisplayMode.RADIAL:
                 self.config.mode = DisplayMode.DIGITAL
                 return TouchAction.MODE_CHANGE
             return TouchAction.NONE
@@ -954,9 +948,10 @@ class DisplayManager:
                     (center_x, clear_btn_y + button_height // 2),
                     center=True
                 )
+                sim_label = "Bluetooth" if self._sim_mode else "Simulation mode"
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    "Simulation mode",
+                    sim_label,
                     button_font,
                     (255, 255, 255),
                     (center_x, sim_btn_y + button_height // 2),
@@ -1012,12 +1007,12 @@ class DisplayManager:
     def _on_simulation_mode(self) -> None:
         """Toggle session-only simulation mode.
 
-        On: synthetic RPM in DIGITAL mode. Off: return to RADIAL (real OBD).
+        Toggles synthetic RPM generation without changing the current layout.
+        Use swipe gestures to switch between DIGITAL and RADIAL layouts.
         """
         try:
             self._sim_mode = not self._sim_mode
             self.logger.info(f"Simulation mode {'on' if self._sim_mode else 'off'}")
-            self.config.mode = DisplayMode.DIGITAL if self._sim_mode else DisplayMode.RADIAL
 
         except Exception as e:
             self.logger.error(f"Simulation mode toggle error: {e}", exc_info=True)
@@ -1429,6 +1424,7 @@ class DisplayManager:
         """Exit setup mode"""
         self._in_setup_mode = False
         self._setup_manager = None
+        self.config.mode = self._post_splash_mode
         self.logger.info(f"Exited setup mode")
     
     def is_in_setup_mode(self) -> bool:

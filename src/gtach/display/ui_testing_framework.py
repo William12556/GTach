@@ -519,7 +519,7 @@ class UITestingFramework:
             ],
             expected_outcome={
                 'component': 'display_mode',
-                'mode': 'SETTINGS'
+                'mode': 'OPTIONS'
             }
         ))
         

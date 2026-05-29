@@ -262,11 +262,11 @@ class NavigationGestureHandler:
         try:
             if self.display_manager.is_in_setup_mode():
                 return self.config.enable_setup_navigation
-            elif self.display_manager.config.mode == DisplayMode.SETTINGS:
+            elif self.display_manager.config.mode == DisplayMode.OPTIONS:
                 return self.config.enable_settings_gestures
             else:
                 return self.config.enable_main_navigation
-                
+
         except Exception as e:
             self.logger.error(f"Error checking gesture enable state: {e}")
             return False
@@ -276,11 +276,11 @@ class NavigationGestureHandler:
         try:
             if self.display_manager.is_in_setup_mode():
                 return "setup"
-            elif self.display_manager.config.mode == DisplayMode.SETTINGS:
+            elif self.display_manager.config.mode == DisplayMode.OPTIONS:
                 return "settings"
             else:
                 return "main"
-                
+
         except Exception as e:
             self.logger.error(f"Error getting navigation context: {e}")
             return "main"

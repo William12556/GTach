@@ -127,9 +127,6 @@ class GTachApplication:
         self._obd_started = True
         self.logger.info("Setup complete — transitioning to normal mode")
         self._display.exit_setup_mode()
-        # Stop the setup thread — it has no more work to do
-        if hasattr(self, '_setup_manager'):
-            self._setup_manager.stop_setup()
         self._start_obd()
 
     def _re_enter_setup(self) -> None:
