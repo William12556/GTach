@@ -279,17 +279,37 @@ class SetupDisplayManager:
                 surface.blit(text, text_rect)
                 y_pos += 32
 
-        # Start button — 260x90, centred, bottom at y=420 (corners at r=222, clear of border)
-        start_btn = pygame.Rect(110, 330, 260, 90)
-        pygame.draw.rect(surface, self.colors['primary'], start_btn, border_radius=10)
+        # Check if a device is already stored — show Cancel button if so
+        from ..comm.device_store import DeviceStore
+        has_device = DeviceStore().get_primary_device() is not None
 
         btn_font = get_button_font()
-        if btn_font:
-            btn_text = btn_font.render("Start Setup", True, (255, 255, 255))
-            btn_text_rect = btn_text.get_rect(center=start_btn.center)
-            surface.blit(btn_text, btn_text_rect)
+        if has_device:
+            # Two-button layout: Start Setup + Cancel
+            start_btn = pygame.Rect(110, 270, 260, 75)
+            pygame.draw.rect(surface, self.colors['primary'], start_btn, border_radius=10)
+            if btn_font:
+                btn_text = btn_font.render("Start Setup", True, (255, 255, 255))
+                btn_text_rect = btn_text.get_rect(center=start_btn.center)
+                surface.blit(btn_text, btn_text_rect)
+            new_regions.append(("start", start_btn))
 
-        new_regions.append(("start", start_btn))
+            cancel_btn = pygame.Rect(110, 360, 260, 75)
+            pygame.draw.rect(surface, self.colors['border'], cancel_btn, border_radius=10)
+            if btn_font:
+                cancel_text = btn_font.render("Cancel", True, (255, 255, 255))
+                cancel_text_rect = cancel_text.get_rect(center=cancel_btn.center)
+                surface.blit(cancel_text, cancel_text_rect)
+            new_regions.append(("cancel_setup", cancel_btn))
+        else:
+            # Single-button layout: Start Setup only
+            start_btn = pygame.Rect(110, 330, 260, 90)
+            pygame.draw.rect(surface, self.colors['primary'], start_btn, border_radius=10)
+            if btn_font:
+                btn_text = btn_font.render("Start Setup", True, (255, 255, 255))
+                btn_text_rect = btn_text.get_rect(center=start_btn.center)
+                surface.blit(btn_text, btn_text_rect)
+            new_regions.append(("start", start_btn))
 
         # Error message
         state = self.state_coordinator.get_state()
@@ -312,19 +332,25 @@ class SetupDisplayManager:
             title_rect = title.get_rect(center=(240, 80))
             surface.blit(title, title_rect)
 
-        # Progress info
+        # Rotating balls animation
+        center = (240, 220)
+        angle = self.state_coordinator.animation_time * 180
+        for i in range(8):
+            dot_angle = angle + (i * 45)
+            dot_angle_rad = math.radians(dot_angle)
+            dot_x = int(center[0] + 20 * math.cos(dot_angle_rad))
+            dot_y = int(center[1] + 20 * math.sin(dot_angle_rad))
+            alpha = 255 - (i * 30)
+            color = (*self.colors['primary'][:3], alpha)
+            pygame.draw.circle(surface, color, (dot_x, dot_y), 4)
+
+        # Progress message
         progress_info = self.bluetooth_interface.get_active_operation_progress()
         if progress_info['has_active_operations']:
-            # Progress bar
-            progress_rect = pygame.Rect(90, 180, 300, 20)
-            pygame.draw.rect(surface, self.colors['border'], progress_rect, border_radius=10)
-            progress_fill = pygame.Rect(90, 180, int(300 * progress_info['progress']), 20)
-            pygame.draw.rect(surface, self.colors['primary'], progress_fill, border_radius=10)
-            # Progress text
             font_small = get_minimal_font()
             if font_small and progress_info['message']:
                 msg_text = font_small.render(progress_info['message'], True, self.colors['text_dim'])
-                msg_rect = msg_text.get_rect(center=(240, 220))
+                msg_rect = msg_text.get_rect(center=(240, 260))
                 surface.blit(msg_text, msg_rect)
 
         # Cancel button — 140x60, centred, bottom at y=400
@@ -635,6 +661,12 @@ class SetupDisplayManager:
                 self.state_coordinator.handle_setup_action(SetupAction.CANCEL)
                 return SetupAction.CANCEL
 
+            elif action == "cancel_setup":
+                self.logger.info("Setup cancelled — returning to stored device")
+                if self._on_complete:
+                    self._on_complete()
+                return SetupAction.COMPLETE
+
             elif action == "current_continue":
                 # Verify the stored device is reachable before completing
                 from ..comm.device_store import DeviceStore
@@ -684,8 +716,15 @@ class SetupDisplayManager:
         """Update touch regions for cached screens"""
         state = self.state_coordinator.get_state()
         if state.current_screen == SetupScreen.WELCOME:
-            start_btn = pygame.Rect(110, 330, 260, 90)
-            self._update_touch_regions_safe([("start", start_btn)])
+            from ..comm.device_store import DeviceStore
+            has_device = DeviceStore().get_primary_device() is not None
+            if has_device:
+                start_btn = pygame.Rect(110, 270, 260, 75)
+                cancel_btn = pygame.Rect(110, 360, 260, 75)
+                self._update_touch_regions_safe([("start", start_btn), ("cancel_setup", cancel_btn)])
+            else:
+                start_btn = pygame.Rect(110, 330, 260, 90)
+                self._update_touch_regions_safe([("start", start_btn)])
     
     def _invalidate_render_cache(self, screen_type: SetupScreen = None) -> None:
         """Invalidate render cache for specific screen or all screens"""

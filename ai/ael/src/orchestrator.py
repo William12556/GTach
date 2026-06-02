@@ -863,8 +863,9 @@ async def run_loop(
     mcp_error_threshold: int = 3,
     max_tool_calls_per_iter: int = 10,
     preflight_check: bool = False,
+    deadline: float | None = None,
 ) -> int:
-    """Full Ralph Loop: worker/reviewer cycle until SHIP or max_iterations."""
+    """Full Ralph Loop: worker/reviewer cycle until SHIP, max_iterations, or deadline."""
     ctx_line = f"  context:  {context_window:,} tokens\n" if context_window else ""
     console.print(Panel(
         f"  worker:   {escape(worker_model)}\n"
@@ -890,6 +891,11 @@ async def run_loop(
     _extra = 0
     while True:
         i += 1
+        if deadline and time.monotonic() > deadline:
+            console.print("[yellow][ael] duration limit reached — exiting cleanly[/yellow]")
+            log.info("duration limit reached at loop iteration %d", i)
+            write_state(state_dir, ".ralph-complete", f"DURATION_LIMIT: iteration {i}")
+            return 0
         if i > max_iterations + _extra:
             console.print(f"\n[red]✗ max iterations ({max_iterations + _extra}) reached without SHIP[/red]")
             log.warning("max iterations %d reached without SHIP", max_iterations + _extra)
@@ -982,6 +988,7 @@ async def main_async(args: argparse.Namespace) -> int:
 
     omlx_cfg       = config["omlx"]
     max_iter          = args.max_iterations or config["loop"]["max_iterations"]
+    deadline          = time.monotonic() + args.duration * 3600 if args.duration else None
     phase_max_iter    = config["loop"].get("phase_max_iterations", max_iter)
     mcp_error_thresh      = config["loop"].get("mcp_error_threshold", 3)
     max_tool_calls        = config["loop"].get("max_tool_calls_per_iteration", 10)
@@ -1094,7 +1101,8 @@ async def main_async(args: argparse.Namespace) -> int:
                                 budget_abort_pct=budget_abort,
                                 mcp_error_threshold=mcp_error_thresh,
                                 max_tool_calls_per_iter=max_tool_calls,
-                                preflight_check=do_preflight)
+                                preflight_check=do_preflight,
+                                deadline=deadline)
     finally:
         log.info("AEL end rc=%d", rc)
         await mcp.close()
@@ -1115,6 +1123,8 @@ def main() -> None:
     p.add_argument("--reviewer-model",  help="Model for review phase (loop mode only)")
     p.add_argument("--max-iterations",  type=int,
                    help="Iteration limit override")
+    p.add_argument("--duration",          type=float, default=None,
+                   help="Wall-clock time limit in hours (default: no limit)")
     args = p.parse_args()
     rc = asyncio.run(main_async(args))
     # os._exit bypasses asyncio teardown, preventing MCP stdio subprocess hang

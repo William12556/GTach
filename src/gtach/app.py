@@ -32,6 +32,15 @@ class GTachApplication:
         self._config_manager = ConfigManager(config_path)
         self.logger = logging.getLogger(__name__)
         self._args = args or argparse.Namespace()
+
+        # Diagnostic: when debugging, dump all thread stacks to stderr every
+        # 15s. The watchdog warns at 17s, so a dump lands mid-freeze and shows
+        # exactly where the display/setup threads are parked. stderr is already
+        # captured by the run command's tee into the debug log.
+        if debug:
+            import faulthandler
+            import sys
+            faulthandler.dump_traceback_later(15, repeat=True, file=sys.stderr)
         
         # Initialize terminal restorer as early as possible
         self._terminal_restorer = TerminalRestorer()
@@ -143,11 +152,6 @@ class GTachApplication:
                 except Exception as e:
                     self.logger.warning(f"Transport disconnect on re-entry: {e}")
             self._obd_started = False
-            # Clear stored device
-            if hasattr(self, '_device_store'):
-                device = self._device_store.get_primary_device()
-                if device:
-                    self._device_store.remove_device(device.mac_address)
             # Re-enter setup
             self._start_setup_mode()
         except Exception as e:
