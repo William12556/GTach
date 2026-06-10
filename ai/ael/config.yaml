@@ -2,7 +2,7 @@
 omlx:
   base_url: "http://127.0.0.1:8000/v1"
   api_key: "local"
-  default_model: "Devstral-Small-2-24B-Instruct-2512"
+  default_model: "mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-6Bit"
 
 # MCP server definitions
 mcp_servers:
@@ -28,7 +28,7 @@ readiness:
   
 # Loop control
 loop:
-  max_iterations: 5         # Ralph Loop outer iterations (work+review cycles)
+  max_iterations: 30        # audit: 19 index items x ~1.5 for revise cycles
   phase_max_iterations: 50  # Inner tool-call iterations per phase
   mcp_error_threshold: 3    # Write RALPH-BLOCKED.md after this many consecutive MCP errors per phase
   max_tool_calls_per_iteration: 10  # Truncate tool calls per iteration beyond this count

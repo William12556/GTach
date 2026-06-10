@@ -51,16 +51,18 @@ See `ai/profiles/` for profile documents.
 
 ```
 ael/
-├── config.yaml          # Inference endpoint, MCP server definitions, loop control
-├── requirements.txt     # Python dependencies
+├── config.yaml           # Inference endpoint, MCP server definitions, loop control
+├── requirements.txt      # Python dependencies
 ├── recipes/
-│   ├── ralph-work.yaml  # Worker role system prompt
-│   └── ralph-review.yaml # Reviewer role system prompt
+│   ├── ralph-work.yaml   # Standard worker role system prompt
+│   ├── ralph-review.yaml # Standard reviewer role system prompt
+│   ├── audit-work.yaml   # Audit worker role system prompt (read-only analysis)
+│   └── audit-review.yaml # Audit reviewer role system prompt (coverage + quality)
 └── src/
-    ├── orchestrator.py  # Main loop and CLI entry point (--mode worker|reviewer|loop|reset)
-    ├── budget.py        # Context budget calculator (run before authoring T04 prompts)
-    ├── mcp_client.py    # MCP stdio connection and tool dispatch
-    └── parser.py        # Mistral [TOOL_CALLS] plain-text parser
+    ├── orchestrator.py   # Main loop and CLI entry point (--mode worker|reviewer|loop|reset)
+    ├── budget.py         # Context budget calculator (run before authoring T04 prompts)
+    ├── mcp_client.py     # MCP stdio connection and tool dispatch
+    └── parser.py         # Mistral [TOOL_CALLS] plain-text parser
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -154,7 +156,8 @@ python ai/ael/src/orchestrator.py --mode reset
 | `--model` | Model for all phases (overrides config default) |
 | `--worker-model` | Model for work phase only (loop mode) |
 | `--reviewer-model` | Model for review phase only (loop mode) |
-| `--max-iterations` | Iteration limit override |
+| `--max-iterations` | Outer Ralph cycle limit override |
+| `--duration` | Wall-clock time limit in hours (default: no limit) |
 | `--config` | Path to config.yaml |
 
 **`budget.py`** reads `config.yaml` and the model's `config.json` from disk to compute context window size, warn/abort thresholds, and recommended `tactical_brief` sizing. It writes `.ael/ralph/context-budget.md`. The Strategic Domain reads this file before authoring any T04 prompt. If the file is absent, the Strategic Domain will instruct the human to run `budget.py` before proceeding.
@@ -169,8 +172,10 @@ Recipes are YAML files providing role-specific system prompts. The `instructions
 
 | Recipe | Role | Purpose |
 |---|---|---|
-| `ralph-work.yaml` | Worker | Makes incremental progress on the task |
+| `ralph-work.yaml` | Worker | Makes incremental progress on a code generation task |
 | `ralph-review.yaml` | Reviewer | Evaluates work and outputs `SHIP` or `REVISE` |
+| `audit-work.yaml` | Audit worker | Read-only codebase analysis; accumulates findings in `audit-report.md` |
+| `audit-review.yaml` | Audit reviewer | Checks finding quality and coverage; outputs `SHIP` or `REVISE` |
 
 State files are written to `.ael/ralph/` in the project root during loop execution. This directory is ephemeral and excluded from git.
 
@@ -258,6 +263,7 @@ tests/test_integration.py                     SKIPPED [oMLX not reachable]
 | 1.6 | 2026-03-31 | Added Devstral model requirement with rationale to Requirements section |
 | 1.7 | 2026-04-30 | Updated canonical model quantisation from Q8 to 6bit; memory constraints on M4 Mac Mini (64GB) preclude Q8 with adequate KV headroom |
 | 1.8 | 2026-04-30 | Added Tactical Profiles section with comparison table |
+| 1.9 | 2026-06-02 | Added audit-work.yaml and audit-review.yaml to Structure and Recipes; added `--duration` and `--max-iterations` to CLI flags table |
 
 ---
 
