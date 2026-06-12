@@ -204,7 +204,16 @@ class BluetoothPairing:
                 except Exception as e:
                     self.logger.error(f"Unexpected discovery error: {e}")
                     break
-            
+
+                # Early exit: stop scanning once a confirmed ELM327 adapter is
+                # found (targeted discovery only; full survey runs full timeout).
+                if not show_all_devices and any(
+                    d.device_classification == DeviceType.HIGHLY_LIKELY_ELM327
+                    for d in devices
+                ):
+                    self.logger.info("Confirmed ELM327 device found — ending discovery early")
+                    break
+
             # Final progress update
             if progress_callback:
                 progress_callback(1.0)

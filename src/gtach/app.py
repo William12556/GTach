@@ -94,12 +94,32 @@ class GTachApplication:
             else:
                 self.logger.info("Setup complete - starting normal mode")
                 self._start_normal_mode()
-            
+
+            self._clear_update_probation()
+
         except Exception as e:
             self.logger.error(f"Startup failed: {e}", exc_info=True)
             self.shutdown()
             raise
-    
+
+    def _clear_update_probation(self) -> None:
+        """Remove the update-probation marker on healthy startup.
+
+        Signals the boot-time supervisor that the current install reached
+        successful startup, so a newly applied wheel is not rolled back.
+        Linux deployment only; tolerant of all errors.
+        """
+        try:
+            import os
+            import sys
+            if sys.platform.startswith('linux'):
+                marker = "/opt/gtach/.update-probation"
+                if os.path.exists(marker):
+                    os.remove(marker)
+                    self.logger.info("Cleared update probation marker — startup healthy")
+        except Exception as e:
+            self.logger.debug(f"Could not clear probation marker: {e}")
+
     def _start_setup_mode(self, pairing_factory=None) -> None:
         """Start application in setup mode with splash screen"""
         # Guard: watchdog may already be running on re-entry

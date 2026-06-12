@@ -1,0 +1,17 @@
+[Unit]
+Description=GTach OBD-II Tachometer
+After=multi-user.target bluetooth.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/gtach
+ExecStartPre=-/opt/gtach/gtach-preflight.sh
+ExecStart=/opt/gtach/venv/bin/gtach
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

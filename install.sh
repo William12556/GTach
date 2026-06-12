@@ -108,12 +108,19 @@ echo ""
 # Post-install: platform-specific instructions
 # ---------------------------------------------------------------------------
 if [ "$OS" = "Linux" ]; then
+    # ---- systemd service + boot-time update supervisor ----
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    echo "==> Registering systemd service and update supervisor"
+    install -m 0644 "$SCRIPT_DIR/gtach.service" /etc/systemd/system/gtach.service
+    install -m 0755 "$SCRIPT_DIR/gtach-preflight.sh" "$INSTALL_DIR/gtach-preflight.sh"
+    mkdir -p "$INSTALL_DIR/updates"
+    cp -f "$WHEEL_PATH" "$INSTALL_DIR/installed.whl"
+    systemctl daemon-reload
+    systemctl enable gtach
+    echo "    Service 'gtach' enabled. Start now with: systemctl start gtach"
+
     echo "Run gtach with:"
     echo "  $VENV_DIR/bin/gtach"
-    echo ""
-    echo "Or register as a systemd service (requires root):"
-    echo "  sudo systemctl enable gtach"
-    echo "  sudo systemctl start gtach"
 else
     # macOS: manual start only, no service registration
     echo "Run gtach with:"
