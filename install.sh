@@ -128,7 +128,11 @@ if [ "$OS" = "Linux" ]; then
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
     echo "==> Registering systemd service and update supervisor"
     install -m 0644 "$SCRIPT_DIR/gtach.service" /etc/systemd/system/gtach.service
-    install -m 0755 "$SCRIPT_DIR/gtach-preflight.sh" "$INSTALL_DIR/gtach-preflight.sh"
+    if [ "$SCRIPT_DIR/gtach-preflight.sh" != "$INSTALL_DIR/gtach-preflight.sh" ]; then
+        install -m 0755 "$SCRIPT_DIR/gtach-preflight.sh" "$INSTALL_DIR/gtach-preflight.sh"
+    else
+        chmod 0755 "$INSTALL_DIR/gtach-preflight.sh"
+    fi
     cp -f "$WHEEL_PATH" "$INSTALL_DIR/installed.whl"
     systemctl daemon-reload
     systemctl enable gtach
