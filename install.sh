@@ -58,14 +58,30 @@ if ! command -v python3 &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
+# Directory structure and clean state (Linux only)
+# ---------------------------------------------------------------------------
+if [ "$OS" = "Linux" ]; then
+    echo "==> Ensuring directory structure..."
+    mkdir -p "$INSTALL_DIR"
+    mkdir -p "$INSTALL_DIR/updates"
+
+    echo "==> Cleaning stale state..."
+    # Promote current known-good wheel to previous before overwriting
+    [ -f "$INSTALL_DIR/installed.whl" ] && cp -f "$INSTALL_DIR/installed.whl" "$INSTALL_DIR/previous.whl" || true
+    # Clear state markers — full manual install is a clean slate
+    rm -f "$INSTALL_DIR/.update-probation" || true
+    rm -f "$INSTALL_DIR/updates/.install-pending" || true
+    # Remove old tee-based log files (superseded by app-owned logging)
+    rm -f "$INSTALL_DIR/gtach-debug.log" "$INSTALL_DIR/gtach-debug_PI.log" || true
+fi
+
+# ---------------------------------------------------------------------------
 # Virtual environment setup
 # ---------------------------------------------------------------------------
 if [ ! -d "$VENV_DIR" ]; then
     echo "==> Creating virtual environment at $VENV_DIR"
     if [ "$OS" = "Linux" ]; then
-        # Linux: /opt requires elevated privileges
-        sudo mkdir -p "$INSTALL_DIR"
-        sudo python3 -m venv "$VENV_DIR"
+        python3 -m venv "$VENV_DIR"
     else
         # macOS: user-owned path, no sudo required
         mkdir -p "$INSTALL_DIR"
@@ -113,7 +129,6 @@ if [ "$OS" = "Linux" ]; then
     echo "==> Registering systemd service and update supervisor"
     install -m 0644 "$SCRIPT_DIR/gtach.service" /etc/systemd/system/gtach.service
     install -m 0755 "$SCRIPT_DIR/gtach-preflight.sh" "$INSTALL_DIR/gtach-preflight.sh"
-    mkdir -p "$INSTALL_DIR/updates"
     cp -f "$WHEEL_PATH" "$INSTALL_DIR/installed.whl"
     systemctl daemon-reload
     systemctl enable gtach

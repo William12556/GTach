@@ -1,53 +1,108 @@
-# Mac:
-## Transfer install script to the Pi
+# GTach CLI Commands
+
+## Mac — Build and Deploy
+
+### Full deploy
+
+Builds the wheel, stops the service, transfers all deploy files, installs, and restarts.
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp install.sh root@gtach.local:/opt/gtach/
+cd ~/Documents/GitHub/GTach && ./deploy.sh
 ```
 
-## Build and transfer GTach to the Pi
+### Stage update for in-app install
+
+Builds and transfers the wheel to the Pi drop directory. Use 'Check for updates'
+in the GTach OPTIONS screen to install.
 
 ```shell
-cd ~/Documents/GitHub/GTach && ./build.sh && scp dist/*.whl root@gtach.local:/tmp/
+cd ~/Documents/GitHub/GTach && ./deploy.sh --stage
 ```
 
-or
+### Transfer deploy files only (no build)
 
 ```shell
-cd /Users/williamwatson/Documents/GitHub/GTach && ./build.sh && scp dist/gtach-0.2.58-py3-none-any.whl root@gtach.local:/tmp/ && ssh root@gtach.local '/opt/gtach/install.sh /tmp/gtach-0.2.58-py3-none-any.whl'
+cd ~/Documents/GitHub/GTach && scp install.sh gtach.service gtach-preflight.sh root@gtach.local:/opt/gtach/
 ```
 
-## Transfer GTach log back to the Mac from the Pi
+---
+
+## Mac — Retrieve logs from Pi
+
+### Startup log (written on every boot)
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/gtach-debug.log ~/Documents/GitHub/GTach/
+cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/start.log .
 ```
 
-# Transfer ELM327 logs back to the Mac from the emulator
+### Debug log (written when debug is active)
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp root@ELM327-Emulator.local:/opt/elm327/elm.log ~/Documents/GitHub/GTach/
+cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/debug.log .
+```
+
+---
+
+## Mac — Retrieve ELM327 emulator logs
+
+```shell
+cd ~/Documents/GitHub/GTach && scp root@ELM327-Emulator.local:/opt/elm327/elm.log .
 ```
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp root@ELM327-Emulator.local:/opt/elm327/bt-server.log ~/Documents/GitHub/GTach/
+cd ~/Documents/GitHub/GTach && scp root@ELM327-Emulator.local:/opt/elm327/bt-server.log .
 ```
 
-# Pi:
+---
 
-## Install GTach on the Pi
+## Pi — Service control
 
 ```shell
-cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-0.2.51-py3-none-any.whl
+systemctl start gtach
+systemctl stop gtach
+systemctl restart gtach
+systemctl status gtach
 ```
 
-## Run GTach on the Pi
+### View live service output
 
 ```shell
-cd /opt/gtach && gtach --transport rfcomm --debug 2>&1 | tee /opt/gtach/gtach-debug.log
+journalctl -u gtach -f
 ```
 
-### or simulate
+---
+
+## Pi — Manual launch (bypasses systemd)
+
+Stop the service first to avoid two instances running simultaneously.
+
 ```shell
-cd /opt/gtach &&  gtach --transport simbt --debug 2>&1 | tee /opt/gtach/gtach-simbt.log
+systemctl stop gtach
+cd /opt/gtach && /opt/gtach/venv/bin/gtach --transport rfcomm
+```
+
+### With debug logging active from start
+
+```shell
+systemctl stop gtach
+cd /opt/gtach && /opt/gtach/venv/bin/gtach --transport rfcomm --debug
+```
+
+### Simulate (no OBD adapter)
+
+```shell
+systemctl stop gtach
+cd /opt/gtach && /opt/gtach/venv/bin/gtach --transport simbt
+```
+
+Log files are written to `/opt/gtach/start.log` and `/opt/gtach/debug.log` regardless
+of launch method. The `--debug` flag activates `debug.log` from startup; the OPTIONS
+screen debug toggle can activate it at runtime.
+
+---
+
+## Pi — Manual install (without deploy.sh)
+
+```shell
+cd /opt/gtach && /opt/gtach/install.sh /tmp/gtach-X.Y.Z-py3-none-any.whl
 ```
