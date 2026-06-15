@@ -12,23 +12,72 @@ import logging
 import argparse
 from pathlib import Path
 from typing import Optional
+from logging.handlers import RotatingFileHandler
+
+# Module-level handler references for runtime manipulation.
+_start_handler: logging.Handler = None
+_debug_handler: logging.Handler = None
+
+_LOG_FORMAT = '%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s'
+_LOG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
+_START_LOG = '/opt/gtach/start.log'
+_DEBUG_LOG = '/opt/gtach/debug.log'
+_DEBUG_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 
 
 def setup_logging(debug: bool = False) -> None:
-    if debug:
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format='%(asctime)s %(name)s %(levelname)s %(message)s'
+    global _start_handler, _debug_handler
+
+    if not sys.platform.startswith('linux'):
+        # Non-Linux: preserve existing behaviour.
+        if debug:
+            logging.basicConfig(
+                level=logging.DEBUG,
+                format='%(asctime)s %(name)s %(levelname)s %(message)s'
+            )
+        else:
+            logging.getLogger().addHandler(logging.NullHandler())
+        return
+
+    formatter = logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FMT)
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+
+    # start.log — truncated at boot; startup records only.
+    try:
+        _start_handler = logging.FileHandler(_START_LOG, mode='w', encoding='utf-8')
+        _start_handler.setLevel(logging.DEBUG)
+        _start_handler.setFormatter(formatter)
+        root.addHandler(_start_handler)
+    except OSError as e:
+        print(f'[gtach] WARNING: could not open {_START_LOG}: {e}', file=sys.stderr)
+
+    # debug.log — truncated at boot; suppressed unless toggled on.
+    try:
+        _debug_handler = RotatingFileHandler(
+            _DEBUG_LOG, mode='w', maxBytes=_DEBUG_MAX_BYTES,
+            backupCount=0, encoding='utf-8'
         )
-    else:
-        logging.getLogger().addHandler(logging.NullHandler())
+        _debug_handler.setLevel(logging.CRITICAL + 1)  # suppressed
+        _debug_handler.setFormatter(formatter)
+        root.addHandler(_debug_handler)
+    except OSError as e:
+        print(f'[gtach] WARNING: could not open {_DEBUG_LOG}: {e}', file=sys.stderr)
+
+    if debug and _debug_handler is not None:
+        _debug_handler.setLevel(logging.DEBUG)
 
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='GTach — real-time engine tachometer')
     parser.add_argument('--config', type=Path)
     parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--version', action='version', version='GTach 0.2.0')
+    try:
+        from importlib.metadata import version as _pkg_version
+        _ver = f'GTach {_pkg_version("gtach")}'
+    except Exception:
+        _ver = 'GTach'
+    parser.add_argument('--version', action='version', version=_ver)
     parser.add_argument('--validate-config', action='store_true')
     parser.add_argument('--validate-dependencies', action='store_true')
     parser.add_argument('--transport', choices=['tcp', 'serial', 'rfcomm', 'simtcp', 'simbt'], default=None)

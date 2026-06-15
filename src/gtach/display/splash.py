@@ -135,7 +135,11 @@ class SplashScreen:
         
         # Application branding and version info
         self._app_title = "GTach"
-        self._version_text = "v1.0.0"  # Placeholder version
+        try:
+            from importlib.metadata import version as _pkg_version
+            self._version_text = f"v{_pkg_version('gtach')}"
+        except Exception:
+            self._version_text = "v?.?.?"
         self._subtitle = "Bluetooth OBD-II Monitor"
         
         # Log initialization status
@@ -389,6 +393,7 @@ class SplashScreen:
                 # OBD-II icon removed to eliminate grey-to-green rectangle artifact behind gauge
                 # self._draw_obdii_icon(surface, center_x, center_y)
                 self._draw_progress_indicator(surface, center_x, center_y + 20)
+                self._draw_version_text(surface, center_x, center_y + 110)
                 self._draw_border(surface, width, height)
             
             return True

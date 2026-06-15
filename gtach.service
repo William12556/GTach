@@ -10,7 +10,7 @@ User=root
 WorkingDirectory=/opt/gtach
 ExecStartPre=-/opt/gtach/gtach-preflight.sh
 ExecStart=/opt/gtach/venv/bin/gtach
-Restart=on-failure
+Restart=always
 RestartSec=5
 
 [Install]

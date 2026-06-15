@@ -32,6 +32,7 @@ class GTachApplication:
         self._config_manager = ConfigManager(config_path)
         self.logger = logging.getLogger(__name__)
         self._args = args or argparse.Namespace()
+        self._debug = debug
 
         # Diagnostic: when debugging, dump all thread stacks to stderr every
         # 15s. The watchdog warns at 17s, so a dump lands mid-freeze and shows
@@ -96,6 +97,7 @@ class GTachApplication:
                 self._start_normal_mode()
 
             self._clear_update_probation()
+            self._finish_startup_logging()
 
         except Exception as e:
             self.logger.error(f"Startup failed: {e}", exc_info=True)
@@ -120,6 +122,52 @@ class GTachApplication:
         except Exception as e:
             self.logger.debug(f"Could not clear probation marker: {e}")
 
+    def _finish_startup_logging(self) -> None:
+        """Detach start.log after startup is complete.
+
+        Raises the start handler threshold to suppress further writes.
+        Startup records are retained in the file.
+        """
+        try:
+            import logging
+            import sys
+            if sys.platform.startswith('linux'):
+                from . import main as _main
+                if _main._start_handler is not None:
+                    self.logger.info("Startup complete — start.log closed")
+                    _main._start_handler.setLevel(logging.CRITICAL + 1)
+        except Exception as e:
+            self.logger.debug(f"Could not finish startup logging: {e}")
+
+    def toggle_debug_logging(self, enable: bool) -> None:
+        """Activate or suppress debug.log at runtime.
+
+        Args:
+            enable: True to start writing to debug.log; False to suppress.
+        """
+        try:
+            import logging
+            import sys
+            if not sys.platform.startswith('linux'):
+                return
+            from . import main as _main
+            if _main._debug_handler is None:
+                return
+            if enable:
+                _main._debug_handler.setLevel(logging.DEBUG)
+                self.logger.info("Debug logging enabled")
+            else:
+                _main._debug_handler.setLevel(logging.CRITICAL + 1)
+                self.logger.info("Debug logging disabled")
+        except Exception as e:
+            self.logger.debug(f"Could not toggle debug logging: {e}")
+
+    def _request_restart(self) -> None:
+        """Request a clean restart; systemd (Restart=always) relaunches,
+        and gtach-preflight.sh installs any staged wheel."""
+        self.logger.info("Restart requested — stopping for relaunch")
+        self._stop_event.set()
+
     def _start_setup_mode(self, pairing_factory=None) -> None:
         """Start application in setup mode with splash screen"""
         # Guard: watchdog may already be running on re-entry
@@ -130,6 +178,9 @@ class GTachApplication:
         if not hasattr(self, '_display') or self._display is None:
             self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
             self._display._setup_entry_callback = self._re_enter_setup
+            self._display._restart_callback = self._request_restart
+            self._display._debug_toggle_callback = self.toggle_debug_logging
+            self._display._debug_logging_on = self._debug
             self._display.start()
             self.logger.info("Splash screen activated for setup mode")
         else:
@@ -197,6 +248,9 @@ class GTachApplication:
         # Initialize display manager first with splash screen
         self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
         self._display._setup_entry_callback = self._re_enter_setup
+        self._display._restart_callback = self._request_restart
+        self._display._debug_toggle_callback = self.toggle_debug_logging
+        self._display._debug_logging_on = self._debug
         self._display.start()  # This automatically starts the splash screen
         self.logger.info("Splash screen activated for normal mode")
         
