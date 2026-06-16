@@ -91,7 +91,7 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 env -i HOME="$HOME" PATH="$PATH" \
   ANTHROPIC_BASE_URL=http://127.0.0.1:8000 \
   ANTHROPIC_AUTH_TOKEN=local \
-  claude "implement workspace/prompt/prompt-<uuid>-<n>.md"
+  claude "implement ai/workspace/prompt/prompt-<uuid>-<n>.md"
 ```
 
 5. Claude Code reads the T04 prompt from disk and implements the task via Devstral.
@@ -130,6 +130,7 @@ CLAUDE.local.md
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-04-30 | Initial document; claude-omlx as alternative tactical profile; Claude Code CLI routed through oMLX/Devstral; manual single-pass invocation via T04 file path |
+| 1.1 | 2026-06-14 | workspace/ → ai/workspace/ in invocation example |
 
 ---
 

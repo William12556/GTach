@@ -115,7 +115,7 @@ Name tools explicitly in recipe prompts.
 
 **Implementation:** AEL orchestrator / Ralph Loop
 
-State directory: `.ael/ralph/` (ephemeral, per-task)
+State directory: `ai/state/ralph/` (ephemeral, per-task)
 
 **Prerequisites:**
 - oMLX running on `localhost:8000`
@@ -125,7 +125,7 @@ State directory: `.ael/ralph/` (ephemeral, per-task)
 **Invocation:**
 
 ```bash
-python ai/ael/src/orchestrator.py --mode loop --task workspace/prompt/prompt-<uuid>-<n>.md
+python ai/ael/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
 Worker and reviewer roles are differentiated by prompt engineering within the same model, not by separate model binaries.
@@ -151,7 +151,7 @@ Worker and reviewer roles are differentiated by prompt engineering within the sa
 
 ```
 # MLX profile - Tactical Domain
-.ael/ralph/
+ai/state/ralph/
 ```
 
 **Setup guide:** [Apple Silicon + MLX Setup Guide](../../../docs/setup-apple-silicon-mlx.md).
@@ -165,6 +165,7 @@ Worker and reviewer roles are differentiated by prompt engineering within the sa
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-03-12 | Initial document |
+| 1.1 | 2026-06-14 | Relocated paths under ai/: state ai/state/ralph/, workspace/ → ai/workspace/, .gitignore additions |
 
 ---
 

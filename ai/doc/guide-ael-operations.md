@@ -30,7 +30,7 @@ Authoritative governance reference: `ai/governance.md` P00 §1.1.11 and P09.
 
 ## 2.0 State Files
 
-State files reside in `.ael/ralph/` (configured via `loop.state_dir` in `config.yaml`). This directory is ephemeral and excluded from git.
+State files reside in `ai/state/ralph/` (configured via `loop.state_dir` in `config.yaml`). This directory is ephemeral and excluded from git.
 
 ### 2.1 Standard Ralph Loop
 
@@ -57,7 +57,7 @@ State files reside in `.ael/ralph/` (configured via `loop.state_dir` in `config.
 
 ### 2.3 Reset behaviour
 
-`--mode reset` removes all standard state files except `ael_*.LOG` and `context-budget.md`. Audit files (`audit-index.md`, `audit-report.md`, `audit-uml.md`) are also preserved — archive them to `workspace/audit/` before resetting.
+`--mode reset` removes all standard state files except `ael_*.LOG` and `context-budget.md`. Audit files (`audit-index.md`, `audit-report.md`, `audit-uml.md`) are also preserved — archive them to `ai/workspace/audit/` before resetting.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -100,7 +100,7 @@ loop:
   mcp_error_threshold: 3    # consecutive MCP errors before BLOCKED
   max_tool_calls_per_iteration: 10  # tool call cap per inner iteration
   preflight_check: false    # evaluate success criteria before first worker pass
-  state_dir: ".ael/ralph"   # state directory path (relative to project root)
+  state_dir: "ai/state/ralph"   # state directory path (relative to project root)
 
 # Context budget
 context:
@@ -139,14 +139,14 @@ Standard invocation after T04 approval:
 
 ```bash
 python ai/ael/src/orchestrator.py --mode loop \
-  --task workspace/prompt/prompt-<uuid>-<n>.md
+  --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
 Audit invocation:
 
 ```bash
 python ai/ael/src/orchestrator.py --mode loop \
-  --task workspace/prompt/<uuid>-audit.md \
+  --task ai/workspace/prompt/<uuid>-audit.md \
   --duration 12
 ```
 
@@ -187,7 +187,7 @@ Run `budget.py` once after configuring `config.yaml` and after any model change:
 python ai/ael/src/budget.py
 ```
 
-This writes `.ael/ralph/context-budget.md`. Read this file before authoring any T04 prompt (P09 §1.10.2).
+This writes `ai/state/ralph/context-budget.md`. Read this file before authoring any T04 prompt (P09 §1.10.2).
 
 ### 6.2 Budget thresholds
 
@@ -301,6 +301,7 @@ curl -s http://localhost:8000/v1/models -H "Authorization: Bearer local"
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-06-02 | Initial document |
+| 1.1 | 2026-06-14 | Relocated state to ai/state/ralph/ (config.yaml example, prose); workspace/ → ai/workspace/ |
 
 ---
 

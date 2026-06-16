@@ -81,7 +81,7 @@
     - Strategic Domain: Uses T04 template to create code generation or debug prompts for Tactical Domain
     - Strategic Domain: Embeds complete Tier 3 component design specifications and schema within prompt documents
     - Strategic Domain: Ensures prompt documents are self-contained requiring no external file references
-    - Strategic Domain: Saves T04 prompt to workspace/prompt/prompt-\<uuid\>-\<name\>.md
+    - Strategic Domain: Saves T04 prompt to ai/workspace/prompt/prompt-\<uuid\>-\<name\>.md
     - Strategic Domain: Provides ready-to-execute AEL command in conversation after human approval
     - Human: Executes AEL command from project root
     - AEL: Reads T04 prompt as task; runs worker/reviewer Ralph Loop until SHIP or BLOCKED
@@ -90,7 +90,7 @@
     - Command format:
 ```bash
 python ai/ael/src/orchestrator.py --mode loop \
-  --task workspace/prompt/prompt-<uuid>-<n>.md
+  --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
   - §1.1.9 Quality
     - Human review and approval of design, change and initiation of code generation is required
@@ -118,7 +118,7 @@ python ai/ael/src/orchestrator.py --mode loop \
   - §1.1.11 Autonomous Execution Loop (AEL)
     - Reference implementation: Ralph Loop via Python AEL orchestrator (`ai/ael/`)
     - AEL provides autonomous iterative code generation within governance boundaries
-    - Loop State Directory: `.ael/ralph/` (ephemeral, per-task)
+    - Loop State Directory: `ai/state/ralph/` (ephemeral, per-task)
     - Loop Entry: After human approval of T04 Prompt
     - Integration Scripts: Project-scoped scripts reside in `<project>/bin/`. Scripts are version-controlled project artifacts. Global installation (e.g. `~/bin/`) is not required.
     - Claude Desktop Interface: `ael-mcp` (standalone repository) provides `start_ael`, `ael_status`, and `reset_ael` MCP tools for use within the Claude Desktop profile; registers once in Claude Desktop MCP configuration; serves all downstream projects via `project_dir` parameter; reference: §1.2.8
@@ -143,10 +143,10 @@ python ai/ael/src/orchestrator.py --mode loop \
     - GitHub repository is authoritative source for all project artifacts
     - Human: Tags design document commits when approved as baseline for code generation via GitHub Desktop (History → right-click commit → Create Tag → Push Tags)
     - Strategic Domain: Performs configuration audit verifying generated code matches approved design baseline commits
-    - Strategic Domain: Uses config-audit template from workspace/audit/config-audit-template.md
+    - Strategic Domain: Uses config-audit template from ai/workspace/audit/config-audit-template.md
     - Strategic Domain: Verifies code matches tagged design baseline specifications
     - Strategic Domain: Documents findings in config-audit-NNNN-YYYY-MM-DD.md
-    - Strategic Domain: Stores configuration audits in workspace/audit/
+    - Strategic Domain: Stores configuration audits in ai/workspace/audit/
     - Critical deviations: Creates issues via P04 for remediation
   - §1.1.13 Versioning
     - All versioning is handled via GitHub
@@ -161,12 +161,12 @@ python ai/ael/src/orchestrator.py --mode loop \
     - Release notes filename: RELEASE_NOTES_vMAJOR.MINOR.PATCH.md
   - §1.1.14 Document Lifecycle Management
     - §1.1.14.1 Active State
-      - Active documents reside in workspace/\<class\>/
+      - Active documents reside in ai/workspace/\<class\>/
       - Active documents are mutable during iteration cycles
       - Iteration field increments with each debug/refinement cycle
       - Git commit required after each iteration increment
     - §1.1.14.2 Closed State
-      - Upon human acceptance, documents moved to workspace/\<class\>/closed/
+      - Upon human acceptance, documents moved to ai/workspace/\<class\>/closed/
       - Closed documents are immutable
       - Closed documents preserve final iteration number
       - Access: Read-only reference for future work
@@ -184,12 +184,12 @@ python ai/ael/src/orchestrator.py --mode loop \
       - Git commit records closure transition
       - Closed documents referenced but not modified
     - §1.1.14.5 Closed Subfolder Structure
-      - workspace/issues/closed/
-      - workspace/change/closed/
-      - workspace/prompt/closed/
-      - workspace/audit/closed/
-      - workspace/test/closed/
-      - workspace/test/result/closed/
+      - ai/workspace/issues/closed/
+      - ai/workspace/change/closed/
+      - ai/workspace/prompt/closed/
+      - ai/workspace/audit/closed/
+      - ai/workspace/test/closed/
+      - ai/workspace/test/result/closed/
     - §1.1.14.6 Access Constraints
       - Closed documents: Read-only access for reference
       - No modifications permitted to closed documents
@@ -206,8 +206,8 @@ python ai/ael/src/orchestrator.py --mode loop \
     - Production environments use normal mode for operational efficiency
     - Log artifacts preserved for failure analysis
   - §1.1.16 Knowledge Base
-    - Strategic Domain: Consults workspace/knowledge/ before creating documents or code
-    - Tactical Domain: Consults workspace/knowledge/ before implementing changes
+    - Strategic Domain: Consults ai/workspace/knowledge/ before creating documents or code
+    - Tactical Domain: Consults ai/workspace/knowledge/ before implementing changes
     - Both domains: Add newly discovered patterns and solutions to knowledge base
     - Knowledge documents contain: problem statements, solutions, examples, rationale
     - Knowledge base prevents repeated problem-solving across development cycles
@@ -246,7 +246,7 @@ python ai/ael/src/orchestrator.py --mode loop \
       - Code style guidelines
       - Repository conventions (branch naming, commit patterns)
       - Governance framework location: ai/governance.md
-      - Design documents location: workspace/design/
+      - Design documents location: ai/workspace/design/
       - Protocol compliance requirements summary
       - Platform-specific tooling and dependencies
     - Token efficiency: Externalize stable context from T04 prompts
@@ -292,18 +292,25 @@ build/
 .obsidian/
 *.canvas
 
-# AI framework
+# AI framework (consolidated under ai/)
+# Owned-project (tracked) mode below: the framework lives in ai/ and is
+# version-controlled; only transient state and generated output are ignored.
+# Third-party fork (isolation) mode: replace this section with two lines —
+#   /ai/
+#   /CLAUDE.md
+# — to keep the framework out of the fork's history entirely.
 deprecated/
-workspace/admin/
-workspace/ai/
-workspace/proposal/
-workspace/proposal/closed/
+ai/workspace/admin/
+ai/workspace/ai/
+ai/workspace/proposal/
+ai/workspace/proposal/closed/
+ai/state/
+ai/dashboard-alerts.md
 
 # Tactical Domain
 CLAUDE.local.md
 .claude/settings.json
 .claude/commands/
-.ael/ralph/
 
 # other
 10000
@@ -320,15 +327,39 @@ test.txt
     - Human: Rename the copied directory to `<project name>`
     - No recipe path configuration required. `ralph-loop.sh` resolves recipes relative to its own location.
   - §1.2.5 Traceability Matrix
-     - Create skeleton trace-traceability-matrix-master.md in workspace/trace/
+     - Create skeleton trace-traceability-matrix-master.md in ai/workspace/trace/
   - §1.2.6 Project folder structure
     - Note: This structure applies to projects using the framework, not to the LLM-Governance-and-Orchestration repository itself
     - The governance framework repository contains only ai/, doc/, and templates/ directories
     - Layout
 ```
     └── <project name>/
-        ├── ai/                       # Framework operational rules
-        │   └── governance.md
+        ├── ai/                       # Framework — operational rules + execution space
+        │   ├── governance.md
+        │   ├── state/                # AEL loop state (ephemeral, excluded from git)
+        │   ├── dashboard-alerts.md   # govwatch output (excluded from git)
+        │   └── workspace/            # Framework execution space
+        │       ├── admin/            # Administrative reports (excluded from git)
+        │       ├── requirements/
+        │       │   └── closed/
+        │       ├── design/
+        │       ├── change/
+        │       │   └── closed/
+        │       ├── knowledge/        # Institutional knowledge
+        │       ├── issues/
+        │       │   └── closed/
+        │       ├── proposal/         # (excluded from git)
+        │       │   └── closed/
+        │       ├── prompt/
+        │       │   └── closed/
+        │       ├── trace/
+        │       ├── audit/
+        │       │   └── closed/
+        │       ├── test/
+        │       │   ├── closed/
+        │       │   └── result/
+        │       │       └── closed/
+        │       └── ai/               # Optional: (excluded from git)
         ├── <tactical_config>/        # Tactical Domain configuration (profile-specific)
         │   ├── <skills_dir>/         # Project-specific skills
         │   │   ├── governance/
@@ -339,28 +370,6 @@ test.txt
         ├── <tactical_context>        # Tactical Domain context file (team shared)
         ├── venv/                     # Python virtual environment (excluded from git)
         ├── dist/                     # Python build artefacts (excluded from git)
-        ├── workspace/                # Framework execution space
-        │   ├── admin/                # Administrative reports (excluded from git)
-        │   ├── requirements/
-        │   │   └── closed/
-        │   ├── design/
-        │   ├── change/
-        │   │   └── closed/
-        │   ├── knowledge/            # Institutional knowledge
-        │   ├── issues/
-        │   │   └── closed/
-        │   ├── proposal/             # (excluded from git)
-        │   │   └── closed/
-        │   ├── prompt/
-        │   │   └── closed/
-        │   ├── trace/
-        │   ├── audit/
-        │   │   └── closed/
-        │   ├── test/
-        │   │   ├── closed/
-        │   │   └── result/
-        │   │       └── closed/
-        │   └── ai/                   # Optional: (excluded from git)
         ├── docs/                     # Technical Documents
         ├── bin/                      # Project-scoped integration scripts
         ├── tests/                    # Test files (root level)
@@ -519,7 +528,7 @@ exclude_lines = [
     - Testing: Informal validation, no formal test documentation required
     - Transition: Successful prototypes promote to formal design workflow
     - Human decision: Determines when exploration transitions to formal development
-    - Knowledge capture: Findings documented in workspace/knowledge/ for reuse
+    - Knowledge capture: Findings documented in ai/workspace/knowledge/ for reuse
     - Audit exemption: Exploration work excluded from P08 compliance audits
     - Git workflow: Feature branches for exploration, merge on formalization
   - §1.3.9 Cross-Linking Requirements
@@ -543,7 +552,7 @@ exclude_lines = [
     - Strategic Domain: Documents validation results in master design document
     - Strategic Domain: Resolves discrepancies before proceeding to code generation
   - §1.3.14 Document Storage
-    - Strategic Domain: Saves all design documents in workspace/design
+    - Strategic Domain: Saves all design documents in ai/workspace/design
   - §1.3.15 Visual Documentation Requirements
     - Strategic Domain: Embeds Mermaid diagrams directly within design documents at all tiers
     - Tier 1 Master: System architecture, overall component relationships, system-level state machines
@@ -555,7 +564,7 @@ exclude_lines = [
     - Strategic Domain: Maintains diagram consistency with textual design specifications
   - §1.3.16 Name Registry
     - Strategic Domain: Creates design-\<project\>-name_registry-master.md at Tier 1 design phase
-    - Strategic Domain: Stores registry in workspace/design/
+    - Strategic Domain: Stores registry in ai/workspace/design/
     - Registry document contains two sections:
       - Mermaid class diagram: visual representation of all program elements and relationships (human comprehension)
       - YAML element table: machine-readable canonical name list (T04 prompt inclusion)
@@ -576,10 +585,10 @@ exclude_lines = [
 #### 1.4 P03 Change
   - §1.4.1 Change document creation
     - Strategic Domain: Reads template from ai/templates/T02-change.md
-    - Strategic Domain: Creates change documents exclusively from issue documents using T02 template and saves them in folder workspace/change
+    - Strategic Domain: Creates change documents exclusively from issue documents using T02 template and saves them in folder ai/workspace/change
     - Strategic Domain: For human-requested source code changes, first creates issue document via P04, then creates change document referencing that issue
     - Strategic Domain: For enhancement or requirement change requests, creates issue document via P04 with type `enhancement` or `requirement_change` and origin `requirement_change`, then creates change document referencing that issue
-    - Exception: Non-source-code changes (workspace/ documents per 1.4.10) may be implemented directly after human approval without issue/change documents
+    - Exception: Non-source-code changes (ai/workspace/ documents per 1.4.10) may be implemented directly after human approval without issue/change documents
   - §1.4.2 Document coupling
     - Strategic Domain: Ensures one-to-one coupling between issue and change documents
     - Strategic Domain: Every source code change document must reference exactly one source issue document via UUID
@@ -623,7 +632,7 @@ exclude_lines = [
     - Strategic Domain: Maintains documentation currency with code state
     - Strategic Domain: Cross-links updated documents to source change document
   - §1.4.11 Documentation domain
-    - Change documentation is only required for source code changes in src/. Change documentation to documents in the workspace/ is not required and can be made directly after human approval.
+    - Change documentation is only required for source code changes in src/. Change documentation to documents in the ai/workspace/ is not required and can be made directly after human approval.
   - §1.4.12 Trivial Change Exemption
     - Definitions:
       - Trivial: the outcome is fully predictable before implementation; no analysis, experimentation, or design judgement is required to determine the correct solution.
@@ -644,14 +653,14 @@ exclude_lines = [
   - §1.5.1 Issue creation from test results
     - Strategic Domain: Reads template from ai/templates/T03-issue.md
     - Strategic Domain: Before specifying any target file_path in a T03 issue, reads the project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms the named file is in the deployment path
-    - Strategic Domain: Creates issue documents from errors reported in workspace/test/result using T03 template and saves them in folder workspace/issues
+    - Strategic Domain: Creates issue documents from errors reported in ai/workspace/test/result using T03 template and saves them in folder ai/workspace/issues
   - §1.5.2 Reserved for future use
     - Strategic Domain: Reserved for future use
   - §1.5.3 Debug workflow
     - Tactical Domain: Debugs issues submitted from Tactical Domain and returns change proposal to Strategic Domain
   - §1.5.4 Issue updates
     - Strategic Domain: Reads template from ai/templates/T03-issue.md
-    - Strategic Domain: Updates issue documents from bugs using T03 template and saves them in folder workspace/issues
+    - Strategic Domain: Updates issue documents from bugs using T03 template and saves them in folder ai/workspace/issues
   - §1.5.5 Non-Conformance Reporting
     - Strategic Domain: Documents instances where generated code deviates from design specifications
     - Strategic Domain: Records deviation type, severity, affected components
@@ -675,7 +684,7 @@ exclude_lines = [
 
 #### 1.6 P05 Trace
   - §1.6.1 Traceability Matrix Management
-    - Strategic Domain: Maintains traceability matrix in workspace/trace/trace-traceability-matrix-master.md
+    - Strategic Domain: Maintains traceability matrix in ai/workspace/trace/trace-traceability-matrix-master.md
     - Strategic Domain: Updates matrix when requirements, designs, code, or tests modified
   - §1.6.2 Traceability Verification
     - Strategic Domain: Verifies bidirectional links exist: requirements ↔ design ↔ code ↔ test (navigable forward and backward)
@@ -686,7 +695,7 @@ exclude_lines = [
     - Strategic Domain: Updates matrix when designs, code, or tests modified
     - Strategic Domain: Ensures orphaned requirements or implementations identified
   - §1.6.4 Traceability Matrix Structure
-    - Strategic Domain: Maintains single traceability matrix in workspace/trace/trace-traceability-matrix-master.md
+    - Strategic Domain: Maintains single traceability matrix in ai/workspace/trace/trace-traceability-matrix-master.md
     - Required sections:
       - Functional Requirements: ID, Requirement, Design, Code, Test, Status
       - Non-Functional Requirements: ID, Requirement, Target, Design, Code, Test, Status
@@ -702,7 +711,7 @@ exclude_lines = [
   - §1.7.1 Purpose
   - §1.7.2 Test documentation
     - Strategic Domain: Reads template from ai/templates/T05-test.md
-    - Strategic Domain: Creates test documents from source code generated by Tactical Domain using T05 template and saves them in folder workspace/test
+    - Strategic Domain: Creates test documents from source code generated by Tactical Domain using T05 template and saves them in folder ai/workspace/test
   - §1.7.3 Test Script Creation
     - Test location: tests/ directory at project root (not src/tests/)
     - Strategic Domain: Automatic precursor to test execution
@@ -755,12 +764,12 @@ exclude_lines = [
     - Iteration synchronization maintained through debug cycles
     - Strategic Domain verifies coupling before test execution
   - §1.7.13 Test Result Lifecycle
-    - Results named: result-<uuid>-<n>.md in workspace/test/result/
+    - Results named: result-<uuid>-<n>.md in ai/workspace/test/result/
     - Result references parent test UUID in coupled_docs.test_ref field
     - Result iteration matches parent test iteration
     - Failed results trigger issue creation (new UUID assigned)
     - Passed results enable document closure workflow
-    - Result documents moved to workspace/test/result/closed/ upon acceptance
+    - Result documents moved to ai/workspace/test/result/closed/ upon acceptance
   - §1.7.14 Distribution Creation (Human executes)
     - Human: Distribution build when code generation complete and tests pass
 ```
@@ -894,7 +903,7 @@ pip install dist/*.whl
     - Strategic Domain: Calculates compliance metrics (percentage, deficiency counts by severity)
   - §1.9.5 Audit Deliverables
     - Strategic Domain: Creates audit report following naming format: audit-<uuid>-<audit name>.md
-    - Strategic Domain: Stores audit reports in workspace/audit/ folder
+    - Strategic Domain: Stores audit reports in ai/workspace/audit/ folder
     - Audit report structure:
     - Executive summary with compliance status and critical issue count
     - Protocol-by-protocol compliance assessment
@@ -932,7 +941,7 @@ pip install dist/*.whl
       - Human: Reviews closure documentation
       - Human: Approves audit closure or identifies remaining work
     - §1.9.9.3 Post-Closure Archival
-      - Strategic Domain: Moves closed audit report to workspace/audit/closed/
+      - Strategic Domain: Moves closed audit report to ai/workspace/audit/closed/
       - Strategic Domain: Updates audit traceability links in master traceability matrix
       - Strategic Domain: Preserves read-only access for future reference
     - §1.9.9.4 Reopening Closed Audits
@@ -950,7 +959,7 @@ pip install dist/*.whl
     - Prompt documents are always Tactical Domain specific.
     - Strategic Domain: Reads template from ai/templates/T04-prompt.md
     - Strategic Domain: Creates prompt documents from design and change documents using T04 template
-    - Strategic Domain: Saves prompts with naming format prompt-<uuid>-<name>.md in workspace/prompt/
+    - Strategic Domain: Saves prompts with naming format prompt-<uuid>-<name>.md in ai/workspace/prompt/
     - Strategic Domain: UUID assignment follows workflow initiation pattern:
     - First document created in workflow (Issue OR Change) generates new 8-character UUID
     - All subsequently coupled documents (Change, Prompt, Test, Result) inherit that UUID
@@ -987,7 +996,7 @@ pip install dist/*.whl
 
 ```bash
 python ai/ael/src/orchestrator.py --mode loop \
-  --task workspace/prompt/prompt-<uuid>-<n>.md
+  --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
     - **Option B — Strategic Domain launches via ael-mcp (Claude Desktop profile only):**
@@ -1026,7 +1035,7 @@ python ai/ael/src/orchestrator.py --mode loop \
     - Strategic Domain: Validates completeness, clarity, testability
     - Strategic Domain: Identifies conflicts and dependencies
     - Strategic Domain: Creates requirements-<project>-master.md using T07 template
-    - Strategic Domain: Saves in workspace/requirements/
+    - Strategic Domain: Saves in ai/workspace/requirements/
   - §1.11.3 Requirements Validation
     - Strategic Domain: Verifies each requirement has objective acceptance criteria
     - Strategic Domain: Ensures requirements are testable and unambiguous
@@ -1037,8 +1046,8 @@ python ai/ael/src/orchestrator.py --mode loop \
     - Strategic Domain: Establishes baseline for design phase
     - Strategic Domain: Initializes traceability matrix with requirements
   - §1.11.5 Requirements Lifecycle
-    - Active: workspace/requirements/requirements-<project>-master.md
-    - Closed: workspace/requirements/closed/ after human acceptance
+    - Active: ai/workspace/requirements/requirements-<project>-master.md
+    - Closed: ai/workspace/requirements/closed/ after human acceptance
     - Reopening: Move from closed/ to active, proceed with change workflow
     - No iteration numbering - git history tracks all changes
   - §1.11.6 Requirements Change Management
@@ -1142,6 +1151,7 @@ See [workflow.md](workflow.md).
 | 8.8     | 2026-03-29 | Extracted §2.0 Workflow flowchart to workflow.md; replaced §2.0 body with link; updated ToC entry and Prime Directive cross-reference |
 | 8.9     | 2026-04-28 | Added ael-mcp integration: P00 §1.1.11 Claude Desktop Interface directive; P09 §1.10.3 Option A/B AEL execution (human executes or Strategic Domain launches via ael-mcp); P01 §1.2.8 ael-mcp setup steps for Claude Desktop profile |
 | 9.0     | 2026-04-30 | Added claude-omlx as Tactical Domain implementation option: §1.1.4 implementation options; §1.2.8 claude-omlx profile setup steps; fixed claude.md reference path (deprecated/ → profiles/) |
+| 9.1     | 2026-06-14 | Consolidated framework footprint under ai/: relocated workspace/ → ai/workspace/ across P00–P10 path references; loop state .ael/ralph/ → ai/state/ralph/ (§1.1.11); updated §1.2.2 .gitignore and §1.2.6 folder structure for ai/ layout; added ai/state/ and ai/dashboard-alerts.md; documented fork isolation mode; CLAUDE.md retained at project root (Claude Code profile) |
 
 ---
 [Return to Table of Contents](<#table of contents>)

@@ -80,11 +80,11 @@ class ProjectPaths:
     root: Path
     """Absolute project root directory."""
     workspace: Path
-    """workspace/ directory under root."""
+    """ai/workspace/ directory under root."""
     ael_state: Path
-    """.ael/ralph/ state directory under root."""
+    """ai/state/ralph/ state directory under root."""
     alerts_file: Path
-    """dashboard-alerts.md in the project root (sole write target)."""
+    """ai/dashboard-alerts.md (sole write target)."""
 
 
 @dataclass
@@ -342,9 +342,9 @@ def validate_project(paths: ProjectPaths) -> bool:
     """
     if not paths.workspace.is_dir():
         print(
-            f"govwatch: workspace/ not found at {paths.workspace}\n"
+            f"govwatch: ai/workspace/ not found at {paths.workspace}\n"
             f"Is '{paths.root}' a project root? "
-            f"(expected 'workspace/' subdirectory)",
+            f"(expected 'ai/workspace/' subdirectory)",
             file=sys.stderr,
         )
         return False
@@ -651,9 +651,9 @@ class ComplianceEngine:
             if doc.is_master:
                 continue
             if not _FILENAME_RE.match(os.path.basename(doc.path)):
-                # Show path relative to workspace/ for clarity
+                # Show path relative to ai/workspace/ for clarity
                 try:
-                    idx = doc.path.index("workspace")
+                    idx = doc.path.index("ai/workspace")
                     rel = doc.path[idx:]
                 except ValueError:
                     rel = os.path.basename(doc.path)
@@ -1190,9 +1190,9 @@ def main() -> None:
     root = Path(args.project).resolve()
     paths = ProjectPaths(
         root=root,
-        workspace=root / "workspace",
-        ael_state=root / ".ael" / "ralph",
-        alerts_file=root / "dashboard-alerts.md",
+        workspace=root / "ai" / "workspace",
+        ael_state=root / "ai" / "state" / "ralph",
+        alerts_file=root / "ai" / "dashboard-alerts.md",
     )
 
     if not validate_project(paths):

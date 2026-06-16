@@ -38,7 +38,7 @@ Three Tactical Domain profiles are available. AEL is the primary profile; the ot
 | Inference | oMLX → Devstral (local) | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
 | Loop control | `orchestrator.py` | Human operator | Human operator |
 | Context file | `config.yaml` | `CLAUDE.md` | `CLAUDE.md` |
-| State directory | `.ael/ralph/` | `.claude/` | `.claude/` |
+| State directory | `ai/state/ralph/` | `.claude/` | `.claude/` |
 | Profile | `mlx_devstral_small_2_2512_Q8.md` | `claude.md` | `claude-omlx.md` |
 
 See `ai/profiles/` for profile documents.
@@ -114,7 +114,7 @@ mcp_servers:
 
 loop:
   max_iterations: 10
-  state_dir: ".ael/ralph"
+  state_dir: "ai/state/ralph"
 
 context:
   models_dir: "~/ai-models"   # set to your local model storage path
@@ -136,13 +136,13 @@ context:
 python ai/ael/src/budget.py
 
 # Single worker pass
-python ai/ael/src/orchestrator.py --mode worker --task workspace/prompt/prompt-abc123.md
+python ai/ael/src/orchestrator.py --mode worker --task ai/workspace/prompt/prompt-abc123.md
 
 # Single reviewer pass
-python ai/ael/src/orchestrator.py --mode reviewer --task workspace/prompt/prompt-abc123.md
+python ai/ael/src/orchestrator.py --mode reviewer --task ai/workspace/prompt/prompt-abc123.md
 
 # Full Ralph Loop (worker + reviewer cycle)
-python ai/ael/src/orchestrator.py --mode loop --task workspace/prompt/prompt-abc123.md
+python ai/ael/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-abc123.md
 python ai/ael/src/orchestrator.py --mode loop --task "implement the login module"
 
 # Reset AEL state after human acceptance
@@ -160,7 +160,7 @@ python ai/ael/src/orchestrator.py --mode reset
 | `--duration` | Wall-clock time limit in hours (default: no limit) |
 | `--config` | Path to config.yaml |
 
-**`budget.py`** reads `config.yaml` and the model's `config.json` from disk to compute context window size, warn/abort thresholds, and recommended `tactical_brief` sizing. It writes `.ael/ralph/context-budget.md`. The Strategic Domain reads this file before authoring any T04 prompt. If the file is absent, the Strategic Domain will instruct the human to run `budget.py` before proceeding.
+**`budget.py`** reads `config.yaml` and the model's `config.json` from disk to compute context window size, warn/abort thresholds, and recommended `tactical_brief` sizing. It writes `ai/state/ralph/context-budget.md`. The Strategic Domain reads this file before authoring any T04 prompt. If the file is absent, the Strategic Domain will instruct the human to run `budget.py` before proceeding.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -177,7 +177,7 @@ Recipes are YAML files providing role-specific system prompts. The `instructions
 | `audit-work.yaml` | Audit worker | Read-only codebase analysis; accumulates findings in `audit-report.md` |
 | `audit-review.yaml` | Audit reviewer | Checks finding quality and coverage; outputs `SHIP` or `REVISE` |
 
-State files are written to `.ael/ralph/` in the project root during loop execution. This directory is ephemeral and excluded from git.
+State files are written to `ai/state/ralph/` in the project root during loop execution. This directory is ephemeral and excluded from git.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -264,6 +264,7 @@ tests/test_integration.py                     SKIPPED [oMLX not reachable]
 | 1.7 | 2026-04-30 | Updated canonical model quantisation from Q8 to 6bit; memory constraints on M4 Mac Mini (64GB) preclude Q8 with adequate KV headroom |
 | 1.8 | 2026-04-30 | Added Tactical Profiles section with comparison table |
 | 1.9 | 2026-06-02 | Added audit-work.yaml and audit-review.yaml to Structure and Recipes; added `--duration` and `--max-iterations` to CLI flags table |
+| 2.0 | 2026-06-14 | Relocated loop state to ai/state/ralph/ (config.yaml, profile table, usage examples); workspace/ → ai/workspace/ in command examples |
 
 ---
 

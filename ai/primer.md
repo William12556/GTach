@@ -9,6 +9,7 @@ Created: 2026 April 27
 [1.0 Purpose](<#1.0 purpose>)
 [2.0 Architecture](<#2.0 architecture>)
 [2.1 Tactical Profiles](<#2.1 tactical profiles>)
+[2.2 Monitoring Tools](<#2.2 monitoring tools>)
 [3.0 Responsibilities](<#3.0 responsibilities>)
 [4.0 Workflow](<#4.0 workflow>)
 [5.0 Protocol Reference](<#5.0 protocol reference>)
@@ -47,7 +48,7 @@ direct conversational access to the other.
 
 - **AEL (Autonomous Execution Loop)** — reference implementation. Runs a
   worker/reviewer cycle (Ralph Loop) until `SHIP` or `BLOCKED`. State resides
-  in `.ael/ralph/`. Requires oMLX inference endpoint and `config.yaml`.
+  in `ai/state/ralph/`. Requires oMLX inference endpoint and `config.yaml`.
 - **Claude Code** — alternative profile. Manual invocation; no automated loop.
   Uses `CLAUDE.md` as tactical context file. See `ai/profiles/claude.md`.
 
@@ -71,6 +72,26 @@ determines the tactical context file name, skills directory, and AEL configurati
 | Inference | oMLX → Devstral (local) | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
 | Loop control | `orchestrator.py` | Human operator | Human operator |
 | Profile | `mlx_devstral_small_2_2512_Q8.md` | `claude.md` | `claude-omlx.md` |
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 2.2 Monitoring Tools
+
+**govwatch** — a standalone read-only TUI that monitors a downstream project's
+governance state at runtime. Run from the project root:
+
+```bash
+python ai/src/govwatch.py
+```
+
+Provides: inferred workflow phase, two-tier compliance alerts (coupling
+violations, tactical_brief validity, naming convention), document registry
+grouped by UUID, and an alert summary emitted to `ai/dashboard-alerts.md` and
+the clipboard (`C` key).
+
+See `ai/doc/guide-govwatch.md` for full operational detail.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -176,8 +197,8 @@ required after each increment.
 
 | State | Location | Mutability |
 |---|---|---|
-| Active | `workspace/<class>/` | Mutable |
-| Closed | `workspace/<class>/closed/` | Immutable |
+| Active | `ai/workspace/<class>/` | Mutable |
+| Closed | `ai/workspace/<class>/closed/` | Immutable |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -192,7 +213,7 @@ required after each increment.
 - Issuing an AEL command when `tactical_brief` is empty.
 
 **Context Budget**
-- `context-budget.md` must exist in `.ael/ralph/` before authoring any T04
+- `context-budget.md` must exist in `ai/state/ralph/` before authoring any T04
   prompt. If absent, instruct human to run `python ai/ael/src/budget.py`.
 - Read budget before sizing `tactical_brief` (~200–400 tokens target).
 
@@ -208,7 +229,7 @@ required after each increment.
 
 **Change Documentation Scope**
 - Full issue/change/prompt workflow applies to `src/` changes only.
-- `workspace/` document changes may be made directly after human approval.
+- `ai/workspace/` document changes may be made directly after human approval.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -240,6 +261,8 @@ any document.
 | 0.1 | 2026-04-27 | Initial draft |
 | 0.2 | 2026-04-28 | Added ael-mcp to §2.0 Architecture; annotated §4.0 Workflow AEL step with Option A/B |
 | 0.3 | 2026-04-30 | Added §2.1 Tactical Profiles with comparison table |
+| 0.4 | 2026-06-10 | Added §2.2 Monitoring Tools (govwatch) |
+| 0.5 | 2026-06-14 | Relocated framework paths under ai/: workspace/ → ai/workspace/, state .ael/ralph/ → ai/state/ralph/, govwatch output → ai/dashboard-alerts.md |
 
 ---
 

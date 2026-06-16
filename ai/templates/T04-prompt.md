@@ -32,7 +32,7 @@ prompt_info:
 context:
   purpose: ""  # What this code accomplishes
   integration: ""  # How it fits in project
-  knowledge_references: [] # workspace/knowledge/ docs consulted
+  knowledge_references: [] # ai/workspace/knowledge/ docs consulted
   constraints:
     - ""  # Technical limitations
 
@@ -117,7 +117,7 @@ success_criteria:
   - ""
 
 element_registry:
-  source: ""  # Path to name registry master (e.g., "workspace/design/design-<project>-name_registry-master.md")
+  source: ""  # Path to name registry master (e.g., "ai/workspace/design/design-<project>-name_registry-master.md")
   entries:    # Relevant entries for this code generation task (copied from registry)
     modules:
       - name: ""
@@ -501,6 +501,7 @@ properties:
 | 1.5     | 2026-03-18 | Added tactical_brief field: concise AEL task payload authored by Strategic Domain; orchestrator uses brief in preference to full document to reduce model context consumption |
 | 1.6     | 2026-03-24 | Removed behavioral_standards, tactical_execution, metadata, priority fields (governance-only, zero AEL utility); fixed tactical_brief placeholder (was #-comment block causing fallback to raw document); added tactical_brief to schema required with minLength:1; removed orphaned mcp_config and malformed enum items from schema |
 | 1.7     | 2026-03-25 | Added FORMAT comment to tactical_brief field: orchestrator detects tactical_brief only in ```yaml blocks with tactical_brief as root key; per-section prompts must author §8.0 as a dedicated ```yaml block (not ```text) |
+| 1.8     | 2026-06-14 | Relocated example paths under ai/: knowledge_references comment and element_registry source example use ai/workspace/ |
 
 ---
 

@@ -23,7 +23,7 @@ Created: 2026 June 02
 
 ## 1.0 Purpose
 
-This guide is an operational reference for the Strategic Domain when running a codebase quality audit against a downstream project. The audit loop uses `audit-work.yaml` and `audit-review.yaml` recipes. No source file in the target codebase is written. Findings are accumulated in `.ael/ralph/audit-report.md`.
+This guide is an operational reference for the Strategic Domain when running a codebase quality audit against a downstream project. The audit loop uses `audit-work.yaml` and `audit-review.yaml` recipes. No source file in the target codebase is written. Findings are accumulated in `ai/state/ralph/audit-report.md`.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -35,7 +35,7 @@ The Strategic Domain performs all preparation steps before launching the AEL. Th
 
 ### 2.1 Generate the UML Map
 
-The Strategic Domain reads the target `src/` tree using the Filesystem MCP and mcp-grep, then produces a Mermaid class diagram covering modules, classes, and key functions. This is saved as `.ael/ralph/audit-uml.md`.
+The Strategic Domain reads the target `src/` tree using the Filesystem MCP and mcp-grep, then produces a Mermaid class diagram covering modules, classes, and key functions. This is saved as `ai/state/ralph/audit-uml.md`.
 
 The UML serves two purposes:
 - Orients the worker each iteration without requiring it to re-traverse the codebase
@@ -70,7 +70,7 @@ Present `audit-uml.md` to the human for review before proceeding.
 
 ### 2.2 Generate audit-index.md
 
-From the UML, derive an ordered list of audit items — one entry per significant function or class. Save as `.ael/ralph/audit-index.md`.
+From the UML, derive an ordered list of audit items — one entry per significant function or class. Save as `ai/state/ralph/audit-index.md`.
 
 Format — one item per line, unchecked:
 
@@ -117,7 +117,7 @@ Example `tactical_brief`:
 ```yaml
 tactical_brief: |
   Read-only audit of /path/to/project/src/.
-  State directory: /path/to/project/.ael/ralph/
+  State directory: /path/to/project/ai/state/ralph/
   DO NOT write to any file in src/.
   Audit criteria: style, complexity, error-handling, security, conformance, dead-code.
   One item per iteration as listed in audit-index.md.
@@ -137,12 +137,12 @@ From the project root, after human approval of the T04 prompt:
 ```bash
 # With wall-clock time limit (recommended for long runs)
 python ai/ael/src/orchestrator.py --mode loop \
-  --task workspace/prompt/<uuid>-audit.md \
+  --task ai/workspace/prompt/<uuid>-audit.md \
   --duration 12
 
 # Without time limit (runs until coverage complete or max_iterations)
 python ai/ael/src/orchestrator.py --mode loop \
-  --task workspace/prompt/<uuid>-audit.md
+  --task ai/workspace/prompt/<uuid>-audit.md
 ```
 
 The `--duration` value is in hours. The loop exits cleanly at the limit; partial results in `audit-report.md` are valid and usable.
@@ -157,11 +157,11 @@ The Strategic Domain may monitor progress at any time by reading state files dir
 
 | File | What it shows |
 |---|---|
-| `.ael/ralph/audit-index.md` | Coverage: count `[x]` vs `[ ]` items |
-| `.ael/ralph/audit-report.md` | Findings accumulated so far |
-| `.ael/ralph/work-summary.txt` | Most recent worker iteration summary |
-| `.ael/ralph/iteration.txt` | Current outer loop iteration number |
-| `.ael/ralph/ael_<timestamp>.LOG` | Full debug log |
+| `ai/state/ralph/audit-index.md` | Coverage: count `[x]` vs `[ ]` items |
+| `ai/state/ralph/audit-report.md` | Findings accumulated so far |
+| `ai/state/ralph/work-summary.txt` | Most recent worker iteration summary |
+| `ai/state/ralph/iteration.txt` | Current outer loop iteration number |
+| `ai/state/ralph/ael_<timestamp>.LOG` | Full debug log |
 
 The AEL TUI displays iteration progress, context budget, and tool calls in the terminal during the run.
 
@@ -217,7 +217,7 @@ For each high-severity finding, create a T03 issue via P04. Reference the audit 
 **7.3 Archive the audit report**
 
 ```bash
-cp .ael/ralph/audit-report.md workspace/audit/audit-<uuid>-<name>.md
+cp ai/state/ralph/audit-report.md ai/workspace/audit/audit-<uuid>-<name>.md
 ```
 
 The UUID is the same UUID used for the T04 audit prompt. Name the file descriptively (e.g. `audit-a1b2c3d4-framework-src-2026-06.md`).
@@ -233,7 +233,7 @@ python ai/ael/src/orchestrator.py --mode reset
 When remediation of all critical and high-severity findings is complete, close the audit document per P08 §1.9.7:
 
 ```bash
-mv workspace/audit/audit-<uuid>-<name>.md workspace/audit/closed/
+mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -259,6 +259,7 @@ mv workspace/audit/audit-<uuid>-<name>.md workspace/audit/closed/
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-06-02 | Initial document |
+| 1.1 | 2026-06-14 | Relocated paths under ai/: state → ai/state/ralph/, workspace/audit → ai/workspace/audit, workspace/prompt → ai/workspace/prompt |
 
 ---
 

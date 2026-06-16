@@ -86,9 +86,9 @@ _WORKSPACE_DIRS = [
 @pytest.mark.parametrize("subdir", _WORKSPACE_DIRS)
 def test_skel_workspace_subdir_exists(subdir: str):
     """Each workspace subdirectory mandated by governance must exist in skel."""
-    path = os.path.join(_SKEL, "workspace", subdir)
+    path = os.path.join(_SKEL, "ai", "workspace", subdir)
     assert os.path.isdir(path), \
-        f"Workspace directory missing from skel/workspace/: {subdir}"
+        f"Workspace directory missing from skel/ai/workspace/: {subdir}"
 
 
 # ── Check 3: Skel AEL source files (P01 §1.2.8, §1.1.11) ────────────────────

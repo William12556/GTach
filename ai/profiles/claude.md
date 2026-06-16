@@ -84,7 +84,7 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 3. Issue the following instruction, substituting the actual T04 file path:
 
 ```
-implement workspace/prompt/prompt-<uuid>-<n>.md
+implement ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
 4. Claude Code reads the T04 prompt from disk and implements the task.
@@ -122,6 +122,7 @@ CLAUDE.local.md
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-03-31 | Initial document; Claude Code as optional alternative to MLX/Devstral profile; manual single-pass invocation via T04 file path |
+| 1.1 | 2026-06-14 | workspace/ → ai/workspace/ in invocation example |
 
 ---
 
