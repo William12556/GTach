@@ -12,6 +12,7 @@ set -e
 
 PI="root@gtach.local"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 INSTALL_DIR="/opt/gtach"
 
 # ---------------------------------------------------------------------------
@@ -26,8 +27,8 @@ fi
 # Build
 # ---------------------------------------------------------------------------
 echo "==> Building GTach..."
-cd "$SCRIPT_DIR"
-./build.sh
+cd "$PROJECT_ROOT"
+"$SCRIPT_DIR/build.sh"
 
 # Find the wheel produced by build.sh
 WHEEL=$(ls dist/gtach-*.whl 2>/dev/null | sort -V | tail -1)
@@ -65,7 +66,7 @@ scp "$WHEEL" "${PI}:/tmp/"
 
 echo "==> Transferring deploy files..."
 scp "$SCRIPT_DIR/install.sh" "${PI}:${INSTALL_DIR}/"
-scp "$SCRIPT_DIR/gtach.service" "${PI}:${INSTALL_DIR}/"
+scp "$PROJECT_ROOT/gtach.service" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/gtach-preflight.sh" "${PI}:${INSTALL_DIR}/"
 
 echo "==> Running install on Pi..."

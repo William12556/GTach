@@ -7,7 +7,7 @@
 Builds the wheel, stops the service, transfers all deploy files, installs, and restarts.
 
 ```shell
-cd ~/Documents/GitHub/GTach && ./deploy.sh
+cd ~/Documents/GitHub/GTach && ./bin/deploy.sh
 ```
 
 ### Stage update for in-app install
@@ -16,13 +16,13 @@ Builds and transfers the wheel to the Pi drop directory. Use 'Check for updates'
 in the GTach OPTIONS screen to install.
 
 ```shell
-cd ~/Documents/GitHub/GTach && ./deploy.sh --stage
+cd ~/Documents/GitHub/GTach && ./bin/deploy.sh --stage
 ```
 
 ### Transfer deploy files only (no build)
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp install.sh gtach.service gtach-preflight.sh root@gtach.local:/opt/gtach/
+cd ~/Documents/GitHub/GTach && scp bin/install.sh gtach.service bin/gtach-preflight.sh root@gtach.local:/opt/gtach/
 ```
 
 ---
@@ -32,13 +32,13 @@ cd ~/Documents/GitHub/GTach && scp install.sh gtach.service gtach-preflight.sh r
 ### Startup log (written on every boot)
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/start.log .
+cd ~/Documents/GitHub/GTach/log && scp root@gtach.local:/opt/gtach/start.log .
 ```
 
 ### Debug log (written when debug is active)
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/debug.log .
+cd ~/Documents/GitHub/GTach/log && scp root@gtach.local:/opt/gtach/debug.log .
 ```
 
 ---
@@ -46,11 +46,11 @@ cd ~/Documents/GitHub/GTach && scp root@gtach.local:/opt/gtach/debug.log .
 ## Mac — Retrieve ELM327 emulator logs
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp root@ELM327-Emulator.local:/opt/elm327/elm.log .
+cd ~/Documents/GitHub/GTach/log && scp root@ELM327-Emulator.local:/opt/elm327/elm.log .
 ```
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp root@ELM327-Emulator.local:/opt/elm327/bt-server.log .
+cd ~/Documents/GitHub/GTach/log && scp root@ELM327-Emulator.local:/opt/elm327/bt-server.log .
 ```
 
 ---

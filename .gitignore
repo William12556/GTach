@@ -24,6 +24,11 @@ build/
 *.log
 **/*.log
 
+# Pytest / Coverage
+.cache/
+htmlcov/
+coverage.xml
+
 # Obsidian
 .obsidian/
 *.canvas

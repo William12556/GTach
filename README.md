@@ -44,13 +44,13 @@ git clone https://github.com/William12556/GTach GTach
 ### 3.1 Transfer install script to Pi
 
 ```bash
-scp install.sh root@gtach.local:/opt/gtach/
+scp bin/install.sh root@gtach.local:/opt/gtach/
 ```
 
 ### 3.2 Build wheel and transfer to Pi
 
 ```bash
-./build.sh && scp dist/gtach-0.2.22-py3-none-any.whl root@gtach.local:/tmp/
+./bin/build.sh && scp dist/gtach-0.2.22-py3-none-any.whl root@gtach.local:/tmp/
 ```
 
 ### 3.3 Install on Pi
@@ -129,6 +129,7 @@ workspace/    Development artefacts (issues, changes, design, requirements)
 
 | Version | Date       | Notes                                    |
 |---------|------------|------------------------------------------|
+| 1.4     | 2026-06-17 | Updated script paths for bin/ relocation |
 | 1.3     | 2026-05-20 | Updated CLI options in §4               |
 | 1.2     | 2026-05-07 | Removed macOS runtime support            |
 | 1.1     | 2026-05-06 | Updated build/deploy workflow            |
