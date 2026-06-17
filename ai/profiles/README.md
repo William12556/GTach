@@ -6,15 +6,15 @@ Created: 2026 February 18
 
 ## Table of Contents
 
-- [Purpose](<#purpose>)
-- [Abstract Placeholders](<#abstract placeholders>)
-- [Profile Selection](<#profile selection>)
-- [Available Profiles](<#available profiles>)
+- [1.0 Purpose](<#1.0 purpose>)
+- [2.0 Abstract Placeholders](<#2.0 abstract placeholders>)
+- [3.0 Profile Selection](<#3.0 profile selection>)
+- [4.0 Available Profiles](<#4.0 available profiles>)
 - [Version History](<#version history>)
 
 ---
 
-## Purpose
+## 1.0 Purpose
 
 Implementation profiles map abstract governance placeholders to concrete tooling for a specific execution environment. The governance framework (`ai/governance.md`) is model-agnostic. Profiles resolve the implementation details without modifying governance rules.
 
@@ -22,19 +22,21 @@ Implementation profiles map abstract governance placeholders to concrete tooling
 
 ---
 
-## Abstract Placeholders
+## 2.0 Abstract Placeholders
 
-| Placeholder | Meaning |
-|---|---|
-| `<tactical_config>/` | Tactical Domain configuration directory |
-| `<skills_dir>/` | Skills and workflow recipes directory |
-| `<tactical_context>` | Tactical Domain project context file |
+`<tactical_config>/`, `<skills_dir>/`, and `<tactical_context>` are governance placeholders resolved by each profile. Not all placeholders apply to every profile.
+
+| Placeholder | Meaning | Applies to |
+|---|---|---|
+| `<tactical_config>/` | Tactical Domain configuration directory | Claude Code profiles only |
+| `<skills_dir>/` | Skills and workflow recipes directory | Claude Code profiles only |
+| `<tactical_context>` | Tactical Domain project context file | All profiles |
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## Profile Selection
+## 3.0 Profile Selection
 
 Select one profile per project. Copy the profile-specific `.gitignore` additions into the project `.gitignore`. Apply all placeholder mappings consistently across the project.
 
@@ -42,14 +44,14 @@ Select one profile per project. Copy the profile-specific `.gitignore` additions
 
 ---
 
-## Available Profiles
+## 4.0 Available Profiles
 
 | Profile | Domain | File |
 |---|---|---|
-| Claude Desktop | Strategic Domain | [claude-desktop.md](framework/ai/doc/claude-desktop-instructions.md) |
+| Claude Desktop | Strategic Domain | [claude-desktop-instructions.md](../../../docs/claude/claude-desktop-instructions.md) |
 | Claude Code (optional) | Tactical Domain | [claude.md](claude.md) |
 | claude-omlx | Tactical Domain | [claude-omlx.md](claude-omlx.md) |
-| Apple Silicon + MLX (Devstral Small 2 2512) | Tactical Domain | [mlx_devstral_small_2_2512_Q8.md](mlx_devstral_small_2_2512_Q8.md) |
+| Apple Silicon + MLX (Devstral Small 2 2512) | Tactical Domain | [mlx_devstral_small_2_2512_6bit.md](mlx_devstral_small_2_2512_6bit.md) |
 
 Strategic Domain is not prescribed. Any frontier model with sufficient reasoning capability is suitable. Claude Desktop is the preferred Strategic Domain implementation.
 
@@ -68,7 +70,10 @@ Strategic Domain is not prescribed. Any frontier model with sufficient reasoning
 | 1.4 | 2026-03-12 | Added mlx_devstral_small_2_2512_Q8.md to Available Profiles |
 | 1.5 | 2026-03-31 | Deprecated mlx_devstral_small_2507_Q8.md; reinstated claude.md as optional Claude Code profile |
 | 1.6 | 2026-04-30 | Added claude-omlx.md profile |
+| 1.7 | 2026-06-16 | Updated Claude Desktop link: framework/ai/doc/ → docs/claude/ |
+| 1.8 | 2026-06-16 | Abstract Placeholders: added Applies to column; noted <tactical_config>/ and <skills_dir>/ apply to Claude Code profiles only |
+| 1.9 | 2026-06-16 | Updated §4.0 link: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md; added section numbering throughout |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

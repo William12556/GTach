@@ -1,0 +1,345 @@
+change_info:
+  id: "change-3f7a1b9c"
+  title: "RPM colour band enhancement — six configurable bands, engine profiles, acknowledgement, redline pulse"
+  date: "2026-04-23"
+  author: "William Watson"
+  status: "verified"
+  priority: "medium"
+  iteration: 1
+  coupled_docs:
+    issue_ref: "issue-3f7a1b9c"
+    issue_iteration: 1
+
+source:
+  type: "enhancement"
+  reference: "[[issue-3f7a1b9c]]"
+  description: >
+    REQ c3d4e5f6 uses four fixed, hard-coded RPM colour bands. This change
+    replaces that model with six operator-configurable bands, engine profile
+    selection, distinct danger_start and redline_rpm thresholds, a pulsing
+    background alert from danger_start, and a one-time operator safety
+    acknowledgement screen. Full rationale in
+    [[proposal-rpm-colour-bands-enhancement]] (v0.5).
+
+scope:
+  summary: >
+    Extend display rendering, configuration, and setup domains to support
+    six-band configurable RPM display with engine profiles and operator
+    acknowledgement. Add two new data artefacts: engine_profiles.yaml and
+    acknowledgement state file.
+  affected_components:
+    - name: "DisplayRenderingEngine"
+      file_path: "src/gtach/display/rendering/engine.py"
+      change_type: "modify"
+    - name: "DisplayManager"
+      file_path: "src/gtach/display/manager.py"
+      change_type: "modify"
+    - name: "ConfigManager"
+      file_path: "src/gtach/utils/config.py"
+      change_type: "modify"
+    - name: "SetupDisplayManager"
+      file_path: "src/gtach/display/setup.py"
+      change_type: "modify"
+    - name: "engine_profiles.yaml"
+      file_path: "src/gtach/data/engine_profiles.yaml"
+      change_type: "add"
+    - name: "AcknowledgementStateManager"
+      file_path: "src/gtach/utils/ack_state.py"
+      change_type: "add"
+  affected_designs:
+    - design_ref: "[[design-gtach-master]]"
+      sections:
+        - "§9.1.3 DisplayConfig entity"
+        - "§13.4 Display Mode State Machine"
+    - design_ref: "[[design-2c6b8e4d-domain_display]]"
+      sections:
+        - "Band rendering logic"
+        - "Acknowledgement display state"
+    - design_ref: "[[design-c9d0e1f2-component_display_rendering_engine]]"
+      sections:
+        - "Colour band lookup"
+        - "Pulse state logic"
+    - design_ref: "[[design-b8c9d0e1-component_display_manager]]"
+      sections:
+        - "Display state machine"
+        - "Acknowledgement trigger"
+    - design_ref: "[[design-b4c5d6e7-component_utils_config_manager]]"
+      sections:
+        - "rpm_bands schema"
+        - "engine_profile field"
+        - "Threshold validation"
+    - design_ref: "[[design-a3b4c5d6-component_display_setup_manager]]"
+      sections:
+        - "Profile selection UI"
+        - "Profile reload in setup mode"
+  out_of_scope:
+    - "OBD transport layer — no changes"
+    - "Vehicle speed PID polling — idle band is RPM-based only"
+    - "Runtime dynamic profile reload — deferred; setup mode reload only"
+    - "Traceability matrix update — acknowledged as out of date; deferred"
+
+rational:
+  problem_statement: >
+    Four fixed bands provide no advance warning before redline and cannot be
+    tuned to specific engine characteristics. Thresholds are hard-coded and
+    not operator-configurable.
+  proposed_solution: >
+    Six configurable bands with distinct danger_start (pulse onset) and
+    redline_rpm thresholds. Defaults loaded from a selected engine profile.
+    Pulsing background at 2 Hz from danger_start. One-time operator
+    acknowledgement screen on first run and after any threshold or profile change.
+  alternatives_considered:
+    - option: "Retain four fixed bands, add pulse only"
+      reason_rejected: >
+        Does not address configurability or engine-specific optimisation.
+        Pulse at hard-coded threshold still inadequate for different engines.
+    - option: "Poll vehicle speed PID to detect idle"
+      reason_rejected: >
+        Requires second OBD PID, additional data path complexity.
+        Idle RPM range is a sufficient proxy; added complexity not warranted.
+  benefits:
+    - "Display reflects actual engine operating envelope"
+    - "Advance warning (orange pulse) before redline is reached"
+    - "Operator explicitly acknowledges threshold accuracy responsibility"
+    - "Engine profiles reduce configuration effort and threshold entry errors"
+  risks:
+    - risk: "Operator configures incorrect thresholds"
+      mitigation: "Acknowledgement screen makes operator responsibility explicit"
+    - risk: "Pulse adds rendering complexity"
+      mitigation: "pygame.time.get_ticks() toggle; no additional thread required"
+    - risk: "Acknowledgement state file missing or corrupted"
+      mitigation: "Absence treated as unacknowledged; screen re-displayed"
+
+technical_details:
+  current_behavior: >
+    Four fixed bands (black 0-2999, green 3000-3999, yellow 4000-4999,
+    red 5000+). Thresholds hard-coded. No pulse. No engine profile. No
+    acknowledgement screen.
+  proposed_behavior: >
+    Six configurable bands: blue (0–idle_max), black (idle_max+1–torque_start-1),
+    green (torque_start–caution_start-1), yellow (caution_start–warning_start-1),
+    orange (warning_start–danger_start-1), red (danger_start+). Pulse at 2 Hz
+    from danger_start through red band; orange pulse in orange band, red pulse
+    in red band. Thresholds loaded from selected engine profile YAML; operator
+    may override. Validation enforces strictly ascending order with fallback to
+    defaults. Acknowledgement screen on first run and after any threshold or
+    profile change; state persisted to separate state file.
+  implementation_approach: >
+    Five implementation units, each addressable by a separate T04 prompt:
+    (1) ConfigManager — schema extension, profile load, validation.
+    (2) engine_profiles.yaml — new data artefact, three initial profiles.
+    (3) AcknowledgementStateManager — new utility, separate state file.
+    (4) DisplayRenderingEngine — six-band lookup, pulse state toggle.
+    (5) DisplayManager + SetupDisplayManager — acknowledgement state,
+        profile selection UI, setup mode reload.
+  code_changes:
+    - component: "ConfigManager"
+      file: "src/gtach/utils/config.py"
+      change_summary: >
+        Add rpm_bands sub-section with six threshold fields and engine_profile
+        field to configuration schema. Add engine_profiles.yaml load at startup.
+        Add threshold ordering validation with fallback to built-in defaults.
+      functions_affected:
+        - "load_config"
+        - "_validate_config"
+        - "_apply_defaults"
+      classes_affected:
+        - "ConfigManager"
+        - "DisplayConfig"
+
+    - component: "DisplayRenderingEngine"
+      file: "src/gtach/display/rendering/engine.py"
+      change_summary: >
+        Replace four-band lookup with six-band configurable lookup from config.
+        Add pulse state toggle using pygame.time.get_ticks() at 2 Hz.
+        Pulse colour tracks active band (orange in danger band, red in redline band).
+      functions_affected:
+        - "_get_band_colour"
+        - "render_frame"
+      classes_affected:
+        - "DisplayRenderingEngine"
+
+    - component: "DisplayManager"
+      file: "src/gtach/display/manager.py"
+      change_summary: >
+        Add acknowledgement display state to state machine. Trigger acknowledgement
+        on first run and after threshold or profile change. Check acknowledgement
+        state via AcknowledgementStateManager.
+      functions_affected:
+        - "_determine_initial_state"
+        - "_handle_state_transition"
+      classes_affected:
+        - "DisplayManager"
+
+    - component: "SetupDisplayManager"
+      file: "src/gtach/display/setup.py"
+      change_summary: >
+        Add engine profile selection screen to setup flow. Reload engine_profiles.yaml
+        in setup mode. Trigger acknowledgement after profile selection.
+      functions_affected:
+        - "run_setup"
+        - "_render_profile_selection"
+      classes_affected:
+        - "SetupDisplayManager"
+
+  data_changes:
+    - entity: "engine_profiles.yaml"
+      change_type: "schema"
+      details: >
+        New data artefact. Location: src/gtach/data/engine_profiles.yaml.
+        Contains minimum three profiles: abarth_595_turismo, generic_turbo_4cyl,
+        generic_na_4cyl. Each profile specifies: idle_max, torque_start,
+        caution_start, warning_start, danger_start, redline_rpm.
+    - entity: "AcknowledgementState"
+      change_type: "schema"
+      details: >
+        New state file. Location: ~/.config/gtach/ack_state.yaml (or equivalent
+        per platform path convention). Fields: acknowledged (bool),
+        threshold_hash (str — hash of current rpm_bands values),
+        profile_id (str). Absence or hash mismatch triggers acknowledgement screen.
+    - entity: "DisplayConfig (config.py schema)"
+      change_type: "schema"
+      details: >
+        Add rpm_bands sub-section: idle_max, torque_start, caution_start,
+        warning_start, danger_start, redline_rpm. Add engine_profile field.
+
+  interface_changes:
+    - interface: "DisplayConfig dataclass / dict"
+      change_type: "contract"
+      details: "rpm_bands and engine_profile fields added"
+      backward_compatible: "no — existing configs without rpm_bands will use defaults"
+
+dependencies:
+  internal:
+    - component: "ConfigManager"
+      impact: "All components consuming DisplayConfig affected by schema extension"
+    - component: "DisplayRenderingEngine"
+      impact: "Band lookup depends on rpm_bands values from ConfigManager"
+  external:
+    - library: "PyYAML"
+      version_change: "none"
+      impact: "Used for engine_profiles.yaml and ack_state.yaml load/write"
+  required_changes: []
+
+testing_requirements:
+  test_approach: >
+    Unit tests for threshold validation logic (ascending order, ceiling, fallback).
+    Unit tests for band lookup at boundary values. Unit tests for pulse toggle state.
+    Integration test: profile load → config population → band rendering.
+    Manual test: acknowledgement screen trigger and persistence.
+  test_cases:
+    - scenario: "RPM at danger_start - 1 — no pulse"
+      expected_result: "Orange band, no pulse"
+    - scenario: "RPM at danger_start — pulse active"
+      expected_result: "Orange band, pulse at 2 Hz"
+    - scenario: "RPM at redline_rpm — pulse active, red band"
+      expected_result: "Red band, pulse at 2 Hz"
+    - scenario: "Thresholds out of ascending order in config"
+      expected_result: "Warning logged, built-in defaults applied"
+    - scenario: "First run — no ack state file"
+      expected_result: "Acknowledgement screen displayed"
+    - scenario: "Threshold changed — ack hash mismatch"
+      expected_result: "Acknowledgement screen displayed"
+    - scenario: "Startup after acknowledged, no threshold change"
+      expected_result: "Acknowledgement screen not displayed"
+  regression_scope:
+    - "Existing display modes (DIGITAL, GAUGE) unaffected"
+    - "OBD polling and transport layer unaffected"
+    - "Bluetooth setup flow unaffected"
+  validation_criteria:
+    - "All REQ c3d4e5f6 acceptance criteria pass"
+    - "All REQ d2e3f4a5 acceptance criteria pass"
+    - "All REQ e3f4a5b6 acceptance criteria pass"
+    - "REQ a7b8c9d0 extended criteria pass"
+
+implementation:
+  effort_estimate: ""
+  implementation_steps:
+    - step: "Update design documents (master, domain_display, rendering_engine, display_manager, config_manager, setup_manager)"
+      owner: "Strategic Domain"
+    - step: "Create T04 prompt — ConfigManager + engine_profiles.yaml + AcknowledgementStateManager"
+      owner: "Strategic Domain"
+    - step: "Create T04 prompt — DisplayRenderingEngine"
+      owner: "Strategic Domain"
+    - step: "Create T04 prompt — DisplayManager + SetupDisplayManager"
+      owner: "Strategic Domain"
+    - step: "Execute T04 prompts via Claude Code (Tactical Domain)"
+      owner: "Tactical Domain"
+    - step: "Run test suite and manual verification"
+      owner: "William Watson"
+  rollback_procedure: >
+    Revert src/ changes via git. Remove engine_profiles.yaml and ack_state.py.
+    REQ c3d4e5f6 and a7b8c9d0 remain updated in requirements document.
+  deployment_notes: >
+    engine_profiles.yaml must be deployed alongside application.
+    Acknowledgement state file path must be writable on both macOS and Pi.
+
+verification:
+  implemented_date: "2026-04-23"
+  implemented_by: "William Watson"
+  verification_date: "2026-04-23"
+  verified_by: "William Watson"
+  test_results: "Tested on macOS with TCP transport. Display ok."
+  issues_found: []
+
+traceability:
+  design_updates:
+    - design_ref: "[[design-gtach-master]]"
+      sections_updated:
+        - "§9.1.3 DisplayConfig"
+        - "§13.4 Display Mode State Machine"
+      update_date: ""
+    - design_ref: "[[design-2c6b8e4d-domain_display]]"
+      sections_updated:
+        - "Band rendering logic"
+        - "Acknowledgement state"
+      update_date: ""
+    - design_ref: "[[design-c9d0e1f2-component_display_rendering_engine]]"
+      sections_updated:
+        - "Colour band lookup"
+        - "Pulse state"
+      update_date: ""
+    - design_ref: "[[design-b8c9d0e1-component_display_manager]]"
+      sections_updated:
+        - "State machine"
+        - "Acknowledgement trigger"
+      update_date: ""
+    - design_ref: "[[design-b4c5d6e7-component_utils_config_manager]]"
+      sections_updated:
+        - "rpm_bands schema"
+        - "engine_profile field"
+        - "Threshold validation"
+      update_date: ""
+    - design_ref: "[[design-a3b4c5d6-component_display_setup_manager]]"
+      sections_updated:
+        - "Profile selection"
+        - "Setup mode reload"
+      update_date: ""
+  related_changes: []
+  related_issues:
+    - issue_ref: "[[issue-3f7a1b9c]]"
+      relationship: "source"
+
+notes: >
+  Design documents must be updated before T04 prompts are created.
+  Three T04 prompts anticipated — split by implementation unit to respect
+  Tactical Domain context budget.
+  Proposal: [[proposal-rpm-colour-bands-enhancement]] v0.5.
+  Requirements: [[requirements-gtach-master]] v1.0.
+
+version_history:
+  - version: "1.0"
+    date: "2026-04-23"
+    author: "William Watson"
+    changes:
+      - "Initial change document created"
+  - version: "1.1"
+    date: "2026-04-23"
+    author: "William Watson"
+    changes:
+      - "Status set to verified after macOS testing"
+
+metadata:
+  copyright: "Copyright (c) 2026 William Watson. MIT License."
+  template_version: "1.0"
+  schema_type: "t02_change"

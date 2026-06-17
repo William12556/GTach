@@ -30,16 +30,16 @@ build/
 
 # AI framework
 deprecated/
-workspace/admin/
-workspace/ai/
-workspace/proposal/
-workspace/proposal/closed/
+ai/workspace/admin/
+ai/workspace/ai/
+ai/workspace/proposal/
+ai/workspace/proposal/closed/
 
 # Tactical Domain
 CLAUDE.local.md
 .claude/settings.json
 .claude/commands/
-.ael/ralph/
+ai/state/ralph/
 
 # other
 10000

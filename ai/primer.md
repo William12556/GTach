@@ -23,10 +23,10 @@ Created: 2026 April 27
 ## 1.0 Purpose
 
 This document is a concise operational primer for the Strategic Domain. It distils
-[governance.md](governance.md) into actionable guidance. 'governance.md' is authoritative;
+`governance.md` into actionable guidance. `governance.md` is authoritative;
 this document provides orientation and quick reference only.
 
-Prime Directive: Follow the [workflow](workflow.md).
+**Prime Directive: Follow the workflow.**
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -52,7 +52,7 @@ direct conversational access to the other.
 - **Claude Code** — alternative profile. Manual invocation; no automated loop.
   Uses `CLAUDE.md` as tactical context file. See `ai/profiles/claude.md`.
 
-**ael-mcp (Claude Desktop profile, optional)** — standalone MCP server exposing
+**ael-mcp** (Claude Desktop profile, optional) — standalone MCP server exposing
 `start_ael`, `ael_status`, and `reset_ael` tools to Claude Desktop. Allows the
 Strategic Domain to launch AEL and query outcome without human terminal relay.
 See P09 §1.10.3 Option B and P01 §1.2.8.
@@ -71,7 +71,7 @@ determines the tactical context file name, skills directory, and AEL configurati
 | Execution | Automated Ralph Loop | Manual | Manual |
 | Inference | oMLX → Devstral (local) | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
 | Loop control | `orchestrator.py` | Human operator | Human operator |
-| Profile | `mlx_devstral_small_2_2512_Q8.md` | `claude.md` | `claude-omlx.md` |
+| Profile | `mlx_devstral_small_2_2512_6bit.md` | `claude.md` | `claude-omlx.md` |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -87,7 +87,7 @@ python ai/src/govwatch.py
 ```
 
 Provides: inferred workflow phase, two-tier compliance alerts (coupling
-violations, tactical_brief validity, naming convention), document registry
+violations, `tactical_brief` validity, naming convention), document registry
 grouped by UUID, and an alert summary emitted to `ai/dashboard-alerts.md` and
 the clipboard (`C` key).
 
@@ -102,26 +102,31 @@ See `ai/doc/guide-govwatch.md` for full operational detail.
 The Strategic Domain owns the following functions:
 
 **Planning**
+
 - Requirements elicitation (P10)
 - Three-tier design hierarchy: master → domain → component (P02)
 - Name registry maintenance
 
 **Execution Coordination**
+
 - T04 prompt authoring and AEL command delivery (P09)
 - Context budget check before every T04 prompt
 - Human handoff: ready-to-execute command after approval
 
 **Quality**
-- Code review after AEL SHIP (or Claude Code completion)
+
+- Code review after AEL `SHIP` (or Claude Code completion)
 - Test documentation and pytest generation (P06)
 - Configuration audit against design baseline (P08)
 
 **Issue Management**
-- T03 issue creation from failed tests or AEL BLOCKED (P04)
+
+- T03 issue creation from failed tests or AEL `BLOCKED` (P04)
 - T02 change document creation from issues (P03)
 - Issue–change one-to-one coupling enforcement
 
 **Governance**
+
 - Traceability matrix updates at every phase transition (P05)
 - Document lifecycle management: active → closed (P00 §1.1.14)
 - Git commit after every iteration increment
@@ -132,7 +137,7 @@ The Strategic Domain owns the following functions:
 
 ## 4.0 Workflow
 
-Condensed stage sequence. See [workflow.md](workflow.md) for the full flowchart.
+Condensed stage sequence. See `workflow.md` for the full flowchart.
 
 ```
 P01  Project Initialization  →  run budget.py
@@ -159,15 +164,15 @@ P00  Close documents         →  move to closed/ → git commit → AEL reset
 | Protocol | Name | Key Action |
 |---|---|---|
 | P00 | Governance | Master directives, architecture, document conventions |
-| P01 | Project Initialization | Folder structure, .gitignore, venv, budget.py |
+| P01 | Project Initialization | Folder structure, `.gitignore`, venv, `budget.py` |
 | P02 | Design | Three-tier hierarchy, name registry, Mermaid diagrams |
 | P03 | Change | T02 from T03 issue; one-to-one coupling; trivial exemption |
-| P04 | Issue | T03 from test failure or BLOCKED; issue–change coupling |
+| P04 | Issue | T03 from test failure or `BLOCKED`; issue–change coupling |
 | P05 | Trace | Traceability matrix updates at every phase boundary |
 | P06 | Test | T05 docs, pytest generation, progressive validation |
 | P07 | Quality | Code validation, automated audits via AEL hooks |
 | P08 | Audit | Periodic compliance audit; findings → issues |
-| P09 | Prompt | T04 authoring, tactical_brief, AEL command delivery |
+| P09 | Prompt | T04 authoring, `tactical_brief`, AEL command delivery |
 | P10 | Requirements | T07 elicitation before design; baseline before Tier 1 |
 
 [Return to Table of Contents](<#table of contents>)
@@ -176,7 +181,7 @@ P00  Close documents         →  move to closed/ → git commit → AEL reset
 
 ## 6.0 Document Conventions
 
-**Naming**
+### 6.1 Naming
 
 | Pattern | Example |
 |---|---|
@@ -186,14 +191,14 @@ P00  Close documents         →  move to closed/ → git commit → AEL reset
 Document classes: `design`, `change`, `issue`, `prompt`, `test`, `result`,
 `audit`, `trace`, `requirements`.
 
-**UUID propagation**: The first document created in a workflow cycle (issue or
+**UUID propagation:** The first document created in a workflow cycle (issue or
 change) generates the UUID. All coupled documents inherit it.
 
-**Iteration**: Increments when a document re-enters a cycle after failure.
+**Iteration:** Increments when a document re-enters a cycle after failure.
 Both coupled documents (issue + change) increment together. Git commit
 required after each increment.
 
-**Lifecycle**
+### 6.2 Lifecycle
 
 | State | Location | Mutability |
 |---|---|---|
@@ -207,27 +212,32 @@ required after each increment.
 ## 7.0 Constraints
 
 **Forbidden**
+
 - Creating, modifying, or deleting source code or documents without explicit
   human request (both domains).
 - Exceeding the Tactical Domain context budget when authoring T04 prompts.
 - Issuing an AEL command when `tactical_brief` is empty.
 
 **Context Budget**
+
 - `context-budget.md` must exist in `ai/state/ralph/` before authoring any T04
   prompt. If absent, instruct human to run `python ai/ael/src/budget.py`.
 - Read budget before sizing `tactical_brief` (~200–400 tokens target).
 
-**tactical_brief Format**
+**`tactical_brief` Format**
+
 - Must be a ` ```yaml ` fenced block with `tactical_brief:` as the root key.
 - Plain text blocks are not detected by the orchestrator.
 
-**Trivial Change Exemption** (P03 §1.4.12)
+**Trivial Change Exemption (P03 §1.4.12)**
+
 - Qualifies only when both trivial AND surgical, and all five criteria met:
   single function, ≤20 line delta, no interface changes, unambiguous,
   human-approved.
 - Exempt from T03 → T02 → T04 → AEL. Git commit is the sole audit record.
 
 **Change Documentation Scope**
+
 - Full issue/change/prompt workflow applies to `src/` changes only.
 - `ai/workspace/` document changes may be made directly after human approval.
 
@@ -263,6 +273,8 @@ any document.
 | 0.3 | 2026-04-30 | Added §2.1 Tactical Profiles with comparison table |
 | 0.4 | 2026-06-10 | Added §2.2 Monitoring Tools (govwatch) |
 | 0.5 | 2026-06-14 | Relocated framework paths under ai/: workspace/ → ai/workspace/, state .ael/ralph/ → ai/state/ralph/, govwatch output → ai/dashboard-alerts.md |
+| 0.6 | 2026-06-16 | Updated §2.1 profile filename reference: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md |
+| 0.7 | 2026-06-17 | Aligned with docs/claude/primer.md (canonical): code spans for governance.md, workflow.md, SHIP, BLOCKED, .gitignore, budget.py, tactical_brief throughout; Prime Directive bolded; ael-mcp bold extent corrected; §6.0 restructured with §6.1 Naming and §6.2 Lifecycle subsections; colon positions in UUID propagation and Iteration headings; blank lines before bullet lists in §3.0 and §7.0; tactical_brief Format and Trivial Change Exemption heading formats |
 
 ---
 

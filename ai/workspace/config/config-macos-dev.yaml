@@ -1,0 +1,28 @@
+# GTach macOS Development Configuration
+# For use with: python -m gtach --config workspace/config/config-macos-dev.yaml
+
+port: AUTO
+baudrate: 38400
+timeout: 1.0
+reconnect_attempts: 3
+fast_mode: true
+
+display:
+  mode: DIGITAL
+  rpm_warning: 6500
+  rpm_danger: 7000
+  fps_limit: 60
+  touch_long_press: 1.0
+  splash:
+    enabled: true
+    duration: 4.0
+    graphics_mode: automotive
+    animation_speed: 1.0
+
+session:
+  retention_days: 7
+  enable_archival: false
+
+debug_logging: true
+data_log_enabled: false
+data_log_path: null

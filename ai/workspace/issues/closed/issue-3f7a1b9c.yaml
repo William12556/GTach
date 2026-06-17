@@ -1,0 +1,165 @@
+issue_info:
+  id: "issue-3f7a1b9c"
+  title: "RPM colour band enhancement — six configurable bands, engine profiles, acknowledgement, redline pulse"
+  date: "2026-04-23"
+  reporter: "William Watson"
+  status: "closed"
+  severity: "medium"
+  type: "enhancement"
+  iteration: 1
+  coupled_docs:
+    change_ref: "change-3f7a1b9c"
+    change_iteration: 1
+
+source:
+  origin: "requirement_change"
+  test_ref: ""
+  description: >
+    REQ c3d4e5f6 implements four fixed, hard-coded RPM colour bands. This
+    enhancement replaces that model with six configurable bands, operator-selectable
+    engine profiles, distinct danger_start and redline_rpm thresholds, a pulsing
+    background alert beginning at danger_start, and a one-time operator safety
+    acknowledgement screen. Full rationale and scope documented in
+    workspace/proposal/proposal-rpm-colour-bands-enhancement.md (v0.5).
+
+affected_scope:
+  components:
+    - name: "DisplayRenderingEngine"
+      file_path: "src/gtach/display/rendering/engine.py"
+    - name: "DisplayManager"
+      file_path: "src/gtach/display/manager.py"
+    - name: "ConfigManager"
+      file_path: "src/gtach/utils/config.py"
+    - name: "SetupDisplayManager"
+      file_path: "src/gtach/display/setup.py"
+  designs:
+    - design_ref: "design-gtach-master"
+    - design_ref: "design-2c6b8e4d-domain_display"
+    - design_ref: "design-c9d0e1f2-component_display_rendering_engine"
+    - design_ref: "design-b8c9d0e1-component_display_manager"
+    - design_ref: "design-b4c5d6e7-component_utils_config_manager"
+    - design_ref: "design-a3b4c5d6-component_display_setup_manager"
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "N/A — enhancement, not a defect"
+  steps: []
+  frequency: "always"
+  reproducibility_conditions: "N/A"
+  preconditions: ""
+  test_data: ""
+  error_output: ""
+
+behavior:
+  expected: >
+    Six configurable RPM colour bands (blue, black, green, yellow, orange, red).
+    Thresholds loaded from a selected engine profile YAML. Distinct danger_start
+    and redline_rpm thresholds. Pulsing background at 2 Hz from danger_start
+    through redline band. One-time operator safety acknowledgement on first run
+    and after any threshold or profile change. Acknowledgement state persisted
+    to a separate state file. Engine profile YAML loaded at startup; re-loadable
+    in setup mode.
+  actual: >
+    Four fixed bands (black, green, yellow, red) with hard-coded thresholds.
+    No engine profile selection. No pulsing alert. No acknowledgement screen.
+    Thresholds not user-configurable.
+  impact: >
+    Visual RPM warning is not optimised for specific engine characteristics.
+    No advance warning before redline. No operator confirmation of threshold accuracy.
+  workaround: "None. Thresholds are hard-coded."
+
+environment:
+  python_version: "3.11"
+  os: "Raspberry Pi OS (Debian 12) / macOS (Apple Silicon)"
+  dependencies:
+    - library: "pygame"
+      version: "2.6.1"
+    - library: "PyYAML"
+      version: ""
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    REQ c3d4e5f6 was specified as fixed bands for implementation simplicity.
+    Enhancement extends that design; it does not fix a defect.
+  technical_notes: >
+    Six changes required:
+    (1) DisplayRenderingEngine: replace four-band lookup with six-band configurable
+        lookup; add pulse state toggle using pygame.time.get_ticks() at danger_start
+        and redline_rpm; pulse colour reflects active band.
+    (2) ConfigManager: extend YAML schema with rpm_bands sub-section (idle_max,
+        torque_start, caution_start, warning_start, danger_start, redline_rpm);
+        add engine_profile field; add validation enforcing strictly ascending order;
+        add engine_profiles.yaml load at startup.
+    (3) DisplayManager: add acknowledgement display state; add engine profile
+        selection state; wire acknowledgement trigger on first run and post-config-change.
+    (4) SetupDisplayManager: add profile selection UI and reload of engine_profiles.yaml
+        in setup mode.
+    (5) New data artefact: engine_profiles.yaml shipped with application; minimum
+        three profiles (abarth_595_turismo, generic_turbo_4cyl, generic_na_4cyl).
+    (6) New state artefact: separate acknowledgement state file, independent of
+        YAML config.
+    New display states (acknowledgement screen, profile selection) must be added
+    to the state machine in design-gtach-master §13.4.
+  related_issues: []
+
+resolution:
+  assigned_to: ""
+  target_date: ""
+  approach: >
+    Full governance protocol. Requirements update first (REQ c3d4e5f6 revised,
+    three new REQs added). Design documents updated. T02 change document created.
+    T04 prompts created per component. Tactical execution via Claude Code.
+  change_ref: ""
+  resolved_date: "2026-04-23"
+  resolved_by: "William Watson"
+  fix_description: "Implemented and verified on macOS. All six bands functional."
+
+verification:
+  verified_date: "2026-04-23"
+  verified_by: "William Watson"
+  test_results: "Tested on macOS with TCP transport. Display ok."
+  closure_notes: "Closed after successful macOS verification."
+
+prevention:
+  preventive_measures: "N/A — enhancement"
+  process_improvements: "N/A"
+
+traceability:
+  design_refs:
+    - "design-gtach-master"
+    - "design-2c6b8e4d-domain_display"
+    - "design-c9d0e1f2-component_display_rendering_engine"
+    - "design-b8c9d0e1-component_display_manager"
+    - "design-b4c5d6e7-component_utils_config_manager"
+    - "design-a3b4c5d6-component_display_setup_manager"
+  change_refs: []
+  test_refs: []
+
+notes: >
+  Proposal document: workspace/proposal/proposal-rpm-colour-bands-enhancement.md (v0.5).
+  Requirements to update: c3d4e5f6 (revise), a7b8c9d0 (extend).
+  New requirements to add: engine profile list, operator acknowledgement, redline pulse.
+
+loop_context:
+  was_loop_execution: false
+  blocked_at_iteration: 0
+  failure_mode: ""
+  last_review_feedback: ""
+
+version_history:
+  - version: "1.0"
+    date: "2026-04-23"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created"
+  - version: "1.1"
+    date: "2026-04-23"
+    author: "William Watson"
+    changes:
+      - "Status set to closed after macOS verification"
+
+metadata:
+  copyright: "Copyright (c) 2026 William Watson. MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"

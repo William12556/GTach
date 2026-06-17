@@ -1,3 +1,5 @@
+Created: 2025 October 30
+
 # LLM Orchestration Framework
 
 ---
@@ -206,13 +208,11 @@ python ai/ael/src/orchestrator.py --mode loop \
     - Production environments use normal mode for operational efficiency
     - Log artifacts preserved for failure analysis
   - §1.1.16 Knowledge Base
-    - Strategic Domain: Consults ai/workspace/knowledge/ before creating documents or code
-    - Tactical Domain: Consults ai/workspace/knowledge/ before implementing changes
-    - Both domains: Add newly discovered patterns and solutions to knowledge base
-    - Knowledge documents contain: problem statements, solutions, examples, rationale
+    - Projects may optionally maintain a knowledge/ subdirectory under ai/workspace/ for institutional knowledge capture
+    - Knowledge documents may contain: problem statements, solutions, examples, rationale
     - Knowledge base prevents repeated problem-solving across development cycles
   - §1.1.17 Templates
-    - Templates T01-T06 are external documents in ai/templates/ directory
+    - Templates T01-T07 are external documents in ai/templates/ directory
     - Template files:
       - ai/templates/T01-design.md
       - ai/templates/T02-change.md
@@ -220,6 +220,7 @@ python ai/ael/src/orchestrator.py --mode loop \
       - ai/templates/T04-prompt.md
       - ai/templates/T05-test.md
       - ai/templates/T06-result.md
+      - ai/templates/T07-requirements.md
     - Strategic Domain: Read template from ai/templates/ before creating documents
     - Tactical Domain: Read templates when referenced in prompt documents
     - Templates contain YAML structure and JSON Schema validation rules
@@ -322,10 +323,10 @@ test.txt
 
   - §1.2.3 README
     - Create initial skeleton 'README.md' document in each folder
-  - §1.2.4 Initialize project from skel/
-    - Human: Copy `skel/` from the framework repository to the desired parent directory
-    - Human: Rename the copied directory to `<project name>`
-    - No recipe path configuration required. `ralph-loop.sh` resolves recipes relative to its own location.
+  - §1.2.4 Initialize downstream project
+    - Human: Run `bin/propagate.sh <project-root>` from the framework repository root to push `ai/` into the downstream project directory
+    - Human: Rename the target directory to `<project name>` if not already named
+    - No recipe path configuration required. Orchestrator resolves recipes relative to its own location.
   - §1.2.5 Traceability Matrix
      - Create skeleton trace-traceability-matrix-master.md in ai/workspace/trace/
   - §1.2.6 Project folder structure
@@ -345,7 +346,6 @@ test.txt
         │       ├── design/
         │       ├── change/
         │       │   └── closed/
-        │       ├── knowledge/        # Institutional knowledge
         │       ├── issues/
         │       │   └── closed/
         │       ├── proposal/         # (excluded from git)
@@ -528,7 +528,6 @@ exclude_lines = [
     - Testing: Informal validation, no formal test documentation required
     - Transition: Successful prototypes promote to formal design workflow
     - Human decision: Determines when exploration transitions to formal development
-    - Knowledge capture: Findings documented in ai/workspace/knowledge/ for reuse
     - Audit exemption: Exploration work excluded from P08 compliance audits
     - Git workflow: Feature branches for exploration, merge on formalization
   - §1.3.9 Cross-Linking Requirements
@@ -919,32 +918,28 @@ pip install dist/*.whl
     - Strategic Domain: References source code audit report in issue documents
     - Strategic Domain: Issue resolution follows standard P04 → P03 → implementation workflow
     - Strategic Domain: Tracks remediation progress in audit report updates
-  - §1.9.7 Audit Closure
-    - Strategic Domain: Conducts follow-up audit after remediation completed
-    - Strategic Domain: Verifies all critical issues resolved
-    - Strategic Domain: Documents closure with final compliance metrics
-    - Human: Approves audit closure and authorizes proceeding to next phase
-  - §1.9.8 Audit Trail
+  - §1.9.7 Audit Trail
     - Strategic Domain: Maintains chronological audit history
     - Strategic Domain: Links related audits (initial → follow-up → closure)
     - Strategic Domain: Preserves audit reports for process improvement analysis
-  - §1.9.9 Audit Closure
-    - §1.9.9.1 Closure Criteria
+  - §1.9.8 Audit Closure
+    - §1.9.8.1 Closure Criteria
       - All critical findings fully resolved
       - All high-priority findings addressed or mitigated with documented acceptance
       - Completion documented in audit report
       - Human approval obtained
-    - §1.9.9.2 Closure Process
+    - §1.9.8.2 Closure Process
+      - Strategic Domain: Conducts follow-up audit after remediation completed
       - Strategic Domain: Verifies all closure criteria satisfied
       - Strategic Domain: Documents closure status with final compliance metrics
       - Strategic Domain: Records closure date and approver
       - Human: Reviews closure documentation
-      - Human: Approves audit closure or identifies remaining work
-    - §1.9.9.3 Post-Closure Archival
+      - Human: Approves audit closure and authorizes proceeding to next phase
+    - §1.9.8.3 Post-Closure Archival
       - Strategic Domain: Moves closed audit report to ai/workspace/audit/closed/
       - Strategic Domain: Updates audit traceability links in master traceability matrix
       - Strategic Domain: Preserves read-only access for future reference
-    - §1.9.9.4 Reopening Closed Audits
+    - §1.9.8.4 Reopening Closed Audits
       - Prohibited: Closed audits are immutable
       - New findings: Create new audit with reference to closed audit
       - Follow-up verification: Covered by new audit cycle
@@ -1152,10 +1147,13 @@ See [workflow.md](workflow.md).
 | 8.9     | 2026-04-28 | Added ael-mcp integration: P00 §1.1.11 Claude Desktop Interface directive; P09 §1.10.3 Option A/B AEL execution (human executes or Strategic Domain launches via ael-mcp); P01 §1.2.8 ael-mcp setup steps for Claude Desktop profile |
 | 9.0     | 2026-04-30 | Added claude-omlx as Tactical Domain implementation option: §1.1.4 implementation options; §1.2.8 claude-omlx profile setup steps; fixed claude.md reference path (deprecated/ → profiles/) |
 | 9.1     | 2026-06-14 | Consolidated framework footprint under ai/: relocated workspace/ → ai/workspace/ across P00–P10 path references; loop state .ael/ralph/ → ai/state/ralph/ (§1.1.11); updated §1.2.2 .gitignore and §1.2.6 folder structure for ai/ layout; added ai/state/ and ai/dashboard-alerts.md; documented fork isolation mode; CLAUDE.md retained at project root (Claude Code profile) |
+| 9.2     | 2026-06-16 | Updated P01 §1.2.4: replaced skel/ copy workflow with bin/propagate.sh; framework is now a single unified ai/ directory |
+| 9.3     | 2026-06-16 | §1.1.17: T01-T06 → T01-T07; added T07-requirements.md to file list; §1.1.16: knowledge/ made optional; §1.2.6: knowledge/ marked optional; §1.3.8: removed mandatory knowledge/ directive |
+| 9.4     | 2026-06-16 | P08 §1.9: merged duplicate "Audit Closure" sections — former §1.9.7 (short form) folded into former §1.9.9 (subsectioned form); renumbered §1.9.8 Audit Trail → §1.9.7, merged Audit Closure §1.9.9 → §1.9.8 (subsections §1.9.8.1–.4); updated cross-references in ai/doc/guide-audit-loop.md and docs/guide-audit-loop.md |
 
 ---
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

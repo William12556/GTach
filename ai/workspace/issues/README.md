@@ -1,0 +1,16 @@
+# Issues
+
+Issue documents per P04.
+
+## Naming Convention
+
+- Format: `issue-<uuid>-<n>.md`
+
+## Lifecycle
+
+- Active: This folder
+- Closed: `closed/`
+
+---
+
+Copyright (c) 2025 William Watson. This work is licensed under the MIT License.

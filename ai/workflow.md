@@ -15,7 +15,7 @@ Created: 2026 March 29
 
 ```mermaid
 flowchart TD
-    Init[P01: Project Initialization<br/>§1.2] --> Budget_Init[Human: Run budget.py<br/>generates context-budget.md<br/>§1.10.2]
+    Init[P01: Project Initialization<br/>§1.2] --> Budget_Init[Human: Run budget.py<br/>generates context-budget.md<br/>§1.2.8]
     Budget_Init --> Start([Human: Initiate Requirements<br/>§1.11])
     Start --> D1_Elicit[Strategic Domain: Requirements Elicitation<br/>P10 §1.11.2]
     
@@ -113,7 +113,8 @@ flowchart TD
 | ------- | ---------- | ----------- |
 | 1.0     | 2026-03-29 | Extracted from governance.md §2.0 |
 | 1.1     | 2026-05-20 | Added governance.md section references to all flowchart nodes |
+| 1.2     | 2026-06-16 | Corrected Budget_Init node cross-reference: §1.10.2 (P09 Prompt) → §1.2.8 (P01 Implementation Profile Setup), the section that actually directs the initial budget.py run |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

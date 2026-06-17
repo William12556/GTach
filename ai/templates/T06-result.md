@@ -91,7 +91,7 @@ version_history:
       - ""
 
 metadata:
-  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
   schema_type: "t06_result"
 ```
@@ -322,7 +322,8 @@ properties:
 | 1.0     | 2025-12-12 | Split from governance.md into separate file for maintainability |
 | 1.1     | 2025-12-12 | UUID pattern migration: Replaced NNNN sequence numbering with 8-character UUID format (^[0-9a-f]{8}$) in all fields |
 | 1.2     | 2025-02-13 | Added loop_execution section for Ralph Loop traceability: iteration count, final state, resource consumption, model configuration, exit reason |
+| 1.3     | 2026-06-16 | Standardised copyright line format (template metadata default and document footer) |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

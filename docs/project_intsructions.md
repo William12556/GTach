@@ -1,6 +1,5 @@
 - This local GTach GitHUb project repository is located in /Users/williamwatson/Documents/GitHub/GTach.
 - It is a clone of https://github.com/William12556/LLM-Governance-and-Orchestration
-- Review /Users/williamwatson/Documents/GitHub/GTach/ai/governance.md at the start of each new conversation/chat.
-- Review 'workspace/requirements/requirements-gtach-master' and 'workspace/design/design-gtach-master' at the start of each new conversation.
-- Insure LLM Governance and Orchestration framework '/Users/williamwatson/Documents/GitHub/GTach/ai' version matches '/Users/williamwatson/Documents/GitHub/LLM-Governance-and-Orchestration/framework/ai'
+- Review /Users/williamwatson/Documents/GitHub/GTach/ai/primer.md at the start of each new conversation/chat.
+- Warn if LLM Governance and Orchestration framework '/Users/williamwatson/Documents/GitHub/GTach/ai' version does not match '/Users/williamwatson/Documents/GitHub/LLM-Governance-and-Orchestration/ai'
 - Related project information is available in '/Users/williamwatson/Documents/GitHub/ELM327', '/Users/williamwatson/Documents/GitHub/ELM327-emulator' and '/Users/williamwatson/Documents/GitHub/python-OBD'.

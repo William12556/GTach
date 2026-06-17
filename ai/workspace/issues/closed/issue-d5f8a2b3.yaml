@@ -1,0 +1,103 @@
+issue_info:
+  id: "issue-d5f8a2b3"
+  title: "DisplayManager.stop() joins never-started thread on macOS — pygame.quit() never called"
+  date: "2026-03-31"
+  reporter: "William Watson"
+  status: "closed"
+  severity: "critical"
+  type: "defect"
+  iteration: 1
+  coupled_docs:
+    change_ref: ""
+    change_iteration: null
+
+source:
+  origin: "test_result"
+  test_ref: ""
+  description: >
+    On macOS the display loop runs on the main thread via run_main_thread_loop().
+    DisplayManager.start() skips display_thread.start() on Darwin. However
+    DisplayManager.stop() unconditionally calls self.display_thread.join().
+    Joining a thread that was never started raises RuntimeError. This exception
+    propagates out of stop(), is caught by shutdown()'s except clause, and
+    prevents pygame.quit() and rendering_engine.cleanup() from executing.
+    The pygame window therefore never closes, the app appears hung, and
+    Ctrl+C cannot terminate it cleanly.
+
+affected_scope:
+  components:
+    - name: "DisplayManager.stop"
+      file_path: "src/gtach/display/manager.py"
+  designs: []
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "GTach running on macOS"
+  steps:
+    - "Start application"
+    - "Press Ctrl+C to stop"
+  frequency: "always"
+  reproducibility_conditions: "macOS only"
+  error_output: |
+    RuntimeError: cannot join thread before it is started
+    (raised inside DisplayManager.stop(), caught by GTachApplication.shutdown())
+    Effect: pygame window remains open, process appears hung
+
+behavior:
+  expected: "Ctrl+C cleanly closes pygame window and exits"
+  actual: "pygame window stays open, process requires Ctrl+Z/kill to terminate"
+  impact: "Application cannot be stopped normally on macOS"
+  workaround: "kill -9 <pid> or Ctrl+Z followed by kill %1"
+
+environment:
+  python_version: "3.11"
+  os: "macOS (Apple Silicon)"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    stop() calls self.display_thread.join() unconditionally. On macOS,
+    display_thread is created in __init__ but never started (start() skips
+    thread.start() on Darwin). Python raises RuntimeError on join() for
+    unstarted threads. The exception short-circuits stop(), skipping
+    performance_monitor.stop_monitoring() and rendering_engine.cleanup()
+    (which calls pygame.quit()).
+  technical_notes: >
+    Fix: guard display_thread.join() with a platform check matching the
+    guard already in start(). On Darwin, skip join() — the display loop is
+    the calling thread, not display_thread.
+  related_issues:
+    - issue_ref: "issue-c9a2f3e1"
+      relationship: "related"
+
+resolution:
+  assigned_to: ""
+  target_date: ""
+  approach: >
+    In stop(): wrap display_thread.join() with platform.system() != 'Darwin'
+    guard, matching the existing guard in start().
+  change_ref: ""
+  resolved_date: "2026-03-31"
+  resolved_by: "William Watson"
+  fix_description: >-
+    DisplayManager.stop(): wrapped display_thread.join() with
+    platform.system() != Darwin guard. Cleanup (pygame.quit) now
+    runs correctly on macOS.
+
+verification:
+  verified_date: "2026-03-31"
+  verified_by: "William Watson"
+  test_results: "Ctrl+C and red ball close both exit cleanly."
+  closure_notes: "Fixed under trivial change exemption."
+
+version_history:
+  - version: "1.0"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created"
+
+metadata:
+  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"

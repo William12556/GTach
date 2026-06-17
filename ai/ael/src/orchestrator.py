@@ -13,9 +13,9 @@ Modes:
     reset    — clear state directory after human acceptance
 
 Usage:
-    python orchestrator.py --mode worker   --task workspace/prompt/prompt-abc123.md
-    python orchestrator.py --mode reviewer --task workspace/prompt/prompt-abc123.md
-    python orchestrator.py --mode loop     --task workspace/prompt/prompt-abc123.md
+    python orchestrator.py --mode worker   --task ai/workspace/prompt/prompt-abc123.md
+    python orchestrator.py --mode reviewer --task ai/workspace/prompt/prompt-abc123.md
+    python orchestrator.py --mode loop     --task ai/workspace/prompt/prompt-abc123.md
     python orchestrator.py --mode loop     --task "implement the login module"
     python orchestrator.py --mode reset
 

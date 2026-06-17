@@ -502,7 +502,8 @@ properties:
 | 1.6     | 2026-03-24 | Removed behavioral_standards, tactical_execution, metadata, priority fields (governance-only, zero AEL utility); fixed tactical_brief placeholder (was #-comment block causing fallback to raw document); added tactical_brief to schema required with minLength:1; removed orphaned mcp_config and malformed enum items from schema |
 | 1.7     | 2026-03-25 | Added FORMAT comment to tactical_brief field: orchestrator detects tactical_brief only in ```yaml blocks with tactical_brief as root key; per-section prompts must author §8.0 as a dedicated ```yaml block (not ```text) |
 | 1.8     | 2026-06-14 | Relocated example paths under ai/: knowledge_references comment and element_registry source example use ai/workspace/ |
+| 1.9     | 2026-06-16 | Standardised copyright footer format |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

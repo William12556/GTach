@@ -1,0 +1,84 @@
+issue_info:
+  id: "issue-f7c3a1e6"
+  title: "__main__.py missing from gtach package"
+  date: "2026-03-31"
+  reporter: "William Watson"
+  status: "closed"
+  severity: "high"
+  type: "defect"
+  iteration: 1
+  coupled_docs:
+    change_ref: ""
+    change_iteration: null
+
+source:
+  origin: "test_result"
+  test_ref: ""
+  description: >
+    Discovered during macOS local test run. python -m gtach fails because
+    the package has no __main__.py entry point module.
+
+affected_scope:
+  components:
+    - name: "gtach package"
+      file_path: "src/gtach/__main__.py"
+  designs: []
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "GTach installed via pip install -e ."
+  steps:
+    - "python -m gtach --transport tcp --obd-host 192.168.0.147 --obd-port 35000 --debug"
+  frequency: "always"
+  reproducibility_conditions: "Any platform"
+  error_output: |
+    No module named gtach.__main__; 'gtach' is a package and cannot be
+    directly executed
+
+behavior:
+  expected: "python -m gtach invokes main() in main.py"
+  actual: "Python cannot find __main__.py and refuses to execute the package"
+  impact: "Application cannot be launched via python -m gtach"
+  workaround: "Use installed script entry point: gtach (if on PATH)"
+
+environment:
+  python_version: "3.11"
+  os: "macOS (Apple Silicon)"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    pyproject.toml defines a console_scripts entry point (gtach = gtach.main:main)
+    but no __main__.py exists in the package. python -m <package> requires
+    __main__.py to be present. The entry point works when the package is
+    installed and gtach is on PATH, but python -m gtach does not.
+  technical_notes: >
+    __main__.py should simply import and call main() from main.py.
+  related_issues: []
+
+resolution:
+  assigned_to: "William Watson"
+  approach: "Create src/gtach/__main__.py delegating to main.main()"
+  resolved_date: "2026-03-31"
+  resolved_by: "William Watson"
+  fix_description: >
+    Created __main__.py with sys.exit(main()) pattern.
+    Applied under trivial change exemption.
+
+verification:
+  verified_date: ""
+  verified_by: ""
+  test_results: ""
+  closure_notes: ""
+
+version_history:
+  - version: "1.0"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created and marked resolved"
+
+metadata:
+  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"

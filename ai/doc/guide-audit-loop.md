@@ -230,7 +230,7 @@ python ai/ael/src/orchestrator.py --mode reset
 
 **7.5 Close the audit**
 
-When remediation of all critical and high-severity findings is complete, close the audit document per P08 §1.9.7:
+When remediation of all critical and high-severity findings is complete, close the audit document per P08 §1.9.8:
 
 ```bash
 mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
@@ -260,6 +260,7 @@ mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 |---|---|---|
 | 1.0 | 2026-06-02 | Initial document |
 | 1.1 | 2026-06-14 | Relocated paths under ai/: state → ai/state/ralph/, workspace/audit → ai/workspace/audit, workspace/prompt → ai/workspace/prompt |
+| 1.2 | 2026-06-16 | Updated §7.5 cross-reference: P08 §1.9.7 → §1.9.8, following governance.md merge of duplicate Audit Closure sections |
 
 ---
 

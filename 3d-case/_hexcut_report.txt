@@ -1,0 +1,1 @@
+HexGridFine_solids=19 | Stand_Vented2 vol=7051.5 solids=1 valid=True | removed_total=5163.0

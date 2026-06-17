@@ -1,0 +1,110 @@
+issue_info:
+  id: "issue-b1d4e7f9"
+  title: "DisplayRenderingEngine uses SDL dummy driver on macOS — no window shown"
+  date: "2026-03-31"
+  reporter: "William Watson"
+  status: "closed"
+  severity: "critical"
+  type: "defect"
+  iteration: 1
+  coupled_docs:
+    change_ref: ""
+    change_iteration: null
+
+source:
+  origin: "test_result"
+  test_ref: ""
+  description: >
+    Application starts and runs the display loop at ~54 FPS but no window
+    appears on macOS. The rendering engine unconditionally sets
+    SDL_VIDEODRIVER=dummy and renders to /dev/fb0, which is Linux-only.
+    On macOS, surfaces are rendered off-screen and discarded.
+
+affected_scope:
+  components:
+    - name: "DisplayRenderingEngine.initialize"
+      file_path: "src/gtach/display/rendering/engine.py"
+    - name: "DisplayRenderingEngine.write_to_framebuffer"
+      file_path: "src/gtach/display/rendering/engine.py"
+  designs: []
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "GTach running on macOS with pygame installed"
+  steps:
+    - >
+      python -m gtach --config workspace/config/config-macos-dev.yaml
+      --transport tcp --obd-host 192.168.0.147 --obd-port 35000 --debug
+  frequency: "always"
+  reproducibility_conditions: "macOS — any version"
+  error_output: |
+    DisplayRenderingEngine - WARNING - Memory-mapped framebuffer failed: [Errno 2] No such file or directory: '/dev/fb0'
+    DisplayRenderingEngine - WARNING - Framebuffer initialization failed: [Errno 1] Operation not permitted: '/dev/fb0'
+    DisplayRenderingEngine - INFO - Rendering engine initialized: (480, 480), framebuffer: /dev/fb0
+    (No window appears. ~54 FPS logged internally.)
+
+behavior:
+  expected: "480x480 pygame window opens on macOS showing tachometer UI"
+  actual: "No window. Rendering runs internally into off-screen surfaces that are never displayed."
+  impact: "macOS development mode is non-functional for visual testing"
+  workaround: "None available without code change"
+
+environment:
+  python_version: "3.11"
+  os: "macOS (Apple Silicon)"
+  dependencies:
+    - library: "pygame"
+      version: "2.6.1"
+    - library: "SDL"
+      version: "2.28.4"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    engine.py initialize() unconditionally sets os.putenv('SDL_VIDEODRIVER', 'dummy')
+    before calling pygame.display.init(). This disables all window creation.
+    Output is then written to /dev/fb0 (Linux framebuffer device) via
+    write_to_framebuffer(). Neither mechanism is available on macOS.
+  technical_notes: >
+    On macOS the fix requires two changes:
+    (1) initialize(): detect platform; on macOS do NOT set SDL_VIDEODRIVER=dummy.
+    Instead call pygame.display.set_mode((480, 480)) to open a real window.
+    (2) Frame output: add a macOS path in the display loop that calls
+    pygame.display.flip() instead of write_to_framebuffer().
+    Platform detection is already available via utils.platform.get_platform_type().
+    The display manager loop that calls write_to_framebuffer() must also be
+    identified and modified.
+  related_issues: []
+
+resolution:
+  assigned_to: ""
+  target_date: ""
+  approach: >
+    Add platform-aware rendering path to DisplayRenderingEngine:
+    - MACOS: SDL_VIDEODRIVER unset, pygame.display.set_mode(), pygame.display.flip()
+    - RASPBERRY_PI: existing SDL_VIDEODRIVER=dummy + /dev/fb0 path unchanged
+  change_ref: ""
+  resolved_date: "2026-03-31"
+  resolved_by: "William Watson"
+  fix_description: >-
+    engine.py initialize(): on macOS skip SDL_VIDEODRIVER=dummy, call
+    pygame.display.set_mode() to open a real window. write_to_framebuffer()
+    on macOS calls pygame.display.flip() instead of writing to /dev/fb0.
+
+verification:
+  verified_date: "2026-03-31"
+  verified_by: "William Watson"
+  test_results: "Window opens on macOS. Display renders at 60fps."
+  closure_notes: "Fixed under trivial change exemption."
+
+version_history:
+  - version: "1.0"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created"
+
+metadata:
+  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"

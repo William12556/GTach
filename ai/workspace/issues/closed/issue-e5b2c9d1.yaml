@@ -1,0 +1,95 @@
+issue_info:
+  id: "issue-e5b2c9d1"
+  title: "get_platform_type not exported from utils __init__.py"
+  date: "2026-03-31"
+  reporter: "William Watson"
+  status: "closed"
+  severity: "high"
+  type: "defect"
+  iteration: 1
+  coupled_docs:
+    change_ref: ""
+    change_iteration: null
+
+source:
+  origin: "test_result"
+  test_ref: ""
+  description: >
+    Discovered during first macOS local test run of GTach v0.2.0.
+    Application fails at startup because app.py imports get_platform_type
+    from gtach.utils but the symbol is not re-exported from utils/__init__.py.
+
+affected_scope:
+  components:
+    - name: "utils.__init__"
+      file_path: "src/gtach/utils/__init__.py"
+    - name: "utils.platform"
+      file_path: "src/gtach/utils/platform.py"
+    - name: "GTachApplication"
+      file_path: "src/gtach/app.py"
+  designs: []
+  version: "0.2.0"
+
+reproduction:
+  prerequisites: "GTach installed via pip install -e . on macOS"
+  steps:
+    - "python -m gtach --transport tcp --obd-host 192.168.0.147 --obd-port 35000 --debug"
+  frequency: "always"
+  reproducibility_conditions: "Any platform"
+  error_output: |
+    ImportError: cannot import name 'get_platform_type' from 'gtach.utils'
+    (/Users/williamwatson/Documents/GitHub/GTach/src/gtach/utils/__init__.py)
+
+behavior:
+  expected: "get_platform_type importable from gtach.utils"
+  actual: "ImportError at startup"
+  impact: "Application cannot start on any platform"
+  workaround: "None — import path is hardcoded in app.py"
+
+environment:
+  python_version: "3.11"
+  os: "macOS (Apple Silicon)"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    utils/platform.py defines and exports get_platform_type as a public API
+    function. utils/__init__.py imports only from config, terminal, and
+    dependencies modules. The platform module was never added to __init__.py.
+  technical_notes: >
+    Also missing from __init__.py: get_platform_info, PlatformType,
+    is_raspberry_pi, is_gpio_available, check_gpio_availability. Only
+    get_platform_type is required by app.py currently.
+  related_issues: []
+
+resolution:
+  assigned_to: "William Watson"
+  approach: "Add platform imports to utils/__init__.py"
+  resolved_date: "2026-03-31"
+  resolved_by: "William Watson"
+  fix_description: >
+    Added get_platform_type and PlatformType to utils/__init__.py imports
+    and __all__ list. Applied under trivial change exemption.
+
+verification:
+  verified_date: ""
+  verified_by: ""
+  test_results: ""
+  closure_notes: ""
+
+version_history:
+  - version: "1.0"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Initial issue document created"
+  - version: "1.1"
+    date: "2026-03-31"
+    author: "William Watson"
+    changes:
+      - "Marked resolved after fix applied"
+
+metadata:
+  copyright: "Copyright (c) 2025 William Watson. This work is licensed under the MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"

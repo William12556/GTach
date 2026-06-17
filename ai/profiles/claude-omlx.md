@@ -6,17 +6,17 @@ Created: 2026 April 30
 
 ## Table of Contents
 
-- [Overview](<#overview>)
-- [Placeholder Mappings](<#placeholder mappings>)
-- [Strategic Domain](<#strategic domain>)
-- [Tactical Domain](<#tactical domain>)
-- [Invocation](<#invocation>)
-- [Project Setup](<#project setup>)
+- [1.0 Overview](<#1.0 overview>)
+- [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
+- [3.0 Strategic Domain](<#3.0 strategic domain>)
+- [4.0 Tactical Domain](<#4.0 tactical domain>)
+- [5.0 Invocation](<#5.0 invocation>)
+- [6.0 Project Setup](<#6.0 project setup>)
 - [Version History](<#version history>)
 
 ---
 
-## Overview
+## 1.0 Overview
 
 This profile routes Claude Code CLI through the local oMLX inference server instead of the Anthropic API. It provides Claude Code tooling and invocation UX with Devstral as the underlying model.
 
@@ -32,7 +32,7 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 
 ---
 
-## Placeholder Mappings
+## 2.0 Placeholder Mappings
 
 | Placeholder | Resolved Value |
 |---|---|
@@ -45,7 +45,7 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 
 ---
 
-## Strategic Domain
+## 3.0 Strategic Domain
 
 **Preferred implementation:** Claude Desktop
 
@@ -55,7 +55,7 @@ Any frontier model with sufficient reasoning capability may substitute. The Stra
 
 ---
 
-## Tactical Domain
+## 4.0 Tactical Domain
 
 **Implementation:** Claude Code CLI redirected to oMLX via `ANTHROPIC_BASE_URL`
 
@@ -76,7 +76,7 @@ Local context file: `CLAUDE.local.md` at project root (`.gitignore`'d).
 
 ---
 
-## Invocation
+## 5.0 Invocation
 
 Claude Code fulfils both the worker and reviewer roles in a single manual pass. There is no worker/reviewer cycle; the human operator performs the review gate.
 
@@ -101,7 +101,7 @@ env -i HOME="$HOME" PATH="$PATH" \
 
 ---
 
-## Project Setup
+## 6.0 Project Setup
 
 **.gitignore additions:**
 
@@ -131,6 +131,7 @@ CLAUDE.local.md
 |---|---|---|
 | 1.0 | 2026-04-30 | Initial document; claude-omlx as alternative tactical profile; Claude Code CLI routed through oMLX/Devstral; manual single-pass invocation via T04 file path |
 | 1.1 | 2026-06-14 | workspace/ → ai/workspace/ in invocation example |
+| 1.2 | 2026-06-16 | Added section numbering throughout |
 
 ---
 

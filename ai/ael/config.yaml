@@ -33,7 +33,7 @@ loop:
   mcp_error_threshold: 3    # Write RALPH-BLOCKED.md after this many consecutive MCP errors per phase
   max_tool_calls_per_iteration: 10  # Truncate tool calls per iteration beyond this count
   preflight_check: false             # Evaluate success criteria before first worker iteration
-  state_dir: ".ael/ralph"
+  state_dir: "ai/state/ralph"
   
 # Context budget
 # context_window: null resolves from model config.json on disk.

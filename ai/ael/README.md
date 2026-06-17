@@ -1,23 +1,25 @@
+Created: 2026 March 11
+
 # AEL — Autonomous Execution Loop
 
 ---
 
 ## Table of Contents
 
-- [Overview](<#overview>)
-- [Tactical Profiles](<#tactical profiles>)
-- [Structure](<#structure>)
-- [Requirements](<#requirements>)
-- [Installation](<#installation>)
-- [Configuration](<#configuration>)
-- [Usage](<#usage>)
-- [Recipes](<#recipes>)
-- [Testing](<#testing>)
+- [1.0 Overview](<#1.0 overview>)
+- [2.0 Tactical Profiles](<#2.0 tactical profiles>)
+- [3.0 Structure](<#3.0 structure>)
+- [4.0 Requirements](<#4.0 requirements>)
+- [5.0 Installation](<#5.0 installation>)
+- [6.0 Configuration](<#6.0 configuration>)
+- [7.0 Usage](<#7.0 usage>)
+- [8.0 Recipes](<#8.0 recipes>)
+- [9.0 Testing](<#9.0 testing>)
 - [Version History](<#version history>)
 
 ---
 
-## Overview
+## 1.0 Overview
 
 The AEL orchestrator is a standalone Python tool loop implementing the Ralph Loop pattern. It connects directly to MCP servers, sends tool definitions to an oMLX inference endpoint, parses model tool calls in both OpenAI and Mistral plain-text formats, dispatches tools, injects results into message history, and iterates until the model produces a response containing no tool calls.
 
@@ -27,7 +29,7 @@ This component replaces Goose as the Autonomous Execution Loop (AEL) for the oML
 
 ---
 
-## Tactical Profiles
+## 2.0 Tactical Profiles
 
 Three Tactical Domain profiles are available. AEL is the primary profile; the others are manual alternatives.
 
@@ -39,7 +41,7 @@ Three Tactical Domain profiles are available. AEL is the primary profile; the ot
 | Loop control | `orchestrator.py` | Human operator | Human operator |
 | Context file | `config.yaml` | `CLAUDE.md` | `CLAUDE.md` |
 | State directory | `ai/state/ralph/` | `.claude/` | `.claude/` |
-| Profile | `mlx_devstral_small_2_2512_Q8.md` | `claude.md` | `claude-omlx.md` |
+| Profile | `mlx_devstral_small_2_2512_6bit.md` | `claude.md` | `claude-omlx.md` |
 
 See `ai/profiles/` for profile documents.
 
@@ -47,7 +49,7 @@ See `ai/profiles/` for profile documents.
 
 ---
 
-## Structure
+## 3.0 Structure
 
 ```
 ael/
@@ -59,17 +61,19 @@ ael/
 │   ├── audit-work.yaml   # Audit worker role system prompt (read-only analysis)
 │   └── audit-review.yaml # Audit reviewer role system prompt (coverage + quality)
 └── src/
-    ├── orchestrator.py   # Main loop and CLI entry point (--mode worker|reviewer|loop|reset)
-    ├── budget.py         # Context budget calculator (run before authoring T04 prompts)
-    ├── mcp_client.py     # MCP stdio connection and tool dispatch
-    └── parser.py         # Mistral [TOOL_CALLS] plain-text parser
+    ├── orchestrator.py     # Main loop and CLI entry point (--mode worker|reviewer|loop|reset)
+    ├── budget.py           # Context budget calculator (run before authoring T04 prompts)
+    ├── mcp_client.py       # MCP stdio connection and tool dispatch
+    ├── parser.py           # Mistral [TOOL_CALLS] plain-text parser
+    ├── linter.py            # Layer 1 governance linter: static validation of workspace documents (naming, structure, YAML fields, UUID coupling, Obsidian links)
+    └── protocol_checker.py  # Layer 2 protocol checker: multi-document workflow invariant validation (UUID chain integrity, bidirectional coupling, one-to-one constraints, status consistency, lifecycle placement, prompt self-containment)
 ```
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## Requirements
+## 4.0 Requirements
 
 - Python 3.11+
 - oMLX running on `http://127.0.0.1:8000`
@@ -80,7 +84,7 @@ ael/
 
 ---
 
-## Installation
+## 5.0 Installation
 
 Install dependencies into the project virtual environment:
 
@@ -92,7 +96,7 @@ pip install -r ai/ael/requirements.txt
 
 ---
 
-## Configuration
+## 6.0 Configuration
 
 Edit `ai/ael/config.yaml`:
 
@@ -123,13 +127,13 @@ context:
   budget_abort_pct: 0.95
 ```
 
-**`context.models_dir`** must be updated to point to your local model storage directory after deploying from skel. `budget.py` searches this directory for the model's `config.json` to determine the context window size. If your model is remote or the path cannot be resolved, set `context.context_window` to an explicit integer value instead.
+**`context.models_dir`** must be updated to point to your local model storage directory. `budget.py` searches this directory for the model's `config.json` to determine the context window size. If your model is remote or the path cannot be resolved, set `context.context_window` to an explicit integer value instead.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## Usage
+## 7.0 Usage
 
 ```bash
 # Generate context budget report (run once at setup and after model changes)
@@ -166,7 +170,7 @@ python ai/ael/src/orchestrator.py --mode reset
 
 ---
 
-## Recipes
+## 8.0 Recipes
 
 Recipes are YAML files providing role-specific system prompts. The `instructions` field is injected as the system prompt for each inference call.
 
@@ -183,68 +187,30 @@ State files are written to `ai/state/ralph/` in the project root during loop exe
 
 ---
 
-## Testing
+## 9.0 Testing
 
-Tests are in `ael/tests/`. Two files:
+The `tests/` directory has been removed from the active `ai/ael/` structure. Test source files are retained in `deprecated/skel/ai/ael/tests/` for reference.
 
-| File | Coverage | External deps |
-|---|---|---|
-| `test_parser.py` | Layer 1 — Mistral parser unit tests | None |
-| `test_integration.py` | Layers 2–4 — oMLX smoke, tool dispatch, full loop | oMLX + MCP |
+To run tests, copy the tests directory from the deprecated skel:
+
+```bash
+cp -r deprecated/skel/ai/ael/tests ai/ael/tests
+```
+
+Then run:
+
+```bash
+# All tests
+python3.11 -m pytest ai/ael/tests/ -v
+
+# Unit tests only (no oMLX required)
+python3.11 -m pytest ai/ael/tests/test_parser.py -v
+
+# Integration tests only
+python3.11 -m pytest ai/ael/tests/test_integration.py -v
+```
 
 Integration tests skip automatically if oMLX is not reachable on `127.0.0.1:8000`.
-
-### Prerequisites
-
-```bash
-python3.11 -m pip install pytest
-# Dependencies already installed via requirements.txt
-```
-
-### Run all tests
-
-```bash
-cd /Users/williamwatson/Documents/GitHub/LLM-Governance-and-Orchestration
-python3.11 -m pytest framework/ai/ael/tests/ -v
-```
-
-### Run unit tests only (no oMLX required)
-
-```bash
-python3.11 -m pytest framework/ai/ael/tests/test_parser.py -v
-```
-
-### Run integration tests only
-
-```bash
-python3.11 -m pytest framework/ai/ael/tests/test_integration.py -v
-```
-
-### Run a specific test
-
-```bash
-python3.11 -m pytest framework/ai/ael/tests/test_integration.py::test_full_loop_creates_file -v
-```
-
-### Expected output (oMLX running)
-
-```
-tests/test_parser.py                          PASSED  [unit]
-tests/test_integration.py::test_omlx_models_endpoint          PASSED
-tests/test_integration.py::test_simple_completion_no_tools    PASSED
-tests/test_integration.py::test_completion_writes_work_summary PASSED
-tests/test_integration.py::test_mcp_connect_and_catalogue     PASSED
-tests/test_integration.py::test_tool_dispatch_filesystem_list PASSED
-tests/test_integration.py::test_worker_uses_tool              PASSED
-tests/test_integration.py::test_full_loop_creates_file        PASSED
-```
-
-### Expected output (oMLX not running)
-
-```
-tests/test_parser.py                          PASSED  [unit]
-tests/test_integration.py                     SKIPPED [oMLX not reachable]
-```
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -265,7 +231,9 @@ tests/test_integration.py                     SKIPPED [oMLX not reachable]
 | 1.8 | 2026-04-30 | Added Tactical Profiles section with comparison table |
 | 1.9 | 2026-06-02 | Added audit-work.yaml and audit-review.yaml to Structure and Recipes; added `--duration` and `--max-iterations` to CLI flags table |
 | 2.0 | 2026-06-14 | Relocated loop state to ai/state/ralph/ (config.yaml, profile table, usage examples); workspace/ → ai/workspace/ in command examples |
+| 2.1 | 2026-06-16 | Updated Testing section: removed stale framework/ pytest paths; tests moved to deprecated/skel/; updated Configuration note |
+| 2.2 | 2026-06-16 | Added linter.py and protocol_checker.py to §3.0 Structure; updated §2.0 profile filename reference: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md; added section numbering throughout; added Created timestamp |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.
