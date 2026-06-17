@@ -66,7 +66,7 @@ scp "$WHEEL" "${PI}:/tmp/"
 
 echo "==> Transferring deploy files..."
 scp "$SCRIPT_DIR/install.sh" "${PI}:${INSTALL_DIR}/"
-scp "$PROJECT_ROOT/gtach.service" "${PI}:${INSTALL_DIR}/"
+scp "$SCRIPT_DIR/gtach.service" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/gtach-preflight.sh" "${PI}:${INSTALL_DIR}/"
 
 echo "==> Running install on Pi..."

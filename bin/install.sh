@@ -1,10 +1,9 @@
 #!/bin/bash
 # GTach Install Script
-# Supports: Linux (Debian/Raspberry Pi), macOS
+# Supports: Linux (Debian/Raspberry Pi)
 # Usage: ./install.sh <wheel-filename>
 #
 # Linux:  installs to /opt/gtach/, registers systemd service
-# macOS:  installs to ~/.local/opt/gtach/, manual start only
 
 set -e  # Exit on error
 

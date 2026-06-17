@@ -50,13 +50,13 @@ scp bin/install.sh root@gtach.local:/opt/gtach/
 ### 3.2 Build wheel and transfer to Pi
 
 ```bash
-./bin/build.sh && scp dist/gtach-0.2.22-py3-none-any.whl root@gtach.local:/tmp/
+./bin/build.sh && scp dist/gtach-0.2.63-py3-none-any.whl root@gtach.local:/tmp/
 ```
 
 ### 3.3 Install on Pi
 
 ```bash
-/opt/gtach/install.sh /tmp/gtach-0.2.22-py3-none-any.whl
+/opt/gtach/install.sh /tmp/gtach-0.2.63-py3-none-any.whl
 ```
 
 ### 3.4 Retrieve log from Pi
@@ -129,6 +129,7 @@ workspace/    Development artefacts (issues, changes, design, requirements)
 
 | Version | Date       | Notes                                    |
 |---------|------------|------------------------------------------|
+| 1.5     | 2026-06-17 | Fixed stale version in §3.2/§3.3 (0.2.22 → 0.2.63) |
 | 1.4     | 2026-06-17 | Updated script paths for bin/ relocation |
 | 1.3     | 2026-05-20 | Updated CLI options in §4               |
 | 1.2     | 2026-05-07 | Removed macOS runtime support            |
