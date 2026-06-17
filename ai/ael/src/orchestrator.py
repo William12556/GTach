@@ -845,6 +845,19 @@ def run_preflight_check(task: str, log: logging.Logger) -> str:
     return summary
 
 
+def _count_unchecked_audit_items(state_dir: str, log: logging.Logger) -> int:
+    """
+    Count unchecked [ ] items in audit-index.md.
+    Returns 0 if the file is absent (non-audit runs unaffected).
+    """
+    index_path = os.path.join(state_dir, "audit-index.md")
+    if not os.path.exists(index_path):
+        return 0
+    count = sum(1 for line in open(index_path) if "- [ ]" in line)
+    log.debug("audit SHIP gate: %d unchecked items", count)
+    return count
+
+
 async def run_loop(
     client: AsyncOpenAI,
     mcp: MCPClient,
@@ -955,13 +968,31 @@ async def run_loop(
 
         result = read_state(state_dir, "review-result.txt")
         if result == "SHIP":
-            console.print(Panel(
-                f"[bold]✓ SHIPPED[/bold] after {i} loop iteration(s)",
-                border_style="green",
-            ))
-            log.info("SHIPPED iteration=%d", i)
-            write_state(state_dir, ".ralph-complete", f"COMPLETE: iteration {i}")
-            return 0
+            # Audit SHIP gate: enforce coverage before accepting SHIP.
+            _unchecked = _count_unchecked_audit_items(state_dir, log)
+            if _unchecked > 0:
+                log.warning(
+                    "audit SHIP gate: reviewer issued SHIP with %d unchecked item(s) — overriding",
+                    _unchecked,
+                )
+                console.print(
+                    f"[yellow][ael] audit SHIP gate: {_unchecked} unchecked item(s) remain "
+                    f"— overriding SHIP to REVISE[/yellow]"
+                )
+                write_state(
+                    state_dir, "review-feedback.txt",
+                    f"Coverage incomplete: {_unchecked} item(s) in audit-index.md remain unchecked.\n"
+                    f"Do not issue SHIP until every item is marked [x].\n"
+                    f"Proceed to audit the next unchecked item."
+                )
+            else:
+                console.print(Panel(
+                    f"[bold]✓ SHIPPED[/bold] after {i} loop iteration(s)",
+                    border_style="green",
+                ))
+                log.info("SHIPPED iteration=%d", i)
+                write_state(state_dir, ".ralph-complete", f"COMPLETE: iteration {i}")
+                return 0
 
         feedback = read_state(state_dir, "review-feedback.txt")
         if feedback:
