@@ -36,7 +36,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 
 | Placeholder | Resolved Value |
 |---|---|
-| `<tactical_context>` | `CLAUDE.md` |
+| `<tactical_context>` | `ai/context.md` |
 
 `<tactical_config>/` and `<skills_dir>/` do not apply to this profile. AEL configuration is in `ai/ael/config.yaml`; recipes are in `ai/ael/recipes/`.
 
@@ -170,6 +170,7 @@ ai/state/ralph/
 | 1.2 | 2026-06-16 | Updated Q8 → 6bit throughout; corrected model download repo and local dir |
 | 1.3 | 2026-06-16 | Placeholder Mappings: removed non-applicable <tactical_config>/ and <skills_dir>/ rows |
 | 1.4 | 2026-06-16 | Renamed file Q8 → 6bit to match document content; removed AGENTS.md from Placeholder Mappings (unsupported elsewhere); corrected AEL config example to full model id verified against oMLX /v1/models (mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-6Bit); corrected model download local_dir to match actual on-disk path convention; added section numbering |
+| 1.5 | 2026-06-17 | Updated <tactical_context> mapping: CLAUDE.md → ai/context.md |
 
 ---
 

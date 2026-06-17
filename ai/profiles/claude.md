@@ -36,10 +36,10 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 
 | Placeholder | Resolved Value |
 |---|---|
-| `<tactical_config>/` | `.claude/` |
-| `<skills_dir>/` | `.claude/` |
 | `<tactical_context>` | `CLAUDE.md` |
 | Local context file | `CLAUDE.local.md` |
+
+`.claude/` is the native Claude Code configuration directory; it is not a framework placeholder.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -124,6 +124,7 @@ CLAUDE.local.md
 | 1.0 | 2026-03-31 | Initial document; Claude Code as optional alternative to MLX/Devstral profile; manual single-pass invocation via T04 file path |
 | 1.1 | 2026-06-14 | workspace/ → ai/workspace/ in invocation example |
 | 1.2 | 2026-06-16 | Added section numbering throughout |
+| 1.3 | 2026-06-17 | Removed <tactical_config>/ and <skills_dir>/ placeholder rows from §2.0; added note that .claude/ is a native Claude Code directory |
 
 ---
 

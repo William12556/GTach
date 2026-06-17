@@ -49,8 +49,9 @@ direct conversational access to the other.
 - **AEL (Autonomous Execution Loop)** — reference implementation. Runs a
   worker/reviewer cycle (Ralph Loop) until `SHIP` or `BLOCKED`. State resides
   in `ai/state/ralph/`. Requires oMLX inference endpoint and `config.yaml`.
+  Context file: `ai/context.md`.
 - **Claude Code** — alternative profile. Manual invocation; no automated loop.
-  Uses `CLAUDE.md` as tactical context file. See `ai/profiles/claude.md`.
+  Uses `CLAUDE.md` at project root as tactical context file. See `ai/profiles/claude.md`.
 
 **ael-mcp** (Claude Desktop profile, optional) — standalone MCP server exposing
 `start_ael`, `ael_status`, and `reset_ael` tools to Claude Desktop. Allows the
@@ -66,12 +67,13 @@ determines the tactical context file name, skills directory, and AEL configurati
 
 ## 2.1 Tactical Profiles
 
-| Aspect | AEL (Primary) | Claude Code | claude-omlx |
-|---|---|---|---|
-| Execution | Automated Ralph Loop | Manual | Manual |
-| Inference | oMLX → Devstral (local) | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
-| Loop control | `orchestrator.py` | Human operator | Human operator |
-| Profile | `mlx_devstral_small_2_2512_6bit.md` | `claude.md` | `claude-omlx.md` |
+| Aspect       | AEL (Primary)                       | Claude Code                   | claude-omlx                         |
+| ------------ | ----------------------------------- | ----------------------------- | ----------------------------------- |
+| Execution    | Automated Ralph Loop                | Manual                        | Manual                              |
+| Inference    | oMLX → Devstral (local)             | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
+| Loop control | `orchestrator.py`                   | Human operator                | Human operator                      |
+| Context file | `ai/context.md`                     | `CLAUDE.md` (project root)    | `CLAUDE.md` (project root)          |
+| Profile      | `mlx_devstral_small_2_2512_6bit.md` | `claude.md`                   | `claude-omlx.md`                    |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -275,6 +277,7 @@ any document.
 | 0.5 | 2026-06-14 | Relocated framework paths under ai/: workspace/ → ai/workspace/, state .ael/ralph/ → ai/state/ralph/, govwatch output → ai/dashboard-alerts.md |
 | 0.6 | 2026-06-16 | Updated §2.1 profile filename reference: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md |
 | 0.7 | 2026-06-17 | Aligned with docs/claude/primer.md (canonical): code spans for governance.md, workflow.md, SHIP, BLOCKED, .gitignore, budget.py, tactical_brief throughout; Prime Directive bolded; ael-mcp bold extent corrected; §6.0 restructured with §6.1 Naming and §6.2 Lifecycle subsections; colon positions in UUID propagation and Iteration headings; blank lines before bullet lists in §3.0 and §7.0; tactical_brief Format and Trivial Change Exemption heading formats |
+| 0.8 | 2026-06-17 | §2.0: added context file to AEL description; §2.1: added Context file row to profile comparison table |
 
 ---
 

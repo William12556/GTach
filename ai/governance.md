@@ -191,6 +191,7 @@ python ai/ael/src/orchestrator.py --mode loop \
       - ai/workspace/prompt/closed/
       - ai/workspace/audit/closed/
       - ai/workspace/test/closed/
+      - ai/workspace/report/closed/
       - ai/workspace/test/result/closed/
     - §1.1.14.6 Access Constraints
       - Closed documents: Read-only access for reference
@@ -224,23 +225,26 @@ python ai/ael/src/orchestrator.py --mode loop \
     - Strategic Domain: Read template from ai/templates/ before creating documents
     - Tactical Domain: Read templates when referenced in prompt documents
     - Templates contain YAML structure and JSON Schema validation rules
-  - §1.1.18 Skills Management
-    - Tactical Domain: Utilizes skills from <skills_dir>/ for reusable workflows
-    - Skills organization: governance/, testing/, validation/, audit/ subdirectories
+  - §1.1.18 Skills Management (Claude Code profiles only)
+    - Tactical Domain: Utilizes skills from .claude/ for reusable workflows
+    - Skills organization: governance/, testing/, validation/, audit/ subdirectories under .claude/
     - Hot-reload enabled: Skill modifications activate without session restart
     - Forked contexts: Validation skills execute in isolated sub-agent contexts
     - Lifecycle hooks: PreToolUse (schema validation), PostToolUse (compliance verification), Stop (cleanup)
     - Skills repository: Project-specific skills checked into git for team sharing
-    - Personal skills: ~/<skills_dir>/ for individual workflow preferences
-    - Implementation: See implementation profile in ai/profiles/
+    - Implementation: See ai/profiles/claude.md or ai/profiles/claude-omlx.md
     - Common skills examples:
-      - governance/validate-design.md: Schema validation before T04 prompt creation
-      - testing/generate-pytest.md: Automated pytest generation from T05 documentation
-      - validation/coupling-check.md: Verify iteration synchronization in coupled documents
-      - audit/protocol-compliance.md: Check generated code against protocol requirements
+      - .claude/governance/validate-design.md: Schema validation before T04 prompt creation
+      - .claude/testing/generate-pytest.md: Automated pytest generation from T05 documentation
+      - .claude/validation/coupling-check.md: Verify iteration synchronization in coupled documents
+      - .claude/audit/protocol-compliance.md: Check generated code against protocol requirements
   - §1.1.19 Context Optimization
-    - Tactical Domain context file location: Project root (checked into git for team sharing)
+    - Tactical Domain context file location:
+      - AEL profile: ai/context.md (checked into git)
+      - Claude Code profiles: CLAUDE.md at project root (checked into git)
     - Local context file: Personal preferences (.gitignore'd)
+      - Claude Code profiles: CLAUDE.local.md at project root
+    - AEL auto-load: worker recipe reads project_root/ai/context.md at task start if present
     - Content specification:
       - Project overview and technology stack
       - Common bash commands (build, test, lint)
@@ -301,7 +305,7 @@ build/
 #   /CLAUDE.md
 # — to keep the framework out of the fork's history entirely.
 deprecated/
-ai/workspace/admin/
+ai/workspace/report/
 ai/workspace/ai/
 ai/workspace/proposal/
 ai/workspace/proposal/closed/
@@ -337,10 +341,12 @@ test.txt
     └── <project name>/
         ├── ai/                       # Framework — operational rules + execution space
         │   ├── governance.md
+        │   ├── context.md            # AEL profile only — Tactical Domain context (team shared)
         │   ├── state/                # AEL loop state (ephemeral, excluded from git)
         │   ├── dashboard-alerts.md   # govwatch output (excluded from git)
         │   └── workspace/            # Framework execution space
-        │       ├── admin/            # Administrative reports (excluded from git)
+        │       ├── report/            # Reports (excluded from git)
+        │       │   └── closed/
         │       ├── requirements/
         │       │   └── closed/
         │       ├── design/
@@ -359,15 +365,10 @@ test.txt
         │       │   ├── closed/
         │       │   └── result/
         │       │       └── closed/
-        │       └── ai/               # Optional: (excluded from git)
-        ├── <tactical_config>/        # Tactical Domain configuration (profile-specific)
-        │   ├── <skills_dir>/         # Project-specific skills
-        │   │   ├── governance/
-        │   │   ├── testing/
-        │   │   ├── validation/
-        │   │   └── audit/
-        │   └── commands/
-        ├── <tactical_context>        # Tactical Domain context file (team shared)
+        ├── .claude/                  # Claude Code profiles only (excluded from git)
+        │   └── settings.json
+        ├── CLAUDE.md                 # Claude Code profiles only (team shared)
+        ├── CLAUDE.local.md           # Claude Code profiles only (excluded from git)
         ├── venv/                     # Python virtual environment (excluded from git)
         ├── dist/                     # Python build artefacts (excluded from git)
         ├── docs/                     # Technical Documents
@@ -1150,6 +1151,9 @@ See [workflow.md](workflow.md).
 | 9.2     | 2026-06-16 | Updated P01 §1.2.4: replaced skel/ copy workflow with bin/propagate.sh; framework is now a single unified ai/ directory |
 | 9.3     | 2026-06-16 | §1.1.17: T01-T06 → T01-T07; added T07-requirements.md to file list; §1.1.16: knowledge/ made optional; §1.2.6: knowledge/ marked optional; §1.3.8: removed mandatory knowledge/ directive |
 | 9.4     | 2026-06-16 | P08 §1.9: merged duplicate "Audit Closure" sections — former §1.9.7 (short form) folded into former §1.9.9 (subsectioned form); renumbered §1.9.8 Audit Trail → §1.9.7, merged Audit Closure §1.9.9 → §1.9.8 (subsections §1.9.8.1–.4); updated cross-references in ai/doc/guide-audit-loop.md and docs/guide-audit-loop.md |
+| 9.5     | 2026-06-17 | Simplified Tactical Domain configuration: removed <tactical_config>/<skills_dir>/commands placeholders from §1.2.6; added ai/context.md (AEL profile) and .claude/ block (Claude Code profiles only) to §1.2.6; scoped §1.1.18 Skills Management to Claude Code profiles; updated §1.1.19 context file paths per profile |
+| 9.6     | 2026-06-17 | Added ai/context.md template; ralph-work.yaml v1.3.0 reads project_root/ai/context.md at task start; §1.1.19 notes AEL auto-load behaviour |
+| 9.7     | 2026-06-17 | Renamed ai/workspace/admin/ → ai/workspace/report/ in §1.2.2 .gitignore template and §1.2.6 folder structure; added report/closed/ to §1.2.6 and §1.1.14.5 |
 
 ---
 [Return to Table of Contents](<#table of contents>)
