@@ -16,10 +16,10 @@ production target, macOS Apple Silicon development platform.
 unless explicitly requested by the T04 prompt task.
 
 - Governance: `ai/governance.md`
-- Design docs: `workspace/design/`
-- Active changes: `workspace/change/`
-- Active prompts: `workspace/prompt/`
-- Task invocation: `implement workspace/prompt/prompt-<uuid>-<name>.md`
+- Design docs: `ai/workspace/design/`
+- Active changes: `ai/workspace/change/`
+- Active prompts: `ai/workspace/prompt/`
+- Task invocation: `implement ai/workspace/prompt/prompt-<uuid>-<name>.md`
 
 ## Technology Stack
 
@@ -65,7 +65,7 @@ src/gtach/
   core/             ThreadManager, WatchdogMonitor
   display/          DisplayManager, rendering, touch, setup
   utils/            ConfigManager, PlatformDetector
-workspace/
+ai/workspace/
   design/           T1/T2/T3 design documents
   change/           active change documents
   prompt/           T04 task prompts
