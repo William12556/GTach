@@ -18,13 +18,11 @@ import logging
 import threading
 import queue
 import time
-import asyncio
 import weakref
 from enum import Enum, auto
-from typing import Dict, Optional, Callable, Any, Set, Union
+from typing import Dict, Optional, Callable, Any, Set
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor, Future
-from contextlib import contextmanager
 
 class ThreadStatus(Enum):
     """Thread status enumeration with atomic transitions"""
@@ -73,70 +71,6 @@ class ThreadInfo:
             self.target_args = getattr(self.thread, '_args', ())
             self.target_kwargs = getattr(self.thread, '_kwargs', {})
 
-class AsyncSyncBridge:
-    """Bridge for coordinating async and sync execution contexts"""
-    
-    def __init__(self, logger: logging.Logger):
-        self.logger = logger
-        self._message_queue = queue.Queue()
-        self._response_queue = queue.Queue()
-        self._event_loop: Optional[asyncio.AbstractEventLoop] = None
-        self._bridge_lock = threading.RLock()
-        self._active_tasks: Set[asyncio.Task] = set()
-        self._shutdown_event = threading.Event()
-        
-    def set_event_loop(self, loop: asyncio.AbstractEventLoop) -> None:
-        """Set the event loop for async operations"""
-        with self._bridge_lock:
-            self._event_loop = loop
-            
-    def submit_async_task(self, coro) -> Future:
-        """Submit async coroutine from sync context"""
-        with self._bridge_lock:
-            if not self._event_loop or self._shutdown_event.is_set():
-                future = Future()
-                future.set_exception(RuntimeError("Event loop not available or shutting down"))
-                return future
-                
-            return asyncio.run_coroutine_threadsafe(coro, self._event_loop)
-            
-    def send_message(self, message: Any, timeout: float = 5.0) -> Any:
-        """Send message between contexts with timeout"""
-        if self._shutdown_event.is_set():
-            raise RuntimeError("Bridge is shutting down")
-            
-        try:
-            self._message_queue.put(message, timeout=timeout)
-            return self._response_queue.get(timeout=timeout)
-        except queue.Full:
-            raise TimeoutError(f"Message send timeout after {timeout}s")
-        except queue.Empty:
-            raise TimeoutError(f"Response timeout after {timeout}s")
-            
-    def shutdown(self) -> None:
-        """Shutdown bridge and cleanup resources"""
-        self.logger.debug("AsyncSyncBridge shutting down")
-        self._shutdown_event.set()
-        
-        # Cancel active async tasks
-        with self._bridge_lock:
-            for task in self._active_tasks.copy():
-                if not task.done():
-                    task.cancel()
-                    
-            # Clear queues
-            while not self._message_queue.empty():
-                try:
-                    self._message_queue.get_nowait()
-                except queue.Empty:
-                    break
-                    
-            while not self._response_queue.empty():
-                try:
-                    self._response_queue.get_nowait()
-                except queue.Empty:
-                    break
-
 class ThreadManager:
     """Thread-safe manager for application threads and worker pool
     
@@ -165,9 +99,6 @@ class ThreadManager:
             thread_name_prefix='TMWorker'
         )
         
-        # Async/sync coordination
-        self.async_bridge = AsyncSyncBridge(self.logger)
-        
         # Resource tracking for cleanup verification
         self._active_futures: Set[Future] = set()
         self._resource_tracker = weakref.WeakSet()
@@ -175,70 +106,52 @@ class ThreadManager:
         # Message queue for thread communication — bounded to prevent stale data accumulation
         self.message_queue = queue.Queue(maxsize=5)
         self.data_available = threading.Event()
-        
-        # Performance monitoring
-        self._operation_count = 0
-        self._sync_overhead_start = 0.0
-        
+
         # Backward compatibility for watchdog
         self._lock = self._state_lock
         
         self.logger.debug(f"ThreadManager initialized with {num_workers} workers")
 
-    @contextmanager
-    def _sync_timing(self):
-        """Context manager for tracking synchronization overhead"""
-        start_time = time.perf_counter()
-        try:
-            yield
-        finally:
-            overhead = time.perf_counter() - start_time
-            self._operation_count += 1
-            if self._operation_count % 100 == 0:  # Log every 100 operations
-                self.logger.debug(f"Sync overhead: {overhead:.4f}ms (op #{self._operation_count})")
-    
     def register_thread(self, name: str, thread: threading.Thread, stop_func=None) -> None:
         """Register a new thread for management with atomic state transition"""
         if self._shutdown_event.is_set():
             raise RuntimeError("Cannot register thread during shutdown")
 
-        with self._sync_timing():
-            with self._state_lock:
-                if name in self.threads:
-                    old_thread = self.threads[name]
-                    if old_thread.status in {ThreadStatus.RUNNING, ThreadStatus.STARTING}:
-                        self.logger.warning(f"Thread {name} already exists and is active")
-                        return
+        with self._state_lock:
+            if name in self.threads:
+                old_thread = self.threads[name]
+                if old_thread.status in {ThreadStatus.RUNNING, ThreadStatus.STARTING}:
+                    self.logger.warning(f"Thread {name} already exists and is active")
+                    return
 
-                thread_info = ThreadInfo(
-                    thread=thread,
-                    status=ThreadStatus.STARTING,
-                    last_heartbeat=time.time()
-                )
-                thread_info.stop_func = stop_func
-                self.threads[name] = thread_info
-                self._resource_tracker.add(thread_info)
+            thread_info = ThreadInfo(
+                thread=thread,
+                status=ThreadStatus.STARTING,
+                last_heartbeat=time.time()
+            )
+            thread_info.stop_func = stop_func
+            self.threads[name] = thread_info
+            self._resource_tracker.add(thread_info)
 
         self.logger.debug(f"Registered thread: {name} (TID: {thread.ident})")
 
     def update_heartbeat(self, name: str) -> None:
         """Update thread heartbeat timestamp with atomic status transition"""
-        with self._sync_timing():
-            with self._state_lock:
-                if name not in self.threads:
-                    self.logger.warning(f"Heartbeat for unknown thread: {name}")
-                    return
-                    
-                thread_info = self.threads[name]
-                current_time = time.time()
-                
-                # Atomic status transition
-                if thread_info.status == ThreadStatus.STARTING:
-                    if thread_info.status.can_transition_to(ThreadStatus.RUNNING):
-                        thread_info.status = ThreadStatus.RUNNING
-                        self.logger.debug(f"Thread {name} transitioned to RUNNING")
-                        
-                thread_info.last_heartbeat = current_time
+        with self._state_lock:
+            if name not in self.threads:
+                self.logger.warning(f"Heartbeat for unknown thread: {name}")
+                return
+
+            thread_info = self.threads[name]
+            current_time = time.time()
+
+            # Atomic status transition
+            if thread_info.status == ThreadStatus.STARTING:
+                if thread_info.status.can_transition_to(ThreadStatus.RUNNING):
+                    thread_info.status = ThreadStatus.RUNNING
+                    self.logger.debug(f"Thread {name} transitioned to RUNNING")
+
+            thread_info.last_heartbeat = current_time
                 
     def get_thread_status(self, name: str) -> Optional[ThreadStatus]:
         """Get current thread status thread-safely"""
@@ -246,116 +159,52 @@ class ThreadManager:
             thread_info = self.threads.get(name)
             return thread_info.status if thread_info else None
             
-    def get_thread_info(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get thread information snapshot"""
-        with self._state_lock:
-            thread_info = self.threads.get(name)
-            if not thread_info:
-                return None
-                
-            return {
-                'name': name,
-                'status': thread_info.status,
-                'last_heartbeat': thread_info.last_heartbeat,
-                'restart_count': thread_info.restart_count,
-                'creation_time': thread_info.creation_time,
-                'is_alive': thread_info.thread.is_alive(),
-                'thread_id': thread_info.thread.ident,
-                'last_error': str(thread_info.last_error) if thread_info.last_error else None
-            }
-            
-    def list_threads(self) -> Dict[str, Dict[str, Any]]:
-        """Get information for all managed threads"""
-        with self._state_lock:
-            return {name: self.get_thread_info(name) for name in self.threads}
-            
-    def is_healthy(self, heartbeat_timeout: float = 30.0) -> bool:
-        """Check if all threads are healthy"""
-        current_time = time.time()
-        with self._state_lock:
-            for name, thread_info in self.threads.items():
-                if thread_info.status == ThreadStatus.FAILED:
-                    return False
-                if (thread_info.status == ThreadStatus.RUNNING and 
-                    current_time - thread_info.last_heartbeat > heartbeat_timeout):
-                    return False
-            return True
-            
-    def get_statistics(self) -> Dict[str, Any]:
-        """Get manager statistics for monitoring"""
-        with self._state_lock:
-            status_counts = {}
-            total_restarts = 0
-            oldest_thread = None
-            newest_thread = None
-            
-            for thread_info in self.threads.values():
-                status = thread_info.status.name
-                status_counts[status] = status_counts.get(status, 0) + 1
-                total_restarts += thread_info.restart_count
-                
-                if oldest_thread is None or thread_info.creation_time < oldest_thread:
-                    oldest_thread = thread_info.creation_time
-                if newest_thread is None or thread_info.creation_time > newest_thread:
-                    newest_thread = thread_info.creation_time
-                    
-            return {
-                'total_threads': len(self.threads),
-                'status_counts': status_counts,
-                'total_restarts': total_restarts,
-                'operation_count': self._operation_count,
-                'active_futures': len(self._active_futures),
-                'uptime': time.time() - (oldest_thread or time.time()),
-                'is_shutting_down': self._shutdown_event.is_set()
-            }
-
     def handle_thread_failure(self, name: str, error: Exception) -> None:
         """Handle thread failure with atomic state transition and safe restart"""
         if self._shutdown_event.is_set():
             self.logger.debug(f"Ignoring failure for {name} during shutdown")
             return
-            
-        with self._sync_timing():
-            with self._state_lock:
-                if name not in self.threads:
-                    self.logger.warning(f"Failure reported for unknown thread: {name}")
-                    return
-                    
-                thread_info = self.threads[name]
-                
-                # Atomic status transition
-                if not thread_info.status.can_transition_to(ThreadStatus.FAILED):
-                    self.logger.warning(
-                        f"Invalid status transition for {name}: {thread_info.status} -> FAILED"
-                    )
-                    return
-                    
-                thread_info.status = ThreadStatus.FAILED
-                thread_info.last_error = error
-                
-                # Calculate backoff with jitter to prevent thundering herd
-                base_backoff = min(2 ** thread_info.restart_count, 8)
-                jitter = base_backoff * 0.1 * (hash(name) % 10) / 10  # Deterministic jitter
-                backoff = base_backoff + jitter
-                thread_info.restart_count += 1
-                
-                self.logger.error(
-                    f"Thread {name} failed: {type(error).__name__}: {error}. "
-                    f"Restart #{thread_info.restart_count} in {backoff:.2f}s",
-                    exc_info=True  # Full traceback for debugging
+
+        with self._state_lock:
+            if name not in self.threads:
+                self.logger.warning(f"Failure reported for unknown thread: {name}")
+                return
+
+            thread_info = self.threads[name]
+
+            # Atomic status transition
+            if not thread_info.status.can_transition_to(ThreadStatus.FAILED):
+                self.logger.warning(
+                    f"Invalid status transition for {name}: {thread_info.status} -> FAILED"
                 )
-                
-                # Cancel any existing restart operation
-                if thread_info.restart_future and not thread_info.restart_future.done():
-                    thread_info.restart_future.cancel()
-                    
-                # Submit restart with future tracking
-                restart_future = self.worker_pool.submit(self._restart_thread, name, backoff)
-                thread_info.restart_future = restart_future
-                self._active_futures.add(restart_future)
-                
-                # Clean up completed futures
-                restart_future.add_done_callback(lambda f: self._active_futures.discard(f))
+                return
+
+            thread_info.status = ThreadStatus.FAILED
+            thread_info.last_error = error
+
+            # Calculate backoff with jitter to prevent thundering herd
+            base_backoff = min(2 ** thread_info.restart_count, 8)
+            jitter = base_backoff * 0.1 * (hash(name) % 10) / 10  # Deterministic jitter
+            backoff = base_backoff + jitter
+            thread_info.restart_count += 1
+
+            self.logger.error(
+                f"Thread {name} failed: {type(error).__name__}: {error}. "
+                f"Restart #{thread_info.restart_count} in {backoff:.2f}s",
+                exc_info=True  # Full traceback for debugging
+            )
+
+            # Cancel any existing restart operation
+            if thread_info.restart_future and not thread_info.restart_future.done():
+                thread_info.restart_future.cancel()
+
+            # Submit restart with future tracking
+            restart_future = self.worker_pool.submit(self._restart_thread, name, backoff)
+            thread_info.restart_future = restart_future
+            self._active_futures.add(restart_future)
+
+            # Clean up completed futures
+            restart_future.add_done_callback(lambda f: self._active_futures.discard(f))
 
     def _restart_thread(self, name: str, backoff: float) -> None:
         """Restart failed thread after backoff with proper error handling"""
@@ -366,69 +215,68 @@ class ThreadManager:
                     self.logger.debug(f"Restart cancelled for {name} due to shutdown")
                     return
                 time.sleep(0.1)
-                
-            with self._sync_timing():
-                with self._state_lock:
-                    if self._shutdown_event.is_set():
-                        return
 
-                    if name not in self.threads:
-                        self.logger.warning(f"Cannot restart {name}: thread no longer registered")
-                        return
+            with self._state_lock:
+                if self._shutdown_event.is_set():
+                    return
 
-                    thread_info = self.threads[name]
+                if name not in self.threads:
+                    self.logger.warning(f"Cannot restart {name}: thread no longer registered")
+                    return
 
-                    # Call stop_func if available before restarting
-                    if thread_info.stop_func is not None:
-                        try:
-                            self.logger.debug(f"Calling stop_func for {name} before restart")
-                            thread_info.stop_func()
-                        except Exception as e:
-                            self.logger.error(f"stop_func failed for {name}: {e}")
+                thread_info = self.threads[name]
 
-                    # Verify we're still in a restartable state
-                    if thread_info.status not in {ThreadStatus.FAILED, ThreadStatus.STOPPED}:
-                        self.logger.debug(f"Thread {name} status changed to {thread_info.status}, restart cancelled")
-                        return
-                        
-                    # Atomic transition to restarting state
-                    if not thread_info.status.can_transition_to(ThreadStatus.RESTARTING):
-                        self.logger.warning(f"Cannot restart {name}: invalid state {thread_info.status}")
-                        return
-                        
-                    thread_info.status = ThreadStatus.RESTARTING
-                    
-                    # Validate thread target function is available
-                    if not thread_info.target_func:
-                        self.logger.error(f"Cannot restart {name}: no target function available")
-                        thread_info.status = ThreadStatus.STOPPED
-                        return
-                        
+                # Call stop_func if available before restarting
+                if thread_info.stop_func is not None:
                     try:
-                        # Create new thread with stored target info
-                        new_thread = threading.Thread(
-                            target=thread_info.target_func,
-                            args=thread_info.target_args,
-                            kwargs=thread_info.target_kwargs,
-                            name=f"{name}_r{thread_info.restart_count}",
-                            daemon=thread_info.thread.daemon
-                        )
-                        
-                        # Update thread info atomically
-                        thread_info.thread = new_thread
-                        thread_info.status = ThreadStatus.STARTING
-                        thread_info.last_heartbeat = time.time()
-                        thread_info.last_error = None
-                        
-                        # Start the new thread
-                        new_thread.start()
-                        self.logger.info(f"Successfully restarted thread: {name} (attempt #{thread_info.restart_count})")
-                        
+                        self.logger.debug(f"Calling stop_func for {name} before restart")
+                        thread_info.stop_func()
                     except Exception as e:
-                        self.logger.error(f"Failed to restart thread {name}: {e}", exc_info=True)
-                        thread_info.status = ThreadStatus.FAILED
-                        thread_info.last_error = e
-                        
+                        self.logger.error(f"stop_func failed for {name}: {e}")
+
+                # Verify we're still in a restartable state
+                if thread_info.status not in {ThreadStatus.FAILED, ThreadStatus.STOPPED}:
+                    self.logger.debug(f"Thread {name} status changed to {thread_info.status}, restart cancelled")
+                    return
+
+                # Atomic transition to restarting state
+                if not thread_info.status.can_transition_to(ThreadStatus.RESTARTING):
+                    self.logger.warning(f"Cannot restart {name}: invalid state {thread_info.status}")
+                    return
+
+                thread_info.status = ThreadStatus.RESTARTING
+
+                # Validate thread target function is available
+                if not thread_info.target_func:
+                    self.logger.error(f"Cannot restart {name}: no target function available")
+                    thread_info.status = ThreadStatus.STOPPED
+                    return
+
+                try:
+                    # Create new thread with stored target info
+                    new_thread = threading.Thread(
+                        target=thread_info.target_func,
+                        args=thread_info.target_args,
+                        kwargs=thread_info.target_kwargs,
+                        name=f"{name}_r{thread_info.restart_count}",
+                        daemon=thread_info.thread.daemon
+                    )
+
+                    # Update thread info atomically
+                    thread_info.thread = new_thread
+                    thread_info.status = ThreadStatus.STARTING
+                    thread_info.last_heartbeat = time.time()
+                    thread_info.last_error = None
+
+                    # Start the new thread
+                    new_thread.start()
+                    self.logger.info(f"Successfully restarted thread: {name} (attempt #{thread_info.restart_count})")
+
+                except Exception as e:
+                    self.logger.error(f"Failed to restart thread {name}: {e}", exc_info=True)
+                    thread_info.status = ThreadStatus.FAILED
+                    thread_info.last_error = e
+
         except Exception as e:
             self.logger.error(f"Unexpected error in _restart_thread for {name}: {e}", exc_info=True)
             # Try to update status if possible
@@ -442,25 +290,24 @@ class ThreadManager:
 
     def stop_thread(self, name: str, timeout: float = 5.0) -> bool:
         """Stop a specific thread with proper state management"""
-        with self._sync_timing():
-            with self._state_lock:
-                if name not in self.threads:
-                    self.logger.warning(f"Cannot stop unknown thread: {name}")
-                    return False
-                    
-                thread_info = self.threads[name]
-                
-                if not thread_info.status.can_transition_to(ThreadStatus.STOPPING):
-                    self.logger.debug(f"Thread {name} already in terminal state: {thread_info.status}")
-                    return thread_info.status == ThreadStatus.STOPPED
-                    
-                thread_info.status = ThreadStatus.STOPPING
-                
-                # Cancel any pending restart
-                if thread_info.restart_future and not thread_info.restart_future.done():
-                    thread_info.restart_future.cancel()
-                    
-            # Join thread outside of lock to prevent deadlock
+        with self._state_lock:
+            if name not in self.threads:
+                self.logger.warning(f"Cannot stop unknown thread: {name}")
+                return False
+
+            thread_info = self.threads[name]
+
+            if not thread_info.status.can_transition_to(ThreadStatus.STOPPING):
+                self.logger.debug(f"Thread {name} already in terminal state: {thread_info.status}")
+                return thread_info.status == ThreadStatus.STOPPED
+
+            thread_info.status = ThreadStatus.STOPPING
+
+            # Cancel any pending restart
+            if thread_info.restart_future and not thread_info.restart_future.done():
+                thread_info.restart_future.cancel()
+
+        # Join thread outside of lock to prevent deadlock
             success = True
             if thread_info.thread.is_alive():
                 thread_info.thread.join(timeout=timeout)
@@ -485,10 +332,7 @@ class ThreadManager:
         
         # Signal shutdown to all components
         self._shutdown_event.set()
-        
-        # Stop async bridge first
-        self.async_bridge.shutdown()
-        
+
         # Cancel all active futures
         cancelled_count = 0
         for future in list(self._active_futures):
