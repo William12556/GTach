@@ -31,15 +31,31 @@ if ! python3 -m build --version >/dev/null 2>&1; then
     exit 1
 fi
 
-# Extract version from pyproject.toml
-VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+# ---------------------------------------------------------------------------
+# Extract version from pyproject.toml and auto-increment patch
+# ---------------------------------------------------------------------------
+PREV_VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
 
-if [ -z "$VERSION" ]; then
+if [ -z "$PREV_VERSION" ]; then
     echo "ERROR: Could not extract version from pyproject.toml"
     exit 1
 fi
 
-echo "==> Building gtach version $VERSION"
+VER_MAJOR=$(echo "$PREV_VERSION" | cut -d'.' -f1)
+VER_MINOR=$(echo "$PREV_VERSION" | cut -d'.' -f2)
+VER_PATCH=$(echo "$PREV_VERSION" | cut -d'.' -f3)
+VER_PATCH=$((VER_PATCH + 1))
+VERSION="${VER_MAJOR}.${VER_MINOR}.${VER_PATCH}"
+
+python3 -c "
+import re, pathlib
+p = pathlib.Path('pyproject.toml')
+t = p.read_text()
+t = re.sub(r'^version = \"[^\"]+\"', 'version = \"${VERSION}\"', t, count=1, flags=re.MULTILINE)
+p.write_text(t)
+"
+
+echo "==> Building gtach version $VERSION (was $PREV_VERSION)"
 
 # Update __init__.py with version
 echo "==> Updating version in __init__.py..."
