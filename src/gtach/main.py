@@ -28,17 +28,6 @@ _DEBUG_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 def setup_logging(debug: bool = False) -> None:
     global _start_handler, _debug_handler
 
-    if not sys.platform.startswith('linux'):
-        # Non-Linux: preserve existing behaviour.
-        if debug:
-            logging.basicConfig(
-                level=logging.DEBUG,
-                format='%(asctime)s %(name)s %(levelname)s %(message)s'
-            )
-        else:
-            logging.getLogger().addHandler(logging.NullHandler())
-        return
-
     formatter = logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FMT)
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)

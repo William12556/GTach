@@ -22,7 +22,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: POSIX :: Linux",
-    "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -35,6 +34,7 @@ dependencies = [
     "PyYAML>=6.0",
     "click>=8.0",
     "pyserial>=3.5",
+    "pygame>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -50,10 +50,6 @@ pi = [
     "RPi.GPIO>=0.7.1",
     "gpiozero>=1.6",
 ]
-macos = [
-    "pygame>=2.0",
-]
-
 [project.urls]
 Homepage = "https://github.com/user/GTach"
 Documentation = "https://github.com/user/GTach/blob/main/README.md"

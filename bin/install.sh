@@ -15,11 +15,8 @@ case "$OS" in
     Linux*)
         INSTALL_DIR="/opt/gtach"
         ;;
-    Darwin*)
-        INSTALL_DIR="$HOME/.local/opt/gtach"
-        ;;
     *)
-        echo "ERROR: Unsupported operating system: $OS"
+        echo "ERROR: Unsupported operating system: $OS (Linux only)"
         exit 1
         ;;
 esac
@@ -47,12 +44,7 @@ echo "==> Install directory: $INSTALL_DIR"
 # ---------------------------------------------------------------------------
 if ! command -v python3 &>/dev/null; then
     echo "ERROR: python3 not found in PATH"
-    if [ "$OS" = "Darwin" ]; then
-        echo "Install Python 3 via Homebrew:  brew install python3"
-        echo "Or via Xcode Command Line Tools: xcode-select --install"
-    else
-        echo "Install Python 3:  sudo apt-get install python3 python3-venv"
-    fi
+    echo "Install Python 3:  sudo apt-get install python3 python3-venv"
     exit 1
 fi
 
@@ -79,13 +71,7 @@ fi
 # ---------------------------------------------------------------------------
 if [ ! -d "$VENV_DIR" ]; then
     echo "==> Creating virtual environment at $VENV_DIR"
-    if [ "$OS" = "Linux" ]; then
-        python3 -m venv "$VENV_DIR"
-    else
-        # macOS: user-owned path, no sudo required
-        mkdir -p "$INSTALL_DIR"
-        python3 -m venv "$VENV_DIR"
-    fi
+    python3 -m venv "$VENV_DIR"
 fi
 
 # ---------------------------------------------------------------------------
@@ -122,28 +108,19 @@ echo ""
 # ---------------------------------------------------------------------------
 # Post-install: platform-specific instructions
 # ---------------------------------------------------------------------------
-if [ "$OS" = "Linux" ]; then
-    # ---- systemd service + boot-time update supervisor ----
-    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-    echo "==> Registering systemd service and update supervisor"
-    install -m 0644 "$SCRIPT_DIR/gtach.service" /etc/systemd/system/gtach.service
-    if [ "$SCRIPT_DIR/gtach-preflight.sh" != "$INSTALL_DIR/gtach-preflight.sh" ]; then
-        install -m 0755 "$SCRIPT_DIR/gtach-preflight.sh" "$INSTALL_DIR/gtach-preflight.sh"
-    else
-        chmod 0755 "$INSTALL_DIR/gtach-preflight.sh"
-    fi
-    cp -f "$WHEEL_PATH" "$INSTALL_DIR/installed.whl"
-    systemctl daemon-reload
-    systemctl enable gtach
-    echo "    Service 'gtach' enabled. Start now with: systemctl start gtach"
-
-    echo "Run gtach with:"
-    echo "  $VENV_DIR/bin/gtach"
+# ---- systemd service + boot-time update supervisor ----
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+echo "==> Registering systemd service and update supervisor"
+install -m 0644 "$SCRIPT_DIR/gtach.service" /etc/systemd/system/gtach.service
+if [ "$SCRIPT_DIR/gtach-preflight.sh" != "$INSTALL_DIR/gtach-preflight.sh" ]; then
+    install -m 0755 "$SCRIPT_DIR/gtach-preflight.sh" "$INSTALL_DIR/gtach-preflight.sh"
 else
-    # macOS: manual start only, no service registration
-    echo "Run gtach with:"
-    echo "  $VENV_DIR/bin/gtach"
-    echo ""
-    echo "Note: Automatic launch on login is not configured."
-    echo "      Start gtach manually when required."
+    chmod 0755 "$INSTALL_DIR/gtach-preflight.sh"
 fi
+cp -f "$WHEEL_PATH" "$INSTALL_DIR/installed.whl"
+systemctl daemon-reload
+systemctl enable gtach
+echo "    Service 'gtach' enabled. Start now with: systemctl start gtach"
+
+echo "Run gtach with:"
+echo "  $VENV_DIR/bin/gtach"
