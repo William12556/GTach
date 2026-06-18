@@ -34,6 +34,7 @@ GTach is an experimental embedded application for Raspberry Pi with a Pimoroni H
 
 - Python 3.9+
 - git
+- curl
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -43,17 +44,20 @@ GTach is an experimental embedded application for Raspberry Pi with a Pimoroni H
 
 ### 2.1 Standard Install
 
-For reinstalls and updates on a Pi where the systemd service is already configured.
+Installs the latest GTach release directly from GitHub without cloning the repository. Requires `sudo`.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/William12556/GTach/main/bin/pi-install.sh | sudo bash
+```
+
+`pi-install.sh` resolves the latest release tag, creates `/opt/gtach/`, sets up a virtual environment, installs the package from GitHub, downloads service files, and registers the systemd service.
+
+**Updates:**
 
 ```bash
 /opt/gtach/venv/bin/pip install \
   --extra-index-url https://www.piwheels.org/simple/ \
   "git+https://github.com/William12556/GTach.git[pi]"
-```
-
-Restart the service after install:
-
-```bash
 systemctl restart gtach
 ```
 
@@ -205,6 +209,8 @@ docs/    Technical documentation
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.2 | 2026-06-18 | §2.1: pi-install.sh always installs latest release; removed version-pinning example |
+| 2.1 | 2026-06-18 | §2.1 expanded: added pi-install.sh for first-time install; added curl to software requirements |
 | 2.0 | 2026-06-18 | Reorganised: added Installation and Service Management sections; corrected log paths; renamed CLI Reference; fixed Project Structure; corrected ToC anchors |
 | 1.5 | 2026-06-17 | Fixed stale version in §3.2/§3.3 |
 | 1.4 | 2026-06-17 | Updated script paths for bin/ relocation |
