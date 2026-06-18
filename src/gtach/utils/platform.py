@@ -39,7 +39,6 @@ class PlatformType(Enum):
     
     # Other platforms
     LINUX_GENERIC = auto()
-    MACOS = auto()
     WINDOWS = auto()
     UNKNOWN = auto()
 

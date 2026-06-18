@@ -599,8 +599,6 @@ class PlatformOptimizer:
                 pass
             return PlatformType.LINUX
         
-        elif system == "darwin":
-            return PlatformType.MACOS
         elif system == "windows":
             return PlatformType.WINDOWS
         else:
@@ -616,15 +614,6 @@ class PlatformOptimizer:
                 'aggressive_caching': True,
                 'disable_debug_rendering': True,
                 'prefer_software_rendering': True
-            }
-        elif self.platform == PlatformType.MACOS:
-            return {
-                'disable_alpha_blending': False,
-                'reduce_color_depth': False,
-                'minimize_memory_usage': False,
-                'aggressive_caching': False,
-                'disable_debug_rendering': False,
-                'prefer_software_rendering': False
             }
         else:
             # Conservative defaults for unknown platforms

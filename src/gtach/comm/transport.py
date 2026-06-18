@@ -126,7 +126,7 @@ def select_transport(platform_type: PlatformType, args: argparse.Namespace) -> O
     """Factory function to select the appropriate transport based on platform and arguments.
     
     Args:
-        platform_type: The platform type (e.g., MACOS, RASPBERRY_PI).
+        platform_type: The platform type (e.g., RASPBERRY_PI).
         args: Command-line arguments namespace.
         
     Returns:
@@ -159,9 +159,7 @@ def select_transport(platform_type: PlatformType, args: argparse.Namespace) -> O
         return _get_rfcomm()
     
     # Auto-detect based on platform if no transport argument is provided
-    if platform_type == PlatformType.MACOS:
-        return SerialTransport()
-    elif platform_type.name.startswith('RASPBERRY_PI'):
+    if platform_type.name.startswith('RASPBERRY_PI'):
         return _get_rfcomm()
     else:
         raise TransportError('Unsupported platform')

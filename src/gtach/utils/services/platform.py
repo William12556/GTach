@@ -287,8 +287,6 @@ class PlatformService:
             if platform_type in [PlatformType.RASPBERRY_PI_4, PlatformType.RASPBERRY_PI_5]:
                 capabilities.supports_concurrent_gpio = True
                 capabilities.storage_type = "microsd"
-            elif platform_type == PlatformType.MACOS:
-                capabilities.storage_type = "ssd"
             
             self.logger.debug(f"Service flags: root={capabilities.requires_root}, "
                             f"watchdog={capabilities.has_hardware_watchdog}")

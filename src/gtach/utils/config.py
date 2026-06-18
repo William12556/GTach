@@ -376,7 +376,7 @@ class ConfigValidator:
             platform_result['pi_validation'] = self._validate_pi_constraints(config)
 
         result['platform_specific'] = platform_result
-        
+
     def _validate_pi_constraints(self, config: 'OBDConfig') -> Dict[str, Any]:
         """Validate Raspberry Pi specific constraints"""
         pi_result = {'checks': [], 'recommendations': []}
@@ -396,17 +396,7 @@ class ConfigValidator:
             pi_result['checks'].append('GPIO interface not found')
             
         return pi_result
-        
-    def _validate_mac_constraints(self, config: 'OBDConfig') -> Dict[str, Any]:
-        """Validate macOS specific constraints"""
-        mac_result = {'checks': [], 'recommendations': []}
-        
-        # macOS can handle higher performance settings
-        if config.display.fps_limit < 60:
-            mac_result['recommendations'].append(f"macOS can handle higher FPS (current: {config.display.fps_limit})")
-            
-        return mac_result
-        
+
     def _detect_platform(self) -> Dict[str, Any]:
         """Detect platform information for validation"""
         import platform
