@@ -11,7 +11,6 @@ src/gtach.egg-info/dependency_links.txt
 src/gtach.egg-info/entry_points.txt
 src/gtach.egg-info/requires.txt
 src/gtach.egg-info/top_level.txt
-src/gtach/assets/fonts/BebasNeue-Regular.ttf
 src/gtach/assets/fonts/Michroma-Regular.ttf
 src/gtach/comm/__init__.py
 src/gtach/comm/bluetooth.py
@@ -29,16 +28,12 @@ src/gtach/comm/transport.py
 src/gtach/core/__init__.py
 src/gtach/core/thread.py
 src/gtach/core/watchdog.py
-src/gtach/core/watchdog_enhanced.py
 src/gtach/display/__init__.py
 src/gtach/display/async_operations.py
-src/gtach/display/enhanced_touch_factory.py
-src/gtach/display/hardware_interface.py
 src/gtach/display/manager.py
 src/gtach/display/manager_backup.py
 src/gtach/display/models.py
 src/gtach/display/navigation_gestures.py
-src/gtach/display/performance.py
 src/gtach/display/setup.py
 src/gtach/display/setup_models.py
 src/gtach/display/setup_original_backup.py
@@ -46,10 +41,6 @@ src/gtach/display/splash.py
 src/gtach/display/touch.py
 src/gtach/display/touch_interface.py
 src/gtach/display/typography.py
-src/gtach/display/ui_testing_framework.py
-src/gtach/display/components/__init__.py
-src/gtach/display/components/coordinator.py
-src/gtach/display/components/factory.py
 src/gtach/display/graphics/__init__.py
 src/gtach/display/graphics/splash_graphics.py
 src/gtach/display/input/__init__.py
@@ -78,8 +69,3 @@ src/gtach/utils/home.py
 src/gtach/utils/platform.py
 src/gtach/utils/terminal.py
 src/gtach/utils/updater.py
-src/gtach/utils/services/__init__.py
-src/gtach/utils/services/configuration.py
-src/gtach/utils/services/dependency.py
-src/gtach/utils/services/platform.py
-src/gtach/utils/services/registry.py
