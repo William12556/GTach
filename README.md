@@ -13,11 +13,12 @@ GTach is an experimental embedded application for Raspberry Pi with a Pimoroni H
 ## Table of Contents
 
 [1.0 Requirements](<#1.0 requirements>)
-[2.0 Installation](<#2.0 installation>)
-[3.0 Build and Deploy](<#3.0 build and deploy>)
-[4.0 Service Management](<#4.0 service management>)
-[5.0 CLI Reference](<#5.0 cli reference>)
-[6.0 Project Structure](<#6.0 project structure>)
+[2.0 Hardware Setup](<#2.0 hardware setup>)
+[3.0 Installation](<#3.0 installation>)
+[4.0 Build and Deploy](<#4.0 build and deploy>)
+[5.0 Service Management](<#5.0 service management>)
+[6.0 CLI Reference](<#6.0 cli reference>)
+[7.0 Project Structure](<#7.0 project structure>)
 [Version History](<#version history>)
 
 ---
@@ -40,9 +41,25 @@ GTach is an experimental embedded application for Raspberry Pi with a Pimoroni H
 
 ---
 
-## 2.0 Installation
+## 2.0 Hardware Setup
 
-### 2.1 Standard Install
+The Pi Zero 2W requires specific OS and boot configuration before GTach can be installed.
+
+| Component | Requirement |
+|---|---|
+| OS | Debian GNU/Linux 11 (Bullseye), 64-bit |
+| Boot config | `/boot/config.txt` — HyperPixel DPI settings |
+| Boot text | `/boot/cmdline.txt` — suppress kernel output |
+
+See [docs/pi-setup.md](docs/pi-setup.md) for full hardware setup instructions.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 3.0 Installation
+
+### 3.1 Standard Install
 
 Installs the latest GTach release directly from GitHub without cloning the repository. Requires `sudo`.
 
@@ -61,19 +78,19 @@ curl -fsSL https://raw.githubusercontent.com/William12556/GTach/main/bin/pi-inst
 systemctl restart gtach
 ```
 
-### 2.2 Developer Install
+### 3.2 Developer Install
 
-For first-time Pi setup and active development, use the full developer workflow in §3.0.
+For first-time Pi setup and active development, use the full developer workflow in §4.0.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 3.0 Build and Deploy
+## 4.0 Build and Deploy
 
 Developer workflow. Requires the repository cloned on Mac and SSH access to the Pi at `root@gtach.local`.
 
-### 3.1 Clone Repository (Mac)
+### 4.1 Clone Repository (Mac)
 
 ```bash
 git clone https://github.com/William12556/GTach GTach
@@ -83,7 +100,7 @@ source venv/bin/activate
 pip install -e .[dev]
 ```
 
-### 3.2 Deploy to Pi
+### 4.2 Deploy to Pi
 
 Full deploy — build, transfer, install, restart service:
 
@@ -97,7 +114,7 @@ Stage update only — transfers wheel to Pi drop directory; install via GTach up
 ./bin/deploy.sh --stage
 ```
 
-### 3.3 Manual Deploy
+### 4.3 Manual Deploy
 
 If deploying without `deploy.sh`:
 
@@ -113,7 +130,7 @@ scp dist/gtach-<version>-py3-none-any.whl root@gtach.local:/tmp/
 ssh root@gtach.local "/opt/gtach/install.sh /tmp/gtach-<version>-py3-none-any.whl"
 ```
 
-### 3.4 Retrieve Logs
+### 4.4 Retrieve Logs
 
 ```bash
 scp root@gtach.local:/opt/gtach/debug.log ~/Documents/GitHub/GTach/
@@ -123,11 +140,11 @@ scp root@gtach.local:/opt/gtach/debug.log ~/Documents/GitHub/GTach/
 
 ---
 
-## 4.0 Service Management
+## 5.0 Service Management
 
 GTach runs as a systemd service and starts automatically at boot.
 
-### 4.1 Service Control
+### 5.1 Service Control
 
 ```bash
 systemctl start gtach
@@ -136,7 +153,7 @@ systemctl restart gtach
 systemctl status gtach
 ```
 
-### 4.2 Logs
+### 5.2 Logs
 
 ```bash
 # Live service output
@@ -153,11 +170,11 @@ tail -f /opt/gtach/debug.log
 
 ---
 
-## 5.0 CLI Reference
+## 6.0 CLI Reference
 
-Manual invocation is for development and debug use. Normal operation uses the systemd service (§4.0).
+Manual invocation is for development and debug use. Normal operation uses the systemd service (§5.0).
 
-### 5.1 Options
+### 6.1 Options
 
 | Option | Description | Default |
 |---|---|---|
@@ -171,7 +188,7 @@ Manual invocation is for development and debug use. Normal operation uses the sy
 | `--obd-port PORT` | OBD TCP port | `35000` |
 | `--serial-port PORT` | Serial device path | None |
 
-### 5.2 Examples
+### 6.2 Examples
 
 ```bash
 # Run with debug logging
@@ -191,7 +208,7 @@ gtach --validate-dependencies
 
 ---
 
-## 6.0 Project Structure
+## 7.0 Project Structure
 
 ```
 ai/      Governance framework and workspace
@@ -209,6 +226,7 @@ docs/    Technical documentation
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.3 | 2026-06-19 | Added §2.0 Hardware Setup; renumbered §3.0–§7.0 |
 | 2.2 | 2026-06-18 | §2.1: pi-install.sh always installs latest release; removed version-pinning example |
 | 2.1 | 2026-06-18 | §2.1 expanded: added pi-install.sh for first-time install; added curl to software requirements |
 | 2.0 | 2026-06-18 | Reorganised: added Installation and Service Management sections; corrected log paths; renamed CLI Reference; fixed Project Structure; corrected ToC anchors |
