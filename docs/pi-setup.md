@@ -203,7 +203,11 @@ reboot
 
 ### 5.3 Laptop Connection
 
+<<<<<<< HEAD
 Connect a micro-USB cable to the Pi `USB` (OTG) port. macOS detects the Pi as a USB Ethernet device automatically — no driver installation required. A new network interface (e.g., `en7`) appears in System Settings → Network.
+=======
+Connect a micro-USB cable to the Pi `USB` (OTG) port. macOS detects the Pi as a USB Ethernet device automatically — no driver installation required. A new network interface appears in System Settings → Network.
+>>>>>>> a81eb754fe4ba7a98d525f49f36d4606bf4e023d
 
 SSH to the Pi:
 
