@@ -15,8 +15,8 @@ Created: 2026 March 29
 
 ```mermaid
 flowchart TD
-    Init[P01: Project Initialization<br/>§1.2] --> Budget_Init[Human: Run budget.py<br/>generates context-budget.md<br/>§1.2.8]
-    Budget_Init --> Start([Human: Initiate Requirements<br/>§1.11])
+    Init[P01: Project Initialization<br/>§1.2] --> Config_Init[Human: Configure config.yaml<br/>§1.2.8]
+    Config_Init --> Start([Human: Initiate Requirements<br/>§1.11])
     Start --> D1_Elicit[Strategic Domain: Requirements Elicitation<br/>P10 §1.11.2]
     
     D1_Elicit --> H_Req{Human: Review Requirements}
@@ -34,10 +34,9 @@ flowchart TD
     
     Trace1 --> D1_Tag[Human: Tag baseline<br/>in GitHub §1.1.12]
     
-    D1_Tag --> Budget_Check{context-budget.md<br/>present?}
-    Budget_Check -->|No| Budget_Remind[Strategic Domain: Instruct<br/>human to run budget.py]
-    Budget_Remind --> Budget_Run[Human: Run budget.py<br/>§1.10.2]
-    Budget_Run --> D1_Prompt
+    D1_Tag --> Budget_Check{Strategic Domain: omlx_model_status<br/>context window resolved?}
+    Budget_Check -->|No| Budget_Remind[Strategic Domain: Warn operator<br/>window unresolved §1.10.2]
+    Budget_Remind --> D1_Prompt
     Budget_Check -->|Yes| D1_Prompt[Strategic Domain: Create T04 prompt<br/>with design + schema §1.10.2]
     
     D1_Prompt --> H3{Human: Approve<br/>code generation}
@@ -66,10 +65,9 @@ flowchart TD
     Issue_Type -->|Bug| D1_Change[Strategic Domain: Create change T02<br/>§1.4.1]
     D1_Change --> H4{Human: Review<br/>change}
     H4 -->|Revise| D1_Change
-    H4 -->|Approve| Budget_Check2{context-budget.md<br/>present?}
-    Budget_Check2 -->|No| Budget_Remind2[Strategic Domain: Instruct<br/>human to run budget.py]
-    Budget_Remind2 --> Budget_Run2[Human: Run budget.py]
-    Budget_Run2 --> D1_Debug_Prompt
+    H4 -->|Approve| Budget_Check2{Strategic Domain: omlx_model_status<br/>context window resolved?}
+    Budget_Check2 -->|No| Budget_Remind2[Strategic Domain: Warn operator<br/>window unresolved]
+    Budget_Remind2 --> D1_Debug_Prompt
     Budget_Check2 -->|Yes| D1_Debug_Prompt[Strategic Domain: Create debug<br/>prompt T04 §1.10.2]
     
     D1_Debug_Prompt --> H5{Human: Approve<br/>debug}
@@ -114,6 +112,7 @@ flowchart TD
 | 1.0     | 2026-03-29 | Extracted from governance.md §2.0 |
 | 1.1     | 2026-05-20 | Added governance.md section references to all flowchart nodes |
 | 1.2     | 2026-06-16 | Corrected Budget_Init node cross-reference: §1.10.2 (P09 Prompt) → §1.2.8 (P01 Implementation Profile Setup), the section that actually directs the initial budget.py run |
+| 1.3     | 2026-07-08 | Replaced retired budget.py nodes (Budget_Init, Budget_Run, Budget_Run2) with config.yaml setup (Config_Init) and direct omlx_model_status resolution checks (Budget_Check, Budget_Check2), reflecting orchestrator.py's own tiered context-window resolver (change-d42e64a9) |
 
 ---
 

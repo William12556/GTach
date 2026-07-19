@@ -12,6 +12,7 @@ Created: 2026 April 27
 [2.2 Monitoring Tools](<#2.2 monitoring tools>)
 [3.0 Responsibilities](<#3.0 responsibilities>)
 [4.0 Workflow](<#4.0 workflow>)
+[4.1 Audit Modes](<#4.1 audit modes>)
 [5.0 Protocol Reference](<#5.0 protocol reference>)
 [6.0 Document Conventions](<#6.0 document conventions>)
 [7.0 Constraints](<#7.0 constraints>)
@@ -112,7 +113,7 @@ The Strategic Domain owns the following functions:
 **Execution Coordination**
 
 - T04 prompt authoring and AEL command delivery (P09)
-- Context budget check before every T04 prompt
+- Context budget check before every AEL-targeted T04 prompt
 - Human handoff: ready-to-execute command after approval
 
 **Quality**
@@ -142,10 +143,10 @@ The Strategic Domain owns the following functions:
 Condensed stage sequence. See `workflow.md` for the full flowchart.
 
 ```
-P01  Project Initialization  →  run budget.py
+P01  Project Initialization  →  configure config.yaml
 P10  Requirements            →  human approval → baseline
 P02  Design (Tier 1–3)       →  human approval per tier → git tag baseline
-P09  T04 Prompt              →  check context-budget.md → human approval
+P09  T04 Prompt              →  query omlx_model_status → human approval
      AEL  →  SHIP or BLOCKED
             Option A: human runs terminal command (all profiles)
             Option B: Strategic Domain calls start_ael / polls ael_status
@@ -161,19 +162,38 @@ P00  Close documents         →  move to closed/ → git commit → AEL reset
 
 ---
 
+## 4.1 Audit Modes
+
+Two audit modes serve P08 (governance §1.9). The operator selects by trigger phrase.
+
+| Mode | Trigger | Actor | Procedure |
+|---|---|---|---|
+| Strategic | "conduct a strategic audit" | Claude Desktop | Read source via MCP, reason holistically, author `audit-<uuid>-<name>.md` (T08) inline |
+| Tactical | "conduct a tactical audit" | AEL audit loop | Prepare `audit-uml.md` + `audit-index.md` + audit T04 prompt; human approval; launch per `ai/doc/guide-audit-loop.md` |
+
+Strategic favours frontier judgement: architecture, protocol and name-registry
+conformance, traceability. Tactical favours exhaustive per-item coverage and
+unattended runtime (`--duration`). The orchestrator selects the audit recipe
+pair automatically when `audit-index.md` is present in the state directory. If
+the requested mode is unclear, ask before proceeding.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
 ## 5.0 Protocol Reference
 
 | Protocol | Name | Key Action |
 |---|---|---|
 | P00 | Governance | Master directives, architecture, document conventions |
-| P01 | Project Initialization | Folder structure, `.gitignore`, venv, `budget.py` |
+| P01 | Project Initialization | Folder structure, `.gitignore`, venv, `config.yaml` |
 | P02 | Design | Three-tier hierarchy, name registry, Mermaid diagrams |
 | P03 | Change | T02 from T03 issue; one-to-one coupling; trivial exemption |
 | P04 | Issue | T03 from test failure or `BLOCKED`; issue–change coupling |
 | P05 | Trace | Traceability matrix updates at every phase boundary |
 | P06 | Test | T05 docs, pytest generation, progressive validation |
 | P07 | Quality | Code validation, automated audits via AEL hooks |
-| P08 | Audit | Periodic compliance audit; findings → issues |
+| P08 | Audit | Strategic or tactical audit (§4.1); findings → issues (P04) |
 | P09 | Prompt | T04 authoring, `tactical_brief`, AEL command delivery |
 | P10 | Requirements | T07 elicitation before design; baseline before Tier 1 |
 
@@ -222,9 +242,12 @@ required after each increment.
 
 **Context Budget**
 
-- `context-budget.md` must exist in `ai/state/ralph/` before authoring any T04
-  prompt. If absent, instruct human to run `python ai/ael/src/budget.py`.
-- Read budget before sizing `tactical_brief` (~200–400 tokens target).
+- Before authoring any AEL-targeted T04 prompt (prompt_info.target_profile:
+  ael), call `omlx_model_status` (mcp_omlx) for the configured model; a null
+  or missing `settings.max_context_window` is unresolved — warn the operator,
+  same as the resolver's own unknown-window behavior.
+- Read `context-budget.md` (written automatically by the orchestrator at AEL
+  runtime) before sizing `tactical_brief` (~200–400 tokens target).
 
 **`tactical_brief` Format**
 
@@ -242,6 +265,12 @@ required after each increment.
 
 - Full issue/change/prompt workflow applies to `src/` changes only.
 - `ai/workspace/` document changes may be made directly after human approval.
+
+**Initial Implementation**
+
+- First-time source code implementation from an approved design does not require issue or change documents.
+- Forward path: approved design → T04 prompt → execution → review.
+- The T03 → T02 corrective loop is triggered only by AEL `BLOCKED` or test failure.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -261,6 +290,7 @@ any document.
 | T05 | Test | `ai/templates/T05-test.md` |
 | T06 | Result | `ai/templates/T06-result.md` |
 | T07 | Requirements | `ai/templates/T07-requirements.md` |
+| T08 | Audit | `ai/templates/T08-audit.md` |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -278,6 +308,10 @@ any document.
 | 0.6 | 2026-06-16 | Updated §2.1 profile filename reference: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md |
 | 0.7 | 2026-06-17 | Aligned with docs/claude/primer.md (canonical): code spans for governance.md, workflow.md, SHIP, BLOCKED, .gitignore, budget.py, tactical_brief throughout; Prime Directive bolded; ael-mcp bold extent corrected; §6.0 restructured with §6.1 Naming and §6.2 Lifecycle subsections; colon positions in UUID propagation and Iteration headings; blank lines before bullet lists in §3.0 and §7.0; tactical_brief Format and Trivial Change Exemption heading formats |
 | 0.8 | 2026-06-17 | §2.0: added context file to AEL description; §2.1: added Context file row to profile comparison table |
+| 0.9 | 2026-06-25 | Added §7.0 Initial Implementation constraint: initial implementation from approved design does not require issue/change documents; forward path and corrective loop trigger made explicit |
+| 0.10 | 2026-06-28 | Added §4.1 Audit Modes (strategic / tactical triggers); noted automatic audit-recipe selection; updated §5.0 P08 row; added T08 Audit to §8.0 template table |
+| 0.11 | 2026-07-02 | Rescoped §3.0 and §7.0 context-budget directives to AEL-targeted T04 prompts only (prompt_info.target_profile field; issue-713437bc) |
+| 0.12 | 2026-07-08 | §4.0/§5.0/§7.0: replaced retired `budget.py` file-existence gate with direct `omlx_model_status` (mcp_omlx) query before authoring AEL-targeted T04 prompts; `context-budget.md` now written automatically by the orchestrator at AEL runtime (change-d42e64a9) |
 
 ---
 

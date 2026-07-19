@@ -142,11 +142,11 @@ Conditions 2–6 evaluate only over open (non-`closed/`) documents.
 |---|---|---|
 | FR-02-01 | VIOLATION | Change document has no coupled issue sharing its UUID |
 | FR-02-02 | WARNING | Issue document has no coupled change sharing its UUID |
-| FR-02-03 | VIOLATION | Prompt document has no coupled change sharing its UUID |
+| FR-02-03 | VIOLATION | Prompt document has no coupled change sharing its UUID (skipped for design-sourced prompts, §1.4.1) |
 | FR-02-04 | WARNING | Filename does not match governance naming convention |
 | FR-02-05 | WARNING | AEL reports SHIP but open documents remain |
 | FR-02-06 | WARNING | AEL `task.md` does not reference any open prompt document |
-| FR-02-07 | WARNING | `context-budget.md` absent while a prompt document is open |
+| FR-02-07 | WARNING | `context-budget.md` absent while an AEL-targeted prompt document is open |
 
 ### 7.2 Tier 2 — Document Content
 
@@ -154,7 +154,7 @@ Conditions 2–6 evaluate only over open (non-`closed/`) documents.
 |---|---|---|
 | FR-02-08 | VIOLATION | Coupled change/issue iteration numbers differ |
 | FR-02-09 | VIOLATION | Body `id` UUID differs from filename UUID |
-| FR-02-10 | VIOLATION | Prompt `tactical_brief` absent, empty, or placeholder |
+| FR-02-10 | VIOLATION | Prompt `tactical_brief` absent, empty, or placeholder (only when target_profile is ael or absent) |
 | FR-02-11 | WARNING | Issue missing required fields |
 | FR-02-12 | WARNING | Change missing required fields |
 
@@ -219,6 +219,7 @@ Sections with no entries show `none`. Add `ai/dashboard-alerts.md` to the projec
 |---|---|---|
 | 1.0 | 2026-06-10 | Initial guide |
 | 1.1 | 2026-06-14 | Updated paths for ai/ consolidation: output ai/dashboard-alerts.md, state ai/state/ralph/, validates ai/workspace/ |
+| 1.2 | 2026-07-02 | §7.1/§7.2: FR-02-03 skipped for design-sourced prompts, FR-02-07/FR-02-10 scoped to AEL-targeted prompts (issue-713437bc) |
 
 ---
 

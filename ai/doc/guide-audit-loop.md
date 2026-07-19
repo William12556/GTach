@@ -23,7 +23,7 @@ Created: 2026 June 02
 
 ## 1.0 Purpose
 
-This guide is an operational reference for the Strategic Domain when running a codebase quality audit against a downstream project. The audit loop uses `audit-work.yaml` and `audit-review.yaml` recipes. No source file in the target codebase is written. Findings are accumulated in `ai/state/ralph/audit-report.md`.
+This guide is an operational reference for the Strategic Domain when running a codebase quality audit against a downstream project. The audit loop uses `audit-work.yaml` and `audit-review.yaml` recipes. The orchestrator selects these recipes automatically when `audit-index.md` is present in the state directory; no source edit is required. No source file in the target codebase is written. Findings are accumulated in `ai/state/ralph/audit-report.md`.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -245,7 +245,7 @@ mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 | Condition | State file written | Meaning |
 |---|---|---|
 | All items `[x]`, reviewer issues SHIP | `.ralph-complete` = `COMPLETE: iteration N` | Normal completion |
-| `--duration` limit reached | `.ralph-complete` = `DURATION_LIMIT: iteration N` | Time-bounded exit; results valid |
+| `--duration` limit reached | `.ralph-timeout` = `TIMEOUT: iteration N` (exit code 2) | Time-bounded exit; results valid |
 | `max_iterations` exhausted | None | Partial run; check coverage manually |
 | Worker writes RALPH-BLOCKED.md | `RALPH-BLOCKED.md` | Review blocker; address manually |
 | Context budget abort | None | Reduce `tactical_brief` size and restart |
@@ -261,6 +261,7 @@ mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 | 1.0 | 2026-06-02 | Initial document |
 | 1.1 | 2026-06-14 | Relocated paths under ai/: state → ai/state/ralph/, workspace/audit → ai/workspace/audit, workspace/prompt → ai/workspace/prompt |
 | 1.2 | 2026-06-16 | Updated §7.5 cross-reference: P08 §1.9.7 → §1.9.8, following governance.md merge of duplicate Audit Closure sections |
+| 1.3 | 2026-06-28 | Noted automatic recipe selection on audit-index.md presence (§1.0); corrected §8.0 duration-limit row to `.ralph-timeout` / exit code 2 |
 
 ---
 

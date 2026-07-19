@@ -44,7 +44,7 @@ State files reside in `ai/state/ralph/` (configured via `loop.state_dir` in `con
 | `review-feedback.txt` | Reviewer | Specific feedback for next worker iteration |
 | `.ralph-complete` | Orchestrator | Completion marker (see §5.0 for content variants) |
 | `RALPH-BLOCKED.md` | Worker | Unrecoverable failure details; seeds T03 issue |
-| `context-budget.md` | `budget.py` | Context window sizing report for Strategic Domain |
+| `context-budget.md` | Orchestrator | Context window sizing report for Strategic Domain |
 | `ael_<timestamp>.LOG` | Orchestrator | Full debug log; preserved across reset |
 
 ### 2.2 Audit Loop additions
@@ -72,7 +72,8 @@ Full configuration file with all fields:
 omlx:
   base_url: "http://127.0.0.1:8000/v1"  # oMLX API base URL
   api_key: "local"                        # oMLX bearer token
-  default_model: "<model-id>"            # model ID as reported by /v1/models
+  default_model: "<worker-model-id>"     # worker/base model ID as reported by /v1/models
+  reviewer_model: "<reviewer-model-id>"  # optional; reviewer-phase model (falls back to default_model)
 
 # MCP server definitions
 mcp_servers:
@@ -84,9 +85,8 @@ mcp_servers:
       - "<allowed-root-path>"
     env:
       PATH: "/opt/homebrew/opt/node@24/bin:/usr/local/bin:/usr/bin:/bin"
-  mcp-grep:
-    command: "<path-to-python>"
-    args: ["-m", "mcp_grep.server"]
+  mcp-ripgrep:
+    command: "<path-to-mcp-ripgrep>"
 
 # Endpoint readiness polling
 readiness:
@@ -102,12 +102,20 @@ loop:
   preflight_check: false    # evaluate success criteria before first worker pass
   state_dir: "ai/state/ralph"   # state directory path (relative to project root)
 
+# Execution controls (opt-in, default disabled)
+execution:
+  max_completion_tokens: null   # cap output tokens when set; null = model default
+  max_tool_result_chars: null   # head/tail-truncate large tool results when set; null = none
+  strict_tactical_brief: false  # true + ael profile: fail fast on missing tactical_brief
+
 # Context budget
 context:
-  models_dir: "<path-to-model-storage>"  # local directory containing MLX models
-  context_window: null    # null = read from model config.json; or set explicit int
+  context_window: null    # null = try live oMLX query, then per-model override below
   budget_warn_pct: 0.80   # warn at this fraction of context window
   budget_abort_pct: 0.95  # abort phase at this fraction
+  model_context_windows:  # tier-3 per-model overrides (used when the live query returns null)
+    "<worker-model-id>": 262144
+    "<reviewer-model-id>": 131072
 ```
 
 **Key distinctions:**
@@ -181,13 +189,7 @@ The `AEL end rc=N` line is always written to the `.LOG` file on any clean exit. 
 
 ### 6.1 Initial setup
 
-Run `budget.py` once after configuring `config.yaml` and after any model change:
-
-```bash
-python ai/ael/src/budget.py
-```
-
-This writes `ai/state/ralph/context-budget.md`. Read this file before authoring any T04 prompt (P09 §1.10.2).
+`context-budget.md` is written automatically by the orchestrator at every startup (`write_context_report()`, run before the first phase). No separate invocation is required; a standalone `budget.py` script previously performed this role and has been retired (change-d42e64a9). Read `ai/state/ralph/context-budget.md` after the first run following any config or model change, before authoring any AEL-targeted T04 prompt (P09 §1.10.2).
 
 ### 6.2 Budget thresholds
 
@@ -198,9 +200,11 @@ The orchestrator tracks estimated token count per phase iteration. At each thres
 | `budget_warn_pct` | 80% | Yellow warning bar in TUI; logged |
 | `budget_abort_pct` | 95% | Phase aborted; loop exits with error |
 
-### 6.3 Tactical_brief sizing
+### 6.3 Tactical_brief sizing (AEL-targeted prompts only)
 
-Keep the `tactical_brief` to approximately 200–400 tokens (~800–1,600 characters). The brief should contain only: file(s) to modify, hard constraints, implementation steps, deliverables, success criteria. Do not embed design documents or code blocks.
+Applies only when the T04 prompt's `prompt_info.target_profile` is `ael`; `claude_code` and `claude_omlx` profiles do not use `tactical_brief`.
+
+Keep the `tactical_brief` to approximately 200–400 tokens (~800–1,600 characters), hard ceiling 1,000 tokens. The brief should contain only: file(s) to modify, hard constraints, implementation steps, deliverables, success criteria. Do not embed design documents or code blocks.
 
 ### 6.4 Context pressure symptoms
 
@@ -214,7 +218,7 @@ Remediation: reduce brief size, run `--mode reset`, retry.
 
 ### 6.5 Devstral context window
 
-Devstral Small 2 (2512) reports `max_context_window: 393216` tokens via oMLX `/v1/models/status`. The orchestrator reads this from the model's `config.json` on disk when `context.models_dir` is set. For audit runs with per-iteration bounded context, this window is rarely a practical constraint.
+Devstral Small 2 (2512) reports `max_context_window: 393216` via oMLX, but that figure is an unvalidated RoPE-scaling ceiling; the vendor-validated value is 262144. The orchestrator resolves the window through the four-tier chain (live oMLX query, then the per-model `context.model_context_windows` override) — `models_dir` and on-disk `config.json` reading were retired (change-d42e64a9). This project forces 262144 for the Devstral worker and 131072 for the Magistral reviewer via `model_context_windows`. Magistral does not expose a live `max_context_window`, so its override is required. For audit runs with per-iteration bounded context, this window is rarely a practical constraint.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -269,7 +273,7 @@ The orchestrator selects recipes from `ai/ael/recipes/` relative to `orchestrato
 
 **Cause:** Accumulated message history exceeded `budget_abort_pct` of the context window.
 
-**Remediation:** Reduce `tactical_brief` size. Run `--mode reset`. Re-run `budget.py` to refresh the report.
+**Remediation:** Reduce `tactical_brief` size. Run `--mode reset`. The next run refreshes `context-budget.md` automatically.
 
 ### 8.5 oMLX model not loading
 
@@ -302,6 +306,9 @@ curl -s http://localhost:8000/v1/models -H "Authorization: Bearer local"
 |---|---|---|
 | 1.0 | 2026-06-02 | Initial document |
 | 1.1 | 2026-06-14 | Relocated state to ai/state/ralph/ (config.yaml example, prose); workspace/ → ai/workspace/ |
+| 1.2 | 2026-07-02 | Rescoped §6.1 and §6.3 to AEL-targeted T04 prompts only; reconciled tactical_brief size guidance with orchestrator.py hard ceiling (issue-713437bc) |
+| 1.3 | 2026-07-16 | §3.0 config example: added reviewer_model, execution.* opt-in controls, model_context_windows; removed retired models_dir; corrected context_window comment. §6.5: corrected Devstral window to the 262144 vendor value and the tiered resolver; added the Magistral reviewer window (b5e9d240, a7d3f8b1) |
+| 1.4 | 2026-07-16 | §2.1: context-budget.md writer corrected budget.py → Orchestrator. §3.0: mcp-grep example → mcp-ripgrep. §6.1 and §8.4: removed retired standalone budget.py invocation; context-budget.md is written automatically at orchestrator startup |
 
 ---
 

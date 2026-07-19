@@ -15,7 +15,7 @@ Created: 2025-12-12
 ## Template
 
 ```yaml
-# T04 Prompt Template v1.0 - YAML Format
+# T04 Prompt Template v1.10 - YAML Format
 # Optimized for Strategic Domain → Tactical Domain filesystem communication
 # Designed for minimal token usage while maintaining completeness
 
@@ -23,9 +23,13 @@ prompt_info:
   id: ""  # prompt-<uuid> format
   task_type: ""  # code_generation, debug, refactor, optimization
   source_ref: ""  # design-<uuid> or change-<uuid>
+  target_profile: ""  # ael, claude_code, or claude_omlx — governs tactical_brief requirement
   date: ""
   iteration: 1  # Increments with each debug cycle
   coupled_docs:
+    # Required only when source_ref references a change document. Omit
+    # entirely when source_ref references a design document (initial
+    # implementation, governance P03 §1.4.1 exception).
     change_ref: "change-<uuid>"  # Must reference source change UUID
     change_iteration: 1  # Must match change.iteration
 
@@ -135,8 +139,11 @@ element_registry:
         type: ""
 
 tactical_brief: ""
-# REQUIRED — must be populated before issuing AEL command.
-# Plain text ~200-400 tokens. Include: file(s) to modify, hard constraints,
+# REQUIRED when target_profile is ael — must be populated before issuing
+# AEL command. Not consumed by claude_code or claude_omlx profiles; may
+# be omitted for those.
+# Prose value, ~200-400 tokens, authored inside a ```yaml block (not
+# plain text). Include: file(s) to modify, hard constraints,
 # implementation steps, deliverable paths, success criteria.
 # Omit all governance metadata.
 # FORMAT: orchestrator detects tactical_brief only in ```yaml blocks with tactical_brief
@@ -151,7 +158,7 @@ notes: ""
 ## Schema
 
 ```yaml
-# T04 Prompt Schema v1.0
+# T04 Prompt Schema v1.10
 $schema: http://json-schema.org/draft-07/schema#
 type: object
 required:
@@ -159,7 +166,32 @@ required:
   - specification
   - design
   - deliverable
-  - tactical_brief
+
+allOf:
+  - if:
+      properties:
+        prompt_info:
+          properties:
+            target_profile:
+              const: "ael"
+          required:
+            - target_profile
+    then:
+      required:
+        - tactical_brief
+  - if:
+      properties:
+        prompt_info:
+          properties:
+            source_ref:
+              pattern: "^change-"
+          required:
+            - source_ref
+    then:
+      properties:
+        prompt_info:
+          required:
+            - coupled_docs
 
 properties:
   prompt_info:
@@ -170,7 +202,6 @@ properties:
       - source_ref
       - date
       - iteration
-      - coupled_docs
     properties:
       id:
         type: string
@@ -184,6 +215,13 @@ properties:
           - optimization
       source_ref:
         type: string
+      target_profile:
+        type: string
+        enum:
+          - ael
+          - claude_code
+          - claude_omlx
+        description: "Tactical Domain profile this prompt targets. Governs whether tactical_brief is required (see root-level allOf)."
       date:
         type: string
       iteration:
@@ -481,7 +519,7 @@ properties:
   tactical_brief:
     type: string
     minLength: 1
-    description: "Required — concise AEL task payload. Must not be empty. Used by orchestrator in preference to full document."
+    description: "Required when prompt_info.target_profile is ael — concise AEL task payload, must not be empty when present. Used by orchestrator in preference to full document. Not consumed by claude_code or claude_omlx profiles."
   
   notes:
     type: string
@@ -503,6 +541,7 @@ properties:
 | 1.7     | 2026-03-25 | Added FORMAT comment to tactical_brief field: orchestrator detects tactical_brief only in ```yaml blocks with tactical_brief as root key; per-section prompts must author §8.0 as a dedicated ```yaml block (not ```text) |
 | 1.8     | 2026-06-14 | Relocated example paths under ai/: knowledge_references comment and element_registry source example use ai/workspace/ |
 | 1.9     | 2026-06-16 | Standardised copyright footer format |
+| 1.10    | 2026-07-02 | Added prompt_info.target_profile (enum: ael, claude_code, claude_omlx); coupled_docs required only when source_ref is change-sourced (allOf/if-then); tactical_brief required only when target_profile is ael (allOf/if-then); reworded tactical_brief comment and schema description (plain-text → prose value, F5); corrected stale embedded version labels v1.0 → v1.10 (F8); resolves issue-713437bc |
 
 ---
 
