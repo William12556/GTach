@@ -118,6 +118,10 @@ class DocumentRecord:
     """False if any required field is absent, empty, or a placeholder."""
     missing_fields: list[str] = field(default_factory=list)
     """Names of required fields that are absent or placeholder."""
+    target_profile: Optional[str] = None
+    """prompt_info.target_profile value (ael, claude_code, claude_omlx), or None if absent."""
+    is_design_sourced: bool = False
+    """True if prompt_info.source_ref matches the design-<uuid> pattern."""
 
 
 @dataclass
@@ -307,6 +311,15 @@ def parse_document(path: str) -> DocumentRecord:
                             record.coupled_iteration = int(ci)
                         except (ValueError, TypeError):
                             pass
+
+                # Prompt profile and lineage (cls == "prompt" only)
+                if cls == "prompt":
+                    tp = info.get("target_profile")
+                    if isinstance(tp, str) and tp and not tp.startswith("#"):
+                        record.target_profile = tp
+                    src_ref = info.get("source_ref")
+                    if isinstance(src_ref, str) and src_ref.startswith("design-"):
+                        record.is_design_sourced = True
 
                 # Required-field validation
                 if cls == "change":
@@ -637,8 +650,9 @@ class ComplianceEngine:
                     ))
 
             # FR-02-03: prompt with no coupled change sharing UUID → VIOLATION
+            # (skipped for design-sourced prompts — §1.4.1 exception, no change document exists)
             for doc in grp_docs:
-                if doc.cls == "prompt" and "change" not in grp_cls:
+                if doc.cls == "prompt" and "change" not in grp_cls and not doc.is_design_sourced:
                     alerts.append(Alert(
                         severity="violation",
                         code="FR-02-03",
@@ -695,9 +709,13 @@ class ComplianceEngine:
                         document=None,
                     ))
 
-        # FR-02-07: context-budget.md absent while a prompt is open → WARNING
-        open_prompts = [d for d in docs if d.cls == "prompt" and not d.is_master]
-        if open_prompts and not snapshot.budget.present:
+        # FR-02-07: context-budget.md absent while an AEL-targeted prompt is open → WARNING
+        # (only relevant when target_profile is ael, or absent — default assumes ael)
+        open_ael_prompts = [
+            d for d in docs
+            if d.cls == "prompt" and not d.is_master and d.target_profile in (None, "ael")
+        ]
+        if open_ael_prompts and not snapshot.budget.present:
             alerts.append(Alert(
                 severity="warning",
                 code="FR-02-07",
@@ -754,7 +772,13 @@ class ComplianceEngine:
                     ))
 
             # FR-02-10: prompt missing valid tactical_brief → VIOLATION
-            if doc.cls == "prompt" and not doc.has_tactical_brief:
+            # (only when target_profile is ael, or absent — default assumes ael
+            # for prompts predating the target_profile field, §1.10.2)
+            if (
+                doc.cls == "prompt"
+                and not doc.has_tactical_brief
+                and doc.target_profile in (None, "ael")
+            ):
                 alerts.append(Alert(
                     severity="violation",
                     code="FR-02-10",
