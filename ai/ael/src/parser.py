@@ -1,8 +1,8 @@
 """
-Mistral tool call parser.
+Mistral / Cohere tool call parser.
 
 Parses tool calls from model response content field.
-Handles two observed formats:
+Handles three observed formats:
 
   1. Official Mistral JSON array (single or multiple blocks, array or bare object):
        [TOOL_CALLS] [{"name": "func", "arguments": {"k": "v"}}]
@@ -14,6 +14,9 @@ Handles two observed formats:
 
   2. Plain-text variant (observed with Devstral via oMLX):
        [TOOL_CALLS]tool_name[ARGS]{"k": "v"}
+
+  3. Cohere action-block (observed with North-Mini-Code-1.0 / cohere2_moe via oMLX):
+       <|START_ACTION|>[{"tool_name": "func", "parameters": {"k": "v"}}]<|END_ACTION|>
 """
 
 import json
@@ -55,7 +58,7 @@ def parse_tool_calls(content: str) -> list[dict[str, Any]]:
     Returns list of {"name": str, "arguments": dict}.
     Returns empty list if no tool calls found.
     """
-    if "[TOOL_CALLS]" not in content:
+    if "[TOOL_CALLS]" not in content and "<|START_ACTION|>" not in content:
         return []
 
     decoder = json.JSONDecoder()
@@ -112,5 +115,22 @@ def parse_tool_calls(content: str) -> list[dict[str, Any]]:
             except json.JSONDecodeError:
                 arguments = {}
         _append(name, arguments)
+
+    if results:
+        return results
+
+    # F22: Format 3 — Cohere action-block (North-Mini-Code-1.0 / cohere2_moe via oMLX).
+    # JSON array/object of {"tool_name": ..., "parameters": ...} between markers.
+    for match in re.finditer(r"<\|START_ACTION\|>\s*(.*?)\s*<\|END_ACTION\|>", content, re.DOTALL):
+        try:
+            value, _ = decoder.raw_decode(match.group(1), 0)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, list):
+            for c in value:
+                if isinstance(c, dict) and "tool_name" in c:
+                    _append(c["tool_name"], c.get("parameters") or {})
+        elif isinstance(value, dict) and "tool_name" in value:
+            _append(value["tool_name"], value.get("parameters") or {})
 
     return results

@@ -1,4 +1,4 @@
-version: 1.3.0
+version: 1.4.0
 title: Ralph Work Phase
 description: Worker role system prompt — single iteration of work
 
@@ -49,6 +49,8 @@ instructions: |
   - What you did
   - Why you made each significant decision
   - What you did not do and why
+  Do NOT list orchestrator-managed signal files (work-complete.txt, iteration.txt,
+  review-*.txt, .ralph-*, RALPH-BLOCKED.md) as deliverables. List only task outputs.
 
   AVAILABLE TOOLS — use these exact names, no others:
   {{TOOLS}}
@@ -63,6 +65,8 @@ instructions: |
   BE DECISIVE. Use absolute paths for all file operations.
 
 # Version History
+# 1.4.0  2026-06-26  Instruct worker to exclude signal files from work-summary
+#                    deliverable list. Supports issue-e2b8046c resolution.
 # 1.3.0  2026-06-17  Add PROJECT CONTEXT section; PROCEDURE step 1 reads
 #                    project_root/ai/context.md if present; renumber steps 1–7.
 # 1.2.0  2026-03-27  Add TOOL DISCIPLINE constraints block; add TOOL USAGE NOTES

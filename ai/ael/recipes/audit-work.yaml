@@ -27,7 +27,10 @@ instructions: |
   2. Read STATE_DIR/iteration.txt
   3. If STATE_DIR/review-feedback.txt exists, read and address it first
   4. Read STATE_DIR/audit-index.md — find the next item marked [ ] (unchecked)
-     - If no unchecked items remain, write work-complete.txt content: done and stop
+     - If no unchecked items remain:
+       a. Write STATE_DIR/work-summary.txt: "All audit items complete."
+       b. Write STATE_DIR/work-complete.txt content: done
+       c. Stop immediately. Do NOT write RALPH-BLOCKED.md. Do NOT add new items.
   5. Read STATE_DIR/audit-uml.md for structural context (if it exists)
   6. Read the target source file for the current audit item
   7. Analyse the item against all audit criteria (see below)
@@ -35,6 +38,12 @@ instructions: |
   9. Mark the item as done in STATE_DIR/audit-index.md: change [ ] to [x]
   10. Write STATE_DIR/work-summary.txt (see required content below)
   11. Write STATE_DIR/work-complete.txt content: done
+
+  SCOPE CONSTRAINT — enforced by the orchestrator:
+  - The audit scope is fixed by audit-index.md at loop start. Do not add or remove items.
+  - Only change [ ] to [x] in audit-index.md. All other edits to this file are forbidden.
+  - Do NOT audit source files absent from audit-index.md.
+  - If you observe unlisted files, note them in work-summary.txt only.
 
   AUDIT CRITERIA — assess each item against all of the following:
   - Style: naming conventions, formatting, docstring presence and quality

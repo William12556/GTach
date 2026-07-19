@@ -61,8 +61,7 @@ ael/
 │   ├── audit-work.yaml   # Audit worker role system prompt (read-only analysis)
 │   └── audit-review.yaml # Audit reviewer role system prompt (coverage + quality)
 └── src/
-    ├── orchestrator.py     # Main loop and CLI entry point (--mode worker|reviewer|loop|reset)
-    ├── budget.py           # Context budget calculator (run before authoring T04 prompts)
+    ├── orchestrator.py     # Main loop and CLI entry point (--mode worker|reviewer|loop|reset); sole context-window resolver
     ├── mcp_client.py       # MCP stdio connection and tool dispatch
     ├── parser.py           # Mistral [TOOL_CALLS] plain-text parser
     ├── linter.py            # Layer 1 governance linter: static validation of workspace documents (naming, structure, YAML fields, UUID coupling, Obsidian links)
@@ -78,7 +77,7 @@ ael/
 - Python 3.11+
 - oMLX running on `http://127.0.0.1:8000`
 - MCP servers configured in `config.yaml`
-- Model: Devstral Small 2 (6bit) — purpose-built for agentic coding and multi-file editing; the AEL parser (`parser.py`) is tuned to Mistral's tool-call format, which Devstral uses natively
+- Model: Devstral Small 2 (6bit or 8bit) — purpose-built for agentic coding and multi-file editing; the AEL parser (`parser.py`) is tuned to Mistral's tool-call format, which Devstral uses natively. An optional distinct reviewer model (e.g. Magistral, same Mistral tool-call format) may be configured via `omlx.reviewer_model`
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -104,7 +103,8 @@ Edit `ai/ael/config.yaml`:
 omlx:
   base_url: "http://127.0.0.1:8000/v1"
   api_key: "local"
-  default_model: "<model-name>"
+  default_model: "<worker-model-name>"
+  reviewer_model: "<reviewer-model-name>"   # optional; falls back to default_model
 
 mcp_servers:
   filesystem:
@@ -120,14 +120,21 @@ loop:
   max_iterations: 10
   state_dir: "ai/state/ralph"
 
+execution:
+  max_completion_tokens: null    # opt-in output cap; null = model default
+  max_tool_result_chars: null    # opt-in tool-result truncation; null = none
+  strict_tactical_brief: false   # true + ael profile: fail fast on missing brief
+
 context:
-  models_dir: "~/ai-models"   # set to your local model storage path
-  context_window: null        # null = read from model config.json on disk
+  context_window: null           # null = try live oMLX query, then per-model override below
   budget_warn_pct: 0.80
   budget_abort_pct: 0.95
+  model_context_windows:         # per-model overrides, used when the live query returns null
+    "<worker-model-name>": 262144
+    "<reviewer-model-name>": 131072
 ```
 
-**`context.models_dir`** must be updated to point to your local model storage directory. `budget.py` searches this directory for the model's `config.json` to determine the context window size. If your model is remote or the path cannot be resolved, set `context.context_window` to an explicit integer value instead.
+`orchestrator.py` is the sole context-window resolver: an explicit `context.context_window` override, else a live oMLX admin-API query, else the per-model `context.model_context_windows` entry, else unresolved. If a model's live query returns null (as some models do), set its entry in `model_context_windows` explicitly.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -136,9 +143,6 @@ context:
 ## 7.0 Usage
 
 ```bash
-# Generate context budget report (run once at setup and after model changes)
-python ai/ael/src/budget.py
-
 # Single worker pass
 python ai/ael/src/orchestrator.py --mode worker --task ai/workspace/prompt/prompt-abc123.md
 
@@ -164,7 +168,7 @@ python ai/ael/src/orchestrator.py --mode reset
 | `--duration` | Wall-clock time limit in hours (default: no limit) |
 | `--config` | Path to config.yaml |
 
-**`budget.py`** reads `config.yaml` and the model's `config.json` from disk to compute context window size, warn/abort thresholds, and recommended `tactical_brief` sizing. It writes `ai/state/ralph/context-budget.md`. The Strategic Domain reads this file before authoring any T04 prompt. If the file is absent, the Strategic Domain will instruct the human to run `budget.py` before proceeding.
+**`context-budget.md`** is written automatically by `orchestrator.py` at every startup (before the first phase); no separate invocation is required. It reports context window, thresholds, and recommended `tactical_brief` sizing. The Strategic Domain reads `ai/state/ralph/context-budget.md` before authoring any AEL-targeted T04 prompt.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -233,6 +237,8 @@ Integration tests skip automatically if oMLX is not reachable on `127.0.0.1:8000
 | 2.0 | 2026-06-14 | Relocated loop state to ai/state/ralph/ (config.yaml, profile table, usage examples); workspace/ → ai/workspace/ in command examples |
 | 2.1 | 2026-06-16 | Updated Testing section: removed stale framework/ pytest paths; tests moved to deprecated/skel/; updated Configuration note |
 | 2.2 | 2026-06-16 | Added linter.py and protocol_checker.py to §3.0 Structure; updated §2.0 profile filename reference: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md; added section numbering throughout; added Created timestamp |
+| 2.3 | 2026-07-02 | Rescoped §7.0 budget.py usage note to AEL-targeted T04 prompts only (issue-713437bc) |
+| 2.4 | 2026-07-16 | Removed budget.py (retired, change-d42e64a9): §3.0 structure entry removed; §6.0 config example rewritten (reviewer_model, execution.* controls, model_context_windows, removed models_dir); §7.0 invocation and explanatory note replaced with the automatic context-budget.md write. §4.0: noted 8bit and optional reviewer_model |
 
 ---
 
