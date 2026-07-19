@@ -52,6 +52,7 @@ Select one profile per project. Copy the profile-specific `.gitignore` additions
 | Claude Code (optional) | Tactical Domain | [claude.md](claude.md) |
 | claude-omlx | Tactical Domain | [claude-omlx.md](claude-omlx.md) |
 | Apple Silicon + MLX (Devstral Small 2 2512) | Tactical Domain | [mlx_devstral_small_2_2512_6bit.md](mlx_devstral_small_2_2512_6bit.md) |
+| Apple Silicon + MLX (Heterogeneous: Devstral worker / Magistral reviewer) | Tactical Domain | [mlx_devstral_magistral_heterogeneous.md](mlx_devstral_magistral_heterogeneous.md) |
 
 Strategic Domain is not prescribed. Any frontier model with sufficient reasoning capability is suitable. Claude Desktop is the preferred Strategic Domain implementation.
 
@@ -73,6 +74,7 @@ Strategic Domain is not prescribed. Any frontier model with sufficient reasoning
 | 1.7 | 2026-06-16 | Updated Claude Desktop link: framework/ai/doc/ → docs/claude/ |
 | 1.8 | 2026-06-16 | Abstract Placeholders: added Applies to column; noted <tactical_config>/ and <skills_dir>/ apply to Claude Code profiles only |
 | 1.9 | 2026-06-16 | Updated §4.0 link: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md; added section numbering throughout |
+| 1.10 | 2026-07-16 | Added heterogeneous Devstral/Magistral profile to §4.0 Available Profiles |
 
 ---
 

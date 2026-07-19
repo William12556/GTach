@@ -103,8 +103,8 @@ Devstral Small 2 2512 6bit via oMLX supports tool calling. The AEL orchestrator 
 
 | Avoid | Prefer |
 |---|---|
-| `You can use the grep tool to search` | `Use the mcp-grep__grep tool to search` |
-| `Search for X in the directory` | `Call mcp-grep__grep with pattern X and path Y` |
+| `You can use the grep tool to search` | `Use the mcp-ripgrep__search tool to search` |
+| `Search for X in the directory` | `Call mcp-ripgrep__search with pattern X and path Y` |
 
 Name tools explicitly in recipe prompts.
 
@@ -171,6 +171,7 @@ ai/state/ralph/
 | 1.3 | 2026-06-16 | Placeholder Mappings: removed non-applicable <tactical_config>/ and <skills_dir>/ rows |
 | 1.4 | 2026-06-16 | Renamed file Q8 → 6bit to match document content; removed AGENTS.md from Placeholder Mappings (unsupported elsewhere); corrected AEL config example to full model id verified against oMLX /v1/models (mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-6Bit); corrected model download local_dir to match actual on-disk path convention; added section numbering |
 | 1.5 | 2026-06-17 | Updated <tactical_context> mapping: CLAUDE.md → ai/context.md |
+| 1.6 | 2026-07-16 | §5.0 tool-guidance example: mcp-grep__grep → mcp-ripgrep__search |
 
 ---
 
