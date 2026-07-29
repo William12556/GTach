@@ -11,8 +11,7 @@ Created: 2026 July 29
 [3.0 Completed](<#3.0 completed>)
 [4.0 Open](<#4.0 open>)
 [5.0 Requires Live-Device Verification](<#5.0 requires live-device verification>)
-[6.0 Governance Record Inconsistency](<#6.0 governance record inconsistency>)
-[7.0 Deferred by Design](<#7.0 deferred by design>)
+[6.0 Deferred by Design](<#6.0 deferred by design>)
 [Version History](<#version history>)
 
 ---
@@ -21,8 +20,9 @@ Created: 2026 July 29
 
 This document lists unfinished work. Version 1.0 was built from `ai/workspace`
 document state alone. Version 2.0 cross-checked each item against
-`src/gtach`. This revision (3.0) corrects a misstatement in 2.0 and records
-that the two implemented governance triples have been closed.
+`src/gtach`. Version 3.0 corrected a misstatement in 2.0. This revision
+(4.0) closes the `comm/` transport layer audit following log-based root
+cause analysis.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -35,7 +35,9 @@ governance document's deliverable/success-criteria sections, plus
 `pyproject.toml` version and `directory_tree` for file presence/absence.
 `pyproject.toml` reports `version = "0.2.64"` — one increment past the
 `0.2.63` baseline recorded in `issue-b7e3f90a`, consistent with unrecorded
-work having landed.
+work having landed. Section 3.5 additionally draws on
+`ai/state/ralph/ael_20260617-131721.LOG`, the AEL execution log for the
+run in question.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -43,8 +45,8 @@ work having landed.
 
 ## 3.0 Completed
 
-All items below are verified against `src/gtach` and their governance
-documents are closed. No further action required.
+All items below are verified and their governance documents are closed.
+No further action required.
 
 ### 3.1 ✅ COMPLETE — `b7e3f90a` — Dead code cleanup
 
@@ -108,6 +110,35 @@ confirms all four corrected:
 | 3 — `rpm_bands`/`engine_profile` missing from `DisplayConfig` | both present, `display/models.py:101,104` |
 | 4 — heartbeat key mismatch for `setup` thread | `setup.py:135` registers `'setup'` before `update_heartbeat('setup')` |
 
+### 3.5 ✅ COMPLETE — `comm/` transport layer audit (`b4e8c012` / `2f612d17` / `a4c8e2f1`)
+
+Resolved by inspecting `ai/state/ralph/ael_20260617-131721.LOG`, the AEL
+execution log for the 2026-06-17 audit-continuation run launched by
+`prompt-a4c8e2f1-comm-audit.md`.
+
+**Finding**: the audit genuinely completed all 20 items. The log shows the
+worker correctly building `audit-report.md` via targeted `edit` calls that
+append each new section without disturbing prior ones — by loop iteration
+5 the file already held correctly-preserved findings for `pairing.py` (×3),
+`obd.py` (×3), `system_bluetooth.py` (×2), and `rfcomm.py::connect`. The
+`audit-index.md`'s all-`[x]` state is genuine, not a false completion mark.
+
+**What went wrong**: the copy of `audit-report.md` that reached
+`ai/workspace/audit/` as `audit-b4e8c012-report.md` holds only 6 of the 20
+sections — and they are the *last* 6 items in audit order (`sim_transport.py`
+×2, `transport.py`, `device_store.py`, `models.py`, `sim_bluetooth.py`),
+not the first 6. This pattern is consistent with a late-loop overwrite or a
+truncated copy during the `workspace/` → `ai/workspace/` migration, not
+with the work never having been done. The original state files
+(`audit-index.md`, `audit-report.md`) no longer exist in
+`ai/state/ralph/` to re-derive the complete report from directly; that
+directory has since been reused for unrelated AEL test runs.
+
+**Resolution (accepted 2026-07-29)**: closed on the strength of the index
+and log evidence. The full 20-item findings text remains recoverable from
+the log's `write`/`edit` tool-call payloads if a complete report is wanted
+later — not undertaken here.
+
 [Return to Table of Contents](<#table of contents>)
 
 ---
@@ -140,41 +171,14 @@ on-device testing is needed to confirm.
 
 ---
 
-## 6.0 Governance Record Inconsistency
+## 6.0 Deferred by Design
 
-### 6.1 ☐ UNRESOLVED — `comm/` transport layer audit (`b4e8c012` / `2f612d17` / `a4c8e2f1`)
-
-A documentation-consistency question, not a source-code question:
-
-- `audit-b4e8c012-index.md` shows all 20 items `[x]`.
-- `audit-b4e8c012-report.md` contains detailed findings for only 6 of 20.
-- `prompt-a4c8e2f1-comm-audit.md` (same date as the index/report) states 18
-  items remain unchecked, and was assigned a new UUID rather than
-  incrementing the iteration of the audit it continues (`2f612d17` or
-  `b4e8c012`) — breaking the UUID-propagation trail. No result document or
-  `work-complete.txt` confirms it was ever executed.
-- Index and report share identical creation timestamps consistent with a
-  bulk copy during the `workspace/` → `ai/workspace/` migration.
-- Audits are exempt from T03/T02 coupling by design (`coupled_docs: none`
-  in `prompt-2f612d17`), so the absence of a coupled issue/change for
-  `prompt-a4c8e2f1` is expected, not itself a defect.
-
-Status: **unresolved.** Determine whether the missing 14 findings exist
-elsewhere (e.g., an AEL state file not yet migrated) or were never written,
-before treating this audit as closed.
-
-[Return to Table of Contents](<#table of contents>)
-
----
-
-## 7.0 Deferred by Design
-
-### 7.1 — UI Navigation audit — Finding C (terminology)
+### 6.1 — UI Navigation audit — Finding C (terminology)
 
 Overlap between the display-layer `_sim_mode` flag and the launch-time
 simulated transport. The audit report explicitly defers this to
-consensus rather than treating it as a fix (§6.3, §7.0). Not a defect;
-listed here only so it is not lost.
+consensus rather than treating it as a fix (§6.3, §7.0 of that report).
+Not a defect; listed here only so it is not lost.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -187,6 +191,7 @@ listed here only so it is not lost.
 | 1.0 | 2026-07-29 | Initial task list from `ai/workspace` state review. |
 | 2.0 | 2026-07-29 | Cross-checked every item against `src/gtach`. Reclassified `b7e3f90a`, `f993f871`, UI-nav Findings A/B, and splash-hang Defects 1–4 as implemented in source. |
 | 3.0 | 2026-07-29 | Corrected 2.0's claim that no governance documents existed for UI-nav Findings A/B — both have closed issue/change/prompt cycles (`c84ffe6f`, `85cc0241`). Recorded closure of `b7e3f90a` and `f993f871`. Restructured into Completed / Open / Requires Live-Device Verification / Governance Record Inconsistency / Deferred by Design, with explicit ✅/☐ status markers. Added `comm/` audit clarification re: `prompt-a4c8e2f1`. |
+| 4.0 | 2026-07-29 | Diagnosed the `comm/` audit inconsistency via `ael_20260617-131721.LOG`: all 20 items were genuinely audited; only the copied report was truncated. Accepted as resolved per human decision; moved from "Governance Record Inconsistency" into Completed (§3.5); governance documents moved to `closed/`. |
 
 ---
 
