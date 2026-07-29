@@ -94,7 +94,10 @@ both have full closed issue/change/prompt cycles already in
   / `change-85cc0241` / `prompt-85cc0241`. Fix verified: button label at
   `manager.py:932` is `"Simulation mode" if self._sim_mode else "Bluetooth"`.
 
-Both cycles were already closed prior to this review; no action required.
+Both cycles were already closed prior to this review. The audit report
+itself (`audit-ui-navigation-logic-report.md`) remained in the active
+`audit/` directory even though its findings were fully actioned; moved to
+`audit/closed/`.
 
 ### 3.4 ✅ COMPLETE — Splash Screen Debug Session audit — Defects 1–4
 
@@ -109,6 +112,10 @@ confirms all four corrected:
 | 2 — `_ack_state_manager` never initialized | imported and instantiated, `display/manager.py:54,117` |
 | 3 — `rpm_bands`/`engine_profile` missing from `DisplayConfig` | both present, `display/models.py:101,104` |
 | 4 — heartbeat key mismatch for `setup` thread | `setup.py:135` registers `'setup'` before `update_heartbeat('setup')` |
+
+`audit-splash-hang-debug-session-state-report.md` remained in the active
+`audit/` directory even though all four defects were fully actioned; moved
+to `audit/closed/`.
 
 ### 3.5 ✅ COMPLETE — `comm/` transport layer audit (`b4e8c012` / `2f612d17` / `a4c8e2f1`)
 
