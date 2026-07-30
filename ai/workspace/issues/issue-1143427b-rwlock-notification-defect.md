@@ -19,7 +19,7 @@ issue_info:
   title: "RWLock._release_read notifies only _write_ready, so a writer waiting in the second stage of _acquire_write is never woken — deadlock on the live ConfigManager path"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "critical"
   type: "defect"
   iteration: 1
@@ -188,14 +188,42 @@ resolution:
     reaches zero in _release_read, restoring the symmetry that
     _release_write already has. See change-1143427b.
   change_ref: "change-1143427b"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-30"
+  resolved_by: "Claude Code, per prompt-1143427b"
+  fix_description: >
+    One edit, to RWLock._release_read in src/gtach/utils/config.py, as
+    specified. No other method and no other file changed.
+
+    The method now decrements _readers under _readers_lock and captures
+    whether the count reached zero into a local, last_reader. It then
+    releases _readers_lock and, if last_reader, acquires _write_ready and
+    notifies it, then acquires _read_ready and notifies it. The two
+    condition blocks are sequential siblings, so no thread holds two of
+    the lock's three primitives at once.
+
+    Two corrections, both required and both applied. The added
+    _read_ready notification is the defect fix: it wakes a writer blocked
+    in stage two of _acquire_write, which previously waited on a condition
+    that only _release_write ever signalled. Separating the decrement from
+    the notifications is the second: _readers_lock is no longer held
+    across a condition acquisition, which was the only point in the method
+    where two primitives were held together.
+
+    Behaviour on a non-final release is unchanged — neither condition is
+    notified, so no lock is acquired that was not acquired before.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only. See change-1143427b
+    verification.test_results for the full record.
+
+    Twenty-five assertions against the real RWLock, all passing after the
+    change. The same suite run unchanged against the pre-change file fails
+    seven and passes eighteen, and among the failures is the deadlock
+    reproduction itself, so the suite discriminates rather than merely
+    agreeing with the new code.
   closure_notes: ""
 
 prevention:
@@ -218,7 +246,61 @@ verification_enhanced:
     - "Unit test: confirm writer exclusivity is preserved — no reader holds the lock while a writer does."
     - "Confirm ConfigManager.load_config and save_config behave unchanged in the single-threaded case."
     - "Confirm application startup on gtach.local is unaffected."
-  verification_results: ""
+  verification_results: >
+    Five of the seven steps are complete. One is complete in substance but
+    not as a persisted artefact, and one requires gtach.local.
+
+    PASS — python -m py_compile src/gtach/utils/config.py.
+
+    PASS — the reported interleaving is reproduced and the writer
+    completes. The interleaving cannot be reached by sleeping: a writer
+    only waits on _read_ready if a reader enters through the window
+    between the two stages of _acquire_write, having passed
+    `while self._writers > 0` but not yet taken _readers_lock. That window
+    is what stage two exists to close. The reader's entry was therefore
+    forced to occur at that instant, by hooking the exit of the stage-one
+    _write_ready block; the entry itself is real, incrementing _readers
+    under _readers_lock exactly as _acquire_read does, and only its timing
+    is controlled. With the writer confirmed waiting in stage two and
+    _readers at 1, the reader departs: after the change the writer
+    acquires within the timeout, and against the pre-change file it never
+    wakes and the assertion fails. This is the discrimination the step
+    requires.
+
+    PASS — every acquisition assertion carries a timeout, so the
+    pre-change run fails in bounded time rather than hanging. The full
+    pre-change run completes and reports 18/25.
+
+    PASS — concurrent readers still proceed in parallel: two readers were
+    observed holding the lock simultaneously, with get_stats reporting two
+    active readers.
+
+    PASS — writer exclusivity is preserved: a reader attempting
+    acquisition while a writer holds the lock blocks and proceeds only on
+    release, and the converse holds; across four reader and two writer
+    threads running twenty cycles each, the guarded counter reached
+    exactly 40 and both counters returned to zero.
+
+    PARTIAL — ConfigManager.load_config and save_config in the
+    single-threaded case. Neither method was modified, and an AST
+    comparison of the pre- and post-change file confirms all thirty-two
+    ConfigManager methods are byte-identical and that _release_read is the
+    only method of RWLock that differs. The methods were not executed:
+    doing so writes a YAML file and the coupled T05 document places
+    ConfigManager beyond a smoke check out of scope. The lock-level
+    assertions above cover the behaviour they depend on.
+
+    OUTSTANDING — application startup and a settings save on gtach.local,
+    owned by William Watson as part of the v0.3.0 deployment.
+
+    Not done, and outside this task's authority: implementation step 3 of
+    change-1143427b calls for tests/utils/test_rwlock.py to be generated
+    from test-1143427b, but prompt-1143427b permits no file other than
+    src/gtach/utils/config.py to be modified. The verification above was
+    performed with an ephemeral script, which satisfies the substance of
+    the step — including the pre-change discrimination it specifies — but
+    leaves no persisted test module. test-1143427b remains at status
+    planned and needs its own T04 prompt.
 
 traceability:
   design_refs: []
@@ -253,6 +335,14 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from core-comm-utils-code-review.md §3.1 and recommendation #1, separated from 7.4.1 per ai/task.md §7.4.8."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Status open -> resolved. change-1143427b implemented; resolution date, executor and fix description recorded."
+      - "Recorded five of seven verification steps as PASS, one as PARTIAL and one as OUTSTANDING pending gtach.local."
+      - "Recorded how the stage-two interleaving was reached, a first attempt having blocked the writer in stage one where the pre-change code behaves correctly."
+      - "Recorded that tests/utils/test_rwlock.py was not generated, prompt-1143427b permitting no file other than src/gtach/utils/config.py to be modified."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -269,6 +359,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from core-comm-utils-code-review.md §3.1 and recommendation #1, separated from 7.4.1 per ai/task.md §7.4.8. |
+| 1.1 | 2026-07-30 | Status open → resolved; fix description and per-step verification status recorded; the persisted test module noted as out of the prompt's permitted scope. |
 
 ---
 

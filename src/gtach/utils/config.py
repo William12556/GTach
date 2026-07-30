@@ -178,13 +178,30 @@ class RWLock:
                 self._readers += 1
                 
     def _release_read(self):
-        """Release read access"""
+        """Release read access and wake any waiting writer.
+
+        _acquire_write waits on _write_ready in its first stage and
+        on _read_ready in its second. A departing reader can satisfy
+        either predicate, so both conditions must be signalled.
+        Notifying only _write_ready leaves a stage-two writer
+        waiting on a condition that nothing signals, which is an
+        unbounded wait on the live ConfigManager.load_config and
+        save_config path (core review §3.1).
+
+        _readers_lock is released before either condition is
+        acquired, so no thread holds two of this lock's three
+        primitives at once.
+        """
         with self._readers_lock:
             self._readers -= 1
-            if self._readers == 0:
-                with self._write_ready:
-                    self._write_ready.notify_all()
-                    
+            last_reader = self._readers == 0
+
+        if last_reader:
+            with self._write_ready:
+                self._write_ready.notify_all()
+            with self._read_ready:
+                self._read_ready.notify_all()
+
     def _acquire_write(self):
         """Acquire write access"""
         with self._write_ready:

@@ -19,7 +19,7 @@ change_info:
   title: "RWLock._release_read notifies _read_ready as well as _write_ready, waking a writer blocked in the second stage of _acquire_write"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "critical"
   iteration: 1
   coupled_docs:
@@ -276,11 +276,90 @@ implementation:
     function. Ships in v0.3.0 per ai/task.md §8.3.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-07-30"
+  implemented_by: "Claude Code, per prompt-1143427b"
+  verification_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only (macOS, Python 3.11). On-target verification
+    is outstanding and ships with v0.3.0.
+
+    The single edit was applied as specified. All five validation_criteria
+    that do not require gtach.local hold, with one qualification recorded
+    below.
+
+    python -m py_compile src/gtach/utils/config.py passes.
+
+    _release_read contains notify_all calls on both _write_ready and
+    _read_ready, confirmed by walking the method's AST rather than by
+    string matching: the method takes exactly three context managers —
+    _readers_lock, _write_ready, _read_ready, one each — the _readers_lock
+    block encloses no condition acquisition, the two condition blocks are
+    sequential siblings in the body of the `if last_reader:` branch, and
+    self._readers is read exactly once, into the local.
+
+    No other method of RWLock is modified. An AST comparison of the
+    pre- and post-change file reports _release_read as the only differing
+    method, with the method set unchanged; ConfigManager's thirty-two
+    methods are identical. git diff --stat confirms one file, 22
+    insertions and 5 deletions.
+
+    Twenty-five assertions were executed against the real RWLock, loaded
+    from the working tree with yaml, pyserial, pygame and psutil stubbed.
+    All pass. They cover the eight test_cases above except the last, and
+    add the lock-discipline checks the coupled T05 document asks for.
+
+    The evidence that the suite discriminates: run unchanged against the
+    pre-change file it fails seven and passes eighteen. The seven failures
+    are the deadlock reproduction, the notification-symmetry assertion,
+    and five structural assertions. The eighteen that pass — reader
+    concurrency, writer exclusivity in both directions, blocking and
+    release ordering, notification only on the final reader release, the
+    mixed reader/writer cycles, the spurious-wakeup and queued-writer edge
+    cases, and the counters returning to zero throughout — pass
+    identically before and after, which is the evidence that the edit
+    removed a failure mode without altering a function.
+
+    The deadlock reproduction required care. A writer only waits on
+    _read_ready if a reader enters through the window between the two
+    stages of _acquire_write, and that window is too narrow to hit by
+    sleeping. A first attempt blocked the writer in stage one instead,
+    which the pre-change code wakes correctly — it passed against both
+    files and proved nothing. The reader's entry was therefore forced to
+    occur at the stage-one to stage-two boundary by hooking the exit of
+    the _write_ready block. The entry is real, incrementing _readers under
+    _readers_lock as _acquire_read does; only its timing is controlled.
+    That test is retained alongside the stage-one case, which is kept as a
+    check that the ordinary path was not disturbed.
+
+    Qualification on test case eight, ConfigManager.load_config and
+    save_config in a single-threaded sequence: neither method was
+    executed. Both are unmodified by AST comparison, and the coupled T05
+    document places ConfigManager beyond a smoke check out of scope.
+    Executing them writes a YAML file to the developer's filesystem, which
+    is disproportionate to what it would establish given the methods are
+    provably unchanged.
+
+    pytest tests/ collected 0 items — the tests/ tree has held only
+    README.md since commit 57ebbe6. The "no new failures" criterion is
+    therefore vacuous rather than met, and the regression_scope entry
+    naming tests/utils/ could not be exercised. It already anticipates
+    this, being conditioned on tests/ being populated per ai/task.md §8.2.
+
+    Only src/gtach/utils/config.py was modified.
+
+    Deviation from the implementation steps. Step 3 calls for
+    tests/utils/test_rwlock.py to be generated from test-1143427b and for
+    the reproduction case to be confirmed against the pre-change
+    implementation. The second half was done; the first was not.
+    prompt-1143427b constrains the executor to src/gtach/utils/config.py
+    and states that no other file is to be modified, and the prime
+    directive forbids creating a file the T04 task does not request. The
+    verification above therefore used an ephemeral script, which satisfies
+    the substance of the step but leaves no persisted test module.
+    test-1143427b remains at status planned and needs its own T04 prompt
+    to be generated into tests/. This is a scope conflict between the
+    change document and its own prompt, not a defect in the fix.
   issues_found: []
 
 traceability:
@@ -300,6 +379,15 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document coupled to issue-1143427b."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Status proposed -> implemented. Recorded implementation date, executor, verification date and development-platform test results."
+      - "Recorded that the suite discriminates: 25/25 after the change, 18/25 against the pre-change file, the deadlock reproduction among the failures."
+      - "Recorded the qualification on test case eight — ConfigManager.load_config and save_config were not executed, both being unmodified by AST comparison."
+      - "Recorded that pytest collected 0 items, so the regression_scope entry for tests/utils/ could not be exercised."
+      - "Recorded a deviation: implementation step 3 was not executed, because prompt-1143427b permits no file other than src/gtach/utils/config.py to be modified."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -316,6 +404,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-1143427b. |
+| 1.1 | 2026-07-30 | Status proposed → implemented; development-platform test results recorded, including the pre-change discrimination run; deviation on implementation step 3 recorded. |
 
 ---
 
