@@ -47,9 +47,12 @@ FB_ACTIVATE_VBL = 16
 
 # struct fb_var_screeninfo is 40 x __u32 == 160 bytes.
 FB_VAR_STRUCT = '40I'
+FB_VAR_XRES = 0
 FB_VAR_YRES = 1
+FB_VAR_XRES_VIRTUAL = 2
 FB_VAR_YRES_VIRTUAL = 3
 FB_VAR_YOFFSET = 5
+FB_VAR_BITS_PER_PIXEL = 6
 FB_VAR_ACTIVATE = 21
 
 class DisplayRenderingEngine(RenderingEngineInterface):
@@ -85,6 +88,12 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         self._panning_var = None         # post-resize template for the pan
         self._vsync_failed_logged = False
         self._pan_failed_logged = False
+
+        # Geometry as reported by the device (change-cb28980f)
+        self.fb_line_length = 0
+        self.fb_bits_per_pixel = 0
+        self._size_mismatch_logged = False
+        self._size_mismatch_count = 0
         
         # Display constants for HyperPixel 2" Round
         self.display_center = (240, 240)
@@ -166,15 +175,133 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 self.logger.error(f"Rendering engine initialization failed: {e}", exc_info=True)
                 return False
     
+    def _query_framebuffer_geometry(self) -> Optional[Dict[str, int]]:
+        """Read the device's authoritative geometry.
+
+        The engine has assumed 32 bits per pixel and a stride equal
+        to width x 4. The device reports both; this reads them so a
+        disagreement is detected rather than rendered
+        (display review §8.3, recommendation 21).
+
+        The stride comes from sysfs rather than FBIOGET_FSCREENINFO.
+        struct fb_fix_screeninfo contains unsigned long fields whose
+        size and alignment differ between 32- and 64-bit builds, so
+        unpacking it needs architecture-dependent offset arithmetic;
+        the sysfs attribute is the same value as stable text.
+
+        Returns:
+            Geometry dict, or None if the device could not be queried.
+        """
+        if not self._fb_dev_usable():
+            return None
+
+        try:
+            var = struct.unpack(FB_VAR_STRUCT, fcntl.ioctl(
+                self.fb_dev.fileno(), FBIOGET_VSCREENINFO,
+                bytes(struct.calcsize(FB_VAR_STRUCT))
+            ))
+
+            geometry = {
+                'xres': var[FB_VAR_XRES],
+                'yres': var[FB_VAR_YRES],
+                'xres_virtual': var[FB_VAR_XRES_VIRTUAL],
+                'bits_per_pixel': var[FB_VAR_BITS_PER_PIXEL],
+            }
+
+            node = os.path.basename(self.framebuffer_path)
+            stride_source = 'sysfs'
+            try:
+                with open(f'/sys/class/graphics/{node}/stride', 'r') as f:
+                    geometry['line_length'] = int(f.read().strip())
+            except (OSError, ValueError):
+                stride_source = 'derived'
+                geometry['line_length'] = (
+                    geometry['xres_virtual'] * geometry['bits_per_pixel'] // 8
+                )
+
+            self.logger.info(
+                f"Framebuffer geometry: {geometry['xres']}x{geometry['yres']}, "
+                f"virtual {geometry['xres_virtual']}, "
+                f"{geometry['bits_per_pixel']}-bit, "
+                f"stride {geometry['line_length']} ({stride_source})"
+            )
+            return geometry
+
+        except Exception as e:
+            self.logger.warning(
+                f"Framebuffer geometry query failed, using assumed "
+                f"dimensions: {e}", exc_info=True
+            )
+            return None
+
     def _initialize_framebuffer(self) -> None:
         """Initialize framebuffer for hardware output"""
         try:
-            # Calculate framebuffer size (RGBA32)
+            # Assumed size, replaced below if the device can be queried.
             self.fb_size = self.surface_size[0] * self.surface_size[1] * 4
-            
+
             # Try memory-mapped approach first
             try:
                 self.fb_dev = open(self.framebuffer_path, 'r+b')
+
+                # Query BEFORE mapping: _setup_page_flip remaps at
+                # twice fb_size, so both must see the same value.
+                geometry = self._query_framebuffer_geometry()
+                if geometry:
+                    self.fb_bits_per_pixel = geometry['bits_per_pixel']
+                    self.fb_line_length = geometry['line_length']
+
+                    expected_stride = (
+                        geometry['xres'] * geometry['bits_per_pixel'] // 8
+                    )
+
+                    # A stride below the minimum the reported width and depth
+                    # require cannot describe a valid framebuffer, so it is not
+                    # trusted to size the mapping — the assumption is retained
+                    # instead. Anything at or above the minimum is the device's
+                    # own account of its layout and governs.
+                    stride_impossible = (
+                        expected_stride > 0
+                        and geometry['line_length'] < expected_stride
+                    )
+
+                    if (geometry['yres'] > 0 and geometry['line_length'] > 0
+                            and not stride_impossible):
+                        self.fb_size = geometry['line_length'] * geometry['yres']
+
+                    if geometry['bits_per_pixel'] != 32:
+                        self.logger.error(
+                            f"Framebuffer depth is {geometry['bits_per_pixel']}-bit; "
+                            f"the engine composes 32-bit surfaces. Colour will be wrong."
+                        )
+                    if (geometry['xres'], geometry['yres']) != tuple(self.surface_size):
+                        self.logger.error(
+                            f"Framebuffer is {geometry['xres']}x{geometry['yres']} but "
+                            f"the composed surface is {self.surface_size[0]}x"
+                            f"{self.surface_size[1]}. The image will not fill the panel."
+                        )
+                    if geometry['line_length'] != expected_stride:
+                        self.logger.error(
+                            f"Framebuffer stride is {geometry['line_length']} but "
+                            f"{expected_stride} was expected for {geometry['xres']} px "
+                            f"at {geometry['bits_per_pixel']}-bit. Rows will shear; "
+                            f"zero-padding corrects the byte count but not the offset."
+                        )
+                    if stride_impossible:
+                        self.logger.error(
+                            f"Reported stride {geometry['line_length']} is below the "
+                            f"{expected_stride} bytes {geometry['xres']} px at "
+                            f"{geometry['bits_per_pixel']}-bit requires, so it cannot "
+                            f"describe this device. Sizing the buffer from the composed "
+                            f"surface instead ({self.fb_size} bytes)."
+                        )
+                else:
+                    self.logger.warning(
+                        f"Framebuffer geometry unavailable; assuming "
+                        f"{self.surface_size[0]}x{self.surface_size[1]} at 32-bit "
+                        f"({self.fb_size} bytes)"
+                    )
+
                 self.fb = mmap.mmap(self.fb_dev.fileno(), self.fb_size)
                 self.use_mmap = True
                 self.logger.info("Using memory-mapped framebuffer")
@@ -563,7 +690,18 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 # before. Behaviour and log level are unchanged here —
                 # raising the level is recommendation 21 (task 7.3.3).
                 if actual_size != self.fb_size:
-                    self.logger.debug(f"Buffer size mismatch: {actual_size} vs {self.fb_size}")
+                    self._size_mismatch_count += 1
+                    if not self._size_mismatch_logged:
+                        self._size_mismatch_logged = True
+                        # Raised from DEBUG: production runs at INFO, so
+                        # the previous level meant a visible fault had no
+                        # visible diagnostic (recommendation 21).
+                        self.logger.error(
+                            f"Buffer size mismatch: {actual_size} vs {self.fb_size} "
+                            f"(stride {self.fb_line_length}, "
+                            f"{self.fb_bits_per_pixel}-bit). Padding or truncating; "
+                            f"the image may be skewed. Further occurrences suppressed."
+                        )
                     payload = bytes(payload)
                     if actual_size > self.fb_size:
                         payload = payload[:self.fb_size]
@@ -698,6 +836,12 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         """Clean up rendering resources"""
         with self._lock:
             try:
+                if self._size_mismatch_count:
+                    self.logger.error(
+                        f"Framebuffer size mismatched on "
+                        f"{self._size_mismatch_count} frames this session"
+                    )
+
                 # Restore the virtual resolution and scan-out origin, so
                 # the console is usable after exit.
                 if self._original_var is not None and self._fb_dev_usable():
