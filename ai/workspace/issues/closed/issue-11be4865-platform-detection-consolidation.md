@@ -19,7 +19,7 @@ issue_info:
   title: "str.lstrip('1000') misused as prefix removal in hardware revision parsing; DependencyValidator re-implements Pi detection independently of PlatformDetector"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -180,15 +180,148 @@ resolution:
     PlatformDetector rather than re-deriving it, retaining the existing
     inline logic only as an ImportError fallback. See change-11be4865.
   change_ref: "change-11be4865"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-30"
+  resolved_by: "Claude Code, per prompt-11be4865"
+  fix_description: >
+    Two edits, one per file, exactly as specified.
+
+    EDIT 1 — src/gtach/utils/platform.py,
+    _detect_via_hardware_revision. The comment and
+    clean_revision = revision.lstrip('1000') were replaced by
+
+        try:
+            clean_revision = format(int(revision, 16) & 0xFFFFFF, '06x')
+        except ValueError:
+            return None
+
+    The mask clears every bit above bit 23, so all flag bits are removed
+    rather than only a leading '1', and the '06x' format yields the six
+    lowercase hex digits that revision_map already uses as keys. A
+    revision line that is not valid hexadecimal now returns None instead
+    of producing a harmless non-match. Everything else in the method is
+    untouched: the cpuinfo scan, the evidence dict, revision_map (verified
+    byte-identical), the 0.95 DetectionResult, the len == 6 / isalnum
+    fallback at 0.7, the trailing return None and the enclosing
+    except Exception clause.
+
+    EDIT 2 — src/gtach/utils/dependencies.py, DependencyValidator.
+    _detect_platform. The stale comment 'Get platform info directly to
+    avoid import conflicts' and the redundant local 'import os' and
+    'import sys' were removed; both modules are imported at module scope
+    (dependencies.py:14-15). The /proc/cpuinfo substring block was
+    replaced by a guarded call to the authoritative accessor:
+
+        try:
+            from .platform import is_raspberry_pi as _is_raspberry_pi
+            platform_info['is_raspberry_pi'] = _is_raspberry_pi()
+        except Exception as e:
+            self.logger.debug(
+                f"PlatformDetector unavailable, using inline detection: {e}"
+            )
+            <original substring test, verbatim>
+
+    is_raspberry_pi() was used rather than get_platform_info(), so no GPIO
+    probing is triggered as a side effect of building a dependency report.
+    No new PlatformDetector is constructed; the accessor is backed by the
+    lock-guarded singleton in get_detector(). The os.uname() block, the
+    python_version construction, the platform_info dict literal, the
+    is_development derivation, the debug log and the return statement are
+    unchanged.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    Verified 2026-07-30 on macOS 26.5.1 (Darwin 25.5.0, arm64),
+    Python 3.11.14.
+
+    tests/ contains no test modules — only README.md — so pytest collects
+    zero items and the suite provides no regression signal. Verification
+    was carried out with an ephemeral script exercising
+    _detect_via_hardware_revision against a synthetic /proc/cpuinfo and
+    constructing real DependencyValidator instances. Twenty-one
+    assertions, covering all ten unit-test scenarios and all five edge
+    cases in prompt-11be4865 and all ten test cases in change-11be4865.
+    All twenty-one pass.
+
+    The same script run unchanged against the pre-change files from HEAD
+    fails six assertions and passes the other fifteen identically. The six
+    failures are the defect:
+
+      - '0002' (old-style four-digit) returned None; lstrip removed the
+        leading zeros, leaving '2', which fails the len == 6 fallback.
+        Now '000002' -> RASPBERRY_PI_GENERIC at 0.7.
+      - '0x902120' returned None; lstrip removed the leading '0' and
+        stopped at 'x', leaving a seven-character string. Now
+        RASPBERRY_PI_ZERO_2W at 0.95.
+      - 'A03111' (uppercase) returned RASPBERRY_PI_GENERIC at 0.7; the
+        uppercase form missed the lowercase revision_map keys and fell
+        through to the generic branch, downgrading a positively
+        identifiable Pi 4. Now RASPBERRY_PI_4 at 0.95.
+      - 'c0902120' (several flag bits set) returned None; lstrip strips
+        nothing because the leading character is 'c', leaving eight
+        characters. Now RASPBERRY_PI_ZERO_2W at 0.95.
+      - With PlatformDetector reporting a Pi on a host with no
+        /proc/cpuinfo, platform_info['is_raspberry_pi'] was False — the
+        two detectors' conclusions differed. Now True.
+      - No DEBUG line was emitted when platform detection was
+        unavailable, there being no such path. Now exactly one.
+
+    The fifteen behaviour-preservation assertions pass identically before
+    and after: '902120', '1902120', 'a03111' and 'c04170' at 0.95; 'zzzz'
+    returning None with no ValueError escaping; a missing Revision line
+    and a missing /proc/cpuinfo both returning None; platform_info holding
+    exactly the six keys with unchanged value types; is_raspberry_pi
+    agreeing with the accessor on this host; is_development derived as
+    is_linux and not is_raspberry_pi; the fallback path fully populating
+    platform_info with a bool; and validate_all / get_summary /
+    print_report / can_start_application completing without exception.
+
+    Compile: python -m py_compile passes on both files. revision_map is
+    byte-identical to its previous contents (sha1 of platform.py:321-344
+    unchanged). The confidence values 0.95 and 0.7 are unchanged. The
+    string "lstrip('1000')" does not appear anywhere in src/gtach. No file
+    other than the two named is modified.
+  closure_notes: >
+    Both faults reported in behavior.actual are corrected. Fault (a) is
+    removed by expressing the flag clear as the bit operation it is;
+    fault (b) by giving the validator one authoritative source for the
+    conclusion, with the previous inline test retained only as an
+    ImportError fallback so the validator cannot be taken down by a
+    failure in the component it exists to report on.
+
+    One observation bears on the severity recorded here and on the open
+    item at ai/task.md §7.5.6. Both '902120' and '1902120' — the Pi Zero
+    2W base code with and without the overvoltage flag — parse correctly
+    under the old lstrip as well as the new mask, because neither begins
+    with '0' or '1' beyond the single flag digit. For the production
+    target's revision specifically the defect is therefore latent, not
+    active, and the High severity recorded above rests on the general case
+    rather than on observed misdetection on gtach.local. This does not
+    change the correctness of the fix. §7.5.6 remains open; recording the
+    actual Revision string on target is still worth doing, but the
+    argument for the fix no longer depends on it. ai/task.md was not
+    modified — that is outside this triple.
+
+    A second finding, not anticipated by the issue: the old lstrip path
+    silently downgraded an uppercase revision string from a specific
+    variant at 0.95 to RASPBERRY_PI_GENERIC at 0.7, because revision_map
+    keys are lowercase and lstrip does no case normalisation. format(...,
+    '06x') normalises as a side effect. This is a real improvement beyond
+    the two faults as reported.
+
+    The other five detection methods, the revision_map contents, the
+    confidence values and the shape of platform_info were reviewed and
+    left unchanged as the issue specifies.
+
+    Two verification steps remain open by design and are not conditions of
+    this closure, both owned by William Watson: recording the actual
+    Revision string on gtach.local and confirming the parsed
+    clean_revision, and running gtach --validate-dependencies on target to
+    confirm its platform line matches the application's own detection.
+
+    The absence of any test module under tests/ is a standing project-wide
+    gap and is not raised as a residual against this issue.
 
 prevention:
   preventive_measures: >
@@ -214,7 +347,56 @@ verification_enhanced:
     - "Confirm every key of platform_info is still present: system, machine, python_version, is_raspberry_pi, is_linux, is_development."
     - "On gtach.local: record the actual Revision string per ai/task.md §7.5.6 and confirm the parsed clean_revision equals the intended base code."
     - "On gtach.local: run gtach --validate-dependencies and confirm its platform line matches the application's own detection."
-  verification_results: ""
+  verification_results: >
+    Steps 1-8 executed 2026-07-30 and all pass. Steps 9 and 10 are
+    on-target and remain open; they are owned by William Watson and are
+    not conditions of this closure.
+
+    1. python -m py_compile src/gtach/utils/platform.py — passes.
+
+    2. python -m py_compile src/gtach/utils/dependencies.py — passes.
+
+    3. '902120' and '1902120' both resolve to RASPBERRY_PI_ZERO_2W at 0.95
+    confidence, clean_revision '902120' in both cases. Note that both also
+    resolved correctly before the change: the Zero 2W base code begins
+    with '9', so lstrip removed only the flag digit. The Pi Zero 2W
+    revision is not among the codes the defect corrupts — see
+    closure_notes.
+
+    4. A revision that the old lstrip over-strips no longer is. Four cases
+    were exercised, each failing before the change and passing after:
+    '0002' (leading zeros consumed, left as '2', detection lost — now
+    '000002' -> RASPBERRY_PI_GENERIC at 0.7); '0x902120' (leading '0'
+    consumed, 'x' retained, seven characters, detection lost — now
+    RASPBERRY_PI_ZERO_2W at 0.95); 'c0902120' with several flag bits set
+    (lstrip strips nothing, eight characters, detection lost — now
+    RASPBERRY_PI_ZERO_2W at 0.95); and 'A03111' uppercase (missed the
+    lowercase map keys, downgraded to RASPBERRY_PI_GENERIC at 0.7 — now
+    RASPBERRY_PI_4 at 0.95).
+
+    5. 'a03111' resolves to RASPBERRY_PI_4 at 0.95, unchanged before and
+    after. 'c04170' -> RASPBERRY_PI_5 at 0.95 was checked alongside it and
+    is likewise unchanged.
+
+    6. DependencyValidator.platform_info['is_raspberry_pi'] equals
+    gtach.utils.platform.is_raspberry_pi() on the verification host; both
+    are False, this being macOS. Because agreement is trivial where both
+    report False, divergence was forced as well: with the accessor patched
+    to report a Pi on a host with no /proc/cpuinfo, the validator now
+    reports True and is_development False. Before the change the validator
+    reported False regardless of the detector's conclusion — the fault as
+    reported.
+
+    7. With the .platform import forced to raise ImportError, platform_info
+    is fully populated by the inline fallback, is_raspberry_pi is a bool,
+    and exactly one DEBUG line is emitted:
+    "PlatformDetector unavailable, using inline detection: <error>".
+
+    8. platform_info holds exactly system, machine, python_version,
+    is_raspberry_pi, is_linux and is_development, with value types str,
+    str, str, bool, bool, bool — identical before and after. validate_all,
+    get_summary, print_report and can_start_application all complete
+    without exception, so the dependency report still builds end to end.
 
 traceability:
   design_refs: []
@@ -247,6 +429,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from core-comm-utils-code-review.md §3.2, §4.4 and recommendation #3."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Resolved and verified via change-11be4865 / prompt-11be4865. Resolution, verification and verification_enhanced blocks populated; status -> closed; moved to ai/workspace/issues/closed/ per P00 §1.1.14.4."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -263,6 +450,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from core-comm-utils-code-review.md §3.2, §4.4 and recommendation #3. |
+| 1.1 | 2026-07-30 | Resolved and verified. Status closed; moved to ai/workspace/issues/closed/ per P00 §1.1.14.4. |
 
 ---
 

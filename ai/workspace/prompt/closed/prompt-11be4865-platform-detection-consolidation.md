@@ -398,6 +398,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial prompt document coupled to change-11be4865. |
+| 1.1 | 2026-07-30 | Executed by Claude Code. Both edits applied; fourteen success criteria met, with the pytest criterion satisfied only vacuously — tests/ holds no test modules — and verification recorded against an ephemeral script under change-11be4865. Closed per P00 §1.1.14.4 and moved to ai/workspace/prompt/closed/. |
 
 ---
 

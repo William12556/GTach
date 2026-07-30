@@ -19,7 +19,7 @@ change_info:
   title: "Replace lstrip with an integer mask in hardware revision parsing; route DependencyValidator's Pi detection through PlatformDetector"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -329,12 +329,79 @@ implementation:
     outcome; record it in the T06 result if observed.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-07-30"
+  implemented_by: "Claude Code, per prompt-11be4865"
+  verification_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    Both edits applied exactly as specified. No file other than
+    src/gtach/utils/platform.py and src/gtach/utils/dependencies.py was
+    modified. All fourteen success criteria in prompt-11be4865 are met,
+    with one recorded qualification on the pytest criterion.
+
+    Executed 2026-07-30 on macOS 26.5.1 (Darwin 25.5.0, arm64) with
+    Python 3.11.14.
+
+    Compile: python -m py_compile passes on both files.
+
+    Test suite: tests/ contains no test modules — only README.md — so
+    pytest collects zero items. The criterion "pytest tests/ passes with
+    no new failures" is satisfied only vacuously and carries no regression
+    signal, and the regression_scope entry "tests/utils/ — full existing
+    utils suite" could not be executed. Verification was therefore carried
+    out with an ephemeral script exercising _detect_via_hardware_revision
+    against a synthetic /proc/cpuinfo and constructing real
+    DependencyValidator instances. Twenty-one assertions covering all ten
+    test cases above and all five edge cases in prompt-11be4865. All
+    twenty-one pass. The project's third-party dependencies are not
+    installed on the verification host, so serial, yaml and pygame were
+    stubbed for the import chain; none participates in what is under test.
+
+    Differential evidence: the same script run unchanged against the
+    pre-change files from HEAD fails six assertions and passes the other
+    fifteen identically. The six failures are the defect —
+
+      '0002' returned None (lstrip left '2', failing the len == 6
+      fallback), now RASPBERRY_PI_GENERIC at 0.7; '0x902120' returned None
+      (leading '0' consumed, 'x' retained, seven characters), now
+      RASPBERRY_PI_ZERO_2W at 0.95; 'A03111' returned RASPBERRY_PI_GENERIC
+      at 0.7 (uppercase missed the lowercase map keys), now
+      RASPBERRY_PI_4 at 0.95; 'c0902120' with several flag bits returned
+      None (lstrip strips nothing after a leading 'c'), now
+      RASPBERRY_PI_ZERO_2W at 0.95; with the detector reporting a Pi on a
+      host without /proc/cpuinfo the validator reported False, now True;
+      and no DEBUG line was emitted on a platform-detection failure, now
+      exactly one.
+
+    The fifteen behaviour-preservation assertions pass identically before
+    and after, which is the evidence that nothing outside the two edits
+    moved: '902120', '1902120', 'a03111' and 'c04170' at 0.95; 'zzzz'
+    returning None with no ValueError escaping; a missing Revision line
+    and a missing /proc/cpuinfo both returning None; platform_info holding
+    exactly its six keys with unchanged value types; is_raspberry_pi
+    agreeing with the accessor on this host; is_development derived as
+    is_linux and not is_raspberry_pi; the ImportError fallback fully
+    populating platform_info with a bool; and validate_all, get_summary,
+    print_report and can_start_application all completing without
+    exception, satisfying the regression_scope entry that
+    --validate-dependencies still produces a complete report.
+
+    Source inspection: revision_map is byte-identical (sha1 of
+    platform.py:321-344 unchanged across the diff). The confidence values
+    0.95 and 0.7 are unchanged. The string "lstrip('1000')" does not
+    appear anywhere in src/gtach. dependencies.py imports is_raspberry_pi
+    from .platform inside a try/except and the inline substring test
+    survives as the except-branch fallback. The comment 'Get platform info
+    directly to avoid import conflicts' and the redundant local
+    'import os' / 'import sys' are gone. Application start-up on a non-Pi
+    development host was not exercised beyond the validator path, the
+    project's dependencies being absent from the verification host.
+  issues_found:
+    - "tests/ contains no test modules, so the regression_scope entry 'tests/utils/ — full existing utils suite' could not be executed. Verification rests on the ephemeral script and its differential run against the pre-change files, both described above. The gap is project-wide and predates this change; it is not a residual of this change and needs a separate T03 if it is to be addressed."
+    - "Observation bearing on the severity recorded in issue-11be4865 and on the open item at ai/task.md §7.5.6: both '902120' and '1902120' parse correctly under the old lstrip as well as the new mask, the Zero 2W base code beginning with '9'. For the production target's revision the defect is latent rather than active. The fix is correct regardless; the argument for it rests on the general case. ai/task.md was not modified, being outside this triple."
+    - "Finding beyond the two faults as reported: the old path silently downgraded an uppercase revision string from a specific variant at 0.95 confidence to RASPBERRY_PI_GENERIC at 0.7, because revision_map keys are lowercase and lstrip does no case normalisation. format(..., '06x') normalises as a side effect, so this is corrected incidentally."
+    - "Implementation steps 4 and 5 — recording the actual Revision string on gtach.local and confirming --validate-dependencies agrees with the application's own detection on target — remain open and are owned by William Watson. They are the purpose of the change, not conditions of its closure."
+    - "deployment_notes anticipated a possible change in the --validate-dependencies platform line on hosts where the two detectors disagreed. No such divergence was observed on the macOS verification host: both report not-a-Pi before and after. Whether the target's line changes is for step 5 to record."
 
 traceability:
   design_updates: []
@@ -349,6 +416,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document coupled to issue-11be4865."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Implemented and verified via prompt-11be4865. Verification block populated; status -> closed; moved to ai/workspace/change/closed/ per P00 §1.1.14.4."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -365,6 +437,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-11be4865. |
+| 1.1 | 2026-07-30 | Implemented and verified. Status closed; moved to ai/workspace/change/closed/ per P00 §1.1.14.4. |
 
 ---
 
