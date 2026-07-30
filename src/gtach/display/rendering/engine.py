@@ -17,12 +17,40 @@ import os
 import sys
 import time
 import mmap
+import fcntl
+import struct
 import logging
 import threading
 from typing import Tuple, Optional, Dict, Any
 import pygame
 
 from .interfaces import RenderingEngineInterface, RenderTarget, RenderingStats
+
+# Linux framebuffer ioctls (linux/fb.h).
+#
+# The first three are plain values in the header. FBIO_WAITFORVSYNC
+# is declared _IOW('F', 0x20, __u32), which encodes direction and
+# argument size as well as type and number:
+#
+#   (1 << 30) | (4 << 16) | (0x46 << 8) | 0x20 == 0x40044620
+#
+# The display review cites 0x4620, which is the type and number
+# portion only. Some drivers mask the encoding and accept it;
+# relying on that is not safe.
+FBIOGET_VSCREENINFO = 0x4600
+FBIOPUT_VSCREENINFO = 0x4601
+FBIOPAN_DISPLAY = 0x4606
+FBIO_WAITFORVSYNC = 0x40044620
+
+FB_ACTIVATE_NOW = 0
+FB_ACTIVATE_VBL = 16
+
+# struct fb_var_screeninfo is 40 x __u32 == 160 bytes.
+FB_VAR_STRUCT = '40I'
+FB_VAR_YRES = 1
+FB_VAR_YRES_VIRTUAL = 3
+FB_VAR_YOFFSET = 5
+FB_VAR_ACTIVATE = 21
 
 class DisplayRenderingEngine(RenderingEngineInterface):
     """
@@ -48,6 +76,15 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         self.use_mmap = False
         self.framebuffer_path = '/dev/fb0'
         self._view_fallback_logged = False
+
+        # Presentation mode, decided once in _initialize_framebuffer
+        self.page_flip = False           # second half established
+        self.vsync_available = False     # FBIO_WAITFORVSYNC works
+        self.buffer_index = 0            # half currently displayed
+        self._original_var = None        # for restoration in cleanup
+        self._panning_var = None         # post-resize template for the pan
+        self._vsync_failed_logged = False
+        self._pan_failed_logged = False
         
         # Display constants for HyperPixel 2" Round
         self.display_center = (240, 240)
@@ -149,13 +186,166 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 self.fb = open(self.framebuffer_path, 'wb')
                 self.use_mmap = False
                 self.logger.info("Using direct framebuffer writing")
-                
+
+            # Presentation mode. Page flipping needs the mmap path;
+            # if the direct-file fallback was taken there is no
+            # mapping to extend.
+            if self.use_mmap:
+                self.page_flip = self._setup_page_flip()
+
+            if not self.page_flip:
+                self.vsync_available = self._wait_for_vsync()
+
+            if self.page_flip:
+                mode = "page flip"
+            elif self.vsync_available:
+                mode = "vsync-synchronised write"
+            else:
+                mode = "unsynchronised write"
+            self.logger.info(f"Framebuffer presentation mode: {mode}")
+
         except Exception as e:
             self.logger.warning(f"Framebuffer initialization failed: {e}")
             self.fb = None
             self.use_mmap = False
-    
-    def create_surface(self, size: Tuple[int, int], 
+
+    def _fb_dev_usable(self) -> bool:
+        """Whether the framebuffer device can accept an ioctl.
+
+        The direct-file fallback in _initialize_framebuffer closes fb_dev
+        but leaves the attribute bound, so a truthiness test alone would
+        pass and the ioctl would then raise ValueError on a closed file.
+
+        Returns:
+            True if fb_dev exists and is open.
+        """
+        return bool(self.fb_dev) and not getattr(self.fb_dev, 'closed', False)
+
+    def _setup_page_flip(self) -> bool:
+        """Attempt to establish a second framebuffer half.
+
+        Doubles yres_virtual so the device holds two frames, then
+        remaps over both. Failure is an expected outcome on hardware
+        whose framebuffer is allocated at boot, so it is logged at
+        INFO and reported as False rather than raised.
+
+        Returns:
+            True if page flipping is available.
+        """
+        if not self._fb_dev_usable():
+            return False
+
+        try:
+            raw = fcntl.ioctl(
+                self.fb_dev.fileno(), FBIOGET_VSCREENINFO,
+                bytes(struct.calcsize(FB_VAR_STRUCT))
+            )
+            self._original_var = raw
+
+            var = list(struct.unpack(FB_VAR_STRUCT, raw))
+            yres = var[FB_VAR_YRES]
+            if yres <= 0:
+                self.logger.info("Page flip unavailable: driver reports yres 0")
+                return False
+
+            var[FB_VAR_YRES_VIRTUAL] = yres * 2
+            var[FB_VAR_ACTIVATE] = FB_ACTIVATE_NOW
+            fcntl.ioctl(
+                self.fb_dev.fileno(), FBIOPUT_VSCREENINFO,
+                struct.pack(FB_VAR_STRUCT, *var)
+            )
+
+            # Act on what the driver granted, not what was requested.
+            confirmed = struct.unpack(FB_VAR_STRUCT, fcntl.ioctl(
+                self.fb_dev.fileno(), FBIOGET_VSCREENINFO,
+                bytes(struct.calcsize(FB_VAR_STRUCT))
+            ))
+            if confirmed[FB_VAR_YRES_VIRTUAL] < yres * 2:
+                self.logger.info(
+                    f"Page flip unavailable: driver granted yres_virtual "
+                    f"{confirmed[FB_VAR_YRES_VIRTUAL]}, needed {yres * 2}"
+                )
+                return False
+
+            # Establish the new mapping BEFORE discarding the old one. If
+            # the remap fails the engine must be left with a working
+            # single-frame mapping; closing first would leave self.fb
+            # closed and every subsequent write would fail on it.
+            new_map = mmap.mmap(self.fb_dev.fileno(), self.fb_size * 2)
+            old_map = self.fb
+            self.fb = new_map
+            if old_map is not None:
+                try:
+                    old_map.close()
+                except Exception:
+                    pass
+
+            # The pan template must describe the enlarged geometry, not the
+            # geometry captured before the resize. _original_var is kept
+            # unmodified for cleanup to restore.
+            self._panning_var = struct.pack(FB_VAR_STRUCT, *confirmed)
+
+            self.logger.info("Page flip enabled: two framebuffer halves mapped")
+            return True
+
+        except Exception as e:
+            errno = getattr(e, 'errno', None)
+            self.logger.info(
+                f"Page flip unavailable: {e}"
+                + (f" (errno {errno})" if errno is not None else "")
+            )
+            return False
+
+    def _wait_for_vsync(self) -> bool:
+        """Block until the start of the vertical blanking interval.
+
+        Returns:
+            True if the wait succeeded. On failure the capability is
+            disabled so it is not retried, and the caller proceeds
+            without synchronisation.
+        """
+        if not self._fb_dev_usable():
+            return False
+
+        try:
+            fcntl.ioctl(self.fb_dev.fileno(), FBIO_WAITFORVSYNC,
+                        struct.pack('I', 0))
+            return True
+        except Exception as e:
+            self.vsync_available = False
+            if not self._vsync_failed_logged:
+                self._vsync_failed_logged = True
+                self.logger.info(f"Vertical-blank wait unavailable: {e}")
+            return False
+
+    def _pan_display(self, index: int) -> bool:
+        """Present a framebuffer half by moving the scan-out origin.
+
+        Args:
+            index: 0 or 1 — which half to display.
+
+        Returns:
+            True if the pan succeeded.
+        """
+        if not self._fb_dev_usable() or self._panning_var is None:
+            return False
+
+        try:
+            var = list(struct.unpack(FB_VAR_STRUCT, self._panning_var))
+            var[FB_VAR_YOFFSET] = index * var[FB_VAR_YRES]
+            # Asks the driver to latch at the next blanking interval.
+            # Not all drivers honour it; correctness does not depend on it.
+            var[FB_VAR_ACTIVATE] = FB_ACTIVATE_VBL
+            fcntl.ioctl(self.fb_dev.fileno(), FBIOPAN_DISPLAY,
+                        struct.pack(FB_VAR_STRUCT, *var))
+            return True
+        except Exception as e:
+            if not self._pan_failed_logged:
+                self._pan_failed_logged = True
+                self.logger.info(f"Page flip failed, reverting to direct write: {e}")
+            return False
+
+    def create_surface(self, size: Tuple[int, int],
                       alpha: bool = False) -> Optional[pygame.Surface]:
         """
         Create a pygame surface with specified parameters.
@@ -385,8 +575,27 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 # lengthen the window in which the scan-out can read a
                 # partially updated buffer (display review §4.1,
                 # recommendation 2).
-                self.fb.seek(0)
-                self.fb.write(payload)
+                if self.page_flip:
+                    # Compose into the half the controller is not
+                    # scanning, then present it atomically. No
+                    # pre-write wait is needed: nothing is reading
+                    # this half (display review §4.1, recommendation 4).
+                    target = self.buffer_index ^ 1
+                    self.fb.seek(target * self.fb_size)
+                    self.fb.write(payload)
+                    if self._pan_display(target):
+                        self.buffer_index = target
+                    else:
+                        self.page_flip = False
+                else:
+                    # Single buffer. Beginning the write at the start
+                    # of blanking narrows the window in which the
+                    # scan-out can read a partially updated buffer
+                    # (recommendation 3).
+                    if self.vsync_available:
+                        self._wait_for_vsync()
+                    self.fb.seek(0)
+                    self.fb.write(payload)
 
                 # Update statistics
                 self._stats.buffer_writes += 1
@@ -489,12 +698,23 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         """Clean up rendering resources"""
         with self._lock:
             try:
+                # Restore the virtual resolution and scan-out origin, so
+                # the console is usable after exit.
+                if self._original_var is not None and self._fb_dev_usable():
+                    try:
+                        fcntl.ioctl(self.fb_dev.fileno(), FBIOPUT_VSCREENINFO,
+                                    self._original_var)
+                    except Exception as e:
+                        self.logger.warning(f"Could not restore screen info: {e}")
+                    finally:
+                        self._original_var = None
+
                 if self.fb:
                     if self.use_mmap:
                         self.fb.close()
                     else:
                         self.fb.close()
-                
+
                 if self.fb_dev:
                     self.fb_dev.close()
                 
