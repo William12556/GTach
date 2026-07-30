@@ -303,6 +303,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial prompt document coupled to change-c5dedd71. |
+| 1.1 | 2026-07-30 | Executed by Claude Code. Both edits applied; all nine success criteria met. Closed per P00 §1.1.14.4 and moved to ai/workspace/prompt/closed/. |
 
 ---
 

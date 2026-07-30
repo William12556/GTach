@@ -70,13 +70,27 @@ class PerformanceMonitorInterface(ABC):
         pass
     
     @abstractmethod
-    def record_frame_start(self) -> str:
-        """Record start of frame rendering and return frame ID"""
+    def record_frame_start(self) -> int:
+        """Record start of frame rendering and return frame ID.
+
+        Returns:
+            Positive, monotonically increasing frame ID, or 0 when
+            monitoring is disabled or an error occurs.
+        """
         pass
-    
+
     @abstractmethod
-    def record_frame_end(self, frame_id: str) -> float:
-        """Record end of frame rendering and return frame time"""
+    def record_frame_end(self, frame_id: int) -> float:
+        """Record end of frame rendering and return frame time.
+
+        Args:
+            frame_id: Identifier returned by record_frame_start. 0
+                means monitoring was disabled, and the call is a
+                no-op.
+
+        Returns:
+            Frame duration in seconds, or 0.0.
+        """
         pass
     
     @abstractmethod

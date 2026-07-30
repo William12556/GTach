@@ -19,7 +19,7 @@ change_info:
   title: "Retype record_frame_start to -> int and record_frame_end to frame_id: int on PerformanceMonitorInterface, and document the 0 sentinel"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -257,11 +257,34 @@ implementation:
     other work.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-07-30"
+  implemented_by: "Claude Code, per prompt-c5dedd71"
+  verification_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    All seven test cases pass and all four validation criteria are met.
+    Executed 2026-07-30 on macOS with Python 3.11.14.
+
+    record_frame_start.__annotations__['return'] is int. PASS
+    record_frame_end.__annotations__['frame_id'] is int; its 'return' is
+    still float. PASS
+    PerformanceMonitor() instantiates with no TypeError. PASS
+    __abstractmethods__ holds the same thirteen names as before. PASS
+    A start_monitoring / record_frame_start / record_frame_end round trip
+    returned IDs 1 then 2 with positive float durations — identical to
+    post-change-0b00759c behaviour. PASS
+    Recursive grep of src/ for 'frame_id: str': no match. PASS
+    Grep of interfaces.py for 'should_log_periodic': no match. PASS
+
+    python -m py_compile passes on interfaces.py. pytest tests/ collected
+    0 items — the tree has held only README.md since commit 57ebbe6, so
+    the "no new failures" criterion is vacuous and the direct assertions
+    above stand in its place. interfaces.py is the only file changed under
+    src/. The diff adds and removes no executable statement: two
+    annotations, two docstrings, and trailing whitespace normalised on one
+    blank line between the methods.
+
+    No design document required updating, as anticipated in notes.
   issues_found: []
 
 traceability:
@@ -307,6 +330,13 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-c5dedd71."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "William Watson"
+    changes:
+      - "Status proposed -> verified. Implemented via prompt-c5dedd71 and verified on the development platform; all seven test cases and four validation criteria pass."
+      - "issues_found remains empty — the change introduced no defect."
+      - "Closed per P00 §1.1.14.4; document moved to ai/workspace/change/closed/ at final iteration 1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -323,6 +353,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document resolving issue-c5dedd71. |
+| 1.1 | 2026-07-30 | Status proposed → verified; implementation and verification recorded, all seven test cases pass; closed per P00 §1.1.14.4. |
 
 ---
 

@@ -19,7 +19,7 @@ issue_info:
   title: "record_frame_start and record_frame_end are annotated str on PerformanceMonitorInterface but int on PerformanceMonitor, so the abstract base class states a contract the implementation contradicts"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -142,15 +142,65 @@ resolution:
     Annotations and docstrings only; no abstract method is added or
     removed. See change-c5dedd71.
   change_ref: "change-c5dedd71"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-30"
+  resolved_by: "Claude Code, per prompt-c5dedd71"
+  fix_description: >
+    Both edits applied as specified, to
+    src/gtach/display/performance/interfaces.py only.
+
+    record_frame_start is now declared -> int and record_frame_end
+    frame_id: int. The record_frame_end return annotation remains float.
+    Both one-line docstrings were replaced with Google-style docstrings:
+    record_frame_start documents a positive, monotonically increasing
+    identifier with 0 returned when monitoring is disabled or an error
+    occurs; record_frame_end documents frame_id, with 0 meaning monitoring
+    was disabled and the call a no-op, and a return of the frame duration
+    in seconds or 0.0.
+
+    Abstract bodies remain `pass`. No import was added or removed. No
+    abstract method was added or removed, and should_log_periodic was not
+    introduced, per the constraint carried from change-c5dedd71.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    All seven test cases from change-c5dedd71 pass, and all nine success
+    criteria from prompt-c5dedd71 are met.
+
+    record_frame_start.__annotations__['return'] is int.
+    record_frame_end.__annotations__['frame_id'] is int, and its 'return'
+    is still float. PerformanceMonitor() instantiates with no TypeError.
+    __abstractmethods__ still holds thirteen names. A start_monitoring /
+    record_frame_start / record_frame_end round trip returned IDs 1 then 2
+    with positive float durations, matching post-change-0b00759c
+    behaviour exactly. 'frame_id: str' does not appear anywhere in src/.
+    'should_log_periodic' does not appear in interfaces.py.
+    python -m py_compile passes on the edited file.
+
+    The diff adds and removes no executable statement: it comprises the
+    two annotations, the two docstrings, and the normalisation of trailing
+    whitespace on one blank line between the methods.
+
+    interfaces.py is the only file changed under src/. pytest tests/
+    collected 0 items, as it has since commit 57ebbe6; the direct
+    assertions above stand in its place.
+  closure_notes: >
+    Closed 2026-07-30 on human instruction, per P00 §1.1.14.4.
+
+    Closure criteria for an issue (§1.1.14.3) are met in full: resolved
+    and verified, with change-c5dedd71 implemented and tested. Unlike
+    issue-0b00759c, this issue carried no on-target dependency — the
+    defect was static and every verification step is executable on the
+    development platform, so nothing is deferred to gtach.local.
+
+    Two questions were deliberately excluded from the resolution and
+    survive closure, recorded in change-c5dedd71 for a future T02: whether
+    should_log_periodic, get_performance_summary, add_dirty_region,
+    get_dirty_regions and clear_dirty_regions belong in
+    PerformanceMonitorInterface; and whether the interface is warranted at
+    all, given one implementer and no injection point. Neither is a defect
+    and neither blocks this closure.
 
 prevention:
   preventive_measures: >
@@ -174,7 +224,19 @@ verification_enhanced:
     - "from gtach.display.performance import PerformanceMonitor; PerformanceMonitor() instantiates without TypeError."
     - "A record_frame_start / record_frame_end round trip on PerformanceMonitor behaves exactly as it did before the change."
     - "git diff --name-only reports interfaces.py as the only changed file under src/."
-  verification_results: ""
+  verification_results: >
+    All eight steps PASS, executed 2026-07-30 on macOS with Python
+    3.11.14.
+
+    PASS — python -m py_compile on interfaces.py.
+    PASS — 'frame_id: str' absent from src/ (recursive grep, no match).
+    PASS — record_frame_start.__annotations__['return'] is int.
+    PASS — record_frame_end.__annotations__['frame_id'] is int.
+    PASS — len(__abstractmethods__) is 13, unchanged.
+    PASS — PerformanceMonitor() instantiates with no TypeError.
+    PASS — round trip returns IDs 1 then 2 with positive float durations,
+    identical to the behaviour before this change.
+    PASS — interfaces.py is the only file changed under src/.
 
 traceability:
   design_refs: []
@@ -208,6 +270,13 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from post-implementation review of change-0b00759c."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. change-c5dedd71 implemented and verified via prompt-c5dedd71."
+      - "Recorded resolution, verification and all eight verification steps as PASS."
+      - "Closed per P00 §1.1.14.4; document moved to ai/workspace/issues/closed/ at final iteration 1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -224,6 +293,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from post-implementation review of change-0b00759c. |
+| 1.1 | 2026-07-30 | Status open → closed; resolution and verification recorded, all eight steps PASS; closed per P00 §1.1.14.4. |
 
 ---
 
