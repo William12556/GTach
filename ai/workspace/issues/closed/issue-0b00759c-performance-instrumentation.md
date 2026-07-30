@@ -19,7 +19,7 @@ issue_info:
   title: "record_frame_end is called after the pacing sleep, so frame_time_ms measures idle padding; per-frame UUID, expiry scan, metrics call and psutil read add avoidable cost"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "resolved"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -209,22 +209,62 @@ resolution:
     because prompt-0b00759c confined the executor to monitor.py and
     manager.py. Raised as issue-c5dedd71. No runtime effect — annotations
     are not enforced and PerformanceMonitor remains instantiable.
+    Subsequently corrected under change-c5dedd71: interfaces.py:73 and 83
+    now read "-> int" and "frame_id: int", matching the implementation.
+    That triple is closed, so this residual is discharged.
 
 verification:
-  verified_date: ""
-  verified_by: ""
+  verified_date: "2026-07-30"
+  verified_by: "Claude Code"
   test_results: >
-    Development platform only. See change-0b00759c
-    verification.test_results for the full record. Status is `resolved`,
-    not `verified`: the fix is implemented and asserted on macOS, but the
-    on-target observations below have not been made.
+    Development platform only; see change-0b00759c
+    verification.test_results for the full record and closure_notes below
+    for the closure re-verification.
+
+    Re-verified at closure against the current working tree: twenty-three
+    assertions over the ten change test cases and the four prompt edge
+    cases, all passing, driving the real PerformanceMonitor with pygame
+    and psutil stubbed. The on-target observations remain outstanding and
+    are owned by William Watson; they are the purpose of this issue, not
+    conditions of its closure.
   closure_notes: >
-    Not closed. Closure requires the four outstanding on-target steps in
-    verification_enhanced.verification_steps, chief among them recording
-    the observed frame_time_ms as the baseline required by ai/task.md
-    §7.5.3. Until that reading exists, the prerequisite this issue was
-    raised to satisfy is not yet satisfied in fact, and tasks 7.3.5 and
-    7.3.6 remain without a baseline to be judged against.
+    All four faults reported in behavior.actual are corrected, and the
+    correction to fault (a) — the one that blocked everything else — is
+    observable off-target: a bracketed 5 ms sleep is recorded as ~6 ms
+    where before the change it would have been padded to the 16.67 ms
+    frame target. Faults (b), (c) and (d) were verified by counting calls
+    rather than by timing: should_log_periodic returns True only on frames
+    600 and 1200 of a 1200-frame run, so get_current_metrics is
+    constructed twice rather than 1200 times; a mocked memory_info() is
+    invoked once across 100 rapid calls; frame IDs are ints from a
+    monotonic counter and the expiry scan is skipped while at most one
+    frame is active.
+
+    Two behaviours that the change deliberately did not alter were
+    confirmed unchanged: the periodic log line's text and its three
+    fields, and get_current_metrics().to_dict(), which
+    DisplayManager.get_status consumes on demand and which still returns
+    a populated dict.
+
+    Four verification steps remain open by design and are not conditions
+    of this closure, all owned by William Watson and all requiring
+    gtach.local: reading the periodic log line and confirming
+    frame_time_ms is materially below 16.7 ms and differs between the
+    OPTIONS screen and RADIAL mode; confirming the reported fps remains a
+    true rate; confirming the psutil memory figure still updates on
+    target; and recording the observed frame_time_ms as the ai/task.md
+    §7.5.3 baseline. That last step is the reason this work was
+    prioritised, and tasks 7.3.5 and 7.3.6 stay without a baseline until
+    it is taken — but it is an observation to be made on hardware, not an
+    outstanding defect in the code, and ai/task.md carries it
+    independently of this triple.
+
+    The residual recorded in fix_description is discharged:
+    issue-c5dedd71 corrected the two PerformanceMonitorInterface
+    annotations and its triple is closed.
+
+    The absence of any test module under tests/ is a standing
+    project-wide gap and is not raised as a residual against this issue.
 
 prevention:
   preventive_measures: >
@@ -280,6 +320,23 @@ verification_enhanced:
     OUTSTANDING — record the observed frame_time_ms as the ai/task.md
     §7.5.3 baseline.
 
+    Closure re-verification, 2026-07-30, against the working tree at that
+    date. The four PASS steps were re-run and hold. Line references have
+    since moved: record_frame_end is now manager.py:445 and the pacing
+    time.sleep manager.py:456, the shift coming from change-4c038bed in
+    the same file; the source order the step asserts is unaffected.
+    Twenty-three assertions were executed against the real
+    PerformanceMonitor with pygame and psutil stubbed — the ten change
+    test cases, the four prompt edge cases, and additional checks that a
+    failed psutil read returns 0.0 without poisoning the cache, that the
+    _memory_samples fallback is taken when _process is None, that a stale
+    entry is expired once a second frame makes the scan reachable, that
+    record_frame_end after stop_monitoring returns 0.0 without raising,
+    that get_current_metrics().to_dict() is still populated, and that the
+    three signatures carry the int and bool annotations the prompt
+    specifies. All pass. The four OUTSTANDING steps above still require
+    gtach.local and are unchanged by this closure.
+
 traceability:
   design_refs: []
   change_refs:
@@ -313,6 +370,15 @@ version_history:
       - "Recorded four of eight verification steps as PASS and four as OUTSTANDING pending gtach.local."
       - "Recorded issue-c5dedd71 as related: the matching PerformanceMonitorInterface declarations were out of the executor's permitted file scope and still read str."
       - "Status is resolved rather than verified because the ai/task.md §7.5.3 baseline reading has not been taken."
+  - version: "1.2"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Status resolved -> closed. Verification date and verifier recorded; closure_notes replaced with the closure record."
+      - "Recorded the closure re-verification: twenty-three assertions over the ten change test cases and four prompt edge cases against the real PerformanceMonitor, all passing."
+      - "Noted that the change-c5dedd71 residual is discharged — the two PerformanceMonitorInterface annotations now read int and that triple is closed."
+      - "Noted that the four on-target steps, including the ai/task.md §7.5.3 baseline reading, remain open by design and are owned by William Watson rather than being conditions of closure."
+      - "Moved to ai/workspace/issues/closed/ per P00 §1.1.14.4."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -330,6 +396,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from display-ui-graphics-review.md recommendations 15, 16, 17 and 18. |
 | 1.1 | 2026-07-30 | Status open → resolved; fix description and per-step verification status recorded; issue-c5dedd71 linked; on-target §7.5.3 baseline noted as outstanding. |
+| 1.2 | 2026-07-30 | Status resolved → closed; closure re-verification recorded; issue-c5dedd71 residual discharged; four on-target steps left open by design. Moved to ai/workspace/issues/closed/ per P00 §1.1.14.4. |
 
 ---
 

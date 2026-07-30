@@ -19,7 +19,7 @@ change_info:
   title: "Move record_frame_end before the pacing sleep; gate periodic logging inside the monitor; replace the UUID frame ID with a counter; sample psutil at 1 Hz"
   date: "2026-07-30"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -355,8 +355,8 @@ implementation:
 verification:
   implemented_date: "2026-07-30"
   implemented_by: "Claude Code, per prompt-0b00759c"
-  verification_date: ""
-  verified_by: ""
+  verification_date: "2026-07-30"
+  verified_by: "Claude Code"
   test_results: >
     Development platform only. On-target verification is outstanding — see
     the note below on the §7.5.3 baseline.
@@ -389,6 +389,42 @@ verification:
     asserted a string frame ID, because no tests exist.
 
     Only the two named files were modified.
+
+    Closure re-verification, 2026-07-30. The seven edits were re-checked
+    against the working tree and all six validation_criteria that do not
+    require gtach.local hold. Line references have moved since
+    implementation — record_frame_end is now manager.py:445 and the pacing
+    time.sleep manager.py:456, the shift introduced by change-4c038bed in
+    the same file — but the source order the criterion asserts is intact,
+    "len(frame_id)" is still absent from manager.py, get_current_metrics
+    appears in _display_loop only at manager.py:462 inside the
+    should_log_periodic guard (its other call site, manager.py:1627, is
+    get_status, which is on-demand and was always out of scope), and
+    "uuid" no longer appears anywhere in monitor.py.
+
+    Twenty-three assertions were executed against the real
+    PerformanceMonitor with pygame and psutil stubbed: the ten test_cases
+    above, the four prompt edge cases, and six further checks — a failed
+    psutil read returns 0.0 without writing the cache; the _memory_samples
+    fallback is taken when _process is None; a stale entry is expired once
+    a second active frame makes the scan reachable, incrementing
+    _dropped_frames; record_frame_end after stop_monitoring returns 0.0
+    without raising; get_current_metrics().to_dict() is still populated,
+    which is the regression_scope entry for DisplayManager.get_status; and
+    the three signatures carry the int, int and bool annotations. All
+    pass.
+
+    The regression_scope entry naming tests/display/ remains unexecutable
+    — tests/ still holds only README.md — and the validation criterion
+    "pytest tests/ passes with no new failures" remains vacuous rather
+    than met. The direct assertions stand in its place. This is a standing
+    project-wide gap, not a residual of this change.
+
+    The remaining validation criterion — frame_time_ms materially below
+    16.7 ms on gtach.local and differing between OPTIONS and RADIAL — and
+    implementation step 9, recording the ai/task.md §7.5.3 baseline, are
+    owned by William Watson and are the purpose of this change rather than
+    conditions of its closure.
   issues_found:
     - issue_ref: "issue-c5dedd71"
 
@@ -420,6 +456,15 @@ version_history:
       - "Status proposed -> implemented. Recorded implementation date, executor and development-platform test results."
       - "Recorded issue-c5dedd71 in issues_found: the two abstract declarations on PerformanceMonitorInterface still read str, because this change's prompt confined the executor to monitor.py and manager.py."
       - "Noted that pytest collected 0 items and that on-target verification of the §7.5.3 baseline remains outstanding."
+  - version: "1.2"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Status implemented -> closed. Verification date and verifier recorded."
+      - "Recorded the closure re-verification: all six off-target validation_criteria re-checked, twenty-three assertions against the real PerformanceMonitor, all passing."
+      - "Recorded that the manager.py line references moved under change-4c038bed without affecting the source order asserted by the criteria."
+      - "Recorded that the tests/display/ regression_scope entry remains unexecutable and the pytest criterion vacuous rather than met."
+      - "Moved to ai/workspace/change/closed/ per P00 §1.1.14.4."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -437,6 +482,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-0b00759c. |
 | 1.1 | 2026-07-30 | Status proposed → implemented; implementation and development-platform test results recorded; issue-c5dedd71 recorded in issues_found; on-target §7.5.3 baseline noted as outstanding. |
+| 1.2 | 2026-07-30 | Status implemented → closed; closure re-verification recorded. Moved to ai/workspace/change/closed/ per P00 §1.1.14.4. |
 
 ---
 
