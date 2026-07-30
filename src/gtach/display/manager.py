@@ -75,7 +75,15 @@ class DisplayManager:
         self._update_status = 'idle'        # checking|available|none|error|pending
         self._update_wheel = None
         self._update_version = None
-        
+
+        # RPM signal conditioning (change-4c038bed)
+        self._rpm_display = 0.0          # EMA output — the displayed figure
+        self._rpm_ema_tau = 0.150        # EMA time constant, seconds
+        self._rpm_last_ts = None         # time.monotonic() of previous conditioning call
+        self._active_band = 0            # sticky band index for hysteresis
+        self._band_hysteresis = 75.0     # band transition margin, RPM
+        self._frame_counter = 0          # monotonic frame counter, advanced in _display_loop
+
         # Component initialization
         self._initialize_components()
         
@@ -413,7 +421,9 @@ class DisplayManager:
                 frame_id = self.performance_monitor.record_frame_start()
                 
                 self.thread_manager.update_heartbeat('display')
-                
+
+                self._frame_counter += 1
+
                 # Clear back buffer
                 self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER)
                 
@@ -542,6 +552,41 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f'Shift border error: {e}', exc_info=True)
 
+    def _condition_rpm(self, raw: float) -> float:
+        """Smooth the raw RPM sample for display.
+
+        Applies a first-order exponential moving average with the time
+        constant self._rpm_ema_tau, computed against the measured interval
+        since the previous call so the time constant holds regardless of
+        frame rate. The raw value is not modified; self._last_rpm continues
+        to hold it.
+
+        Args:
+            raw: Raw RPM sample as drained from the OBD message queue.
+
+        Returns:
+            Smoothed RPM for display consumers. Returns raw unchanged if
+            conditioning fails.
+        """
+        try:
+            now = time.monotonic()
+            if self._rpm_last_ts is None:
+                self._rpm_last_ts = now
+                self._rpm_display = float(raw)
+                return self._rpm_display
+
+            dt = now - self._rpm_last_ts
+            dt = min(0.5, max(0.001, dt))
+            self._rpm_last_ts = now
+
+            alpha = 1.0 - math.exp(-dt / self._rpm_ema_tau)
+            self._rpm_display += alpha * (float(raw) - self._rpm_display)
+            return self._rpm_display
+
+        except Exception as e:
+            self.logger.error(f'RPM conditioning error: {e}', exc_info=True)
+            return raw
+
     def _get_band_colour(self, rpm: float) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
         """Get background and text colours for the given RPM value.
 
@@ -556,25 +601,48 @@ class DisplayManager:
         try:
             bands = self.config.rpm_bands
 
-            # Determine base colours by RPM band
-            if rpm < bands.idle_max:
-                bg_colour = (0, 0, 0)
-                text_colour = (255, 255, 255)
-            elif rpm < bands.torque_start:
-                bg_colour = (0, 0, 255)
-                text_colour = (0, 0, 0)
-            elif rpm < bands.caution_start:
-                bg_colour = (0, 255, 0)
-                text_colour = (0, 0, 0)
-            elif rpm < bands.warning_start:
-                bg_colour = (255, 255, 0)
-                text_colour = (0, 0, 0)
-            elif rpm < bands.danger_start:
-                bg_colour = (255, 128, 0)
-                text_colour = (0, 0, 0)
-            else:  # rpm >= bands.danger_start
-                bg_colour = (255, 0, 0)
-                text_colour = (0, 0, 0)
+            # Ordered band table: (bg_colour, text_colour).
+            # Index 1 text corrected to white — WCAG 2.1 contrast on
+            # pure blue is 2.44:1 with black, 8.59:1 with white
+            # (display review §7.1, recommendation 23).
+            palette = (
+                ((0, 0, 0), (255, 255, 255)),        # 0 idle
+                ((0, 0, 255), (255, 255, 255)),      # 1 torque approach
+                ((0, 255, 0), (0, 0, 0)),            # 2 torque
+                ((255, 255, 0), (0, 0, 0)),          # 3 caution
+                ((255, 128, 0), (0, 0, 0)),          # 4 warning
+                ((255, 0, 0), (0, 0, 0)),            # 5 danger
+            )
+
+            # Ascending thresholds; threshold[i] separates band i from i+1.
+            thresholds = (
+                bands.idle_max,
+                bands.torque_start,
+                bands.caution_start,
+                bands.warning_start,
+                bands.danger_start,
+            )
+
+            # Clamp the hysteresis margin below half the narrowest gap so
+            # a closely spaced RPMBands cannot make a band unreachable.
+            gaps = [
+                thresholds[i + 1] - thresholds[i]
+                for i in range(len(thresholds) - 1)
+            ]
+            narrowest = min(gaps) if gaps else self._band_hysteresis
+            margin = min(self._band_hysteresis, 0.49 * narrowest)
+
+            # Sticky selection: at most one step per call, and only when
+            # the value clears the threshold by the margin in the
+            # direction of travel.
+            band = self._active_band
+            if band < len(thresholds) and rpm > thresholds[band] + margin:
+                band += 1
+            elif band > 0 and rpm < thresholds[band - 1] - margin:
+                band -= 1
+
+            self._active_band = band
+            bg_colour, text_colour = palette[band]
 
             return (bg_colour, text_colour)
 
@@ -597,7 +665,11 @@ class DisplayManager:
         """
         try:
             bands = self.config.rpm_bands
-            flash = int(time.monotonic() * 2) % 2 == 0
+            # Flash phase from the frame counter, not wall-clock time, so
+            # the duty cycle is equal by construction at any frame rate
+            # (display review §4.4, recommendation 5).
+            half_period = max(1, int(round(self.config.fps_limit / 4.0)))
+            flash = (self._frame_counter // half_period) % 2 == 0
 
             if rpm >= bands.caution_start:
                 # Upshift cue — green border 12 px, flashing green/dark centre
@@ -621,6 +693,7 @@ class DisplayManager:
             if self._sim_mode:
                 rpm = int(3000 + 3000 * math.sin(time.time()))
                 self._last_rpm = rpm
+                rpm = self._condition_rpm(rpm)
             else:
                 # Drain queue — keep only the latest value to avoid display lag
                 import queue
@@ -632,7 +705,7 @@ class DisplayManager:
                     pass
                 except Exception as e:
                     self.logger.debug(f'Queue drain error: {e}')
-                rpm = getattr(self, '_last_rpm', 0)
+                rpm = self._condition_rpm(getattr(self, '_last_rpm', 0))
 
             # Get band colours for current RPM
             bg_colour, text_colour = self._get_band_colour(rpm)
@@ -693,6 +766,7 @@ class DisplayManager:
             if self._sim_mode:
                 rpm = int(3000 + 3000 * math.sin(time.time()))
                 self._last_rpm = rpm
+                rpm = self._condition_rpm(rpm)
             else:
                 # Drain queue — keep only the latest value to avoid display lag
                 import queue
@@ -705,7 +779,7 @@ class DisplayManager:
                 except Exception as e:
                     self.logger.debug(f'Queue drain error: {e}')
 
-                rpm = getattr(self, '_last_rpm', 0)
+                rpm = self._condition_rpm(getattr(self, '_last_rpm', 0))
             # Clamp RPM to valid range
             rpm = max(0, min(7000, rpm))
 
