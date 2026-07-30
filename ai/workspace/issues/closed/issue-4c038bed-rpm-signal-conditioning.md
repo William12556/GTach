@@ -19,7 +19,7 @@ issue_info:
   title: "Unconditioned RPM signal drives band thrash, displayed-value churn and an unstable flash duty cycle; blue band text fails contrast"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -177,15 +177,79 @@ resolution:
     and correction of the blue band's text colour to white. See
     change-4c038bed.
   change_ref: "change-4c038bed"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-30"
+  resolved_by: "Claude Code, per prompt-4c038bed"
+  fix_description: >
+    All five edits applied to src/gtach/display/manager.py only. __init__
+    gained the six conditioning attributes; _condition_rpm was added
+    immediately before _get_band_colour; the _get_band_colour band
+    selection was replaced with a sticky palette-and-threshold table
+    carrying a clamped hysteresis margin, with the torque-approach text
+    colour corrected to white; the _get_shift_cue flash phase now derives
+    from the frame counter and fps_limit; _display_loop increments the
+    frame counter once per iteration and both render paths route through
+    _condition_rpm in their simulation and live branches.
+
+    self._last_rpm is assigned the raw value at all four assignment sites
+    and nowhere receives a conditioned value.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    Faults (a), (b) and (d) are verified on the development platform.
+    Fault (c) is verified as to duty-cycle equality, with one deviation
+    in realised rate recorded below.
+
+    (a) Band thrash: alternating 2998/3002 samples produce no band change
+    across 100 calls. A 2900-3200-2900 sweep produces exactly two
+    transitions, up at 3076 and down at 2924, matching the plus or minus
+    75 RPM margin.
+
+    (b) Value churn: a 0-to-3000 step at a fixed 60 Hz interval reaches
+    1896 RPM at 150 ms — 63.2% of the step — and converges monotonically.
+    The first call returns its argument exactly rather than ramping from
+    zero.
+
+    (c) Flash duty cycle: at fps_limit 60, 240 frames give eight complete
+    cycles with runs of exactly 15 frames on and 15 off. At fps_limit 30
+    the on and off runs are equal at 8 frames each, but the specified
+    integer half-period rounds 7.5 up to 8, so the realised rate is
+    1.875 Hz and 120 frames give 7.5 cycles rather than the eight stated
+    in change-4c038bed. The instability that was the defect is corrected;
+    the residual is a rate deviation at non-multiple-of-four frame rates,
+    recorded in change-4c038bed for a future T02.
+
+    (d) Blue band contrast: the torque-approach band returns
+    ((0,0,255),(255,255,255)).
+
+    Edge cases: negative dt from a clock anomaly and a 30 s stalled frame
+    are both clamped as specified; a non-numeric sample is caught, logged
+    at ERROR with exc_info and returned unchanged; fps_limit 0 does not
+    raise; a jump across four bands advances one band per call.
+
+    An RPMBands configured with 100 RPM adjacent gaps clamps the margin
+    below 50 RPM and all six bands remain reachable in both directions.
+
+    python -m py_compile src/gtach/display/manager.py passes. pytest
+    tests/ collects zero items — the tests/ directory contains only
+    README.md, so the suite is vacuously green and provides no regression
+    evidence. Verification above was executed against the implementation
+    directly, on macOS with Python 3.11.14.
+  closure_notes: >
+    Closed per P00 §1.1.14.3. All four faults are corrected and verified,
+    with change-4c038bed implemented and prompt-4c038bed executed.
+
+    Two items survive closure and do not block it. First, the on-target
+    observation recorded as ai/task.md §7.5.2 — whether the reported
+    flicker resolves on gtach.local, and therefore whether tasks 7.3.4 and
+    7.3.2 reduce from fault correction to efficiency work — is owned by
+    William Watson and is the purpose of this change rather than a
+    condition of it. Verification steps 2 through 5 of
+    verification_enhanced are the development-platform equivalents and
+    have been executed. Second, the flash-rate deviation at frame rates
+    that are not multiples of four, described in test_results (c), which
+    becomes material only if task 7.3.6 lowers fps_limit.
 
 prevention:
   preventive_measures: >
@@ -206,7 +270,32 @@ verification_enhanced:
     - "Above caution_start, time the shift-cue flash over 10 seconds and confirm the on and off intervals are equal to within one frame period."
     - "Hold RPM in the torque-approach band and confirm the numeral renders white on blue."
     - "Confirm that the RPM value written to the log and consumed by comm/obd.py is unchanged — conditioning is display-side only."
-  verification_results: ""
+  verification_results: >
+    Step 1 — python -m py_compile src/gtach/display/manager.py passes.
+    PASS.
+
+    Step 2 — band transitions occur once per boundary crossing and do not
+    oscillate. PASS on the development platform: a sweep through
+    torque_start yields exactly one transition per crossing, and
+    alternating samples straddling the threshold yield none. The
+    equivalent observation under simulation mode on gtach.local is
+    ai/task.md §7.5.2 and is owned by William Watson.
+
+    Step 3 — the DIGITAL numeral advances without alternation at rounding
+    boundaries. PASS: the EMA output is monotonic through a step input, so
+    the formatted value cannot alternate at a rounding boundary.
+
+    Step 4 — flash on and off intervals equal to within one frame period.
+    PASS at fps_limit 60 and 30: equal by construction, the phase being an
+    integer frame count. See the rate note in verification.test_results.
+
+    Step 5 — the torque-approach band renders white on blue. PASS:
+    _get_band_colour returns ((0,0,255),(255,255,255)) for that band.
+
+    Step 6 — the RPM value logged and consumed by comm/obd.py is
+    unchanged. PASS: no file other than src/gtach/display/manager.py is
+    modified, and self._last_rpm receives only the raw value at all four
+    of its assignment sites.
 
 traceability:
   design_refs: []
@@ -235,6 +324,13 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from display-ui-graphics-review.md recommendations 1, 5 and 23."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Status open -> closed. change-4c038bed implemented and verified via prompt-4c038bed."
+      - "Recorded resolution, verification and all six verification steps as PASS, with the flash-rate deviation at non-multiple-of-four frame rates noted."
+      - "Closed per P00 §1.1.14.4; document moved to ai/workspace/issues/closed/ at final iteration 1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -251,6 +347,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from display-ui-graphics-review.md recommendations 1, 5 and 23. |
+| 1.1 | 2026-07-30 | Resolved and verified via change-4c038bed and prompt-4c038bed. Status open → closed; moved to ai/workspace/issues/closed/. |
 
 ---
 

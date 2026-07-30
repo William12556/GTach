@@ -19,7 +19,7 @@ change_info:
   title: "Add display-side RPM smoothing and band hysteresis; derive flash phase from a frame counter; correct blue band text colour"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -325,12 +325,56 @@ implementation:
     they need tuning, promoting them to config.yaml is a separate change.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-07-30"
+  implemented_by: "Claude Code, per prompt-4c038bed"
+  verification_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    Seven of the eight test cases pass as stated. The eighth passes on the
+    property it exists to test — equal on and off frame counts — but not
+    on its stated cycle count. Executed 2026-07-30 on macOS with Python
+    3.11.14.
+
+    Step 0 to 3000 at a fixed 60 Hz dt: 1896 RPM at 150 ms, 63.2% of the
+    step, converging monotonically. PASS.
+
+    Alternating 2998/3002 from the torque-approach band: no band change
+    over 100 calls. PASS.
+
+    Sweep 2900 to 3200 and back: exactly two transitions, up at 3076 and
+    down at 2924. PASS.
+
+    Torque-approach band colour pair: ((0,0,255),(255,255,255)). PASS.
+
+    240 frames at fps_limit 60: eight complete cycles, runs of exactly 15
+    frames on and 15 off. PASS.
+
+    120 frames at fps_limit 30: runs of exactly 8 frames on and 8 off, so
+    the duty cycle is equal as required, but 7.5 cycles rather than eight.
+    See issues_found. PARTIAL.
+
+    RPMBands with 100 RPM adjacent gaps: margin clamped to 49 RPM; all six
+    bands reachable ascending and the selection returns to band 0
+    descending. PASS.
+
+    Non-numeric sample: caught, logged at ERROR with exc_info, argument
+    returned unchanged. PASS.
+
+    Edge cases: negative dt and a 30 s stalled frame are clamped to the
+    specified bounds; fps_limit 0 does not raise; a jump across four bands
+    advances one band per call.
+
+    Validation criteria: py_compile passes; self._last_rpm is assigned the
+    raw value at all four assignment sites and no conditioned value is
+    written to it; no file other than src/gtach/display/manager.py is
+    modified. pytest tests/ collects zero items — the tests/ directory
+    contains only README.md — so the suite is vacuously green and is not
+    regression evidence. The simulation-mode criterion, one band
+    transition per boundary crossing, is confirmed against the selection
+    logic on the development platform; the on-target observation is
+    ai/task.md §7.5.2.
+  issues_found:
+    - "Flash rate deviates from 2 Hz at frame rates that are not multiples of four. half_period = max(1, int(round(fps_limit / 4.0))) is an integer frame count, so at fps_limit 30 it rounds 7.5 up to 8 and the realised rate is 1.875 Hz. The duty cycle stays equal by construction, which is the defect this change corrects, so the deviation is cosmetic at present. It becomes material only if task 7.3.6 (change-9ed1c77e) lowers fps_limit to a value not divisible by four. The stated expectation of eight complete cycles in 120 frames at fps_limit 30 is not achievable with an integer half-period and is inconsistent with this document's own allowance of 7 or 8 frames per half cycle. Correcting it requires an accumulator or a fractional phase and is a separate T02, not a defect in the implementation as specified."
 
 traceability:
   design_updates: []
@@ -349,6 +393,14 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document coupled to issue-4c038bed."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Status proposed -> closed. All five edits implemented via prompt-4c038bed and verified."
+      - "Recorded the verification block; seven of eight test cases pass as stated and the eighth passes on duty-cycle equality."
+      - "issues_found records the flash-rate deviation at frame rates not divisible by four, for a future T02."
+      - "Closed per P00 §1.1.14.4; document moved to ai/workspace/change/closed/ at final iteration 1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -365,6 +417,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-4c038bed. |
+| 1.1 | 2026-07-30 | Implemented and verified via prompt-4c038bed. Status proposed → closed; moved to ai/workspace/change/closed/. |
 
 ---
 
