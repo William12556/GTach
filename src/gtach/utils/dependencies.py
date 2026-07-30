@@ -79,10 +79,6 @@ class DependencyValidator:
     
     def _detect_platform(self) -> Dict[str, Any]:
         """Detect current platform and capabilities"""
-        # Get platform info directly to avoid import conflicts
-        import os
-        import sys
-        
         # Get system info directly from os.uname() and sys
         try:
             uname = os.uname()
@@ -104,15 +100,30 @@ class DependencyValidator:
             'is_development': False
         }
         
-        # Detect Raspberry Pi
+        # Detect Raspberry Pi through the authoritative multi-method
+        # detector rather than a second substring test that can
+        # disagree with it. PlatformDetector weighs device-tree,
+        # hardware-revision, cpuinfo, BCM GPIO and system-platform
+        # evidence and resolves conflicts by confidence
+        # (core review §4.4).
         try:
-            with open('/proc/cpuinfo', 'r') as f:
-                cpuinfo = f.read()
-                if 'BCM' in cpuinfo or 'Raspberry Pi' in cpuinfo:
-                    platform_info['is_raspberry_pi'] = True
-        except (FileNotFoundError, PermissionError):
-            pass
-        
+            from .platform import is_raspberry_pi as _is_raspberry_pi
+            platform_info['is_raspberry_pi'] = _is_raspberry_pi()
+        except Exception as e:
+            # This validator must remain usable even when platform
+            # detection is not, since reporting that condition is part
+            # of its purpose. Fall back to the direct check.
+            self.logger.debug(
+                f"PlatformDetector unavailable, using inline detection: {e}"
+            )
+            try:
+                with open('/proc/cpuinfo', 'r') as f:
+                    cpuinfo = f.read()
+                    if 'BCM' in cpuinfo or 'Raspberry Pi' in cpuinfo:
+                        platform_info['is_raspberry_pi'] = True
+            except (FileNotFoundError, PermissionError):
+                pass
+
         # Determine if this is a development environment
         platform_info['is_development'] = (
             platform_info['is_linux'] and not platform_info['is_raspberry_pi']

@@ -343,9 +343,17 @@ class PlatformDetector:
                 'd04170': PlatformType.RASPBERRY_PI_5,
             }
             
-            # Clean revision (remove overvoltage bit)
-            clean_revision = revision.lstrip('1000')
-            
+            # Clear the warranty and overvoltage flag bits. The base
+            # revision code occupies the low 24 bits of the revision
+            # word. str.lstrip cannot express this: it removes every
+            # leading character present in the given set — here {'1',
+            # '0'} — rather than a literal prefix, so a base code
+            # beginning with 0 or 1 is over-stripped (core review §3.2).
+            try:
+                clean_revision = format(int(revision, 16) & 0xFFFFFF, '06x')
+            except ValueError:
+                return None
+
             platform_type = revision_map.get(clean_revision)
             if platform_type:
                 return DetectionResult(
