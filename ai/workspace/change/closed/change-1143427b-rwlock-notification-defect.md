@@ -19,7 +19,7 @@ change_info:
   title: "RWLock._release_read notifies _read_ready as well as _write_ready, waking a writer blocked in the second stage of _acquire_write"
   date: "2026-07-30"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "critical"
   iteration: 1
   coupled_docs:
@@ -388,6 +388,13 @@ version_history:
       - "Recorded the qualification on test case eight — ConfigManager.load_config and save_config were not executed, both being unmodified by AST comparison."
       - "Recorded that pytest collected 0 items, so the regression_scope entry for tests/utils/ could not be exercised."
       - "Recorded a deviation: implementation step 3 was not executed, because prompt-1143427b permits no file other than src/gtach/utils/config.py to be modified."
+  - version: "1.2"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Status implemented -> closed."
+      - "Implementation steps 1 and 2 complete; step 3 partially complete and reassigned to its own cycle; step 4 open by design and owned by William Watson for the v0.3.0 deployment."
+      - "Moved to ai/workspace/change/closed/ per P00 §1.1.14.4."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -405,6 +412,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-1143427b. |
 | 1.1 | 2026-07-30 | Status proposed → implemented; development-platform test results recorded, including the pre-change discrimination run; deviation on implementation step 3 recorded. |
+| 1.2 | 2026-07-30 | Status implemented → closed. Moved to ai/workspace/change/closed/ per P00 §1.1.14.4. |
 
 ---
 

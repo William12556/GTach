@@ -19,7 +19,7 @@ issue_info:
   title: "RWLock._release_read notifies only _write_ready, so a writer waiting in the second stage of _acquire_write is never woken — deadlock on the live ConfigManager path"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "resolved"
+  status: "closed"
   severity: "critical"
   type: "defect"
   iteration: 1
@@ -224,7 +224,54 @@ verification:
     seven and passes eighteen, and among the failures is the deadlock
     reproduction itself, so the suite discriminates rather than merely
     agreeing with the new code.
-  closure_notes: ""
+  closure_notes: >
+    The defect reported in behavior.actual is corrected. A departing
+    reader now signals both conditions when the count reaches zero, so
+    the stage-two writer is woken; the reproduction in reproduction.steps
+    completes after the change and hangs against the pre-change file.
+
+    Two observations bear on the record here.
+
+    First, on severity. The issue is recorded critical and the reasoning
+    stands — the lock guards the live configuration path, and the report's
+    §5.1 claim that the affected code is not exercised is wrong for §3.1.
+    But the window is narrower than the reproduction steps suggest. A
+    reader can only enter between the writer's two stages if it has passed
+    `while self._writers > 0` and not yet taken _readers_lock, an interval
+    of a few bytecodes. It could not be hit by sleeping and had to be
+    forced deliberately. On the running application, where configuration
+    I/O is effectively single-threaded at startup, the defect was latent
+    rather than active — as reproducibility_conditions already states.
+    That does not weaken the case for the fix: the window is real, the
+    consequence is an unrecoverable hang, and the correction costs one
+    notification on the final reader release only.
+
+    Second, the fix is minimal by design. The two larger options — a
+    single-condition redesign and replacing RWLock with threading.RLock —
+    were deliberately not taken and remain recorded under
+    alternatives_considered in change-1143427b. The root_cause analysis
+    above still holds after this change: _readers is mutated under
+    _readers_lock but waited on via _read_ready, whose underlying lock is
+    a different object. Signalling both conditions closes the lost wakeup
+    that this arrangement produced in _acquire_write; it does not make the
+    counter protected by the condition that guards waiting on it. If the
+    task 7.4.1 retirement leaves RWLock with little remaining
+    justification, the RLock replacement should be raised as its own cycle
+    rather than folded into this one, as the prompt notes.
+
+    Out of scope and unchanged, as the issue specifies: get_stats' briefly
+    stale writer count, and the device-persistence methods belonging to
+    task 7.4.1.
+
+    Two items remain open and are not conditions of this closure. On-target
+    confirmation of application startup and a settings save is owned by
+    William Watson and ships with v0.3.0 per ai/task.md §8.3. And
+    tests/utils/test_rwlock.py was not generated, prompt-1143427b
+    permitting no file other than src/gtach/utils/config.py to be
+    modified; the verification was performed with an ephemeral script
+    instead, and test-1143427b stays active at status planned, needing its
+    own T04 prompt. That document is not part of this triple and is not
+    closed with it.
 
 prevention:
   preventive_measures: >
@@ -343,6 +390,15 @@ version_history:
       - "Recorded five of seven verification steps as PASS, one as PARTIAL and one as OUTSTANDING pending gtach.local."
       - "Recorded how the stage-two interleaving was reached, a first attempt having blocked the writer in stage one where the pre-change code behaves correctly."
       - "Recorded that tests/utils/test_rwlock.py was not generated, prompt-1143427b permitting no file other than src/gtach/utils/config.py to be modified."
+  - version: "1.2"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Status resolved -> closed. closure_notes written."
+      - "Recorded that the window is narrower than the reproduction steps suggest — a few bytecodes, unhittable by sleeping — so the defect was latent on the running application, without weakening the case for the fix."
+      - "Recorded that the root_cause analysis still holds: signalling both conditions closes the lost wakeup but does not make _readers protected by the condition that guards waiting on it."
+      - "Recorded that test-1143427b stays active at status planned and is not closed with this triple."
+      - "Moved to ai/workspace/issues/closed/ per P00 §1.1.14.4."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -360,6 +416,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from core-comm-utils-code-review.md §3.1 and recommendation #1, separated from 7.4.1 per ai/task.md §7.4.8. |
 | 1.1 | 2026-07-30 | Status open → resolved; fix description and per-step verification status recorded; the persisted test module noted as out of the prompt's permitted scope. |
+| 1.2 | 2026-07-30 | Status resolved → closed; closure notes recorded, including the narrowness of the window and the limits of the minimal fix. Moved to ai/workspace/issues/closed/ per P00 §1.1.14.4. |
 
 ---
 
