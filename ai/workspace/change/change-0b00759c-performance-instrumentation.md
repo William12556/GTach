@@ -19,7 +19,7 @@ change_info:
   title: "Move record_frame_end before the pacing sleep; gate periodic logging inside the monitor; replace the UUID frame ID with a counter; sample psutil at 1 Hz"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -353,12 +353,44 @@ implementation:
     comparable. Note the changeover point in the operational log.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-07-30"
+  implemented_by: "Claude Code, per prompt-0b00759c"
   verification_date: ""
   verified_by: ""
-  test_results: ""
-  issues_found: []
+  test_results: >
+    Development platform only. On-target verification is outstanding — see
+    the note below on the §7.5.3 baseline.
+
+    All seven edits applied as specified. Compile checks pass on both
+    files (python -m py_compile). Source-order checks: record_frame_end is
+    at manager.py:435 and the pacing time.sleep at manager.py:446, so the
+    frame closes before the sleep; "len(frame_id)" no longer appears in
+    manager.py; get_current_metrics is called in _display_loop only inside
+    the should_log_periodic guard; "uuid.uuid4()" no longer appears in
+    monitor.py and the now-unused "import uuid" was removed.
+
+    All ten test cases above were executed directly against
+    PerformanceMonitor on macOS (Python 3.11.14, psutil and pygame
+    present) and all pass: frame IDs 1 then 2; 0 when monitoring is
+    disabled; record_frame_end(0) returns 0.0 with no warning; a 5 ms
+    bracketed sleep measured 6.28 ms rather than the 16.67 ms target;
+    should_log_periodic returned True only at frames 600 and 1200 over a
+    1200-frame run, and False when monitoring is disabled; a mocked
+    memory_info() was invoked once across 100 rapid calls and a second
+    time after the cache timestamp was advanced past 1 s; frame IDs
+    restart at 1 after reset_metrics; a 30 ms frame incremented
+    _dropped_frames.
+
+    pytest tests/ collected 0 items — the tests/ tree has contained only
+    README.md since commit 57ebbe6 (project reset for governance). The
+    "no new failures" criterion is therefore vacuous, and the
+    regression_scope entry naming tests/display/ could not be exercised.
+    The direct assertions above stand in its place. No existing test
+    asserted a string frame ID, because no tests exist.
+
+    Only the two named files were modified.
+  issues_found:
+    - issue_ref: "issue-c5dedd71"
 
 traceability:
   design_updates: []
@@ -367,9 +399,13 @@ traceability:
       relationship: "blocks"
     - change_ref: "change-9ed1c77e"
       relationship: "blocks"
+    - change_ref: "change-c5dedd71"
+      relationship: "related"
   related_issues:
     - issue_ref: "issue-0b00759c"
       relationship: "resolves"
+    - issue_ref: "issue-c5dedd71"
+      relationship: "introduced_by"
 
 version_history:
   - version: "1.0"
@@ -377,6 +413,13 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document coupled to issue-0b00759c."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "William Watson"
+    changes:
+      - "Status proposed -> implemented. Recorded implementation date, executor and development-platform test results."
+      - "Recorded issue-c5dedd71 in issues_found: the two abstract declarations on PerformanceMonitorInterface still read str, because this change's prompt confined the executor to monitor.py and manager.py."
+      - "Noted that pytest collected 0 items and that on-target verification of the §7.5.3 baseline remains outstanding."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -393,6 +436,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-0b00759c. |
+| 1.1 | 2026-07-30 | Status proposed → implemented; implementation and development-platform test results recorded; issue-c5dedd71 recorded in issues_found; on-target §7.5.3 baseline noted as outstanding. |
 
 ---
 

@@ -16,7 +16,6 @@ and analysis for the OBDII display system.
 import time
 import threading
 import logging
-import uuid
 import os
 import psutil
 from collections import deque, defaultdict
@@ -47,10 +46,17 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         self._start_time = 0.0
         
         # Frame tracking
-        self._active_frames: Dict[str, float] = {}  # frame_id -> start_time
+        self._active_frames: Dict[int, float] = {}  # frame_id -> start_time
         self._frame_history = deque(maxlen=target_fps * 10)  # Last 10 seconds
         self._frame_count = 0
         self._dropped_frames = 0
+
+        # Instrumentation cost reduction (change-0b00759c)
+        self._frame_id_counter = 0        # monotonic frame ID source
+        self._memory_cache_mb = 0.0       # cached psutil RSS reading
+        self._memory_cache_ts = 0.0       # time.time() of that reading
+        self._memory_sample_interval = 1.0   # seconds between psutil reads
+        self._log_interval_frames = 600      # periodic log cadence
         
         # Render operation tracking
         self._render_operations = defaultdict(list)  # operation -> [durations]
@@ -133,34 +139,50 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             except Exception as e:
                 self.logger.error(f"Error stopping performance monitoring: {e}")
     
-    def record_frame_start(self) -> str:
-        """Record start of frame rendering and return frame ID"""
+    def record_frame_start(self) -> int:
+        """Record start of frame rendering and return frame ID.
+
+        Returns:
+            Positive, monotonically increasing frame ID, or 0 when monitoring
+            is disabled or an error occurs.
+        """
         if not self._monitoring:
-            return ""
-        
+            return 0
+
         with self._lock:
             try:
-                frame_id = str(uuid.uuid4())[:8]
+                self._frame_id_counter += 1
+                frame_id = self._frame_id_counter
                 current_time = time.time()
-                
+
                 self._active_frames[frame_id] = current_time
-                
-                # Clean up old frame IDs (safety measure)
-                cutoff_time = current_time - 1.0  # 1 second timeout
-                expired_frames = [fid for fid, start_time in self._active_frames.items() 
-                                if start_time < cutoff_time]
-                for fid in expired_frames:
-                    del self._active_frames[fid]
-                    self._dropped_frames += 1
-                
+
+                # Clean up old frame IDs (safety measure). In steady state
+                # exactly one frame is active, so the scan is skipped.
+                if len(self._active_frames) > 1:
+                    cutoff_time = current_time - 1.0  # 1 second timeout
+                    expired_frames = [fid for fid, start_time in self._active_frames.items()
+                                    if start_time < cutoff_time]
+                    for fid in expired_frames:
+                        del self._active_frames[fid]
+                        self._dropped_frames += 1
+
                 return frame_id
-                
+
             except Exception as e:
                 self.logger.error(f"Error recording frame start: {e}")
-                return ""
-    
-    def record_frame_end(self, frame_id: str) -> float:
-        """Record end of frame rendering and return frame time"""
+                return 0
+
+    def record_frame_end(self, frame_id: int) -> float:
+        """Record end of frame rendering and return frame time.
+
+        Args:
+            frame_id: Identifier returned by record_frame_start. 0 means
+                monitoring was disabled, and the call is a no-op.
+
+        Returns:
+            Frame duration in seconds, or 0.0.
+        """
         if not self._monitoring or not frame_id:
             return 0.0
         
@@ -198,7 +220,31 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             except Exception as e:
                 self.logger.error(f"Error recording frame end: {e}")
                 return 0.0
-    
+
+    def should_log_periodic(self) -> bool:
+        """Whether the caller should emit the periodic performance line.
+
+        Replaces a per-frame get_current_metrics() call made only to
+        read a frame counter the monitor already holds. Constructing
+        the metrics object also performs a psutil read, so testing
+        the counter directly removes that cost from the frame path.
+
+        Returns:
+            True on every self._log_interval_frames-th recorded frame.
+        """
+        if not self._monitoring:
+            return False
+
+        try:
+            with self._lock:
+                return (
+                    self._frame_count > 0
+                    and self._frame_count % self._log_interval_frames == 0
+                )
+        except Exception as e:
+            self.logger.error(f"Error testing periodic log interval: {e}")
+            return False
+
     def record_render_operation(self, operation_type: str, duration: float) -> None:
         """Record a render operation with timing"""
         if not self._monitoring:
@@ -316,7 +362,10 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 self._frame_count = 0
                 self._dropped_frames = 0
                 self._total_dirty_area = 0
-                
+                self._frame_id_counter = 0
+                self._memory_cache_mb = 0.0
+                self._memory_cache_ts = 0.0
+
                 self.logger.debug("Performance metrics reset")
                 
             except Exception as e:
@@ -408,8 +457,15 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         """Get current memory usage in MB"""
         try:
             if self._process:
+                now = time.time()
+                if (self._memory_cache_ts
+                        and now - self._memory_cache_ts < self._memory_sample_interval):
+                    return self._memory_cache_mb
+
                 memory_info = self._process.memory_info()
-                return memory_info.rss / (1024 * 1024)  # Convert to MB
+                self._memory_cache_mb = memory_info.rss / (1024 * 1024)
+                self._memory_cache_ts = now
+                return self._memory_cache_mb
             elif self._memory_samples:
                 return self._memory_samples[-1]['usage_mb']
             else:

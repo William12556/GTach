@@ -429,7 +429,12 @@ class DisplayManager:
                 self.rendering_engine.swap_buffers()
                 self.rendering_engine.write_to_framebuffer()
                 
-                # Tick clock and record frame end
+                # Close the frame BEFORE the pacing sleep so the recorded
+                # interval measures render cost, not the loop period
+                # (display review §6.2, recommendation 15).
+                self.performance_monitor.record_frame_end(frame_id)
+
+                # Frame pacing.
                 # pygame.time.Clock.tick() uses SDL_Delay which can block
                 # indefinitely on macOS when the Cocoa run loop stalls.
                 # Use time.sleep() for reliable frame pacing on all platforms.
@@ -439,17 +444,17 @@ class DisplayManager:
                 _sleep = _frame_target - _frame_elapsed
                 if _sleep > 0:
                     time.sleep(_sleep)
-                self.performance_monitor.record_frame_end(frame_id)
-                
-                # Periodic performance logging
-                if frame_id and len(frame_id) > 0:  # Every few frames
+
+                # Periodic performance logging. The monitor owns the
+                # cadence test, so no metrics object is constructed on
+                # ordinary frames (recommendation 16).
+                if self.performance_monitor.should_log_periodic():
                     metrics = self.performance_monitor.get_current_metrics()
-                    if metrics.total_frames % 600 == 0:  # Every 10 seconds at 60fps
-                        self.logger.info(
-                            f"Performance: {metrics.fps:.1f} FPS, "
-                            f"{metrics.frame_time_ms:.1f}ms frame, "
-                            f"{metrics.memory_usage_mb:.1f}MB mem"
-                        )
+                    self.logger.info(
+                        f"Performance: {metrics.fps:.1f} FPS, "
+                        f"{metrics.frame_time_ms:.1f}ms frame, "
+                        f"{metrics.memory_usage_mb:.1f}MB mem"
+                    )
                 
             except Exception as e:
                 self.logger.error(f"Display loop error: {e}", exc_info=True)

@@ -19,7 +19,7 @@ issue_info:
   title: "record_frame_end is called after the pacing sleep, so frame_time_ms measures idle padding; per-frame UUID, expiry scan, metrics call and psutil read add avoidable cost"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -159,6 +159,8 @@ analysis:
       relationship: "blocks"
     - issue_ref: "issue-821919ce"
       relationship: "blocks"
+    - issue_ref: "issue-c5dedd71"
+      relationship: "related"
 
 resolution:
   assigned_to: "Claude Code"
@@ -169,15 +171,60 @@ resolution:
     monotonic integer; sample psutil memory at 1 Hz rather than per frame.
     See change-0b00759c.
   change_ref: "change-0b00759c"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-30"
+  resolved_by: "Claude Code, per prompt-0b00759c"
+  fix_description: >
+    Seven edits across the two files named in change-0b00759c, all
+    applied as specified.
+
+    Fault (a), the measurement defect: record_frame_end now sits
+    immediately after rendering_engine.write_to_framebuffer() at
+    manager.py:435, above the pacing time.sleep at manager.py:446, so the
+    recorded interval spans rendered work only. The dropped-frame test at
+    monitor.py:188 now evaluates real render times and its count is
+    expected to rise.
+
+    Fault (b), the unconditional metrics call: PerformanceMonitor gained
+    should_log_periodic(), which tests self._frame_count against
+    self._log_interval_frames (600) under the lock. _display_loop calls it
+    in place of the old "if frame_id and len(frame_id) > 0" guard and
+    constructs a metrics object only when it returns True. The log message
+    text and its three fields are unchanged.
+
+    Fault (c), the per-frame psutil read: _get_current_memory_usage caches
+    the RSS figure in _memory_cache_mb with timestamp _memory_cache_ts and
+    re-reads at most once per _memory_sample_interval (1.0 s). The
+    _memory_samples fallback and the except clause returning 0.0 are
+    retained, so a failed read cannot poison the cache.
+
+    Fault (d), the per-frame UUID and expiry scan: record_frame_start now
+    returns an int from _frame_id_counter (first valid ID 1, 0 reserved
+    for the disabled case) and the expiry scan is skipped when
+    len(_active_frames) <= 1, the steady state. _active_frames is retyped
+    Dict[int, float] and the now-unused "import uuid" was removed.
+    reset_metrics clears the counter and both cache fields.
+
+    Not fixed in this change: the two matching declarations on
+    PerformanceMonitorInterface (interfaces.py:73, 78) still read str,
+    because prompt-0b00759c confined the executor to monitor.py and
+    manager.py. Raised as issue-c5dedd71. No runtime effect — annotations
+    are not enforced and PerformanceMonitor remains instantiable.
 
 verification:
   verified_date: ""
   verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  test_results: >
+    Development platform only. See change-0b00759c
+    verification.test_results for the full record. Status is `resolved`,
+    not `verified`: the fix is implemented and asserted on macOS, but the
+    on-target observations below have not been made.
+  closure_notes: >
+    Not closed. Closure requires the four outstanding on-target steps in
+    verification_enhanced.verification_steps, chief among them recording
+    the observed frame_time_ms as the baseline required by ai/task.md
+    §7.5.3. Until that reading exists, the prerequisite this issue was
+    raised to satisfy is not yet satisfied in fact, and tasks 7.3.5 and
+    7.3.6 remain without a baseline to be judged against.
 
 prevention:
   preventive_measures: >
@@ -201,7 +248,37 @@ verification_enhanced:
     - "Confirm the psutil memory figure still updates and is no longer read per frame."
     - "Confirm no UUID string appears in the frame identifier path."
     - "Record the observed frame_time_ms as the baseline required by ai/task.md §7.5.3."
-  verification_results: ""
+  verification_results: >
+    Four of the eight steps are complete; four require gtach.local and are
+    outstanding.
+
+    PASS — py_compile on src/gtach/display/performance/monitor.py.
+    PASS — py_compile on src/gtach/display/manager.py.
+    PASS — record_frame_end is called before time.sleep in _display_loop:
+    manager.py:435 against manager.py:446 by source order.
+    PASS — no UUID string appears in the frame identifier path:
+    "uuid.uuid4()" is gone from monitor.py and the unused "import uuid"
+    was removed. record_frame_start returns ints from _frame_id_counter,
+    confirmed 1 then 2 on a live object.
+
+    Additionally confirmed off-target, ahead of the on-target steps: a
+    5 ms bracketed sleep measured 6.28 ms rather than 16.67 ms, which is
+    the fault (a) correction observable without the device; and a mocked
+    psutil memory_info() was invoked once across 100 rapid calls and again
+    only after the cache timestamp passed 1 s, which is the fault (c)
+    correction.
+
+    OUTSTANDING — run on gtach.local and read the periodic log line;
+    frame_time_ms must be materially below 16.7 ms and must differ between
+    the OPTIONS screen and RADIAL mode.
+    OUTSTANDING — confirm the reported fps remains a plausible rate and
+    has not become 1000/render_time. _calculate_current_fps was left
+    untouched and derives from _frame_history timestamps, so this is
+    expected to hold, but it has not been observed.
+    OUTSTANDING — confirm the psutil memory figure still updates on the
+    device.
+    OUTSTANDING — record the observed frame_time_ms as the ai/task.md
+    §7.5.3 baseline.
 
 traceability:
   design_refs: []
@@ -228,6 +305,14 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from display-ui-graphics-review.md recommendations 15, 16, 17 and 18."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "William Watson"
+    changes:
+      - "Status open -> resolved. change-0b00759c implemented; resolution date, executor and fix description recorded for all four faults."
+      - "Recorded four of eight verification steps as PASS and four as OUTSTANDING pending gtach.local."
+      - "Recorded issue-c5dedd71 as related: the matching PerformanceMonitorInterface declarations were out of the executor's permitted file scope and still read str."
+      - "Status is resolved rather than verified because the ai/task.md §7.5.3 baseline reading has not been taken."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -244,6 +329,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from display-ui-graphics-review.md recommendations 15, 16, 17 and 18. |
+| 1.1 | 2026-07-30 | Status open → resolved; fix description and per-step verification status recorded; issue-c5dedd71 linked; on-target §7.5.3 baseline noted as outstanding. |
 
 ---
 
