@@ -47,6 +47,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         self.fb_size = 0
         self.use_mmap = False
         self.framebuffer_path = '/dev/fb0'
+        self._view_fallback_logged = False
         
         # Display constants for HyperPixel 2" Round
         self.display_center = (240, 240)
@@ -99,9 +100,23 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     self.logger.error("Font initialization failed")
                     pygame.font.init()  # Retry
                 
-                # Create surfaces
-                self.main_surface = pygame.Surface(surface_size)
-                self.back_surface = pygame.Surface(surface_size)
+                # Single surface at the framebuffer's own depth. Creating it
+                # at 32 bits removes the per-frame convert(32, 0) entirely:
+                # converting returns a NEW surface, so converting once and
+                # keeping the result would leave drawing going to the
+                # unconverted original (display review §5.1, recommendation 7).
+                self.back_surface = pygame.Surface(surface_size, 0, 32)
+
+                # main_surface is retained as an alias so RenderTarget.MAIN
+                # and get_surface() continue to resolve. There is no second
+                # buffer: nothing happens between composition and the write,
+                # so the intermediate copy had no purpose (recommendation 6).
+                self.main_surface = self.back_surface
+
+                self.logger.info(
+                    f"Surface format: {self.back_surface.get_bitsize()}-bit, "
+                    f"masks={self.back_surface.get_masks()}"
+                )
 
                 # Initialize framebuffer
                 self._initialize_framebuffer()
@@ -284,18 +299,20 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 return pygame.Rect(position[0], position[1], 0, 0)
     
     def swap_buffers(self) -> bool:
-        """Swap back buffer to main surface"""
-        with self._lock:
-            try:
-                if not self.main_surface or not self.back_surface:
-                    return False
-                
-                self.main_surface.blit(self.back_surface, (0, 0))
-                return True
-                
-            except Exception as e:
-                self.logger.error(f"Buffer swap failed: {e}")
-                return False
+        """No-op retained for interface compatibility.
+
+        back_surface is written to the framebuffer directly, so there
+        is no intermediate surface to swap into. The method is kept
+        because it is declared on RenderingEngineInterface
+        (interfaces.py:91) and called from
+        DisplayManager._display_loop; removing it would be an
+        interface change for no benefit (display review §5.1,
+        recommendation 6).
+
+        Returns:
+            True always.
+        """
+        return True
     
     def write_to_framebuffer(self) -> bool:
         """
@@ -311,50 +328,66 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             start_time = time.time()
             
             try:
-                if not self.main_surface:
+                if not self.back_surface:
                     return False
 
                 if not self.fb:
                     return False
-                
-                # Convert surface to proper format
-                converted_surface = self.main_surface.convert(32, 0)
-                buffer_data = converted_surface.get_buffer()
-                
-                # Convert to bytes for writing
+
+                # A buffer-protocol view over the surface's own memory.
+                # mmap.write and file.write both accept it, so the frame
+                # is not materialised into a bytes object first
+                # (recommendation 8).
+                payload = None
                 try:
-                    buffer_bytes = bytes(buffer_data)
-                except (TypeError, ValueError):
+                    payload = self.back_surface.get_view('0')
+                except Exception as e:
+                    if not getattr(self, '_view_fallback_logged', False):
+                        self._view_fallback_logged = True
+                        self.logger.error(
+                            f"Surface view unavailable, falling back to a per-frame "
+                            f"copy: {e}", exc_info=True
+                        )
+
+                if payload is None:
+                    converted_surface = self.back_surface.convert(32, 0)
+                    buffer_data = converted_surface.get_buffer()
                     try:
-                        buffer_bytes = buffer_data.raw
-                    except AttributeError:
-                        buffer_bytes = buffer_data
-                
-                actual_size = len(buffer_bytes)
-                
-                # Handle size mismatches
+                        payload = bytes(buffer_data)
+                    except (TypeError, ValueError):
+                        try:
+                            payload = buffer_data.raw
+                        except AttributeError:
+                            payload = buffer_data
+
+                # pygame.BufferProxy does not implement __len__ — its size is
+                # exposed as .length. bytes and memoryview, used by the
+                # fallback above, do implement it. Calling len() on the view
+                # raises TypeError, which the handler below would absorb into
+                # a returned False, failing every frame silently.
+                actual_size = getattr(payload, 'length', None)
+                if actual_size is None:
+                    actual_size = len(payload)
+
+                # Size mismatch: materialise, then truncate or pad as
+                # before. Behaviour and log level are unchanged here —
+                # raising the level is recommendation 21 (task 7.3.3).
                 if actual_size != self.fb_size:
                     self.logger.debug(f"Buffer size mismatch: {actual_size} vs {self.fb_size}")
+                    payload = bytes(payload)
                     if actual_size > self.fb_size:
-                        buffer_bytes = buffer_bytes[:self.fb_size]
-                    elif actual_size < self.fb_size:
-                        buffer_bytes = buffer_bytes + b'\x00' * (self.fb_size - actual_size)
-                
-                # Write to framebuffer
-                if self.use_mmap:
-                    self.fb.seek(0)
-                    self.fb.write(buffer_bytes)
-                    self.fb.flush()
-                    try:
-                        self.fb.sync()
-                    except AttributeError:
-                        os.fsync(self.fb_dev.fileno())
-                else:
-                    self.fb.seek(0)
-                    self.fb.write(buffer_bytes)
-                    self.fb.flush()
-                    os.fsync(self.fb.fileno())
-                
+                        payload = payload[:self.fb_size]
+                    else:
+                        payload = payload + b'\x00' * (self.fb_size - actual_size)
+
+                # Single write, no synchronisation. flush/sync/fsync give
+                # no correctness benefit on a framebuffer device and
+                # lengthen the window in which the scan-out can read a
+                # partially updated buffer (display review §4.1,
+                # recommendation 2).
+                self.fb.seek(0)
+                self.fb.write(payload)
+
                 # Update statistics
                 self._stats.buffer_writes += 1
                 write_time = time.time() - start_time
