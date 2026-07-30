@@ -23,6 +23,7 @@ Created: 2026 July 29
 [8.0 Release Plan](<#8.0 release plan>)
 [8.1 Decision](<#8.1 decision>)
 [8.2 Prerequisite — Minimal Test Suite (P06)](<#8.2 prerequisite — minimal test suite (p06)>)
+[8.2.1 Standing Closure Rule](<#8.2.1 standing closure rule>)
 [8.3 Release v0.3.0 — Diagnostic and Low-Risk](<#8.3 release v0.3.0 — diagnostic and low-risk>)
 [8.4 Observation Session](<#8.4 observation session>)
 [8.5 Release v0.4.0 — Gated and Appearance-Changing](<#8.5 release v0.4.0 — gated and appearance-changing>)
@@ -585,6 +586,61 @@ arrangement in `engine.py`.
 
 Every acquisition assertion in the `RWLock` tests carries a timeout, so a
 regression fails the suite rather than hanging it.
+
+#### 8.2.1 Standing Closure Rule
+
+Governance §1.1.14.3 sets a different closure criterion for each document
+class in a triple, and they are not all met at the same moment:
+
+| Class | Criterion | Met when the code lands? |
+|---|---|---|
+| Prompt | "Code generated successfully, human confirmed" | Yes |
+| Change | "Implemented, **tested**, design updated, human accepted" | No |
+| Issue | "Resolved and verified, corresponding change implemented **and tested**" | No |
+
+§1.7.18 restates it: *Document closure — requires Stage 3 regression
+pass*. §1.7.15 adds that the progressive validation sequence is mandatory
+before closure.
+
+**Rule.** Close the prompt when the code lands. Keep the issue and the
+change active until a passing T06 result document exists for the coupled
+T05.
+
+The Claude Code invocation is therefore:
+
+```
+implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the
+prompt when finished. Leave the issue and change active pending test
+results.
+```
+
+with a second, later instruction closing the issue and change once the
+result document is written.
+
+**Why it matters.** Closed documents are immutable (§1.1.14.2, §1.1.14.6).
+If a test written after closure fails, the original issue and change
+cannot increment to iteration 2; §1.7.13 requires a *new* issue with a
+new UUID instead. The fix and its verification then live under different
+UUIDs and traceability fragments. The closed change's `test_results`
+field is likewise frozen at whatever ad-hoc verification it recorded.
+
+**Documents closed before this rule was recorded.** `4c038bed`,
+`5a9dc15e`, `11be4865`, `0b00759c` and `c5dedd71` were closed on
+implementation, at a point when `tests/` was empty and the "tested"
+criterion was unachievable. Their verification blocks record what was
+actually done — compile checks, source-order checks, hand-executed cases
+— and explicitly qualify the pytest criterion, so the record is accurate
+rather than overstated.
+
+Nothing is lost. Their T05 documents remain **active** in
+`ai/workspace/test/`; only the issue, change and prompt were archived. A
+`result-<uuid>` document can still be created and coupled to each T05 in
+the normal way, completing the verification chain without modifying any
+closed document. Do not reopen them: governance already carries one
+documented exception to §1.1.14.6 (v9.12) and it should not become a
+pattern.
+
+[Return to Table of Contents](<#table of contents>)
 
 Coverage of untouched legacy code is explicitly **not** in scope. The
 objective is a net beneath the changes being released, not retrospective

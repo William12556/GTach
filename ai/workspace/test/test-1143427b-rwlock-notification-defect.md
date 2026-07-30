@@ -405,34 +405,35 @@ test_cases:
     defects: []
 
   - case_id: "TC-011"
-    description: "ConfigManager load and save are unaffected in the single-threaded case"
+    description: "ConfigManager still guards its configuration I/O with the lock"
     category: "regression"
-    preconditions:
-      - "A temporary configuration file via tempfile"
+    preconditions: []
     test_steps:
       - step: "1"
-        action: "Construct a ConfigManager against the temporary path"
+        action: "Parse src/gtach/utils/config.py with the ast module"
       - step: "2"
-        action: "Call load_config, mutate a field, call save_config, then load_config again"
+        action: "Assert ConfigManager.__init__ constructs an RWLock"
+      - step: "3"
+        action: "Assert load_config calls read_lock or write_lock, and save_config calls write_lock"
     inputs:
-      - parameter: "config path"
-        value: "tempfile-backed"
+      - parameter: "source file"
+        value: "src/gtach/utils/config.py"
         type: "path"
     expected_outputs:
-      - field: "round trip"
-        expected_value: "The mutated field survives the save and reload"
-        validation: "Equality on the mutated field"
-      - field: "wall time"
-        expected_value: "No blocking"
-        validation: "Completes well within the timeout"
+      - field: "RWLock construction in __init__"
+        expected_value: "Present"
+        validation: "ast.Call to the name RWLock"
+      - field: "lock acquisition in load_config and save_config"
+        expected_value: "Present in both"
+        validation: "read_lock or write_lock among the called attributes"
     postconditions:
-      - "The consumer of the lock behaves as before"
+      - "Establishes that the defect was on a live path rather than in dead code, which is the premise of the issue's Critical severity"
     execution:
       status: "not_run"
       executed_date: ""
       executed_by: ""
       actual_result: ""
-      pass_fail_criteria: "Round trip succeeds without blocking"
+      pass_fail_criteria: "Both methods still acquire the lock"
     defects: []
 
 coverage:
@@ -462,6 +463,17 @@ coverage:
       reason: "Reads _writers under _readers_lock rather than _write_ready, so the writer count can be momentarily stale. A monitoring accessor with no callers in src/gtach; recorded in issue-1143427b and left out of scope"
     - component: "Behaviour after the 7.4.1 retirement"
       reason: "If RWLock's remaining justification is reduced by the retirement, the threading.RLock replacement should be raised as its own cycle. Out of scope here"
+    - component: "ConfigManager load/save behavioural round trip"
+      reason: >
+        TC-011 was specified as a tempfile-backed round trip and is
+        implemented as a structural assertion instead. ConfigManager is a
+        process-wide singleton whose construction calls
+        ensure_directories() against OBDII_HOME, so a behavioural round
+        trip writes outside the temporary directory unless the home
+        resolver is isolated as well. That makes it an integration test,
+        not a unit test. Deferred; the structural assertion covers what
+        this change needs, which is that the lock is still on the live
+        configuration path
 
 test_execution_summary:
   total_cases: 11
@@ -518,11 +530,27 @@ notes: >
   Thread.join(timeout=...) and Event.wait(timeout=...) throughout, and
   assert on is_set or is_alive rather than relying on the call returning.
 
-  TC-001 is the discriminating case: it must fail against the pre-change
-  implementation. Run it once against the unpatched method before
-  applying the change and record the outcome in the T06 result. A
-  reproduction that passes both before and after proves nothing about the
-  fix.
+  Discrimination confirmed 2026-07-30 against commit 33c751d^, the last
+  revision before the fix. Four cases fail on the pre-change source and
+  pass on the corrected source:
+
+  | Case | Pre-fix | Post-fix |
+  |---|---|---|
+  | TC-001 writer woken by the departing reader | FAIL | PASS |
+  | TC-002 last reader notifies both conditions | FAIL | PASS |
+  | TC-003 notification confined to the final release | FAIL | PASS |
+  | TC-009 _readers_lock not held across a condition | FAIL | PASS |
+
+  The remaining seven pass on both, which is correct: they assert
+  properties the defect did not break — reader concurrency, writer
+  exclusivity, the uncontended path, mixed load, the method set, and
+  ConfigManager's use of the lock. A suite in which every case
+  discriminates would be over-fitted to one defect.
+
+  TC-003 fails pre-fix for a second reason worth noting: the pre-change
+  method notifies inside the `_readers == 0` branch too, but the harness
+  counts notifications on both conditions, and the pre-change code never
+  reaches the `_read_ready` counter at all.
 
   TC-001 step 3 is the difficult part. The window between stage one and
   stage two of _acquire_write is not directly addressable from outside
@@ -544,6 +572,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-1143427b, per ai/task.md §8.2."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "William Watson"
+    changes:
+      - "Generated tests/utils/test_rwlock.py. TC-011 reimplemented as a structural assertion; the behavioural round trip is deferred to integration because ConfigManager construction calls ensure_directories() against OBDII_HOME. Recorded the discrimination result against 33c751d^: TC-001, TC-002, TC-003 and TC-009 fail pre-fix and pass post-fix; the other seven pass on both by design."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -560,6 +593,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial test document for change-1143427b, per ai/task.md §8.2. |
+| 1.1 | 2026-07-30 | Generated `tests/utils/test_rwlock.py`; TC-011 reimplemented structurally; discrimination against `33c751d^` recorded. |
 
 ---
 

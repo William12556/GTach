@@ -2,7 +2,7 @@
 
 **Created**: 2025 08 17
 
-## Current Release: v0.1.0.101
+## Current Release: v0.1.101
 
 **Release Date**: 2025-08-13  
 **Status**: Alpha Release
@@ -18,15 +18,15 @@ Initial alpha release establishing core project structure, cross-platform develo
 - AI-assisted development workflow integration
 
 ### Detailed Release Information
-**Full Release Notes**: [releases/RELEASE_NOTES_v0.1.0.101.md](releases/RELEASE_NOTES_v0.1.0.101.md)
+**Full Release Notes**: [releases/RELEASE_NOTES_v0.1.0.101.md](deprecated/releases/RELEASE_NOTES_v0.1.0.101.md)
 
 ---
 
 ## Release History
 
-| Version | Date | Type | Summary | Full Notes |
-|---------|------|------|---------|------------|
-| v0.1.0.101 | 2025-08-13 | Alpha | Initial project structure and protocols | [View Details](releases/RELEASE_NOTES_v0.1.0.101.md) |
+| Version  | Date       | Type  | Summary                                 | Full Notes                                                      |
+| -------- | ---------- | ----- | --------------------------------------- | --------------------------------------------------------------- |
+| v0.1.101 | 2025-08-13 | Alpha | Initial project structure and protocols | [View Details](deprecated/releases/RELEASE_NOTES_v0.1.0.101.md) |
 
 ---
 
