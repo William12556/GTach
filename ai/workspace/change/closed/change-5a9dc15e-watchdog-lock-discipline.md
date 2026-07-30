@@ -19,7 +19,7 @@ change_info:
   title: "Release thread_manager._lock before sleeping in soft recovery; collect recovery actions under the lock and dispatch outside it"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -291,12 +291,65 @@ implementation:
     deployment is the expected outcome.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-07-30"
+  implemented_by: "Claude Code, per prompt-5a9dc15e"
+  verification_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    Both edits applied to src/gtach/core/watchdog.py exactly as specified.
+    No other file modified; src/gtach/core/thread.py has no diff. All
+    twelve success criteria in prompt-5a9dc15e are met, with one recorded
+    qualification on the pytest criterion.
+
+    Executed 2026-07-30 on macOS 15 (Darwin 25.5.0) with Python 3.11.14
+    and pygame 2.6.1.
+
+    Compile: python -m py_compile src/gtach/core/watchdog.py passes.
+
+    Test suite: tests/ contains no test modules — only README.md — so
+    pytest collects zero items. The criterion "pytest tests/ passes with
+    no new failures" is satisfied only vacuously and carries no
+    regression signal. Verification was therefore carried out with an
+    ephemeral validation script exercising WatchdogMonitor against a real
+    ThreadManager, with a second thread driving heartbeats through the
+    public update_heartbeat API. Eighteen assertions covering all eight
+    test cases above and the four edge cases in prompt-5a9dc15e. All
+    eighteen pass.
+
+    Differential evidence: the same script run unchanged against the
+    pre-change watchdog.py from HEAD fails four assertions and passes the
+    other fourteen. The four failures are the defect —
+
+      competing update_heartbeat blocked 951 ms during soft recovery, now
+      0.03 ms worst case; soft recovery reported failure for a thread
+      writing its heartbeat throughout the window, now reports success;
+      _reset_thread_health not called on that recovered thread, now
+      called; handlers dispatched with thread_manager._lock held, now
+      dispatched with it free (probe thread acquires _state_lock within
+      500 ms during each of three handler invocations).
+
+    The fourteen behaviour-preservation assertions pass identically
+    before and after, which is the evidence that the restructure changed
+    only lock scope: dispatch order and multiplicity for three
+    simultaneously unhealthy threads (critical/recovery/warning, once
+    each, in traversal order), _reset_thread_health once per healthy
+    thread, non-RUNNING/STARTING threads skipped with no ThreadHealth
+    entry created, empty-dictionary no-op, the stalled-heartbeat path,
+    health.current_level and health.recovery_attempts, and
+    soft_recovery_attempts counting including the stage-1 early return.
+
+    Source inspection: watchdog.py holds three time.sleep calls and four
+    'with self.thread_manager._lock' blocks. sleep(1.0) at line 271 lies
+    between the stage-1 block at 255 and the stage-3 block at 277;
+    sleep(2.0) at 315 precedes the unchanged hard-recovery block at 316;
+    sleep(0.5) at 363 is in no lock block. The phase-1 traversal block at
+    150 contains no call. _attempt_soft_recovery contains exactly two
+    thread_manager._lock blocks with the sleep between them, and stage 3
+    re-tests membership before indexing. No handler signature changed.
+  issues_found:
+    - "tests/ contains no test modules, so the regression_scope entry 'tests/core/ — full existing core suite' could not be executed. Verification rests on the ephemeral script and its differential run against the pre-change file, both described above. The gap is project-wide and predates this change; it is not a residual of this change and needs a separate T03 if it is to be addressed."
+    - "Implementation step 4 — on-target confirmation on gtach.local that normal operation produces no spurious watchdog warnings and that an induced stall recovers as expected — remains open and is owned by William Watson. It is the purpose of the change, not a condition of its closure."
+    - "Behaviour under fault changes as deployment_notes anticipates: soft recovery can now succeed where it previously always escalated. A fall in hard_recovery_attempts on target is the expected outcome, not a regression."
 
 traceability:
   design_updates: []
@@ -311,6 +364,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document coupled to issue-5a9dc15e."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Implemented and verified via prompt-5a9dc15e. Verification block populated; status -> closed; moved to ai/workspace/change/closed/ per P00 §1.1.14.4."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -327,6 +385,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-5a9dc15e. |
+| 1.1 | 2026-07-30 | Implemented and verified. Status closed; moved to ai/workspace/change/closed/ per P00 §1.1.14.4. |
 
 ---
 

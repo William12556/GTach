@@ -19,7 +19,7 @@ issue_info:
   title: "WatchdogMonitor holds thread_manager._lock across time.sleep during recovery, blocking the heartbeat it is waiting to observe and stalling all thread bookkeeping"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -178,15 +178,90 @@ resolution:
     _check_thread_health to collect the required recovery actions under the
     lock, release it, then dispatch. See change-5a9dc15e.
   change_ref: "change-5a9dc15e"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-30"
+  resolved_by: "Claude Code, per prompt-5a9dc15e"
+  fix_description: >
+    Two structural edits in src/gtach/core/watchdog.py, as specified.
+
+    _check_thread_health became collect-then-dispatch. Phase 1 holds
+    thread_manager._lock only for the traversal, appending a
+    (level, name, health, elapsed) tuple per eligible thread with the
+    threshold chain unchanged. Phase 2 runs after the with block exits and
+    calls _handle_critical_timeout, _handle_recovery_timeout,
+    _handle_warning_timeout or _reset_thread_health in traversal order.
+
+    _attempt_soft_recovery split its heartbeat observation into three
+    stages. Stage 1 acquires the lock, returns early with a debug log if
+    the thread is no longer registered, otherwise captures old_heartbeat
+    and runs the existing display-thread debug branch. Stage 2 sleeps
+    1.0 s with no lock held. Stage 3 re-acquires, re-tests membership and
+    re-reads last_heartbeat from the dictionary's current ThreadInfo,
+    leaving new_heartbeat at its not-recovered default if the entry has
+    gone. The success block — log, soft_recovery_successes increment under
+    _recovery_lock, _reset_thread_health — now runs outside the lock.
+
+    The method preamble, all handler signatures, every threshold, the
+    sleep duration and the recovery_stats increment points are unchanged.
+    src/gtach/core/thread.py has no diff.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-07-30"
+  verified_by: "Claude Code"
+  test_results: >
+    Verified 2026-07-30 on macOS 15 (Darwin 25.5.0), Python 3.11.14,
+    pygame 2.6.1.
+
+    tests/ contains no test modules — only README.md — so pytest collects
+    zero items and the suite provides no regression signal. Verification
+    was therefore performed with an ephemeral validation script driving
+    WatchdogMonitor against a real ThreadManager instance with a second
+    thread calling the public update_heartbeat API. Eighteen assertions,
+    covering all eight test cases in change-5a9dc15e and all four edge
+    cases in prompt-5a9dc15e. All eighteen pass.
+
+    The same script was then run unchanged against the pre-change
+    watchdog.py extracted from HEAD. Four assertions fail there and pass
+    after the change, isolating the defect:
+
+      - a competing update_heartbeat call was blocked for 951 ms during a
+        soft-recovery attempt; after the change the worst observed block
+        is 0.03 ms;
+      - soft recovery reported failure for a thread that was writing its
+        heartbeat throughout the window, and now reports success;
+      - _reset_thread_health was consequently not called on a recovered
+        thread, and now is;
+      - handlers were dispatched with thread_manager._lock held — a probe
+        thread could not acquire it within 500 ms — and are now dispatched
+        with it free.
+
+    The fourteen behaviour-preservation assertions pass identically before
+    and after: dispatch order and multiplicity for three simultaneously
+    unhealthy threads, _reset_thread_health once per healthy thread, the
+    skip of non-RUNNING/STARTING threads with no ThreadHealth entry
+    created, the empty-dictionary no-op, the stalled-heartbeat path,
+    health.current_level and health.recovery_attempts, and the
+    soft_recovery_attempts count including the stage-1 early-return case.
+  closure_notes: >
+    Both faults reported in behavior.actual are corrected. Fault (a) — the
+    lock held across time.sleep(1.0) — is removed by the three-stage
+    split, and the measurement above confirms the observation can now see
+    the write it is testing for. Fault (b) — recovery dispatched from
+    inside the locked traversal — is removed by collect-then-dispatch.
+    _attempt_hard_recovery, get_thread_health_status and
+    _emergency_shutdown were reviewed and left unchanged as the issue
+    specifies; their sleeps lie outside any thread_manager lock.
+
+    Two items remain open by design and are not conditions of this
+    closure. Implementation step 4 of change-5a9dc15e — on-target
+    confirmation on gtach.local that normal operation produces no spurious
+    watchdog warnings and that an induced stall recovers — is owned by
+    William Watson. The public ThreadManager.get_last_heartbeat accessor
+    recorded under change-5a9dc15e alternatives_considered was
+    deliberately not taken; it remains available as a separate
+    encapsulation change.
+
+    The absence of any test module under tests/ is a standing gap wider
+    than this issue and is not raised as a residual against it.
 
 prevention:
   preventive_measures: >
@@ -209,7 +284,50 @@ verification_enhanced:
     - "Unit test: confirm update_heartbeat from another thread is not blocked for more than a few milliseconds during a soft-recovery attempt."
     - "Unit test: with three simultaneously unhealthy threads, confirm the total time thread_manager._lock is held during one health-check cycle is bounded by the traversal, not by the recovery sleeps."
     - "Confirm recovery statistics — soft_recovery_attempts, soft_recovery_successes, hard_recovery_attempts — are still incremented as before."
-  verification_results: ""
+  verification_results: >
+    All eight steps executed 2026-07-30. All pass.
+
+    1. python -m py_compile src/gtach/core/watchdog.py — passes.
+
+    2. No time.sleep inside a 'with self.thread_manager._lock' block. The
+    file has three sleeps and four lock blocks. Line 271 sleep(1.0) sits
+    between the stage-1 block at 255 and the stage-3 block at 277. Line
+    315 sleep(2.0) in _attempt_hard_recovery precedes its lock block at
+    316, unchanged. Line 363 sleep(0.5) in _emergency_shutdown is in no
+    lock block. The phase-1 block at 150 contains no call at all.
+
+    3. _check_thread_health releases the lock before dispatch. The
+    dispatch loop is outside the with block. Confirmed dynamically: during
+    each of three handler invocations a probe thread acquired
+    _state_lock within 500 ms, which it could not do before the change.
+
+    4. Heartbeat advancing during the window — _attempt_soft_recovery
+    reports success, soft_recovery_successes goes to 1 and
+    _reset_thread_health is called once. Fails on the pre-change file.
+
+    5. Heartbeat not advancing — no success reported,
+    soft_recovery_successes stays 0, _reset_thread_health is not called,
+    health.current_level is SOFT_RECOVERY and health.recovery_attempts is
+    1, so _handle_recovery_timeout escalates on the next cycle exactly as
+    before.
+
+    6. Competing update_heartbeat from another thread during a soft
+    recovery — worst observed block 0.03 ms over the 1 s window, against
+    951 ms on the pre-change file.
+
+    7. Three simultaneously unhealthy threads (50 s, 35 s, 20 s since
+    heartbeat) — critical, recovery and warning handlers each invoked
+    once, in traversal order, with the lock held only for the traversal.
+
+    8. Recovery statistics — soft_recovery_attempts increments once per
+    call including the stage-1 early-return path; soft_recovery_successes
+    increments only on an advancing heartbeat; both under _recovery_lock
+    at their original points. hard_recovery_attempts is untouched by this
+    change; _attempt_hard_recovery was not modified.
+
+    Additionally, a thread unregistered mid-sleep is treated as not
+    recovered with no KeyError or AttributeError, and a thread absent at
+    stage 1 returns in under 0.2 s without sleeping.
 
 traceability:
   design_refs: []
@@ -235,6 +353,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from core-comm-utils-code-review.md §3.3, §4.1 and recommendation #2."
+  - version: "1.1"
+    date: "2026-07-30"
+    author: "Claude Code"
+    changes:
+      - "Resolved by change-5a9dc15e via prompt-5a9dc15e. Resolution, verification and all eight verification steps recorded; status -> closed; moved to ai/workspace/issues/closed/ per P00 §1.1.14.4."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -251,6 +374,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from core-comm-utils-code-review.md §3.3, §4.1 and recommendation #2. |
+| 1.1 | 2026-07-30 | Resolved and verified. Status closed; moved to ai/workspace/issues/closed/ per P00 §1.1.14.4. |
 
 ---
 
