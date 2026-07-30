@@ -20,6 +20,13 @@ Created: 2026 July 29
 [7.4 Core, Communication and Utility Review Triples](<#7.4 core, communication and utility review triples>)
 [7.5 Verification Prerequisites](<#7.5 verification prerequisites>)
 [7.6 Sequencing and Notes](<#7.6 sequencing and notes>)
+[8.0 Release Plan](<#8.0 release plan>)
+[8.1 Decision](<#8.1 decision>)
+[8.2 Prerequisite — Minimal Test Suite (P06)](<#8.2 prerequisite — minimal test suite (p06)>)
+[8.3 Release v0.3.0 — Diagnostic and Low-Risk](<#8.3 release v0.3.0 — diagnostic and low-risk>)
+[8.4 Observation Session](<#8.4 observation session>)
+[8.5 Release v0.4.0 — Gated and Appearance-Changing](<#8.5 release v0.4.0 — gated and appearance-changing>)
+[8.6 Versioning and Build](<#8.6 versioning and build>)
 [Version History](<#version history>)
 
 ---
@@ -478,6 +485,175 @@ which is taken:
 
 ---
 
+## 8.0 Release Plan
+
+The §7.0 remediation is delivered in two releases rather than one. This
+section records that decision, its rationale, the contents of each
+release, and the test-suite work that precedes them.
+
+### 8.1 Decision
+
+Sixteen of the twenty triples remain outstanding. A single release
+carrying all sixteen was considered and rejected for three reasons:
+
+1. **No regression net.** `tests/` contains only `README.md`. No pytest
+   suite exists, so the "pytest tests/ passes" criterion in every change
+   document authored to date is vacuously satisfied. Governance
+   §1.7.18 makes unit tests mandatory for every component; the project is
+   currently non-compliant on that point. See §8.2.
+2. **Four triples cannot be authored correctly yet.** 7.3.4, 7.3.5,
+   7.3.6, 7.4.1 and 7.4.5 each depend on an observation or decision
+   recorded in §7.5 that has not been taken. Authoring them now means
+   authoring on assumption.
+3. **Batching destroys attribution.** The display report is a
+   differential diagnosis, not a fix list; §10.3 supplies a
+   discrimination table for the flicker's four candidate causes. 7.3.1
+   has shipped and should have removed three of them. If sixteen further
+   changes land together and the symptom persists, the cause cannot be
+   isolated — and 7.3.4, the highest-risk item, would be among them.
+
+The two-release split preserves attribution while keeping the number of
+deploy-and-observe cycles to two.
+
+[Return to Table of Contents](<#table of contents>)
+
+### 8.2 Prerequisite — Minimal Test Suite (P06)
+
+Authored before v0.3.0 is built. This is a P06 activity: T05 test
+documents in `ai/workspace/test/`, then generated pytest files in
+`tests/`. It is not a T03/T02/T04 cycle — test creation from existing
+source is governed by P06 §1.7.2 and §1.7.3, not by P03.
+
+Scope is the logic already changed or about to change, prioritising
+components that need no pygame surface:
+
+| Target | Module | Covers |
+|---|---|---|
+| `PlatformDetector._detect_via_hardware_revision` | `utils/platform.py` | 11be4865 — revision masking, flag bits, old-style codes, non-hex input |
+| `WatchdogMonitor` recovery paths | `core/watchdog.py` | 5a9dc15e — lock discipline, heartbeat observation, collect-then-dispatch |
+| `PerformanceMonitor` | `display/performance/monitor.py` | 0b00759c, c5dedd71 — frame IDs, periodic gate, memory cache, dropped-frame test |
+| `DeviceStore` | `comm/device_store.py` | 7.4.4 — malformed config handling, once authored |
+| `DisplayManager` RPM conditioning | `display/manager.py` | 4c038bed — EMA, band hysteresis, flash phase |
+
+The first four require only `unittest.mock` and `tempfile`. The fifth
+needs `SDL_VIDEODRIVER=dummy` and a mocked rendering engine, consistent
+with the existing headless arrangement in `engine.py`.
+
+Coverage of untouched legacy code is explicitly **not** in scope. The
+objective is a net beneath the changes being released, not retrospective
+coverage of the whole package.
+
+[Return to Table of Contents](<#table of contents>)
+
+### 8.3 Release v0.3.0 — Diagnostic and Low-Risk
+
+Contents: work already implemented, plus every outstanding triple that
+carries no observational dependency and no change to the product's
+appearance.
+
+| Triple | UUID | State at time of writing |
+|---|---|---|
+| 7.3.1 | `4c038bed` | Implemented, closed |
+| 7.3.7 | `0b00759c` | Implemented, active |
+| — | `c5dedd71` | Implemented, closed (derived from 0b00759c) |
+| 7.4.2 | `5a9dc15e` | Implemented, closed |
+| 7.4.3 | `11be4865` | Implemented, closed |
+| 7.3.2 | `66ef59a0` | To author — framebuffer write path |
+| 7.3.3 | `cb28980f` | To author — framebuffer geometry query |
+| 7.3.8 | `44bca479` | To author — display defect remediation |
+| 7.3.13 | `4c3c3e1f` | To author — update view progress |
+| 7.4.4 | `52414414` | To author — device store and pairing robustness |
+| 7.4.6 | `2d545bf5` | To author — thread shutdown budget |
+| 7.4.7 | `d32ccc49` | To author — utils and comm housekeeping, confined per §7.6.1 |
+
+7.4.7 is included on the confined-edit branch of its §7.6.1 dependency
+row: the §5.2 singleton warning is sited in `ConfigManager.__new__` or
+`__init__` and touches no device-persistence code, so it does not wait on
+the §7.5.4 decision.
+
+**7.3.3 clears its own gate.** Recommendation 21 makes the application
+query `FBIOGET_VSCREENINFO` and `FBIOGET_FSCREENINFO` and log a mismatch
+at ERROR rather than DEBUG. Once shipped, the application reports its own
+`bits_per_pixel`, `xres_virtual` and `line_length`, which is precisely
+the observation §7.5.1 requires. The manual reading becomes automatic and
+the gate on 7.3.4 clears itself.
+
+[Return to Table of Contents](<#table of contents>)
+
+### 8.4 Observation Session
+
+Taken once, on `gtach.local`, after v0.3.0 is deployed. All six §7.5
+items are collected in a single sitting.
+
+| Item | Method after v0.3.0 |
+|---|---|
+| 7.5.1 | Read from the application's own ERROR log line, supplied by 7.3.3. `fbset -i` retained as cross-check |
+| 7.5.2 | Characterise the flicker against the §10.3 discrimination table, then run the simulation-mode sweep of §10.4 |
+| 7.5.3 | Read `frame_time_ms` from the periodic log line — now meaningful, since 0b00759c has shipped. Record as the baseline for 7.3.5 and 7.3.6 |
+| 7.5.4 | Human decision on the `ConfigManager` disposition. Not an observation; can be taken at any time |
+| 7.5.5 | Reproduce the transport race with concurrent `disconnect()` and `send_command()` |
+| 7.5.6 | Record the actual hardware revision string. Retrospective — 11be4865 has already shipped — but confirms whether the defect was live or latent |
+
+Record the outcomes in §7.5 and in the T06 result documents for the
+triples they gate.
+
+[Return to Table of Contents](<#table of contents>)
+
+### 8.5 Release v0.4.0 — Gated and Appearance-Changing
+
+Authored after §8.4, with the observations in hand.
+
+| Triple | UUID | Unblocked by |
+|---|---|---|
+| 7.3.4 | `49b21ace` | 7.5.1 via 7.3.3; may reduce to an efficiency item if 7.5.2 shows band thrash rather than tearing |
+| 7.3.5 | `821919ce` | 7.5.3 baseline; keyed cache per §7.6.1 |
+| 7.3.6 | `9ed1c77e` | 7.3.5 |
+| 7.3.9 | `b02ed4ea` | — grouped here as an appearance change |
+| 7.3.10 | `378703da` | — retires DIGITAL mode; largest behavioural change in the set |
+| 7.3.11 | `5014040c` | 7.3.1 |
+| 7.3.12 | `5012004e` | 7.3.11 |
+| 7.4.1 | `394c3bbb` | 7.5.4 decision |
+| 7.4.5 | `6481f8ce` | 7.5.5 reproduction |
+
+The five user interface triples are deliberately released together so the
+product's appearance changes once rather than incrementally.
+
+[Return to Table of Contents](<#table of contents>)
+
+### 8.6 Versioning and Build
+
+Semantic versioning per governance §1.1.13. The project is in initial
+development (0.y.z), so both releases take a MINOR increment.
+
+- v0.3.0 — §8.3 contents
+- v0.4.0 — §8.5 contents
+
+Build and release use the existing project scripts; no new tooling is
+required.
+
+```bash
+# Build distribution artefacts
+./bin/build.sh
+
+# Stage a wheel to the Pi for the in-app OPTIONS update flow
+./bin/deploy.sh --stage
+
+# Or full deploy: transfer, install, restart the service
+./bin/deploy.sh
+
+# Cut the GitHub release once dist/ is built and the tag is ready
+./bin/release.sh
+```
+
+`bin/deploy.sh --stage` drops the wheel into `/opt/gtach/updates/` for
+the *Check for updates* control added by `f993f871`, which is the cheaper
+path for iteration. Release notes follow the
+`RELEASE_NOTES_vMAJOR.MINOR.PATCH.md` convention of §1.1.13.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
 ## Version History
 
 | Version | Date | Description |
@@ -488,6 +664,7 @@ which is taken:
 | 4.0 | 2026-07-29 | Diagnosed the `comm/` audit inconsistency via `ael_20260617-131721.LOG`: all 20 items were genuinely audited; only the copied report was truncated. Accepted as resolved per human decision; moved from "Governance Record Inconsistency" into Completed (§3.5); governance documents moved to `closed/`. |
 | 5.0 | 2026-07-30 | Added §7.0: 20 issue/change/prompt triples with assigned UUIDs covering all recommendations of `core-comm-utils-code-review.md` and `display-ui-graphics-review.md`, grouped by theme. All triples target the `claude_code` tactical profile. Recorded directed scope decisions for display recommendations 25, 26 and 29 (§7.3.14); the §5.1 decision gate on 7.4.1 (§7.4.8); six verification prerequisites (§7.5); and dependency, ordering and constraint notes (§7.6). |
 | 6.0 | 2026-07-30 | Cross-checked §7.3 and §7.4 against both source reports. Coverage confirmed: display recommendations 1–29 and core §3.1–§3.6, §4.1–§4.4, §5.1–§5.9 and #1–#8 each map to exactly one triple, and every file attribution matches the reports' cited locations. Five discrepancies corrected: extended the §7.2 `issue_info.type` rule to cover core §5.x, which previously had no mapping; added three missing dependency rows to §7.6.1 (7.3.5→7.3.11/7.3.12 static-layer cache invalidation, 7.3.9→7.3.8 touch-registration relocation, 7.4.7→7.4.1 shared `utils/config.py` edit); and added §7.3.15 recording display report §7.7 as an explicit exclusion deferred to a future P10 cycle. |
+| 7.0 | 2026-07-30 | Added §8.0 Release Plan. The §7.0 remediation is delivered in two releases rather than one: v0.3.0 carries the implemented work plus the seven outstanding triples with no observational dependency and no appearance change; v0.4.0 carries the gated and user-interface work after a single on-target observation session collects all six §7.5 items. Records the rationale for rejecting a single sixteen-triple release (§8.1), a minimal pytest suite as a P06 prerequisite since `tests/` is currently empty (§8.2), the observation method for each §7.5 item after v0.3.0 (§8.4), and the build and release procedure (§8.6). Notes that 7.3.3 clears the §7.5.1 gate on 7.3.4 automatically by making the application report its own framebuffer geometry. |
 
 ---
 
