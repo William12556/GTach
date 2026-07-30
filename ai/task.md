@@ -43,9 +43,10 @@ Created: 2026 July 29
 | 4.1 | — | `faulthandler` output not captured under systemd | ☐ Open |
 | 5.1 | — | Splash audit §4.3 — WELCOME screen touch-unresponsiveness | ☐ Unverified |
 | 6.1 | — | UI Navigation audit — Finding C (terminology) | Deferred by design |
-| 7.3 | 13 UUIDs | Display review — author 13 issue/change/prompt triples | ☐ Open |
-| 7.4 | 7 UUIDs | Core/comm/utils review — author 7 issue/change/prompt triples | ☐ Open |
-| 7.5 | — | Verification prerequisites gating §7.3/§7.4 | ☐ Open |
+| 7.3 | 13 UUIDs | Display review triples | 2 of 13 authored (`4c038bed` closed, `0b00759c` active) |
+| 7.4 | 8 UUIDs | Core/comm/utils review triples | 2 of 8 authored (`5a9dc15e`, `11be4865` closed) |
+| 7.5 | — | Verification prerequisites gating §7.3/§7.4 | 1 of 6 resolved — 7.5.4 decided (retire) |
+| 8.0 | — | Two-release plan: v0.3.0 diagnostic and low-risk, v0.4.0 gated and appearance-changing | ☐ Open |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -59,7 +60,9 @@ document state alone. Version 2.0 cross-checked each item against
 closed the `comm/` transport layer audit following log-based root cause
 analysis. This revision (5.0) adds §7.0, which enumerates the governance
 document triples required to implement the recommendations of the two
-code review reports in `ai/workspace/report/`.
+code review reports in `ai/workspace/report/`. Revisions 6.0 and 8.0
+record the outcome of cross-checking §7.0 against those reports; 7.0 adds
+the two-release delivery plan in §8.0.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -372,36 +375,74 @@ list.
 
 | Task | UUID | Slug | Report items | Primary files |
 |---|---|---|---|---|
-| 7.4.1 | `394c3bbb` | `config-device-persistence-disposition` | §3.1, §3.6, §5.1; #1, #6 | `utils/config.py`, `comm/device_store.py`, `comm/models.py` |
+| 7.4.1 | `394c3bbb` | `config-device-persistence-retirement` | §3.6, §5.1; #1 (retirement branch), #6 | `utils/config.py`, `comm/device_store.py`, `comm/models.py` |
 | 7.4.2 | `5a9dc15e` | `watchdog-lock-discipline` | §3.3, §4.1; #2 | `core/watchdog.py`, `core/thread.py` |
 | 7.4.3 | `11be4865` | `platform-detection-consolidation` | §3.2, §4.4; #3 | `utils/platform.py`, `utils/dependencies.py` |
 | 7.4.4 | `52414414` | `device-store-pairing-robustness` | §3.4, §3.5, §5.6, §5.7; #4, #5 | `comm/device_store.py`, `comm/pairing.py` |
 | 7.4.5 | `6481f8ce` | `transport-consolidation` | §4.3, §5.3, §5.8; #7 | `comm/transport.py`, `comm/rfcomm.py`, `comm/serial_transport.py`, `comm/tcp_transport.py`, `main.py`, `app.py` |
 | 7.4.6 | `2d545bf5` | `thread-shutdown-budget` | §5.5, §5.9 | `core/thread.py`, `app.py` |
 | 7.4.7 | `d32ccc49` | `utils-comm-housekeeping` | §4.2, §5.2, §5.4; #8 | `utils/home.py`, `utils/config.py`, `comm/obd.py` |
+| 7.4.9 | `1143427b` | `rwlock-notification-defect` | §3.1; #1 (correction branch) | `utils/config.py` |
 
 Coverage check: §7.0 items #1 to #8 and the embedded recommendations in
 §3.1–§3.6, §4.1–§4.4 and §5.1–§5.9 each appear exactly once across rows
-7.4.1 to 7.4.7.
+7.4.1 to 7.4.9. §7.0 item #1 is a disjunction — correct the `RWLock`
+notification bug *or* retire the subsystem — and its two branches are
+claimed separately: the correction by 7.4.9 and the retirement by 7.4.1.
+See §7.4.8.
 
-#### 7.4.8 Decision-Gated Task
+#### 7.4.8 §5.1 Disposition — Decided
 
-**7.4.1** cannot be authored as a single unambiguous change until §5.1 is
-decided (see §7.5.4). The two outcomes produce materially different
-documents:
+The §7.5.4 decision was taken on 2026-07-30: **retire**. The
+`ConfigManager` device-persistence path has no intended future use.
+`DeviceStore` is the sole device store by declaration.
 
-- *Retire* — the change is a deletion of approximately 1,600 lines of
-  `ConfigManager` device-persistence machinery. §3.1 (`RWLock`
-  notification bug) and §3.6 (`device.address`) are closed as removed
-  rather than fixed. `DeviceStore` becomes the sole device store by
-  declaration.
-- *Adopt* — the change fixes §3.1 and §3.6, then re-routes the live
-  pairing flow through `ConfigManager` and retires `DeviceStore`. Higher
-  risk; requires a data migration for existing `config/devices.yaml`.
+Evidence supporting the decision, from a call-graph check rather than
+from the report alone:
 
-Author the issue document first in either case — the defect record for
-§3.1 and §3.6 is valid regardless of disposition — and hold the change
-document until the decision is recorded.
+| Store | Live call sites outside its own module |
+|---|---|
+| `DeviceStore` | ~15, across `app.py`, `comm/transport.py`, `comm/sim_bluetooth.py`, `display/setup.py`, `display/manager.py`, `display/setup_components/bluetooth/interface.py` |
+| `ConfigManager.get_device_by_address` / `add_or_update_device` / `remove_device` | **0** |
+
+§3.6 corroborates: `BluetoothDevice` has no `address` attribute, so any
+live call to those three methods raises `AttributeError` immediately.
+The path has never executed in production.
+
+**Two corrections to this section's previous text.**
+
+*First — the "approximately 1,600 lines" figure was misleading.*
+`utils/config.py` is 1,636 lines in total, and it also holds the live
+application configuration. The device-persistence portion is a subset:
+the three methods at `config.py:1400-1460`, the
+`BluetoothConfig.saved_devices` field and its serialisation, and the
+`BluetoothDevice` model. The retirement is a materially smaller deletion
+than the report implies, and the validator, transactional-write and
+session-archival machinery serves the main configuration and is retained.
+
+*Second — retirement does NOT close §3.1.* The previous text stated that
+under *retire*, "§3.1 (`RWLock` notification bug) and §3.6
+(`device.address`) are closed as removed rather than fixed." That holds
+for §3.6 only. `_rw_lock` guards `ConfigManager.load_config`
+(`config.py:1175`, read lock at 1182, write lock at 1190) and
+`save_config` (`config.py:1320`, write lock at 1330) — the whole
+configuration path, which `app.py:75` and `main.py:107` exercise on every
+start. Retiring the device methods does not touch it.
+
+The deadlock has not been observed because configuration I/O is
+effectively single-threaded at startup, so the writer-waiting-while-
+readers-active condition is rare. It is latent but on an exercised path:
+a Critical structural defect, not dead code.
+
+§3.1 is therefore separated into its own triple, **7.4.9** (`1143427b`),
+which is independent of the disposition and of 7.4.1. This is a
+re-partition of existing scope, not an addition: §3.1 was already claimed
+by 7.4.1, and would have been silently dropped by the retirement.
+
+Sequencing consequence: 7.4.9 is a small correction on a live path and
+ships in v0.3.0 (§8.3). 7.4.1 is a large deletion and ships in v0.4.0
+(§8.5). They cannot travel together, which is the practical reason the
+split is necessary rather than merely tidy.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -417,7 +458,7 @@ and 7.5.6 require the live devices (`gtach.local`, and a paired ELM327 or
 | 7.5.1 | Read `bits_per_pixel`, `stride`, `virtual_size` from `/sys/class/graphics/fb0`; `fbset -i` | display §10.1 | **Gates 7.3.3 and 7.3.4.** If depth ≠ 32 or stride ≠ 1920, §8.3 is an active fault and 7.3.3 precedes all other display work |
 | 7.5.2 | Characterise the flicker: moving horizontal band vs. full-field alternation vs. above-caution-only vs. last-digit churn; then the simulation-mode sweep test | display §10.3, §10.4 | Determines whether 7.3.1 or 7.3.4 is the effective fix; may reduce 7.3.4 to an efficiency item |
 | 7.5.3 | Read `frame_time_ms` from the periodic log line | display §10.2 | **Depends on 7.3.7** (rec 15). Until that ships the logged figure measures padded, not render, time. Establishes the baseline against which 7.3.5, 7.3.6 are judged |
-| 7.5.4 | Decide whether the `ConfigManager` device-persistence path is intended for future use | core §8.0 | **Gates the change document of 7.4.1** — see §7.4.8 |
+| 7.5.4 | ✅ **DECIDED 2026-07-30 — retire.** No intended future use; `DeviceStore` is the sole device store. Call-graph evidence and two corrections to the previous framing are recorded in §7.4.8 | core §8.0 | 7.4.1 is unblocked and scoped to retirement (§3.6, §5.1). §3.1 is separated into 7.4.9, being independent of the disposition |
 | 7.5.5 | Reproduce the transport race: concurrent `disconnect()` and `send_command()` | core §8.0 | Confirms the §5.3 failure mode and supplies the regression test for 7.4.5 |
 | 7.5.6 | Record the actual hardware revision string on the Pi Zero 2W | core §8.0 | Confirms whether the §3.2 `lstrip()` defect corrupts detection for the revision in field use; sets the severity recorded in 7.4.3 |
 
@@ -434,7 +475,8 @@ and 7.5.6 require the live devices (`gtach.local`, and a paired ELM327 or
 | 7.3.11 | 7.3.1 | Supersedes the rec 23 text-colour correction for the main readout |
 | 7.3.12 | 7.3.11 | The night palette must cover the annular indicator's colours |
 | 7.3.9 | — | Precedes 7.3.12 if the night toggle is placed on the options screen |
-| 7.4.1 | 7.5.4 | Change document scope is undetermined until the disposition is decided |
+| 7.4.1 | ~~7.5.4~~ | ✅ Cleared 2026-07-30. Disposition decided: retire (§7.4.8) |
+| 7.4.7 | 7.4.9 | Both modify `utils/config.py`. 7.4.9 corrects the `RWLock` notification path; 7.4.7 adds the §5.2 singleton warning to `ConfigManager.__new__`/`__init__`. Disjoint regions, but 7.4.9 ships first in v0.3.0, so 7.4.7 is written against the corrected file |
 | 7.4.5 | 7.5.5 | Regression test derives from the reproduction |
 | 7.3.5 | 7.3.11, 7.3.12 | Recommendation 9 caches the RADIAL static layer. The annular band indicator (7.3.11) and the night palette (7.3.12) both alter static-layer content, so each requires a cache-invalidation path that recommendation 9 does not specify. Either 7.3.5 lands last, or its change document must specify an invalidation key covering band and palette state |
 | 7.3.9 | 7.3.8 | Recommendation 20 (7.3.8) relocates touch registration from the render path to a mode-entry hook. Recommendations 24 and 27 (7.3.9) re-register button regions. Authoring 7.3.9 first produces registration code that 7.3.8 then has to relocate |
@@ -532,12 +574,17 @@ components that need no pygame surface:
 | `PlatformDetector._detect_via_hardware_revision` | `utils/platform.py` | 11be4865 — revision masking, flag bits, old-style codes, non-hex input |
 | `WatchdogMonitor` recovery paths | `core/watchdog.py` | 5a9dc15e — lock discipline, heartbeat observation, collect-then-dispatch |
 | `PerformanceMonitor` | `display/performance/monitor.py` | 0b00759c, c5dedd71 — frame IDs, periodic gate, memory cache, dropped-frame test |
+| `RWLock` | `utils/config.py` | 7.4.9 — notification symmetry, reader concurrency, writer exclusivity |
 | `DeviceStore` | `comm/device_store.py` | 7.4.4 — malformed config handling, once authored |
 | `DisplayManager` RPM conditioning | `display/manager.py` | 4c038bed — EMA, band hysteresis, flash phase |
 
-The first four require only `unittest.mock` and `tempfile`. The fifth
-needs `SDL_VIDEODRIVER=dummy` and a mocked rendering engine, consistent
-with the existing headless arrangement in `engine.py`.
+All but the last require only `unittest.mock`, `threading` and
+`tempfile`. The `DisplayManager` target needs `SDL_VIDEODRIVER=dummy` and
+a mocked rendering engine, consistent with the existing headless
+arrangement in `engine.py`.
+
+Every acquisition assertion in the `RWLock` tests carries a timeout, so a
+regression fails the suite rather than hanging it.
 
 Coverage of untouched legacy code is explicitly **not** in scope. The
 objective is a net beneath the changes being released, not retrospective
@@ -565,11 +612,17 @@ appearance.
 | 7.4.4 | `52414414` | To author — device store and pairing robustness |
 | 7.4.6 | `2d545bf5` | To author — thread shutdown budget |
 | 7.4.7 | `d32ccc49` | To author — utils and comm housekeeping, confined per §7.6.1 |
+| 7.4.9 | `1143427b` | To author — `RWLock` notification defect, §3.1 |
 
-7.4.7 is included on the confined-edit branch of its §7.6.1 dependency
-row: the §5.2 singleton warning is sited in `ConfigManager.__new__` or
-`__init__` and touches no device-persistence code, so it does not wait on
-the §7.5.4 decision.
+7.4.7 sites the §5.2 singleton warning in `ConfigManager.__new__` or
+`__init__` and touches no device-persistence code, so it does not collide
+with the 7.4.1 retirement in v0.4.0.
+
+7.4.9 is included because §3.1 is a Critical structural defect on the
+live configuration path and is independent of the §5.1 disposition — the
+retirement does not close it (§7.4.8). It is a small, well-bounded
+correction to a single class, which is why it travels in v0.3.0 rather
+than alongside the large deletion in v0.4.0.
 
 **7.3.3 clears its own gate.** Recommendation 21 makes the application
 query `FBIOGET_VSCREENINFO` and `FBIOGET_FSCREENINFO` and log a mismatch
@@ -612,7 +665,7 @@ Authored after §8.4, with the observations in hand.
 | 7.3.10 | `378703da` | — retires DIGITAL mode; largest behavioural change in the set |
 | 7.3.11 | `5014040c` | 7.3.1 |
 | 7.3.12 | `5012004e` | 7.3.11 |
-| 7.4.1 | `394c3bbb` | 7.5.4 decision |
+| 7.4.1 | `394c3bbb` | 7.5.4 decided — retire (§7.4.8). Large deletion, released here rather than with the v0.3.0 corrections |
 | 7.4.5 | `6481f8ce` | 7.5.5 reproduction |
 
 The five user interface triples are deliberately released together so the
@@ -665,6 +718,7 @@ path for iteration. Release notes follow the
 | 5.0 | 2026-07-30 | Added §7.0: 20 issue/change/prompt triples with assigned UUIDs covering all recommendations of `core-comm-utils-code-review.md` and `display-ui-graphics-review.md`, grouped by theme. All triples target the `claude_code` tactical profile. Recorded directed scope decisions for display recommendations 25, 26 and 29 (§7.3.14); the §5.1 decision gate on 7.4.1 (§7.4.8); six verification prerequisites (§7.5); and dependency, ordering and constraint notes (§7.6). |
 | 6.0 | 2026-07-30 | Cross-checked §7.3 and §7.4 against both source reports. Coverage confirmed: display recommendations 1–29 and core §3.1–§3.6, §4.1–§4.4, §5.1–§5.9 and #1–#8 each map to exactly one triple, and every file attribution matches the reports' cited locations. Five discrepancies corrected: extended the §7.2 `issue_info.type` rule to cover core §5.x, which previously had no mapping; added three missing dependency rows to §7.6.1 (7.3.5→7.3.11/7.3.12 static-layer cache invalidation, 7.3.9→7.3.8 touch-registration relocation, 7.4.7→7.4.1 shared `utils/config.py` edit); and added §7.3.15 recording display report §7.7 as an explicit exclusion deferred to a future P10 cycle. |
 | 7.0 | 2026-07-30 | Added §8.0 Release Plan. The §7.0 remediation is delivered in two releases rather than one: v0.3.0 carries the implemented work plus the seven outstanding triples with no observational dependency and no appearance change; v0.4.0 carries the gated and user-interface work after a single on-target observation session collects all six §7.5 items. Records the rationale for rejecting a single sixteen-triple release (§8.1), a minimal pytest suite as a P06 prerequisite since `tests/` is currently empty (§8.2), the observation method for each §7.5 item after v0.3.0 (§8.4), and the build and release procedure (§8.6). Notes that 7.3.3 clears the §7.5.1 gate on 7.3.4 automatically by making the application report its own framebuffer geometry. |
+| 8.0 | 2026-07-30 | Recorded the §7.5.4 decision: **retire** the `ConfigManager` device-persistence path. Rewrote §7.4.8 with call-graph evidence (`DeviceStore` has ~15 live call sites; the `ConfigManager` device methods have none) and two corrections to its previous text — the "approximately 1,600 lines" figure conflated the whole of `utils/config.py` with the device-persistence subset, and retirement does **not** close §3.1, because `_rw_lock` guards the live `load_config`/`save_config` path that `app.py:75` and `main.py:107` exercise on every start. §3.1 accordingly separated into a new triple 7.4.9 (`1143427b`) — a re-partition of existing scope, not an addition; §7.0 item #1 is a disjunction whose correction and retirement branches are now claimed separately. 7.4.1 rescoped to the retirement (§3.6, §5.1) and reslugged `config-device-persistence-retirement`. §7.6.1 dependency on 7.5.4 cleared and a 7.4.7→7.4.9 row added. 7.4.9 assigned to v0.3.0 (§8.3) as a small correction on a live path; 7.4.1 remains in v0.4.0 (§8.5) as a large deletion. |
 
 ---
 

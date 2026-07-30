@@ -12,6 +12,7 @@ Created: 2026 July 30
 [4.0 Discrepancy Summary](<#4.0 discrepancy summary>)
 [5.0 D1 — Type Rule Did Not Cover Core §5.x](<#5.0 d1 — type rule did not cover core §5.x>)
 [6.0 D2 — Missing Dependency 7.4.7 → 7.4.1](<#6.0 d2 — missing dependency 7.4.7 → 7.4.1>)
+[6.5 Outcome — Decided 2026-07-30](<#6.5 outcome — decided 2026-07-30>)
 [7.0 D3 — Missing Dependency 7.3.5 → 7.3.11, 7.3.12](<#7.0 d3 — missing dependency 7.3.5 → 7.3.11, 7.3.12>)
 [8.0 D4 — Missing Dependency 7.3.9 → 7.3.8](<#8.0 d4 — missing dependency 7.3.9 → 7.3.8>)
 [9.0 D5 — Display §7.7 Sources No Triple](<#9.0 d5 — display §7.7 sources no triple>)
@@ -89,7 +90,7 @@ subject of D5.
 | ID | Discrepancy | Class | Recorded | Discharged |
 |---|---|---|---|---|
 | D1 | §7.2 `issue_info.type` rule had no mapping for core §5.x | Classification | ✅ `task.md` v6.0 §7.2 | ☐ Applies when 7.4.4, 7.4.6, 7.4.7 are authored |
-| D2 | 7.4.7 and 7.4.1 both edit `utils/config.py`; no dependency recorded | Sequencing | ✅ `task.md` v6.0 §7.6.1 | ☐ Blocked on the §7.5.4 decision |
+| D2 | 7.4.7 and 7.4.1 both edit `utils/config.py`; no dependency recorded | Sequencing | ✅ `task.md` v6.0 §7.6.1 | ✅ §7.5.4 decided 2026-07-30 — retire. See §6.5 |
 | D3 | 7.3.5's static-layer cache is invalidated by 7.3.11 and 7.3.12 | Sequencing | ✅ `task.md` v6.0 §7.6.1 | ☐ Applies when 7.3.5 is authored |
 | D4 | 7.3.9 registers touch regions that 7.3.8 relocates | Sequencing | ✅ `task.md` v6.0 §7.6.1 | ✅ Satisfied by the §7.6.2 order |
 | D5 | Display §7.7 has no numbered recommendation and sources no triple | Coverage bound | ✅ `task.md` v6.0 §7.3.15 | ☐ Decision deferred to a P10 cycle |
@@ -235,6 +236,41 @@ correct.
    to `ConfigManager.__new__`/`__init__` and touches no
    device-persistence code. That satisfies the constraint without the
    decision.
+
+### 6.5 Outcome — Decided 2026-07-30
+
+Step 1 was taken: **retire**. The `ConfigManager` device-persistence path
+has no intended future use. The decision is recorded in `ai/task.md`
+§7.4.8 and §7.5.4, and D2 is discharged.
+
+Two findings emerged while recording it, both of which correct the
+earlier framing in §7.4.8 and in the source report's §5.1.
+
+**The call-graph evidence is stronger than the report stated.**
+`DeviceStore` has approximately fifteen live call sites across `app.py`,
+`comm/transport.py`, `comm/sim_bluetooth.py`, `display/setup.py`,
+`display/manager.py` and `display/setup_components/bluetooth/interface.py`.
+The three `ConfigManager` device methods have none outside `config.py`.
+§3.6 corroborates: `BluetoothDevice` has no `address` attribute, so any
+live call raises `AttributeError` immediately. The path has never
+executed in production.
+
+**Retirement does not close §3.1, contrary to §7.4.8's previous text.**
+`_rw_lock` guards `ConfigManager.load_config` (`config.py:1175`) and
+`save_config` (`config.py:1320`) — the whole configuration path, which
+`app.py:75` and `main.py:107` exercise on every start. The deadlock is
+latent only because configuration I/O is effectively single-threaded at
+startup; the code is live. §3.1 was therefore separated into its own
+triple, **7.4.9** (`1143427b`), which is independent of the disposition.
+Without the separation it would have been silently dropped by the
+retirement — a coverage regression in the very section this report exists
+to protect.
+
+A third, smaller correction: the report's "approximately 1,600 lines of
+parallel machinery" conflates the whole of `utils/config.py` (1,636
+lines, and also the live application configuration) with the
+device-persistence subset. The retirement is a materially smaller
+deletion than that figure suggests.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -480,7 +516,7 @@ Mark each item when the condition holds. D4 is complete.
 | ID | Condition for discharge | Depends on | Status |
 |---|---|---|---|
 | D1 | 7.4.1, 7.4.4, 7.4.5, 7.4.6 and 7.4.7 authored with `issue_info.type` per §5.4 above | Authoring of five core triples | ☐ |
-| D2 | §7.5.4 decided and recorded in §7.4.8; 7.4.1 change document authored; 7.4.7 authored after it, or confined to `__new__`/`__init__` | Human decision | ☐ |
+| D2 | §7.5.4 decided and recorded in §7.4.8; 7.4.1 change document authored; 7.4.7 authored after it, or confined to `__new__`/`__init__` | Human decision | ✅ Decided 2026-07-30 — retire. §3.1 separated into 7.4.9; 7.4.7 confined to `__new__`/`__init__` |
 | D3 | 7.3.5 change document specifies a keyed cache; 7.3.11 and 7.3.12 each extend the key; night-toggle redraw verified on target | Authoring of 7.3.5, 7.3.11, 7.3.12 | ☐ |
 | D4 | §7.6.2 keeps 7.3.8 before 7.3.9; 7.3.9 registers through the mode-entry hook | — | ✅ Recorded and satisfied |
 | D5 | 7.3.9 implemented and observed; §7.3.15 updated with one of the three outcomes | 7.3.9 implementation | ☐ |
@@ -531,6 +567,7 @@ No external sources were used.
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026 July 30 | Initial report: five discrepancies from the `ai/task.md` §7.3/§7.4 cross-check, with recorded state, discharge procedure and checklist. |
+| 1.1 | 2026 July 30 | D2 discharged. Added §6.5 recording the §7.5.4 decision (retire) and the two findings that emerged with it: the call-graph evidence is stronger than the report stated, and retirement does **not** close §3.1, because `_rw_lock` guards the live `load_config`/`save_config` path. §3.1 separated into triple 7.4.9 (`1143427b`) to prevent a coverage regression. Noted that the report's "approximately 1,600 lines" figure conflates the whole of `utils/config.py` with the device-persistence subset. Updated §4.0 and §11.0. |
 
 [Return to Table of Contents](<#table of contents>)
 
