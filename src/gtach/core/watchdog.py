@@ -133,35 +133,58 @@ class WatchdogMonitor:
             self._stop_event.wait(self.check_interval)
 
     def _check_thread_health(self) -> None:
-        """Enhanced thread health checking with escalating recovery"""
+        """Check thread health and dispatch recovery outside the state lock.
+
+        thread_manager._lock is held only for the traversal that builds
+        the pending-action list. Recovery handlers — which sleep — are
+        dispatched after the lock is released, so a cycle touching
+        several unhealthy threads no longer blocks heartbeat and
+        registration activity for the duration of the recovery
+        (core review §4.1, recommendation #2).
+        """
         current_time = time.time()
-        
+
+        # Phase 1 — collect under the lock. No blocking call here.
+        pending = []
+
         with self.thread_manager._lock:
             for name, thread_info in self.thread_manager.threads.items():
                 if thread_info.status not in {ThreadStatus.RUNNING, ThreadStatus.STARTING}:
                     continue
-                
+
                 # Initialize thread health tracking if needed
                 if name not in self.thread_health:
                     self.thread_health[name] = ThreadHealth(
                         name=name,
                         is_critical=(name in self.critical_threads)
                     )
-                
+
                 health = self.thread_health[name]
                 time_since_heartbeat = current_time - thread_info.last_heartbeat
-                
+
                 # Determine appropriate response level
                 if time_since_heartbeat > self.critical_timeout:
-                    self._handle_critical_timeout(name, health, time_since_heartbeat)
+                    level = 'critical'
                 elif time_since_heartbeat > self.recovery_timeout:
-                    self._handle_recovery_timeout(name, health, time_since_heartbeat)
+                    level = 'recovery'
                 elif time_since_heartbeat > self.warning_timeout:
-                    self._handle_warning_timeout(name, health, time_since_heartbeat)
+                    level = 'warning'
                 else:
-                    # Thread is healthy, reset failure counters
-                    self._reset_thread_health(health)
-    
+                    level = 'reset'
+
+                pending.append((level, name, health, time_since_heartbeat))
+
+        # Phase 2 — dispatch with the lock released.
+        for level, name, health, elapsed in pending:
+            if level == 'critical':
+                self._handle_critical_timeout(name, health, elapsed)
+            elif level == 'recovery':
+                self._handle_recovery_timeout(name, health, elapsed)
+            elif level == 'warning':
+                self._handle_warning_timeout(name, health, elapsed)
+            else:
+                self._reset_thread_health(health)
+
     def _handle_warning_timeout(self, name: str, health: ThreadHealth, timeout: float) -> None:
         """Handle warning-level timeout"""
         current_time = time.time()
@@ -211,41 +234,60 @@ class WatchdogMonitor:
             self._attempt_hard_recovery(name, health, timeout, force=True)
     
     def _attempt_soft_recovery(self, name: str, health: ThreadHealth, timeout: float) -> None:
-        """Attempt soft recovery using thread interruption"""
+        """Attempt soft recovery using thread interruption.
+
+        The heartbeat observation is split across two short critical
+        sections with the sleep between them. Holding
+        thread_manager._lock across the sleep would block
+        ThreadManager.update_heartbeat, which is the very write this
+        method is waiting to observe (core review §3.3).
+        """
         self.logger.info(f"Attempting soft recovery for thread {name} (timeout: {timeout:.1f}s)")
-        
+
         with self._recovery_lock:
             self.recovery_stats.soft_recovery_attempts += 1
-        
+
         health.current_level = RecoveryLevel.SOFT_RECOVERY
         health.recovery_attempts += 1
-        
+
         try:
-            # Attempt to interrupt the thread gently
+            # Stage 1 — read the current heartbeat under a short lock.
+            with self.thread_manager._lock:
+                if name not in self.thread_manager.threads:
+                    self.logger.debug(f"Thread {name} no longer registered; soft recovery abandoned")
+                    return
+
+                thread_info = self.thread_manager.threads[name]
+                thread = thread_info.thread
+                old_heartbeat = thread_info.last_heartbeat
+
+                # For display thread, try to trigger a refresh
+                if name == 'display' and hasattr(thread, '_target'):
+                    self.logger.debug(f"Triggering display refresh for {name}")
+                    # The display loop should detect this and recover
+
+            # Stage 2 — wait with NO lock held, so the monitored thread
+            # is free to acquire _state_lock and write its heartbeat.
+            time.sleep(1.0)
+
+            # Stage 3 — re-read under a short lock. Re-test membership:
+            # the thread may have been removed or restarted during the
+            # window, so do not reuse the ThreadInfo captured above.
+            new_heartbeat = old_heartbeat
             with self.thread_manager._lock:
                 if name in self.thread_manager.threads:
-                    thread_info = self.thread_manager.threads[name]
-                    thread = thread_info.thread
-                    
-                    # For display thread, try to trigger a refresh
-                    if name == 'display' and hasattr(thread, '_target'):
-                        self.logger.debug(f"Triggering display refresh for {name}")
-                        # The display loop should detect this and recover
-                    
-                    # Update heartbeat to test if thread is actually responsive
-                    old_heartbeat = thread_info.last_heartbeat
-                    time.sleep(1.0)  # Wait a moment
-                    
-                    if thread_info.last_heartbeat > old_heartbeat:
-                        self.logger.info(f"Soft recovery successful for thread {name}")
-                        with self._recovery_lock:
-                            self.recovery_stats.soft_recovery_successes += 1
-                        self._reset_thread_health(health)
-                        return
-        
+                    new_heartbeat = self.thread_manager.threads[name].last_heartbeat
+
+            if new_heartbeat > old_heartbeat:
+                self.logger.info(f"Soft recovery successful for thread {name}")
+                with self._recovery_lock:
+                    self.recovery_stats.soft_recovery_successes += 1
+                self._reset_thread_health(health)
+                return
+
         except Exception as e:
             self.logger.error(f"Soft recovery failed for thread {name}: {e}", exc_info=True)
-    
+
     def _attempt_hard_recovery(self, name: str, health: ThreadHealth, timeout: float, force: bool = False) -> None:
         """Attempt hard recovery by restarting the thread"""
         if not force and health.recovery_attempts >= 3:
