@@ -20,6 +20,8 @@ Created: 2026 June 18
 
 This document catalogues dead code identified in `src/gtach` — code that is defined but unreachable at runtime. It is a reference for cleanup decisions; no source changes are made here.
 
+**Status: Closed.** All items resolved via `issue-b7e3f90a-dead-code-cleanup.md`. Verified 2026-07-30: all listed files, packages, classes, methods, and the asset are removed; no residual references remain in `src/`.
+
 [Return to Table of Contents](<#table of contents>)
 
 ---
@@ -163,6 +165,7 @@ No changes to source files are made by this report.
 | Version | Date | Description |
 |---|---|---|
 | 0.1 | 2026-06-18 | Initial report |
+| 0.2 | 2026-07-30 | Closed. Verified all listed dead code removed per issue-b7e3f90a. |
 
 ---
 
