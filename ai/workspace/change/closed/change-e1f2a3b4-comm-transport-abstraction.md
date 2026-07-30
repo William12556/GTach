@@ -28,7 +28,7 @@ change_info:
   title: "Comm Layer Transport Abstraction and macOS Development Mode"
   date: "2026-03-24"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "high"
   iteration: 1
   version_bump: "0.1.1 -> 0.2.0 (MINOR)"

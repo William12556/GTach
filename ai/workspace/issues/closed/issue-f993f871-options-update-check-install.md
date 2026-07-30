@@ -6,7 +6,7 @@ issue_info:
   title: "No in-app path to discover and install a staged wheel update"
   date: "2026-06-12"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "enhancement"
   iteration: 1

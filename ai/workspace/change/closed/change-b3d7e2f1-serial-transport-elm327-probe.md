@@ -28,7 +28,7 @@ change_info:
   title: "SerialTransport ELM327 ATZ probe validation in port discovery"
   date: "2026-04-17"
   author: "William Watson"
-  status: "verified"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:

@@ -6,7 +6,7 @@ issue_info:
   title: "Welcome screen has no cancel option when a stored device exists"
   date: "2026-05-29"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "enhancement"
   iteration: 1

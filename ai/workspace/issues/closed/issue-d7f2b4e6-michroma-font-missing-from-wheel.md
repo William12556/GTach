@@ -23,7 +23,7 @@ issue_info:
   title: "Michroma-Regular.ttf not packaged in wheel — missing on Pi deployment"
   date: "2026-05-06"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1

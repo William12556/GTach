@@ -24,7 +24,7 @@ issue_info:
   title: "Remove macOS runtime code"
   date: "2026-05-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1

@@ -19,7 +19,7 @@ change_info:
   title: "macOS setup mode: serial port discovery; fix status indicator thread name"
   date: "2026-04-01"
   author: "William Watson"
-  status: "verified"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:

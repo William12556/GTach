@@ -6,7 +6,7 @@ change_info:
   title: "Add OPTIONS-screen debug logging toggle"
   date: "2026-06-12"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:

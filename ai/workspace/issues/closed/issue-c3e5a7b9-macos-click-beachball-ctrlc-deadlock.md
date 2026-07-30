@@ -23,7 +23,7 @@ issue_info:
   title: "macOS: window click causes beach ball; Ctrl+C requires force quit"
   date: "2026-05-06"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1

@@ -23,7 +23,7 @@ issue_info:
   title: "Welcome screen not cleared on Pi — flicker between splash and welcome"
   date: "2026-05-06"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1

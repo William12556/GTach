@@ -10,7 +10,7 @@ change_info:
   title: "Clear back-buffer on splash completion to eliminate welcome screen flicker on Pi"
   date: "2026-05-06"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:

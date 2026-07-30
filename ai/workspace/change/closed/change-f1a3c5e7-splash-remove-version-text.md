@@ -10,7 +10,7 @@ change_info:
   title: "Remove version text render call from automotive splash mode block"
   date: "2026-05-06"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:

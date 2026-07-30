@@ -10,7 +10,7 @@ issue_info:
   title: "WatchdogMonitor.stop() raises RuntimeError: cannot join current thread on Darwin"
   date: "2026-05-06"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1

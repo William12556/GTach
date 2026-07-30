@@ -6,7 +6,7 @@ issue_info:
   title: "Logging is unowned, ephemeral, and not suitable for an unattended boot device"
   date: "2026-06-12"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "enhancement"
   iteration: 1

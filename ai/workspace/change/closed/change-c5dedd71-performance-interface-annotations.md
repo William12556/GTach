@@ -19,7 +19,7 @@ change_info:
   title: "Retype record_frame_start to -> int and record_frame_end to frame_id: int on PerformanceMonitorInterface, and document the 0 sentinel"
   date: "2026-07-30"
   author: "William Watson"
-  status: "verified"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -334,7 +334,7 @@ version_history:
     date: "2026-07-30"
     author: "William Watson"
     changes:
-      - "Status proposed -> verified. Implemented via prompt-c5dedd71 and verified on the development platform; all seven test cases and four validation criteria pass."
+      - "Status proposed -> closed. Implemented via prompt-c5dedd71 and verified on the development platform; all seven test cases and four validation criteria pass. The verification record is held in the verification block; status records lifecycle state only."
       - "issues_found remains empty — the change introduced no defect."
       - "Closed per P00 §1.1.14.4; document moved to ai/workspace/change/closed/ at final iteration 1."
 
@@ -353,7 +353,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document resolving issue-c5dedd71. |
-| 1.1 | 2026-07-30 | Status proposed → verified; implementation and verification recorded, all seven test cases pass; closed per P00 §1.1.14.4. |
+| 1.1 | 2026-07-30 | Status proposed → closed; implementation and verification recorded, all seven test cases pass; closed per P00 §1.1.14.4. |
 
 ---
 

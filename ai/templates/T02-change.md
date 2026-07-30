@@ -23,7 +23,7 @@ change_info:
   title: ""
   date: ""
   author: ""
-  status: ""  # proposed, approved, implemented, verified, rejected
+  status: ""  # proposed, approved, implemented, verified, rejected, closed
   priority: ""  # critical, high, medium, low
   iteration: 1  # Increments with each debug cycle
   coupled_docs:
@@ -192,6 +192,8 @@ properties:
           - implemented
           - verified
           - rejected
+          - closed
+        description: "Lifecycle state. `closed` is the terminal archival state set when the coupled document set is moved to closed/ per P00 §1.1.14.4; the verification record is preserved in the verification block rather than in this field."
       priority:
         type: string
         enum:
@@ -539,6 +541,7 @@ properties:
 | 1.0     | 2025-12-12 | Split from governance.md into separate file for maintainability |
 | 1.1     | 2025-12-12 | UUID pattern migration: Replaced NNNN sequence numbering with 8-character UUID format (^[0-9a-f]{8}$) in all fields |
 | 1.2     | 2026-06-16 | Standardised copyright line format (template metadata default and document footer) |
+| 1.3     | 2026-07-30 | Added `closed` to the change_info.status enum as the terminal archival state, aligning the schema with established practice in ai/workspace/change/closed/ where the majority of archived documents already carried it; T03 already offered the equivalent value |
 
 ---
 

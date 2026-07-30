@@ -6,7 +6,7 @@ change_info:
   title: "Add systemd auto-start unit with boot-time install and Tier 2 rollback"
   date: "2026-06-11"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:

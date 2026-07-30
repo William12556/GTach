@@ -10,7 +10,7 @@ change_info:
   title: "Add package_data entry for TTF fonts to pyproject.toml"
   date: "2026-05-06"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:

@@ -6,7 +6,7 @@ issue_info:
   title: "GTach does not start on boot and has no controlled on-device update path"
   date: "2026-06-11"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "enhancement"
   iteration: 1

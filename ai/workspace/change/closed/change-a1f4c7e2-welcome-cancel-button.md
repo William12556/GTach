@@ -6,7 +6,7 @@ change_info:
   title: "Add Cancel button to Welcome screen when stored device exists"
   date: "2026-05-29"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:

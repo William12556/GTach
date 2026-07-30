@@ -24,7 +24,7 @@ change_info:
   title: "Remove macOS runtime code"
   date: "2026-05-07"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:

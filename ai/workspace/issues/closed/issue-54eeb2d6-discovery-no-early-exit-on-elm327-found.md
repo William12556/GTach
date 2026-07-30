@@ -26,7 +26,7 @@ issue_info:
   title: "Bluetooth discovery runs full 30s timeout without stopping when ELM327 found"
   date: "2026-05-29"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1

@@ -6,7 +6,7 @@ issue_info:
   title: "Splash screen displays a hardcoded placeholder version; --version is stale"
   date: "2026-06-12"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1

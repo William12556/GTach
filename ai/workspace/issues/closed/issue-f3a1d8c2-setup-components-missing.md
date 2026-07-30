@@ -27,7 +27,7 @@ issue_info:
   title: "setup_components subpackage files missing — ImportError on setup mode entry"
   date: "2026-05-06"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "critical"
   type: "defect"
   iteration: 1

@@ -10,7 +10,7 @@ change_info:
   title: "Fix macOS main-thread stall on mouse click and SIGINT deadlock"
   date: "2026-05-06"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:

@@ -3,7 +3,7 @@ change_info:
   title: "Remove dead code from src/gtach"
   date: "2026-06-18"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:

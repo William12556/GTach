@@ -3,7 +3,7 @@ issue_info:
   title: "Dead code accumulation in src/gtach"
   date: "2026-06-18"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1

@@ -6,7 +6,7 @@ change_info:
   title: "End ELM327 discovery early when a confirmed adapter is found"
   date: "2026-06-12"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:

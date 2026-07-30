@@ -6,7 +6,7 @@ change_info:
   title: "Replace tee-based logging with app-owned two-file model"
   date: "2026-06-12"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:

@@ -6,7 +6,7 @@ issue_info:
   title: "Remove macOS platform support from source"
   date: "2026-06-18"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "requirement_change"
   iteration: 1

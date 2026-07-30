@@ -19,7 +19,7 @@ change_info:
   title: "Implement mouse-as-touch gesture simulation for macOS mode"
   date: "2026-04-01"
   author: "William Watson"
-  status: "verified"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:

@@ -25,7 +25,7 @@ change_info:
   title: "Create setup_components subpackage implementations"
   date: "2026-05-06"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "critical"
   iteration: 1
   coupled_docs:

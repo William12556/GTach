@@ -23,7 +23,7 @@ issue_info:
   title: "Splash screen displays version text in automotive mode"
   date: "2026-05-06"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1

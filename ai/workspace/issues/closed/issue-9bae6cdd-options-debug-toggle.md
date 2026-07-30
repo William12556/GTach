@@ -6,7 +6,7 @@ issue_info:
   title: "No in-app control to toggle debug logging"
   date: "2026-06-12"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1

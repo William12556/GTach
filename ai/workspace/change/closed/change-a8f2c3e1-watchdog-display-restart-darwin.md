@@ -28,7 +28,7 @@ change_info:
   title: "Watchdog hard recovery Darwin guard for display thread"
   date: "2026-04-15"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "critical"
   iteration: 1
   coupled_docs:
