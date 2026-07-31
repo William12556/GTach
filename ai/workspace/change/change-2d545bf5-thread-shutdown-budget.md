@@ -19,7 +19,7 @@ change_info:
   title: "Log at WARNING when the per-thread shutdown floor engages; move stop_thread's join outside the _state_lock block its comment already claims it is outside; reorder _re_enter_setup to disconnect the transport and stop the OBD protocol before joining"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -360,11 +360,94 @@ implementation:
     display/manager.py:1286-1288.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-07-31"
+  implemented_by: "Claude Code, per prompt-2d545bf5"
+  verification_date: "2026-07-31"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only: macOS, Python 3.11.14. A real ThreadManager
+    driven with real threads — the lock behaviour being the thing under
+    test, a mock would have proved nothing — and _re_enter_setup executed
+    against recording stubs for _transport, _obd and _thread_manager.
+    Fifty-three assertions, all passing. Left active pending on-target
+    results per ai/task.md §8.2.1.
+
+    All three edits applied and all sixteen success criteria met. No
+    departure from the prompt's text was required.
+
+    THE LOCK DEFECT, MEASURED. The third fault — stop_thread joining while
+    holding _state_lock — is the one the issue found during verification
+    rather than from the report, and it is the one with the widest reach.
+    With a thread that would not exit, a 2.0 s join already 0.2 s underway,
+    and a second registered thread:
+
+      pre-change   update_heartbeat blocked 1803.5 ms — the entire
+                   remainder of the join
+      post-change  update_heartbeat blocked 0.1 ms
+
+    get_thread_status and register_thread behave identically. This matters
+    beyond tidiness: WatchdogMonitor reads thread state through the same
+    lock, so before this change a join could stall the mechanism whose
+    purpose is to detect stalls, and the longer the join the longer the
+    blind spot.
+
+    The suite discriminates. Run unchanged against the pre-change files it
+    fails nineteen assertions and passes twenty-nine, the failures being
+    the three heartbeat and status checks, the budget warnings, the
+    re-entry ordering and timeout, and the structural checks on lock scope.
+
+    Evidence by test case.
+
+    Lock scope: stop_thread contains exactly two with-statements, both on
+    _state_lock, and exactly one join call, and neither block encloses it —
+    established from the AST rather than from indentation, since
+    indentation is precisely what was misleading before. Everything from
+    the join to the closing return is at method-body level.
+
+    stop_thread behaviour otherwise unchanged: an unknown name returns
+    False and logs at WARNING without attempting a join; a finished thread
+    stops successfully and records STOPPED; a second call returns from the
+    terminal-state branch and logs at DEBUG; a thread that will not stop
+    returns False, records FAILED and logs "did not stop within".
+
+    Budget warning: three threads and a 2.0 s budget produce exactly one
+    WARNING naming 2.0s requested, 3 thread(s), the unfloored per-thread
+    figure, "flooring at 1.0s" and "worst case 3.0s". Three threads and a
+    10.0 s budget produce none. No registered threads produce none. A
+    worker pool patched to consume more than the whole budget produces a
+    WARNING reporting a negative remaining time rather than concealing it.
+    per_thread_timeout is still max(1.0, budgeted_per_thread) — the floor
+    is reported, not removed.
+
+    shutdown otherwise unchanged: every thread stopped, self.threads and
+    _active_futures cleared, and the completion line emitted once with
+    "threads stopped" and "cleanup took" intact.
+
+    Re-entry ordering: the recorded call order is transport.disconnect,
+    obd.stop, thread_manager.stop_thread, _start_setup_mode.
+    stop_thread receives 'obd_protocol' and timeout=2.0 explicitly.
+    _obd_started is reset to False. A raise from transport.disconnect does
+    not prevent obd.stop or stop_thread and is logged at WARNING; the same
+    for a raise from obd.stop. Removing _obd, or _transport and
+    _thread_manager together, or all three, leaves the remaining steps
+    running and _start_setup_mode called in every case.
+
+    Scope: an AST comparison against the previous commit shows shutdown and
+    stop_thread are the only ThreadManager methods that differ —
+    update_heartbeat and register_thread are byte-identical — and
+    _re_enter_setup is the only GTachApplication method that differs, with
+    shutdown byte-identical as required. src/gtach/comm/obd.py and
+    src/gtach/core/watchdog.py are unmodified.
+
+    pytest tests/ — 11 passed, unchanged by this work. One run reported
+    7.15 s against a usual 1.63 s; re-running three times gave 1.63 s
+    consistently, and the pre-change files give 1.62-1.63 s, so the outlier
+    was contention from the verification threads and not a regression.
+
+    What this does not establish: the on-target behaviour of the re-entry
+    path. The prompt records that the effect is only observable while the
+    transport is still connected, which is not the usual state when the
+    DISCONNECTED screen is showing.
   issues_found: []
 
 traceability:
@@ -402,6 +485,16 @@ version_history:
       - "Initial change document coupled to issue-2d545bf5."
       - "Records why both of §5.9's proposed remedies are rejected, and why disconnecting the transport alone or calling OBDProtocol.stop alone is insufficient."
       - "Records the OBD inner-loop exit condition and stop_thread's unused stop_func as out of scope and as candidates for a separate item."
+  - version: "1.1"
+    date: "2026-07-31"
+    author: "Claude Code"
+    changes:
+      - "Status proposed -> implemented. Recorded implementation date, executor, verification date and development-platform test results."
+      - "Recorded a direct measurement of the lock defect: update_heartbeat blocked 1803.5 ms during a 2.0 s join before the change and 0.1 ms after, with the consequence for WatchdogMonitor noted."
+      - "Recorded that the suite fails nineteen of forty-eight assertions against the pre-change files, so it discriminates."
+      - "Recorded that no departure from the prompt's text was required."
+      - "Recorded that obd.py and watchdog.py are unmodified and GTachApplication.shutdown is byte-identical."
+      - "Left active pending on-target test results per ai/task.md §8.2.1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -418,6 +511,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-2d545bf5. Rejects both of §5.9's proposed remedies with recorded reasons, carries the lock-scope correction found during verification, and records two related observations as out of scope. |
+| 1.1 | 2026-07-31 | Status proposed → implemented; development-platform test results recorded, including a measurement of the lock defect and a discrimination run against the pre-change files. Left active pending on-target results. |
 
 ---
 

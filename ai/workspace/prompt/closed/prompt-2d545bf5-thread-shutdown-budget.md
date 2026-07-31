@@ -475,6 +475,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial prompt document coupled to change-2d545bf5. |
+| 1.1 | 2026-07-31 | Executed by Claude Code. All three edits applied and all sixteen success criteria met, with no departure from the prompt's text required. 53 assertions against a real ThreadManager with real threads and recording stubs for the re-entry path, all passing; pytest tests/ 11 passed. The lock defect was measured rather than argued: with a 2.0 s join 0.2 s underway, update_heartbeat for a different registered thread blocked 1803.5 ms against the pre-change code and 0.1 ms after — the watchdog reads thread state through the same lock, so a join could previously stall the mechanism meant to detect stalls. Run against the pre-change files the suite fails nineteen of forty-eight assertions. Recorded in change-2d545bf5. Closed per P00 §1.1.14.4 and moved to ai/workspace/prompt/closed/; the issue and change remain active pending on-target results per ai/task.md §8.2.1. |
 
 ---
 

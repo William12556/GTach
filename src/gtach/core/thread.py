@@ -307,23 +307,28 @@ class ThreadManager:
             if thread_info.restart_future and not thread_info.restart_future.done():
                 thread_info.restart_future.cancel()
 
-        # Join thread outside of lock to prevent deadlock
-            success = True
-            if thread_info.thread.is_alive():
-                thread_info.thread.join(timeout=timeout)
-                success = not thread_info.thread.is_alive()
-                
-            # Update final status
-            with self._state_lock:
-                if name in self.threads:
-                    self.threads[name].status = ThreadStatus.STOPPED if success else ThreadStatus.FAILED
-                    
-            if success:
-                self.logger.debug(f"Successfully stopped thread: {name}")
-            else:
-                self.logger.warning(f"Thread {name} did not stop within {timeout}s")
-                
-            return success
+        # Join outside the lock. update_heartbeat, register_thread
+        # and get_thread_status all take _state_lock, so joining
+        # under it blocks the very threads whose progress the join
+        # is waiting on — the same defect corrected in
+        # core/watchdog.py by change-5a9dc15e. thread_info is
+        # bound above, so the join is unaffected by the release.
+        success = True
+        if thread_info.thread.is_alive():
+            thread_info.thread.join(timeout=timeout)
+            success = not thread_info.thread.is_alive()
+
+        # Update final status
+        with self._state_lock:
+            if name in self.threads:
+                self.threads[name].status = ThreadStatus.STOPPED if success else ThreadStatus.FAILED
+
+        if success:
+            self.logger.debug(f"Successfully stopped thread: {name}")
+        else:
+            self.logger.warning(f"Thread {name} did not stop within {timeout}s")
+
+        return success
     
     def shutdown(self, timeout: float = 10.0) -> None:
         """Shutdown thread manager with proper resource cleanup and verification"""
@@ -352,8 +357,25 @@ class ThreadManager:
         # Stop all managed threads with proper state transitions
         with self._cleanup_lock:
             remaining_timeout = timeout - (time.time() - shutdown_start)
-            per_thread_timeout = max(1.0, remaining_timeout / max(1, len(self.threads)))
-            
+            thread_count = len(self.threads)
+            budgeted_per_thread = remaining_timeout / max(1, thread_count)
+            per_thread_timeout = max(1.0, budgeted_per_thread)
+
+            # The floor guarantees each join a usable timeout and in
+            # doing so abandons the caller's aggregate budget. Say
+            # so rather than substituting it silently (core review
+            # §5.5). The __del__ path reaches this with a 2.0s
+            # budget and three threads — 0.667s each — so the
+            # overrun does not require a slow worker pool.
+            if thread_count and budgeted_per_thread < 1.0:
+                self.logger.warning(
+                    f"Shutdown budget exceeded: {timeout:.1f}s requested, "
+                    f"{remaining_timeout:.1f}s remaining for {thread_count} "
+                    f"thread(s) ({budgeted_per_thread:.2f}s each); flooring at "
+                    f"{per_thread_timeout:.1f}s, worst case "
+                    f"{per_thread_timeout * thread_count:.1f}s"
+                )
+
             stopped_count = 0
             failed_count = 0
             

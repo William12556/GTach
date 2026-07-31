@@ -213,15 +213,46 @@ class GTachApplication:
         """Re-enter setup mode from DISCONNECTED screen"""
         try:
             self.logger.info("Re-entering setup from DISCONNECTED screen")
-            # Stop OBD if running
-            if hasattr(self, '_thread_manager'):
-                self._thread_manager.stop_thread('obd_protocol')
-            # Explicitly disconnect transport — it is not registered with ThreadManager
+
+            # Same sequence as shutdown() (app.py:295-310), and for
+            # the same reason. ThreadManager.stop_thread sets no
+            # event and does not call the registered stop_func, so
+            # it can only join. OBDProtocol's inner loop is bounded
+            # by transport.is_connected() (obd.py:79) and its outer
+            # loop by shutdown_event (obd.py:68), and when the
+            # transport is down the outer loop sleeps and continues
+            # rather than returning (obd.py:72-74). Disconnecting
+            # alone does not end the thread and stopping alone does
+            # not either — both are required, in this order.
+            # Previously the join came first, could never succeed,
+            # and ran to its 5s default on a UI callback while
+            # holding the thread-state lock (core review §5.9).
+
+            # 1. Transport — closes the socket, releasing the OBD
+            #    thread from any blocking read.
             if hasattr(self, '_transport'):
                 try:
                     self._transport.disconnect()
                 except Exception as e:
                     self.logger.warning(f"Transport disconnect on re-entry: {e}")
+
+            # 2. OBD — sets shutdown_event, which is the only thing
+            #    that ends _protocol_loop.
+            if hasattr(self, '_obd'):
+                try:
+                    self._obd.stop()
+                except Exception as e:
+                    self.logger.warning(f"OBD stop on re-entry: {e}")
+
+            # 3. Thread manager — bookkeeping. The thread is already
+            #    dead by now, so this records STOPPED rather than
+            #    FAILED. 2.0s rather than the 5.0s default because
+            #    this runs on a UI-driven callback and a join that
+            #    needs longer than that indicates a fault worth
+            #    seeing in the log.
+            if hasattr(self, '_thread_manager'):
+                self._thread_manager.stop_thread('obd_protocol', timeout=2.0)
+
             self._obd_started = False
             # Re-enter setup
             self._start_setup_mode()

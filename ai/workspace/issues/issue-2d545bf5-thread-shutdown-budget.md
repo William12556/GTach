@@ -19,7 +19,7 @@ issue_info:
   title: "ThreadManager.shutdown floors per_thread_timeout at 1.0 s and can overrun the caller's budget; _re_enter_setup joins the OBD thread before disconnecting the transport, so the join always runs to its 5 s timeout; and stop_thread performs that join while holding _state_lock despite a comment saying otherwise"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "medium"
   type: "performance"
   iteration: 1
@@ -317,14 +317,66 @@ resolution:
     app.py:295-312 — and pass an explicit short timeout to the join,
     which is then a formality. See change-2d545bf5.
   change_ref: "change-2d545bf5"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-31"
+  resolved_by: "Claude Code, per prompt-2d545bf5"
+  fix_description: >
+    Three edits across the two files named in change-2d545bf5, applied as
+    specified. No departure from the prompt's text was required.
+
+    Defect 1, the silent budget substitution. ThreadManager.shutdown now
+    binds the unfloored quotient to budgeted_per_thread before applying
+    max(1.0, ...), and emits a WARNING when a thread is registered and that
+    quotient falls below 1.0. The line carries the requested timeout, the
+    remaining time, the thread count, the per-thread value actually in
+    force and the projected worst-case total. The floor itself is retained,
+    as the prompt requires: the overrun is reported, not removed. Every
+    other statement of the method, including the completion log line, is
+    unchanged.
+
+    Defect 2, the join under the state lock. ThreadManager.stop_thread's
+    join, success test, final status write and return are de-indented out
+    of the `with self._state_lock:` block. The misleading comment — which
+    claimed the join was outside the lock while sitting at a different
+    indentation from the code it described — is replaced with one that
+    states why. _state_lock is an RLock, which is why the nested
+    re-acquisition never self-deadlocked and the defect stayed invisible.
+    The early returns, the state transition and the restart cancellation
+    keep their text and their place inside the block.
+
+    Defect 3, the re-entry ordering. GTachApplication._re_enter_setup now
+    disconnects the transport, then calls OBDProtocol.stop, then calls
+    stop_thread('obd_protocol', timeout=2.0) — the sequence shutdown()
+    already documents and performs. Each step is guarded independently so
+    a fault in one does not prevent the others or _start_setup_mode.
+    Previously the join came first, could not succeed, and ran to its 5.0 s
+    default on a UI callback.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-07-31"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only (macOS, Python 3.11.14). A real ThreadManager
+    with real threads; _re_enter_setup executed against recording stubs.
+    Fifty-three assertions, all passing. See change-2d545bf5
+    verification.test_results for the full record.
+
+    The lock defect was measured rather than argued. With a thread that
+    would not exit and a 2.0 s join already 0.2 s underway,
+    update_heartbeat for a different registered thread blocked for
+    1803.5 ms against the pre-change code — the entire remainder of the
+    join — and for 0.1 ms after the change. get_thread_status and
+    register_thread behave the same way. This is the property the watchdog
+    depends on: it reads thread state through the same lock, so a join was
+    previously able to stall the mechanism meant to detect stalls.
+
+    Run unchanged against the pre-change files the suite fails nineteen
+    assertions and passes twenty-nine, so it discriminates rather than
+    merely agreeing with the new code.
+
+    pytest tests/ — 11 passed, unchanged by this work.
+
+    This issue is left active pending on-target results per ai/task.md
+    §8.2.1.
   closure_notes: ""
 
 prevention:
@@ -357,7 +409,60 @@ verification_enhanced:
     - "Unit test: confirm a raise from transport.disconnect does not prevent obd.stop and stop_thread from running, matching the existing tolerance at app.py:223-224."
     - "On gtach.local: with the transport connected, tap Setup on the DISCONNECTED screen and confirm setup is entered without a multi-second freeze."
     - "On gtach.local: confirm the log no longer carries 'Thread obd_protocol did not stop within' on that path."
-  verification_results: ""
+  verification_results: >
+    Eleven of the thirteen steps are complete; two require gtach.local.
+
+    PASS — python -m py_compile on both files.
+
+    PASS — every statement from the join to the closing return sits at
+    method-body indentation. Confirmed by AST rather than by reading:
+    stop_thread contains exactly two with-statements, both on _state_lock,
+    exactly one join call, and neither block encloses it.
+
+    PASS — with a thread that will not exit and a join in progress,
+    update_heartbeat for a different registered thread returns promptly.
+    Measured at 1803.5 ms blocked before the change against 0.1 ms after,
+    with a 2.0 s join. get_thread_status and register_thread likewise.
+
+    PASS — three threads and shutdown(timeout=2.0) logs the WARNING.
+
+    PASS — three threads and shutdown(timeout=10.0) logs no WARNING.
+
+    PASS — the WARNING states the caller's timeout, the remaining time,
+    the thread count, the unfloored per-thread quotient, the floored value
+    in force and the projected worst case. A worker pool patched to consume
+    more than the whole budget produces a WARNING reporting a negative
+    remaining time rather than hiding it. No WARNING is emitted when no
+    thread is registered.
+
+    PASS — shutdown still stops every thread, still clears self.threads and
+    _active_futures, and the completion line is emitted once and keeps its
+    form.
+
+    PASS — _re_enter_setup calls transport.disconnect, then obd.stop, then
+    thread_manager.stop_thread, then _start_setup_mode, in that order.
+
+    PASS — stop_thread is called with timeout=2.0 explicitly, for
+    'obd_protocol'.
+
+    PASS — the absence of _transport, _obd or _thread_manager in any
+    combination leaves the remaining steps running and _start_setup_mode
+    called in every case.
+
+    PASS — a raise from transport.disconnect does not prevent obd.stop or
+    stop_thread, and is logged at WARNING; the same holds for a raise from
+    obd.stop.
+
+    OUTSTANDING — on gtach.local, with the transport connected, tap Setup
+    on the DISCONNECTED screen and confirm setup is entered without a
+    multi-second freeze. Note the reproduction difficulty the prompt
+    records: the effect is only observable while the transport is still
+    connected, which is not the usual state when that screen is showing.
+    Reaching OPTIONS with the transport up and using Clear settings invokes
+    the same callback.
+
+    OUTSTANDING — confirm the log no longer carries "Thread obd_protocol
+    did not stop within" on that path.
 
 traceability:
   design_refs:
@@ -404,6 +509,16 @@ version_history:
       - "Recorded two corrections to the source report: per_thread_timeout is computed once rather than per thread, and the __del__ path overruns its budget without a slow worker pool; and the §5.9 join cannot succeed at all in the case the finding names, so the full timeout always elapses and the thread is not stopped."
       - "Recorded a third fault found during verification and not present in either report: stop_thread joins while holding _state_lock, contradicting the comment at core/thread.py:310."
       - "Recorded two related observations — the OBD inner loop's exit condition and stop_thread's unused stop_func — as deliberately unclaimed."
+  - version: "1.1"
+    date: "2026-07-31"
+    author: "Claude Code"
+    changes:
+      - "Status open -> resolved. change-2d545bf5 implemented; resolution date, executor and fix description recorded for all three defects."
+      - "Recorded a direct measurement of the third fault: update_heartbeat blocked 1803.5 ms during a 2.0 s join before the change and 0.1 ms after, confirming that a join could stall the watchdog's own state reads."
+      - "Recorded eleven of thirteen verification steps as PASS and two as OUTSTANDING pending gtach.local."
+      - "Recorded that the suite fails nineteen assertions against the pre-change files, so it discriminates rather than merely agreeing with the new code."
+      - "Recorded that no departure from the prompt's text was required."
+      - "Left active pending on-target test results per ai/task.md §8.2.1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -420,6 +535,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from core-comm-utils-code-review.md findings §5.5 and §5.9, with two recorded corrections to the report, one fault added from verification, and two related observations recorded as unclaimed. |
+| 1.1 | 2026-07-31 | Status open → resolved; fix description and per-step verification recorded, including a measurement of the lock defect. Left active pending on-target results. |
 
 ---
 
