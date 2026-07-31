@@ -50,7 +50,12 @@ class BluetoothPairing:
                 raw_config = yaml.safe_load(f)
             pairing_config = raw_config.get('bluetooth', {}).get('pairing', {})
             
-            self.discovery_timeout = pairing_config.get('discovery_timeout', 30)
+            # int() at the read, not at the range() call. The value
+            # reaches two sites — range(chunks) below and the
+            # duration argument to bluetooth.discover_devices — and
+            # PyBluez expects an int at the second as well
+            # (core review §3.5, recommendation #5).
+            self.discovery_timeout = int(pairing_config.get('discovery_timeout', 30))
             self.connection_timeout = pairing_config.get('connection_timeout', 10) 
             self.lookup_timeout = pairing_config.get('lookup_timeout', 5)
             self.initialization_timeout = pairing_config.get('initialization_timeout', 15)
@@ -115,10 +120,22 @@ class BluetoothPairing:
         Returns:
             List of discovered ELM327 devices
         """
-        # Use configured or provided timeout
+        # Use configured or provided timeout. A caller may pass a
+        # float — discover_all_devices declares timeout: int = 30
+        # but nothing enforces it — and range() below requires an
+        # int (core review §3.5).
         if timeout is None:
             timeout = self.discovery_timeout
-            
+        else:
+            try:
+                timeout = int(timeout)
+            except (TypeError, ValueError):
+                self.logger.warning(
+                    f"Non-numeric discovery timeout {timeout!r} — "
+                    f"using {self.discovery_timeout}s"
+                )
+                timeout = self.discovery_timeout
+
         devices = []
         self._discovery_active = True
         self._cancel_discovery.clear()
@@ -345,7 +362,7 @@ class BluetoothPairing:
             finally:
                 try:
                     sock.close()
-                except:
+                except Exception:
                     pass
                     
         except Exception as e:
@@ -448,7 +465,12 @@ class BluetoothPairing:
                 # Test OBD-II communication
                 # Try to get vehicle identification
                 sock.send(b'0100\r')  # Request supported PIDs
-                response = sock.recv(1024).decode('utf-8', errors='ignore')
+                # Accumulate to the ELM327 '>' prompt rather than
+                # taking one read. A response split across reads
+                # failed both tests below, reporting failure for an
+                # adapter that answered correctly (core review §5.6).
+                # _recv_until_prompt returns str, so no decode.
+                response = self._recv_until_prompt(sock, timeout=5.0)
                 
                 if '41 00' in response or 'NO DATA' in response:
                     # Either we got a valid response or expected "NO DATA" (car not running)
@@ -475,7 +497,7 @@ class BluetoothPairing:
             finally:
                 try:
                     sock.close()
-                except:
+                except Exception:
                     pass
                     
         except Exception as e:
@@ -570,7 +592,7 @@ class BluetoothPairing:
         """Cleanup on object destruction"""
         try:
             self.shutdown()
-        except:
+        except Exception:
             pass
     
     def is_discovery_active(self) -> bool:

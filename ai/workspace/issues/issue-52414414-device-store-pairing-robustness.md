@@ -19,7 +19,7 @@ issue_info:
   title: "DeviceStore.save_device raises KeyError on a devices.yaml without a paired_devices key and swallows it; range() receives a float when discovery_timeout is non-integer; test_obd_connection reads once where _test_basic_communication accumulates; three bare except clauses in comm/pairing.py"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -276,14 +276,74 @@ resolution:
     the three bare except clauses to except Exception. See
     change-52414414.
   change_ref: "change-52414414"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-31"
+  resolved_by: "Claude Code, per prompt-52414414"
+  fix_description: >
+    Seven edits across the two files named in change-52414414, applied as
+    specified. No departure from the prompt's text was required.
+
+    Fault 1, the device store. DeviceStore._normalise_config enforces the
+    structure the writers assume — top level a mapping, paired_devices a
+    mapping, secondary a mapping if present — and is called as the last
+    statement of _load_config so it runs on every exit path including the
+    error path. save_device binds paired = self.config.setdefault(
+    'paired_devices', {}) once and assigns through it on both branches, so
+    neither can raise KeyError. Both save_device and _save_config now
+    return bool, so a caller can tell persistence from silence.
+
+    Fault 2, the discovery timeout. int() is applied at the configuration
+    read rather than at the range() call, because the value reaches
+    bluetooth.discover_devices as well; a caller-supplied timeout is
+    coerced at method entry with a warning and a fall back to the
+    configured value.
+
+    Fault 3, the split OBD response. test_obd_connection reads the 0100
+    response through _recv_until_prompt, which accumulates to the ELM327
+    prompt, in place of a single recv-and-decode.
+
+    Fault 4, the bare handlers. All three except: clauses in pairing.py
+    became except Exception:, so none can absorb KeyboardInterrupt or
+    SystemExit.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-07-31"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only (macOS, Python 3.11.14). A real DeviceStore
+    driven against real devices.yaml files on disk, and the real
+    BluetoothPairing methods against stub sockets. Seventy assertions, all
+    passing. See change-52414414 verification.test_results for the full
+    record.
+
+    All four faults were demonstrated before and after rather than argued
+    from the source:
+
+      1. save_device against a devices.yaml carrying only an unrelated
+         key returned None with no exception and persisted nothing; it now
+         returns True and the device is on disk.
+      2. discover_elm327_devices(timeout=30.5) returned an empty list
+         having attempted zero discovery chunks, logging "Discovery
+         failed: 'float' object cannot be interpreted as an integer"; it
+         now runs seven chunks with an int duration of 4.
+      3. A 0100 response split across three reads returned False; it now
+         returns True.
+      4. Three bare except clauses became none.
+
+    ONE CORRECTION TO THE ISSUE'S OWN WORDING. behavior.actual says the
+    KeyError is swallowed so "pairing reports success and persists
+    nothing". The measurement is more precise than that: DeviceStore did
+    log "Failed to save device OBDII: 'paired_devices'" at ERROR, so the
+    fault was visible in the log. What it was not visible to is the
+    caller — save_device returned None whether it succeeded or failed, and
+    the INFO line claiming success was never reached. The consequence for
+    the operator is as the issue describes; the mechanism is that the
+    caller could not distinguish the outcomes, which is what the bool
+    return now fixes.
+
+    pytest tests/ — 11 passed, unchanged by this work.
+
+    This issue is left active pending on-target results per ai/task.md
+    §8.2.1.
   closure_notes: ""
 
 prevention:
@@ -315,7 +375,58 @@ verification_enhanced:
     - "Unit test: stub a socket that returns 'NO DATA>' in one fragment; confirm test_obd_connection still returns True."
     - "grep confirms no bare 'except:' remains in src/gtach/comm/pairing.py."
     - "On gtach.local or ELM327-Emulator.local: complete a pairing and confirm config/devices.yaml carries the device afterwards."
-  verification_results: ""
+  verification_results: >
+    Thirteen of the fourteen steps are complete; one requires a device.
+
+    PASS — python -m py_compile on both files.
+
+    PASS — an empty document: save_device returns True and the reloaded
+    file carries paired_devices.primary.
+
+    PASS — an unrelated top-level key survives the save; the reloaded file
+    still carries other_key alongside the new paired_devices.
+
+    PASS — the secondary branch, which the source report does not cite,
+    also succeeds; the device appears under paired_devices.secondary keyed
+    by MAC address.
+
+    PASS — 'paired_devices: null' is normalised to a mapping at load and
+    save_device succeeds rather than raising TypeError on assignment.
+
+    PASS — with _save_config raising, save_device returns False and logs at
+    ERROR; with _save_config returning False, save_device returns False and
+    logs that the device was not persisted.
+
+    PASS — discovery_timeout 30.5 yields int 30, '30' yields int 30, and an
+    int is unchanged. A non-numeric value raises inside the existing try,
+    whose except falls back to all five defaults — the block's existing
+    behaviour, accepted by the change.
+
+    PASS — discover_elm327_devices(timeout=30.5) runs; range() receives an
+    int and seven chunks are attempted where zero were before.
+
+    PASS — the duration argument reaching bluetooth.discover_devices is an
+    int.
+
+    PASS — a 0100 response split across three reads returns True; a
+    single-read response and 'NO DATA>' still return True; no response and
+    an unrecognised response still return False.
+
+    PASS — no bare except: remains in pairing.py, confirmed by walking the
+    AST for an ExceptHandler with no type rather than by grep.
+
+    Additional checks beyond the listed steps: a top-level YAML list is
+    replaced with an empty store and logged; a non-mapping secondary is
+    replaced and logged; a well-formed store is left untouched with no
+    warning and get_primary_device and get_all_devices return what they
+    returned before; and with YAML unavailable _save_config returns False
+    so save_device honestly reports that nothing was persisted.
+
+    OUTSTANDING — on gtach.local or ELM327-Emulator.local, complete a
+    pairing and confirm config/devices.yaml carries the device afterwards.
+    To reproduce the original fault first, truncate config/devices.yaml to
+    zero length rather than deleting it: deletion takes the else-branch
+    that already seeds the key.
 
 traceability:
   design_refs:
@@ -356,6 +467,16 @@ version_history:
       - "Initial issue document from core-comm-utils-code-review.md findings §3.4, §3.5, §5.6 and §5.7 with §7.0 recommendations #4 and #5."
       - "Recorded three corrections to the source report: §3.4 affects both branches of save_device, not only the primary assignment; §3.5's stated remedy leaves the float at pairing.py:148 unfixed; §5.7's third bare except is in __del__ and is not a socket-close path."
       - "Recorded lookup_timeout as a related but unclaimed observation rather than fixing it silently."
+  - version: "1.1"
+    date: "2026-07-31"
+    author: "Claude Code"
+    changes:
+      - "Status open -> resolved. change-52414414 implemented; resolution date, executor and fix description recorded for all four faults."
+      - "Recorded a before-and-after demonstration of each fault rather than an argument from source."
+      - "Corrected the issue's own wording: DeviceStore did log the KeyError at ERROR, so the fault was visible in the log; what it was invisible to is the caller, since save_device returned None on both outcomes."
+      - "Recorded thirteen of fourteen verification steps as PASS and one as OUTSTANDING pending a device."
+      - "Recorded that the unit tests written here were not persisted into tests/, the prompt permitting no file outside the two named."
+      - "Left active pending on-target test results per ai/task.md §8.2.1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -372,6 +493,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from core-comm-utils-code-review.md findings §3.4, §3.5, §5.6 and §5.7 with §7.0 recommendations #4 and #5. Records three corrections to the source report and one unclaimed related observation. |
+| 1.1 | 2026-07-31 | Status open → resolved; fix description and per-step verification recorded, with each of the four faults demonstrated before and after. Left active pending on-target results. |
 
 ---
 

@@ -19,7 +19,7 @@ change_info:
   title: "Normalise the loaded devices.yaml structure and report save failure through a bool return; coerce discovery_timeout to int at the configuration read; use _recv_until_prompt in test_obd_connection; narrow three bare except clauses"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -409,11 +409,106 @@ implementation:
     does not reproduce the fault.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-07-31"
+  implemented_by: "Claude Code, per prompt-52414414"
+  verification_date: "2026-07-31"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only: macOS, Python 3.11.14. A real DeviceStore
+    driven against real devices.yaml files written to temporary
+    directories — the loader's treatment of malformed content being the
+    thing under test, a mocked file would have proved nothing — and the
+    real BluetoothPairing methods driven against stub sockets. Seventy
+    assertions, all passing. Left active pending on-target results per
+    ai/task.md §8.2.1.
+
+    All seven edits applied and all sixteen success criteria met. No
+    departure from the prompt's text was required.
+
+    THE FOUR FAULTS, BEFORE AND AFTER. Each was executed against the
+    pre-change file and the changed one rather than argued from the source.
+
+      1. save_device against a devices.yaml carrying only an unrelated
+         top-level key: returned None, raised nothing, persisted nothing.
+         Now returns True and the device is on disk, with the unrelated
+         key preserved.
+      2. discover_elm327_devices(timeout=30.5): returned an empty list
+         having attempted zero discovery chunks, logging "Discovery
+         failed: 'float' object cannot be interpreted as an integer". Now
+         attempts seven chunks with an int duration of 4.
+      3. A 0100 response arriving as '41 0', '0 BE 3F', 'A8 13>' across
+         three reads: returned False. Now returns True.
+      4. Bare except: clauses in pairing.py: three. Now none.
+
+    A CORRECTION TO THE ISSUE'S WORDING, recorded there as well. Its
+    behavior.actual says the swallowed KeyError means pairing "reports
+    success and persists nothing". The measurement is more exact:
+    DeviceStore did log "Failed to save device OBDII: 'paired_devices'" at
+    ERROR, so the fault was not invisible in the log, and the INFO line
+    claiming success was never reached. What the fault was invisible to is
+    the caller — save_device returned None whether it succeeded or failed,
+    which is precisely what the bool return corrects. The operator-facing
+    consequence the issue describes is unchanged; the mechanism is
+    narrower than stated.
+
+    Evidence by test case.
+
+    Loader normalisation: an empty document, a document carrying only an
+    unrelated key, 'paired_devices: null', a list under paired_devices, a
+    top-level YAML list, and a non-mapping secondary each produce a
+    well-formed store. The three replacements that discard data are logged
+    at WARNING naming the observed type; a null paired_devices is not
+    logged, since absence is not a fault. A well-formed store is left
+    untouched and logs nothing, and get_primary_device and get_all_devices
+    return what they returned before. A missing file still takes the
+    else-branch that seeds and writes the structure.
+
+    The bool return: _save_config returns True after a successful write,
+    False from its except, and False when YAML is unavailable, so
+    save_device honestly reports that an in-memory store persisted nothing.
+    save_device returns False both when _save_config raises and when it
+    reports failure, logging at ERROR in each case.
+
+    Both branches: the primary and secondary branches each succeed against
+    a store with no paired_devices key. The secondary branch is the one the
+    source report does not cite, and it raised identically before.
+
+    The timeout: 30.5 and '30' both yield int 30 at construction; a
+    non-numeric value falls into the block's existing except and takes all
+    five defaults. A caller-supplied float is coerced at method entry; a
+    non-numeric one logs a warning and falls back to the configured value.
+    The duration reaching bluetooth.discover_devices is an int.
+
+    The OBD read: three fragments, one fragment, and 'NO DATA>' all return
+    True; no response and an unrecognised response still return False, so
+    the change does not make the test more permissive.
+
+    Scope: an AST comparison against the previous commit shows
+    _load_config, _save_config and save_device are the only DeviceStore
+    methods that differ and _normalise_config the only one added;
+    get_primary_device, get_all_devices, remove_device and get_device_by_mac
+    are byte-identical. In BluetoothPairing the differing methods are
+    within the permitted set and none was added; _recv_until_prompt,
+    _test_basic_communication and _classify_device are byte-identical, and
+    the discovery early-exit block from change-54eeb2d6 is compared line
+    for line and unchanged. config.py, sim_bluetooth.py and the Bluetooth
+    setup interface are unmodified.
+
+    NOT DONE, and outside this task's authority. The prompt's notes say the
+    unit tests written here are the tests ai/task.md §8.2 lists for
+    DeviceStore and "should be placed so the later T05 can adopt them". Its
+    constraints permit no file outside the two named, and its success
+    criteria repeat that. The verification therefore ran from an ephemeral
+    script and nothing was persisted into tests/. This mattered less when
+    tests/ was empty; it now holds conftest.py and tests/utils/test_rwlock.py,
+    so a suite exists to adopt them into. Generating them needs its own T04
+    prompt.
+
+    pytest tests/ — 11 passed, unchanged by this work.
+
+    What this does not establish: that a real pairing writes the device.
+    Nothing here needs a live adapter, but the end-to-end path has not been
+    exercised.
   issues_found: []
 
 traceability:
@@ -441,6 +536,16 @@ version_history:
       - "Initial change document coupled to issue-52414414."
       - "Records why the report's stated remedies for §3.4 and §3.5 are each extended: both save_device branches raise, and the float reaches pairing.py:148 as well as the range() call."
       - "Records the two save_device call sites and lookup_timeout as out of scope."
+  - version: "1.1"
+    date: "2026-07-31"
+    author: "Claude Code"
+    changes:
+      - "Status proposed -> implemented. Recorded implementation date, executor, verification date and development-platform test results."
+      - "Recorded each of the four faults demonstrated before and after, including that a float timeout attempted zero discovery chunks and now attempts seven."
+      - "Recorded a correction to the issue's wording: the KeyError was logged at ERROR, so it was invisible to the caller rather than invisible in the log."
+      - "Recorded that no departure from the prompt's text was required."
+      - "Recorded that the unit tests were not persisted into tests/, the prompt permitting no file outside the two named, and that a suite now exists to adopt them into."
+      - "Left active pending on-target test results per ai/task.md §8.2.1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -457,6 +562,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-52414414. Extends the report's remedies for §3.4 and §3.5 with recorded reasons, and records the out-of-scope boundary against task 7.4.1. |
+| 1.1 | 2026-07-31 | Status proposed → implemented; development-platform test results recorded, with each of the four faults demonstrated before and after. Left active pending on-target results. |
 
 ---
 

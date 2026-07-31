@@ -547,6 +547,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial prompt document coupled to change-52414414. |
+| 1.1 | 2026-07-31 | Executed by Claude Code. All seven edits applied and all sixteen success criteria met, with no departure from the deliverable text required. 70 assertions against a real DeviceStore over real files and the real pairing methods against stub sockets, all passing; pytest tests/ 11 passed. Each of the four faults was demonstrated before and after: save_device returned None and persisted nothing, now returns True and persists; a float timeout attempted zero discovery chunks and logged "'float' object cannot be interpreted as an integer", now attempts seven with an int duration; a 0100 response split across three reads returned False, now True; three bare except clauses became none. One correction to the issue's wording is recorded in change-52414414 — the KeyError was logged at ERROR, so it was invisible to the caller rather than invisible in the log. The unit tests were NOT persisted into tests/, this document permitting no file outside the two named; that needs its own T04 prompt, and tests/ is now a live suite to adopt them into. Closed per P00 §1.1.14.4 and moved to ai/workspace/prompt/closed/; the issue and change remain active pending on-target results per ai/task.md §8.2.1. |
 
 ---
 
