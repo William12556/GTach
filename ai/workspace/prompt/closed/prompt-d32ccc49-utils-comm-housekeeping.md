@@ -462,6 +462,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial prompt document coupled to change-d32ccc49. |
+| 1.1 | 2026-07-31 | Executed by Claude Code. All four edits applied and all fifteen success criteria met; 53 assertions against the real marker logic, a real queue.Queue and the real ConfigManager singleton, all passing; pytest tests/ 11 passed. Each of the three faults was demonstrated before and after: _find_project_root returned None for a tree whose only marker is src/gtach and now returns that root; a TypeError at the queue handoff was swallowed and now propagates; a second construction with a different config_path was silent and now warns exactly once, with the returned instance and held path unchanged. One deviation: EDIT 1's and EDIT 3's prescribed comment text contains the literal 'src/obdii' and 'except Exception', which two of this document's own success criteria forbid in exactly the places those comments sit; both were reworded so the criteria hold literally and the explanations survive. Two test expectations needed qualifying — the relative-path case is symlink-dependent and holds on Linux but not through macOS's /var symlink, which is the false positive edge_cases already records as accepted; and the _detect_development_environment False case cannot be reproduced from a source checkout. Recorded in change-d32ccc49. Closed per P00 §1.1.14.4 and moved to ai/workspace/prompt/closed/; the issue and change remain active pending on-target results per ai/task.md §8.2.1. |
 
 ---
 

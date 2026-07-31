@@ -12,6 +12,7 @@ Manages OBD communication and data processing.
 """
 
 import logging
+import queue
 import re
 import threading
 import time
@@ -82,15 +83,21 @@ class OBDProtocol:
                     if rpm_data:
                         try:
                             self.thread_manager.message_queue.put_nowait(rpm_data)
-                        except Exception:
-                            # Queue full — discard oldest, insert newest
+                        except queue.Full:
+                            # Queue full — discard oldest, insert newest.
+                            # Narrowed from a catch-all handler: a genuine
+                            # programming error here was being counted as
+                            # queue pressure and discarded, three times per
+                            # sample (core review §4.2). Anything other
+                            # than Full or Empty now reaches the loop's own
+                            # handler below and is logged with a traceback.
                             try:
                                 self.thread_manager.message_queue.get_nowait()
-                            except Exception:
+                            except queue.Empty:
                                 pass
                             try:
                                 self.thread_manager.message_queue.put_nowait(rpm_data)
-                            except Exception:
+                            except queue.Full:
                                 pass
                         self.thread_manager.data_available.set()
                     time.sleep(self.poll_interval_s)

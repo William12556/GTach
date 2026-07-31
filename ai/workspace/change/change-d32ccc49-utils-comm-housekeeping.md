@@ -19,7 +19,7 @@ change_info:
   title: "Replace the three src/obdii markers in utils/home.py with src/gtach; import queue in comm/obd.py and catch queue.Full and queue.Empty specifically; log a WARNING in ConfigManager.__init__ when a later construction supplies a different config_path"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -376,11 +376,110 @@ implementation:
     on a real installation.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-07-31"
+  implemented_by: "Claude Code, per prompt-d32ccc49"
+  verification_date: "2026-07-31"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only: macOS, Python 3.11.14. The real OBDIIHome
+    marker logic against synthetic directory trees, the real sample-handoff
+    block against a real queue.Queue at its production maxsize of 5, and the
+    real ConfigManager singleton. Fifty-three assertions, all passing. Left
+    active pending on-target results per ai/task.md §8.2.1.
+
+    All four edits applied and all fifteen success criteria met, with one
+    deviation from the prescribed comment text, recorded below.
+
+    THE THREE FAULTS, BEFORE AND AFTER. Each was executed against the
+    pre-change file and the changed one.
+
+      1. _find_project_root against a tree whose only marker is src/gtach
+         returned None; it now returns that root. The finding that the
+         branch could never match is therefore exact, not merely plausible.
+         A tree carrying only the old src/obdii marker is correctly not
+         matched, which is the other half of the same claim.
+      2. A TypeError raised by put_nowait was swallowed by the handoff and
+         counted as queue pressure; it now propagates to the loop's own
+         handler and is logged with a traceback. The same holds for a
+         TypeError from get_nowait during the discard.
+      3. A second construction with a different config_path was silent; it
+         now emits exactly one WARNING on the ConfigManager logger naming
+         both absolute paths. The instance returned and the held
+         config_path are identical before and after, so nothing but the
+         diagnostic changed — which is what "warn; do not re-initialise"
+         requires.
+
+    DEVIATION FROM THE PRESCRIBED COMMENT TEXT. EDIT 1's comment contains
+    the literal 'src/obdii' and EDIT 3's contains 'except Exception'. Two of
+    this change's own success criteria forbid those strings — the first
+    anywhere in src/gtach, the second anywhere in the edited obd.py block —
+    so the prescribed comments cannot coexist with the criteria that check
+    the edits they accompany. Unlike a case where naming the rejected
+    alternative is the point of the comment, both explanations survive
+    rewording: "the stale pre-rename marker" and "a catch-all handler". Both
+    criteria now hold literally. Nothing but comment prose differs from the
+    prescribed text.
+
+    Evidence by test case.
+
+    Markers: 'src/obdii' appears in no .py file under src/gtach; the sole
+    remaining occurrence in the tree is a stale __pycache__ .pyc, which is
+    build output. Every obdii-bearing line other than the three markers is
+    byte-identical in both home.py and config.py — compared line for line
+    rather than by line number, since the numbers have drifted. That covers
+    the ~/.local/share/obdii and /opt/obdii data paths, the OBDII_HOME
+    variable, the _obdii_home singleton, the ~/.obdii migration paths and
+    the obdii_debug_ log filename pattern.
+
+    Queue: the three handoff handlers are queue.Full, queue.Empty and
+    queue.Full, identified from the AST by taking only the innermost try
+    whose direct body is a single queue call — the enclosing loop try
+    contains the same calls transitively and must not be counted. A full
+    queue still discards the oldest and admits the newest, giving
+    [1, 2, 3, 4, 99]. _protocol_loop is the only OBDProtocol method that
+    differs, and the count of except Exception handlers elsewhere in the
+    file is unchanged at four.
+
+    Singleton: a different absolute path warns exactly once and names both
+    paths and both escape hatches; the same path, and no path at all, warn
+    nothing; force_new=True yields a distinct instance honouring the
+    supplied path without warning; reset_singleton() then a new path yields
+    a fresh instance honouring it without warning. With os.path.abspath
+    forced to raise, the constructor still completes and returns the
+    existing instance, so the diagnostic cannot fail what it diagnoses.
+
+    ONE UNIT TEST'S EXPECTATION NEEDED CORRECTING, and one could not be run.
+    The relative-path case — ConfigManager('./a.yaml') from a directory
+    where it resolves to the held path — holds only where that directory is
+    not reached through a symlink. On macOS tempfile.mkdtemp returns /var/...
+    while getcwd() after chdir returns /private/var/..., so os.path.abspath
+    yields two different strings for one file and the warning fires. That is
+    precisely the false positive this change records under edge_cases as
+    accepted; the suite now asserts both the resolving case on a real
+    directory and the symlinked false positive, rather than reporting one
+    and hiding the other. On Linux, where /tmp is a real directory, the test
+    holds as written. Separately, "_detect_development_environment returns
+    False with no marker and no project root" cannot be reproduced from a
+    source checkout: it falls through to the editable-mode test, which finds
+    gtach under src/ and returns True. Only the two marker lines differ in
+    that method and the fallback chain is unchanged; the step would hold in
+    an installed layout, which is not available here.
+
+    Confinement, which is a governance requirement rather than a preference.
+    ConfigManager.__init__ is the only method of that class that differs;
+    __new__ is byte-identical; the RWLock class corrected by change-1143427b
+    is byte-identical; BluetoothConfig is byte-identical and the
+    saved_devices occurrence count is unchanged; the get_device_by_address,
+    add_or_update_device and remove_device region that task 7.4.1 will
+    delete is byte-identical. src/gtach/core/thread.py is unmodified.
+
+    pytest tests/ — 11 passed, unchanged by this work.
+
+    What this does not establish: that an installed deployment still finds
+    its configuration. None of the three corrections is visible on the
+    panel, so the on-target step is a confirmation that nothing broke, and
+    the configuration-location check is the only way this change could go
+    wrong on a real installation.
   issues_found: []
 
 traceability:
@@ -416,6 +515,16 @@ version_history:
       - "Records the 7.4.1 confinement as the first out_of_scope entry, with the exact region 7.4.1 will delete."
       - "Records the deliberate legacy obdii data-path and migration names as out of scope, with the reason renaming them would be harmful."
       - "Records why __init__ rather than __new__ is the site for the §5.2 warning."
+  - version: "1.1"
+    date: "2026-07-31"
+    author: "Claude Code"
+    changes:
+      - "Status proposed -> implemented. Recorded implementation date, executor, verification date and development-platform test results."
+      - "Recorded each of the three faults demonstrated before and after, including that _find_project_root returned None for a src/gtach-only tree."
+      - "Recorded a deviation: the prescribed comment text for EDIT 1 and EDIT 3 contains the two strings this change's own success criteria forbid, so both comments were reworded."
+      - "Recorded that one unit test's expectation is symlink-dependent and one cannot be reproduced from a source checkout."
+      - "Recorded that the 7.4.1 confinement holds, with __new__, RWLock, BluetoothConfig and the device-persistence region all byte-identical."
+      - "Left active pending on-target test results per ai/task.md §8.2.1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -432,6 +541,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-d32ccc49. Records the 7.4.1 confinement and its exact region, the boundary against the deliberate legacy `obdii` names, and why `__init__` is the site for the §5.2 warning. |
+| 1.1 | 2026-07-31 | Status proposed → implemented; development-platform test results recorded, with each of the three faults demonstrated before and after and the 7.4.1 confinement confirmed. Left active pending on-target results. |
 
 ---
 

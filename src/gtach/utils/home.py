@@ -110,8 +110,11 @@ class OBDIIHome:
         """Find the project root directory by looking for key files."""
         current = Path(__file__).parent
         
-        # Look for project markers
-        markers = ['pyproject.toml', 'setup.py', '.git', 'src/obdii']
+        # Look for project markers. 'src/gtach' replaced the stale
+        # pre-rename marker, which was left from before the package
+        # was renamed and could never match the current layout
+        # (core review §5.4, recommendation #8).
+        markers = ['pyproject.toml', 'setup.py', '.git', 'src/gtach']
         
         while current != current.parent:
             if any((current / marker).exists() for marker in markers):
@@ -124,14 +127,14 @@ class OBDIIHome:
         """Detect if running in development environment."""
         # Check if running from source directory
         current_file = Path(__file__).resolve()
-        if 'src/obdii' in str(current_file):
+        if 'src/gtach' in str(current_file):
             return True
         
         # Check for development indicators
         project_root = self._find_project_root()
         if project_root:
             dev_indicators = [
-                project_root / "src" / "obdii",
+                project_root / "src" / "gtach",
                 project_root / ".git",
                 project_root / "pyproject.toml"
             ]

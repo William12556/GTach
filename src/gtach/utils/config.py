@@ -1115,8 +1115,31 @@ class ConfigManager:
         """
         # Prevent double initialization of singleton
         if hasattr(self, '_initialized') and not force_new:
+            # __new__ returned the existing instance without
+            # consulting config_path, and this return leaves
+            # self.config_path as it was — so a caller asking for a
+            # different file silently receives the original
+            # configuration (core review §5.2). Say which path was
+            # discarded.
+            held = getattr(self, 'config_path', None)
+            if config_path is not None and held is not None:
+                try:
+                    asked_abs = os.path.abspath(config_path)
+                    held_abs = os.path.abspath(held)
+                    if asked_abs != held_abs:
+                        logging.getLogger(f'{__name__}.ConfigManager').warning(
+                            f"ConfigManager is a process-wide singleton: "
+                            f"requested config_path {asked_abs} was discarded; "
+                            f"the existing instance holds {held_abs}. Use "
+                            f"ConfigManager.reset_singleton() or force_new=True "
+                            f"to construct against a different file."
+                        )
+                except Exception:
+                    # A diagnostic must not be able to fail the
+                    # constructor it diagnoses.
+                    pass
             return
-            
+
         # Ensure OBDII directories exist
         ensure_directories()
         
