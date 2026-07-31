@@ -19,7 +19,7 @@ issue_info:
   title: "_draw_update_view renders a fixed 'Checking…' string while a worker scans and CRC-validates candidate wheels, so a slow or stalled check is indistinguishable from a hung application"
   date: "2026-07-30"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -198,14 +198,67 @@ resolution:
     instance state, no change to _update_wheel, no change to the update
     workflow. See change-4c3c3e1f.
   change_ref: "change-4c3c3e1f"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-07-31"
+  resolved_by: "Claude Code, per prompt-4c3c3e1f"
+  fix_description: >
+    Two edits to src/gtach/display/manager.py, as specified. No departure
+    from the prompt's text was required.
+
+    DisplayManager._draw_update_spinner draws eight dots of radius 6,
+    evenly spaced on a circle of radius 34 centred at (240, 270), with one
+    highlighted in white and the rest in (90, 90, 110). The highlighted
+    index is (self._frame_counter // step) % 8 where
+    step = max(1, int(round(self.config.fps_limit / 8.0))), so the phase
+    derives from the frame counter rather than from any clock — the
+    timebase change-4c038bed established for periodic display effects. The
+    helper holds no state, so no instance attribute was added and nothing
+    needs resetting when the view is entered or left. Its body is wrapped:
+    a drawing failure is logged at ERROR with a traceback and the rest of
+    the view still renders.
+
+    _draw_update_view calls it between the status message and the button
+    block, guarded by _update_status == 'checking'. Nothing else in the
+    method changed — a line-level comparison against the previous file
+    shows only the guarded call and its comment were added, and nothing
+    removed.
+
+    self._update_wheel was neither read nor written. Its four occurrences
+    are byte-identical to their previous text, which matters because the
+    source report misread it as an unused spinner field when it in fact
+    holds the wheel filename that updater.stage_pending consumes.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-07-31"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only (macOS, Python 3.11.14, pygame 2.6.1). The
+    real DisplayManager render path was driven with a recording engine, so
+    the geometry and phase were read from the draw calls actually issued
+    rather than asserted against the source. Sixty-five assertions, all
+    passing. See change-4c3c3e1f verification.test_results for the full
+    record.
+
+    The defect claim was confirmed directly. Rendering the update view for
+    64 consecutive frames with _update_status 'checking' and recording
+    every draw call: before the change all 64 frames were byte-identical —
+    one distinct frame, 63 of 63 consecutive pairs the same — so a running
+    check genuinely could not be told from a frozen application. After the
+    change there are 8 distinct frames, with 56 of 63 consecutive pairs
+    identical, which is the 8-frame step showing up independently of the
+    assertion that measures it.
+
+    ONE ERROR FOUND IN THE PROMPT'S TEST MATRIX. Its unit test 1 expects
+    48 frames at fps_limit 60 to highlight all eight positions. That
+    contradicts its own functional requirement, which fixes the step at 8
+    frames and a revolution at 64. Forty-eight frames advance the index six
+    times and cover six positions. The implementation follows the
+    requirement; the test case is the error. The suite asserts both facts
+    so the discrepancy is recorded rather than papered over.
+
+    pytest tests/ — 11 passed, unchanged by this work.
+
+    This issue is left active pending on-target results per ai/task.md
+    §8.2.1.
   closure_notes: ""
 
 prevention:
@@ -232,7 +285,52 @@ verification_enhanced:
     - "Confirm the spinner does not overlap the status message bounding box at (240, 180) or the hint text at (240, 410)."
     - "On gtach.local: tap Check for updates with a wheel staged in /opt/gtach/updates and confirm the indicator turns for the duration of the check."
     - "On gtach.local: confirm the install and cancel buttons appear unchanged when the check completes with 'available', and that no spinner remains."
-  verification_results: ""
+  verification_results: >
+    Seven of the nine steps are complete; two require gtach.local.
+
+    PASS — python -m py_compile src/gtach/display/manager.py.
+
+    PASS — _update_wheel is untouched. Its four occurrences are
+    byte-identical to their previous text, including the assignment from
+    find_available_update and the read by stage_pending. The line numbers
+    moved to 76, 1380, 1395 and 1405 because this change inserts a method
+    above them; the lines themselves are unchanged.
+
+    PARTIAL, and the step as written is wrong — 48 frames at fps_limit 60
+    cover six of the eight positions, not eight. The step is 8 frames by
+    the change's own requirement, so a revolution needs 64 frames. Over 64
+    frames all eight positions are highlighted, which is the property the
+    step is reaching for. Recorded as an error in the prompt's test matrix
+    rather than a defect in the implementation.
+
+    PASS — the highlighted index advances by exactly one between frame N
+    and frame N + 8 at fps_limit 60, checked across a full revolution, and
+    is unchanged for seven of every eight consecutive frames. At fps_limit
+    30 the step is 4 frames and a revolution still takes the same 1.07 s.
+    Below fps_limit 8 the max(1, ...) holds the step at one frame.
+
+    PASS — no dot is drawn for any of 'idle', 'available', 'none', 'error'
+    or 'pending'.
+
+    PASS — the outermost spinner pixel is 70.0 px from the viewport centre,
+    well inside the 238 px radius.
+
+    PASS — the ring occupies y 230 to 310, clear of the status message
+    centred at y 180 and the hint text at y 410. The spinner registers no
+    touch region, so it cannot interfere with the region set that
+    change-44bca479 made authoritative.
+
+    OUTSTANDING — on gtach.local, tap Check for updates with a wheel staged
+    in /opt/gtach/updates and confirm the indicator turns for the duration
+    of the check. Note the prompt's guidance: if the dots read as too small
+    at 229 ppi, dot_radius and ring_radius are two constants in one method,
+    and dot_radius should be raised first because ring_radius beyond 60
+    would encroach on the status message.
+
+    OUTSTANDING — confirm install and cancel appear unchanged when the
+    check completes with 'available', and that no spinner remains. Both
+    hold off-target: with status 'available' two buttons are drawn, the
+    labels are unchanged and no circle is issued.
 
 traceability:
   design_refs:
@@ -264,6 +362,16 @@ version_history:
       - "Initial issue document from display-ui-graphics-review.md finding §7.8 and recommendation 28."
       - "Recorded three corrections to the source report: _update_wheel is a live field holding a wheel filename and not an unused spinner; the check is a local filesystem and CRC operation, not a network call; the cited line 958 is 1235 at 0.2.67."
       - "Recorded the consequence for task 7.3.6, which ai/task.md §7.6.1 does not carry."
+  - version: "1.1"
+    date: "2026-07-31"
+    author: "Claude Code"
+    changes:
+      - "Status open -> resolved. change-4c3c3e1f implemented; resolution date, executor and fix description recorded."
+      - "Recorded a direct confirmation of the finding: 64 consecutive frames of the checking view were byte-identical before the change and comprise 8 distinct frames after."
+      - "Recorded an error in the prompt's test matrix: 48 frames at fps 60 cover six positions, not eight, contradicting the change's own 8-frame step and 64-frame revolution."
+      - "Recorded seven of nine verification steps as PASS, one as PARTIAL for that reason, and two as OUTSTANDING pending gtach.local."
+      - "Recorded that _update_wheel is byte-identical at all four occurrences, against the source report's reading of it as an unused spinner."
+      - "Left active pending on-target test results per ai/task.md §8.2.1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -280,6 +388,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial issue document from display-ui-graphics-review.md finding §7.8 and recommendation 28, with three recorded corrections to the source report and a note on the consequence for task 7.3.6. |
+| 1.1 | 2026-07-31 | Status open → resolved; fix description and per-step verification recorded, including a direct confirmation that consecutive frames were identical and one error found in the prompt's test matrix. Left active pending on-target results. |
 
 ---
 

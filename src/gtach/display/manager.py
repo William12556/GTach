@@ -1222,6 +1222,54 @@ class DisplayManager:
         if small_font:
             self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Long press to return", small_font, (150, 150, 150), (240, 400), center=True)
 
+    def _draw_update_spinner(self) -> None:
+        """Draw an indeterminate progress ring while a check runs.
+
+        Eight dots on a circle of radius 34 centred at (240, 270),
+        with one highlighted. The highlighted index advances from
+        self._frame_counter rather than from wall-clock time, so
+        the rate is equal by construction at any frame rate — the
+        same construction as the shift-cue flash phase
+        (manager.py:694-698, change-4c038bed).
+
+        The ring is 30 px below the viewport centre and its
+        outermost pixel is 70 px from that centre, inside the
+        238 px radius. It occupies y 230 to 310, which is clear of
+        the status message at y 180 and of the hint text at y 410.
+        No button is registered while the status is 'checking'
+        (_register_update_view_regions), so nothing else occupies
+        that band.
+
+        Drawn only while _update_status is 'checking'. The caller
+        applies that test.
+        """
+        try:
+            dot_count = 8
+            ring_radius = 34
+            dot_radius = 6
+            centre_x, centre_y = 240, 270
+
+            # One step per fps_limit/8 frames — a revolution in
+            # approximately 1.07 s for any fps_limit of 8 or
+            # more. Below that the max(1, ...) holds the step at
+            # one frame and the ring simply turns faster than
+            # once a second.
+            step = max(1, int(round(self.config.fps_limit / 8.0)))
+            active = (self._frame_counter // step) % dot_count
+
+            for index in range(dot_count):
+                # -pi/2 puts index 0 at the top of the ring.
+                angle = (2.0 * math.pi * index / dot_count) - (math.pi / 2.0)
+                dot_x = centre_x + int(round(ring_radius * math.cos(angle)))
+                dot_y = centre_y + int(round(ring_radius * math.sin(angle)))
+                colour = (255, 255, 255) if index == active else (90, 90, 110)
+                self.rendering_engine.draw_circle(
+                    RenderTarget.BACK_BUFFER, colour, (dot_x, dot_y), dot_radius
+                )
+
+        except Exception as e:
+            self.logger.error(f"Update spinner error: {e}", exc_info=True)
+
     def _draw_update_view(self) -> None:
         """Draw the update check / install sub-view."""
         self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
@@ -1245,6 +1293,14 @@ class DisplayManager:
         status_font = self._get_cached_font(26)
         if status_font:
             self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, msg, status_font, (255, 255, 255), (240, 180), center=True)
+
+        # A check has no reportable progress — find_available_update
+        # publishes no intermediate state — so the indicator is
+        # indeterminate. It exists to distinguish a running check
+        # from a stalled application (display review §7.8,
+        # recommendation 28).
+        if self._update_status == 'checking':
+            self._draw_update_spinner()
 
         center_x = 240
         button_font = self._get_cached_font(26)

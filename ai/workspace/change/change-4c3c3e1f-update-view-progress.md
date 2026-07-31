@@ -19,7 +19,7 @@ change_info:
   title: "Add _draw_update_spinner — an eight-dot ring advanced from the frame counter — and call it from _draw_update_view while _update_status is 'checking'"
   date: "2026-07-30"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -280,11 +280,96 @@ implementation:
     'available' path as well as the 'none' path.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-07-31"
+  implemented_by: "Claude Code, per prompt-4c3c3e1f"
+  verification_date: "2026-07-31"
+  verified_by: "Claude Code"
+  test_results: >
+    Development platform only: macOS, Python 3.11.14, pygame 2.6.1, SDL
+    dummy driver. The real DisplayManager render path was driven with a
+    recording engine, so the geometry and phase below are read from the
+    draw calls the code actually issued rather than asserted against its
+    source. Sixty-five assertions, all passing. Left active pending
+    on-target results per ai/task.md §8.2.1.
+
+    Both edits applied and all fourteen success criteria met. No departure
+    from the prompt's text was required.
+
+    THE FINDING, CONFIRMED DIRECTLY. §7.8 asserts that consecutive frames
+    of the checking view are identical, so a running check cannot be told
+    from a hung application. Rendering 64 consecutive frames with
+    _update_status 'checking' and recording every draw call:
+
+      pre-change   1 distinct frame; 63 of 63 consecutive pairs identical
+      post-change  8 distinct frames; 56 of 63 consecutive pairs identical
+
+    The finding was exactly right: before this change the view was
+    literally a still image. The 56 of 63 figure after is the 8-frame step
+    appearing independently of the assertion that measures it — seven of
+    every eight consecutive pairs are expected to match.
+
+    AN ERROR IN THE PROMPT'S TEST MATRIX. Unit test 1 expects 48 frames at
+    fps_limit 60 to highlight all eight positions. It cannot: the same
+    document fixes the step at 8 frames and states that a revolution takes
+    64. Forty-eight frames advance the index six times, covering six
+    positions. The implementation follows the functional requirement, which
+    is unambiguous — (frame_counter // step) % 8 with
+    step = max(1, round(fps_limit / 8.0)) — and the test case is the error.
+    The suite asserts both the six-position result at 48 frames and the
+    eight-position result at 64, so the discrepancy is recorded rather than
+    silently accommodated.
+
+    Evidence by test case.
+
+    Shape: eight circles per frame while checking, exactly one in
+    (255, 255, 255) and seven in (90, 90, 110), every one of radius 6. The
+    first dot is at (240, 236), the top of the ring. All eight lie within
+    a pixel of a radius-34 circle centred at (240, 270) and occupy eight
+    distinct octants.
+
+    Placement: the outermost spinner pixel is 70.0 px from the viewport
+    centre — 30 px of centre offset, 34 px of ring radius, 6 px of dot
+    radius — against a 238 px viewport. The ring spans y 230 to 310, clear
+    of the status message centred at y 180 and of the hint at y 410. The
+    spinner registers no touch region.
+
+    Phase: the index advances by exactly one between frame N and N + 8 at
+    fps_limit 60, across a full revolution, and is unchanged for 56 of 64
+    consecutive frame pairs. Frame 0 highlights the top dot and frame 64
+    returns to it. At fps_limit 30 the step is 4 frames and a revolution
+    still takes 32 frames — the same 1.07 s, which is the point of deriving
+    the step from fps_limit. At fps_limit 4 the max(1, ...) holds the step
+    at one frame. A frame counter of 10^12 + 3 still yields a valid index,
+    so unbounded growth is harmless.
+
+    Gating: no dot is drawn for 'idle', 'available', 'none', 'error' or
+    'pending'. With 'available' the install and cancel buttons are drawn
+    exactly as before, their labels unchanged, and no circle is issued.
+    With 'checking' the status message and the hint are still drawn and no
+    button is.
+
+    Containment: with draw_circle patched to raise, exactly one ERROR is
+    logged, it carries a traceback, it names the spinner, and the status
+    message and hint text are still drawn — the indicator is decoration and
+    fails as decoration.
+
+    Scope: an AST comparison against the previous commit shows
+    _draw_update_view is the only method that differs and
+    _draw_update_spinner the only one added; __init__ is byte-identical, so
+    no instance attribute was introduced; _register_update_view_regions is
+    byte-identical. A line-level comparison of _draw_update_view shows only
+    the guarded call and its comment were added and nothing removed, with
+    the status-string selection, the title, the button block and the hint
+    text all intact. self._update_wheel appears on the same four lines with
+    the same text. time.monotonic, time.time and pygame.time do not appear
+    in the new method. src/gtach/display/rendering/engine.py and
+    src/gtach/utils/updater.py are unmodified.
+
+    pytest tests/ — 11 passed, unchanged by this work.
+
+    What this does not establish: how the ring reads on the panel at
+    229 ppi, or that a real check is long enough for the animation to be
+    seen. Both need the device.
   issues_found: []
 
 traceability:
@@ -307,6 +392,15 @@ version_history:
       - "Initial change document coupled to issue-4c3c3e1f."
       - "Recorded _update_wheel as explicitly out of scope, against the source report's reading of it as a disabled spinner."
       - "Recorded the constraint this change places on task 7.3.6 under dependencies.internal."
+  - version: "1.1"
+    date: "2026-07-31"
+    author: "Claude Code"
+    changes:
+      - "Status proposed -> implemented. Recorded implementation date, executor, verification date and development-platform test results."
+      - "Recorded a direct confirmation of finding §7.8: 64 frames of the checking view were byte-identical before the change, 8 distinct after."
+      - "Recorded an error in prompt-4c3c3e1f's test matrix — 48 frames at fps 60 cover six positions, not eight — and that the implementation follows the functional requirement instead."
+      - "Recorded that __init__ is byte-identical, so no instance attribute was added, and that _update_wheel is untouched at all four occurrences."
+      - "Left active pending on-target test results per ai/task.md §8.2.1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -323,6 +417,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial change document coupled to issue-4c3c3e1f. Records `_update_wheel` as out of scope against the source report's misreading, and the constraint placed on task 7.3.6. |
+| 1.1 | 2026-07-31 | Status proposed → implemented; development-platform test results recorded, including a direct confirmation of §7.8 and one error found in the prompt's test matrix. Left active pending on-target results. |
 
 ---
 

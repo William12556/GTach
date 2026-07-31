@@ -340,6 +340,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial prompt document coupled to change-4c3c3e1f. |
+| 1.1 | 2026-07-31 | Executed by Claude Code. Both edits applied and all fourteen success criteria met, with no departure from the deliverable text required. 65 assertions against the real render path with a recording engine, all passing; pytest tests/ 11 passed. Finding §7.8 confirmed directly: 64 consecutive frames of the checking view were byte-identical before the change — one distinct frame — and comprise 8 distinct frames after. One error found in this document's test matrix: unit test 1 expects 48 frames at fps_limit 60 to highlight all eight positions, which contradicts the functional requirement fixing the step at 8 frames and the revolution at 64; 48 frames cover six positions. The implementation follows the requirement. Recorded in change-4c3c3e1f. Closed per P00 §1.1.14.4 and moved to ai/workspace/prompt/closed/; the issue and change remain active pending on-target results per ai/task.md §8.2.1. |
 
 ---
 
