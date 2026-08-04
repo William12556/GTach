@@ -61,6 +61,42 @@ class DisplayManager:
     through specialized components for improved maintainability and testing.
     """
 
+    # Gauge face palette. The HyperPixel's backlight cannot be
+    # reduced in software, so the face's own luminance is the
+    # only control over emitted light. The previous
+    # (200, 200, 200) ground put 169,100 px of near-maximum
+    # brightness in the driver's forward field of view
+    # (display review §7.2, recommendation 26). Named rather
+    # than inlined because task 7.3.12 varies all of them
+    # together for the night palette.
+    FACE_GROUND = (16, 16, 16)
+    FACE_TRACK = (58, 58, 58)
+    FACE_TICK = (225, 225, 225)
+    FACE_LINE = (90, 90, 90)
+    FACE_EDGE = (70, 70, 70)
+    FACE_LABEL = (200, 80, 80)
+
+    # The six band colours, indexed by band. One table, read by both
+    # _get_band_colour and the fill-arc loop in _draw_radial_mode; the
+    # arc previously restated them in a parallel inline table that
+    # carried no hysteresis (change-5014040c).
+    #
+    # Index 0 is BLUE, not the black that _get_band_colour's old
+    # (bg, text) palette carried there. That black was DIGITAL's idle
+    # SCREEN background, never an arc colour, and DIGITAL is retired
+    # (change-378703da). Taking it as the band colour would repaint the
+    # idle segment black on a near-black face and erase it. The six
+    # drawn colours — blue, blue, green, yellow, orange, red — are
+    # unchanged from the arc table they replace.
+    BAND_COLOURS = (
+        (0, 0, 255),        # 0 idle
+        (0, 0, 255),        # 1 torque approach
+        (0, 255, 0),        # 2 torque
+        (255, 255, 0),      # 3 caution
+        (255, 128, 0),      # 4 warning
+        (255, 0, 0),        # 5 danger
+    )
+
     def __init__(self, thread_manager: ThreadManager, terminal_restorer: TerminalRestorer = None, config_path: str = 'config.yaml'):
         self.logger = logging.getLogger('DisplayManager')
         self.thread_manager = thread_manager
@@ -607,32 +643,30 @@ class DisplayManager:
     # (change-5014040c, the annular band indicator) requires exactly this
     # band selection, including the hysteresis added by change-4c038bed.
     # Do not remove it before that change lands.
-    def _get_band_colour(self, rpm: float) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
-        """Get background and text colours for the given RPM value.
+    def _get_band_colour(self, rpm: float) -> Tuple[int, Tuple[int, int, int]]:
+        """Get the active band index and its colour for the given RPM.
 
-        Returns colour based on RPM bands.
+        Owns the band identity for the whole gauge. The hysteresis below
+        is change-4c038bed's contribution; routing the fill arc through
+        this method (change-5014040c) applies it to the arc for the
+        first time, so a value oscillating about a threshold no longer
+        flips the leading segment's colour.
 
         Args:
             rpm: Current RPM value
 
         Returns:
-            Tuple of (bg_colour, text_colour) as RGB tuples
+            Tuple of (band index, RGB colour) for the active band.
         """
         try:
             bands = self.config.rpm_bands
 
-            # Ordered band table: (bg_colour, text_colour).
-            # Index 1 text corrected to white — WCAG 2.1 contrast on
-            # pure blue is 2.44:1 with black, 8.59:1 with white
-            # (display review §7.1, recommendation 23).
-            palette = (
-                ((0, 0, 0), (255, 255, 255)),        # 0 idle
-                ((0, 0, 255), (255, 255, 255)),      # 1 torque approach
-                ((0, 255, 0), (0, 0, 0)),            # 2 torque
-                ((255, 255, 0), (0, 0, 0)),          # 3 caution
-                ((255, 128, 0), (0, 0, 0)),          # 4 warning
-                ((255, 0, 0), (0, 0, 0)),            # 5 danger
-            )
+            # The text-colour column that stood beside these was
+            # consumed only by _draw_digital_mode, which
+            # change-378703da removed; the RADIAL readout is
+            # unconditionally white, so the pairing has no remaining
+            # consumer (ai/task.md §7.3.14).
+            palette = self.BAND_COLOURS
 
             # Ascending thresholds; threshold[i] separates band i from i+1.
             thresholds = (
@@ -662,14 +696,13 @@ class DisplayManager:
                 band -= 1
 
             self._active_band = band
-            bg_colour, text_colour = palette[band]
 
-            return (bg_colour, text_colour)
+            return (band, palette[band])
 
         except Exception as e:
             self.logger.error(f'Band colour calculation error: {e}', exc_info=True)
-            # Fallback to white on black
-            return ((0, 0, 0), (255, 255, 255))
+            # Fallback to band 0, black
+            return (0, (0, 0, 0))
 
     def _get_shift_cue(self, rpm: float) -> Tuple[Tuple[int, int, int], int, bool, Tuple[int, int, int]]:
         """Determine shift cue state from RPM.
@@ -785,36 +818,62 @@ class DisplayManager:
             surface.fill((0, 0, 0))
             border_colour, _, _, _ = self._get_shift_cue(rpm)
             self._draw_shift_border(border_colour)
-            pygame.draw.circle(surface, (200, 200, 200), center, 232)
+            pygame.draw.circle(surface, self.FACE_GROUND, center, 232)
 
-            # 2. Draw headroom arc (full active zone in light grey)
+            # 2. Draw headroom arc (full active zone, unfilled track)
             start_angle_rad = clock_to_canvas_rad(start_clock_deg)
             end_angle_rad = clock_to_canvas_rad(start_clock_deg + active_sweep_deg)
-            draw_donut_arc((180, 180, 180), start_angle_rad, end_angle_rad)
+            draw_donut_arc(self.FACE_TRACK, start_angle_rad, end_angle_rad)
 
-            # 3. Draw inert bottom arc (5 o'clock to 7 o'clock, 60 deg, light grey)
+            # 3. Draw inert bottom arc (5 o'clock to 7 o'clock, 60 deg, track)
             # 5 o'clock = 150 deg, 7 o'clock = 210 deg, short path clockwise
             inert_start_rad = clock_to_canvas_rad(150)
             inert_end_rad = clock_to_canvas_rad(210)
-            draw_donut_arc((180, 180, 180), inert_start_rad, inert_end_rad)
+            draw_donut_arc(self.FACE_TRACK, inert_start_rad, inert_end_rad)
 
-            # 4. Draw coloured fill arcs per RPMBands up to current rpm
+            # 4. Draw coloured fill arcs per RPMBands up to current rpm.
+            #    The band has one owner: _get_band_colour applies the
+            #    hysteresis and names the active band, replacing an
+            #    inline threshold table that restated the six bands and
+            #    carried no hysteresis (change-5014040c).
             bands = self.config.rpm_bands
-            band_thresholds = [
-                (0, bands.idle_max, (0, 0, 255)),  # Blue
-                (bands.idle_max, bands.torque_start, (0, 0, 255)),  # Blue
-                (bands.torque_start, bands.caution_start, (0, 255, 0)),  # Green
-                (bands.caution_start, bands.warning_start, (255, 255, 0)),  # Yellow
-                (bands.warning_start, bands.danger_start, (255, 128, 0)),  # Orange
-                (bands.danger_start, max_rpm, (255, 0, 0))  # Red
-            ]
+            active_band, _active_colour = self._get_band_colour(rpm)
 
-            for band_start, band_end, color in band_thresholds:
-                if rpm > band_start:
-                    segment_end = min(rpm, band_end)
-                    seg_start_rad = rpm_to_angle_rad(band_start)
-                    seg_end_rad = rpm_to_angle_rad(segment_end)
-                    draw_donut_arc(color, seg_start_rad, seg_end_rad)
+            # Segment boundaries, ascending. Six segments, so seven
+            # bounds; index i spans bounds[i] to bounds[i + 1] and takes
+            # BAND_COLOURS[i].
+            segment_bounds = (
+                0,
+                bands.idle_max,
+                bands.torque_start,
+                bands.caution_start,
+                bands.warning_start,
+                bands.danger_start,
+                max_rpm,
+            )
+
+            for index in range(len(self.BAND_COLOURS)):
+                band_start = segment_bounds[index]
+                band_end = segment_bounds[index + 1]
+                if rpm <= band_start:
+                    break
+
+                segment_end = min(rpm, band_end)
+
+                # The arc stays graduated — every segment below the
+                # leading one keeps its own colour. Only the leading
+                # segment, the one containing the current RPM, is drawn
+                # in the hysteresised active band's colour, so a value
+                # oscillating about a threshold no longer flips it.
+                leading = rpm <= band_end
+                colour = (
+                    self.BAND_COLOURS[active_band] if leading
+                    else self.BAND_COLOURS[index]
+                )
+
+                seg_start_rad = rpm_to_angle_rad(band_start)
+                seg_end_rad = rpm_to_angle_rad(segment_end)
+                draw_donut_arc(colour, seg_start_rad, seg_end_rad)
 
             # 5. Draw zone boundary lines at 5 o'clock and 7 o'clock
             for boundary_deg in [150, 210]:
@@ -823,12 +882,12 @@ class DisplayManager:
                 inner_y = center[1] + inner_radius * math.sin(angle_rad)
                 outer_x = center[0] + outer_radius * math.cos(angle_rad)
                 outer_y = center[1] + outer_radius * math.sin(angle_rad)
-                pygame.draw.line(surface, (60, 60, 60), (inner_x, inner_y), (outer_x, outer_y), 2)
+                pygame.draw.line(surface, self.FACE_LINE, (inner_x, inner_y), (outer_x, outer_y), 2)
 
             # 6. (Border already drawn at step 1)
 
             # 7. Draw inner arc edge ring (subtle dark stroke)
-            pygame.draw.circle(surface, (40, 40, 40), center, inner_radius, 2)
+            pygame.draw.circle(surface, self.FACE_EDGE, center, inner_radius, 2)
 
             # 8. Draw major tick marks and numerals (1000-7000 RPM)
             tick_font = self._get_cached_font(52)
@@ -840,7 +899,7 @@ class DisplayManager:
                     tick_start_y = center[1] + (outer_radius - 28) * math.sin(angle_rad)
                     tick_end_x = center[0] + outer_radius * math.cos(angle_rad)
                     tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
-                    pygame.draw.line(surface, (0, 0, 0),
+                    pygame.draw.line(surface, self.FACE_TICK,
                                    (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 7)
 
                     # Numeral - positioned 58px inward from outer radius
@@ -849,7 +908,7 @@ class DisplayManager:
                         num_x = center[0] + (outer_radius - 58) * math.cos(angle_rad)
                         num_y = center[1] + (outer_radius - 58) * math.sin(angle_rad)
                         self.rendering_engine.render_text(
-                            RenderTarget.BACK_BUFFER, numeral, tick_font, (0, 0, 0),
+                            RenderTarget.BACK_BUFFER, numeral, tick_font, self.FACE_TICK,
                             (int(num_x), int(num_y)), center=True
                         )
 
@@ -888,7 +947,7 @@ class DisplayManager:
             label_font = self._get_cached_font(16)
             if label_font:
                 self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, "RPM \u00d7 1000", label_font, (200, 0, 0),
+                    RenderTarget.BACK_BUFFER, "RPM \u00d7 1000", label_font, self.FACE_LABEL,
                     (240, 420), center=True
                 )
 
