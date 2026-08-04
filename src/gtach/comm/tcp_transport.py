@@ -67,34 +67,54 @@ class TCPTransport(OBDTransport):
             self._state = TransportState.DISCONNECTED
         logger.info("Disconnected from TCP device")
     
+    def _acquire_handle(self) -> Optional[socket.socket]:
+        """Return the socket captured under the lock.
+
+        is_connected() reads the state under the lock and releases it,
+        so a caller acting on its result is acting on a stale answer: a
+        concurrent disconnect() sets self._sock to None and the
+        subsequent call raises AttributeError instead of the OSError the
+        handler below expects (core review §5.3). Capturing the
+        reference means a closed socket fails the way the code already
+        handles.
+
+        Returns:
+            The socket, or None if not connected.
+        """
+        with self._lock:
+            return self._sock
+
     def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]:
         """Send a command to the OBD device and receive the response.
-        
+
         Args:
             command: The OBD command to send.
             timeout: Timeout in seconds for the response.
-            
+
         Returns:
             Optional[str]: The response from the device, or None if the command failed.
         """
         logger = logging.getLogger('TCPTransport')
-        if not self.is_connected():
+        # Capture ONCE, before the receive loop. Re-capturing per
+        # iteration would reintroduce the window this closes.
+        handle = self._acquire_handle()
+        if handle is None:
             logger.warning("Cannot send command: transport is not connected")
             return None
-        
+
         try:
             # Prepare the command
             encoded_cmd = (command.strip() + '\r').encode('ascii')
             logger.debug("TX: %r", encoded_cmd)
-            self._sock.sendall(encoded_cmd)
-            
+            handle.sendall(encoded_cmd)
+
             # Set timeout for response
-            self._sock.settimeout(timeout)
-            
+            handle.settimeout(timeout)
+
             # Read response until '>' prompt is received
             buf = b''
             while True:
-                data = self._sock.recv(1024)
+                data = handle.recv(1024)
                 if not data:
                     # Connection closed by the other end
                     with self._lock:

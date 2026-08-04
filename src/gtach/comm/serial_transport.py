@@ -88,31 +88,51 @@ class SerialTransport(OBDTransport):
             self._state = TransportState.DISCONNECTED
         logger.info("Disconnected from serial device")
     
+    def _acquire_handle(self) -> Optional['serial.Serial']:
+        """Return the serial port captured under the lock.
+
+        is_connected() reads the state under the lock and releases it,
+        so a caller acting on its result is acting on a stale answer: a
+        concurrent disconnect() sets self._serial to None and the
+        subsequent call raises AttributeError instead of the SerialException the
+        handler below expects (core review §5.3). Capturing the
+        reference means a closed serial port fails the way the code already
+        handles.
+
+        Returns:
+            The serial port, or None if not connected.
+        """
+        with self._lock:
+            return self._serial
+
     def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]:
         """Send a command to the OBD device and receive the response.
-        
+
         Args:
             command: The OBD command to send.
             timeout: Timeout in seconds for the response.
-            
+
         Returns:
             Optional[str]: The response from the device, or None if the command failed.
         """
         logger = logging.getLogger('SerialTransport')
-        if not self.is_connected():
+        # Capture ONCE, before the read. Re-capturing would reintroduce
+        # the window this closes.
+        handle = self._acquire_handle()
+        if handle is None:
             logger.warning("Cannot send command: transport is not connected")
             return None
-        
+
         try:
             # Prepare the command
             encoded_cmd = (command.strip() + '\r').encode('ascii')
-            self._serial.write(encoded_cmd)
-            
+            handle.write(encoded_cmd)
+
             # Set timeout for response
-            self._serial.timeout = timeout
-            
+            handle.timeout = timeout
+
             # Read response until '>' prompt is received
-            response = self._serial.read_until(b'>')
+            response = handle.read_until(b'>')
             
             # Decode and strip the response
             decoded_response = response.decode('ascii', errors='ignore').strip()
