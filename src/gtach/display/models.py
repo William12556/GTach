@@ -13,6 +13,7 @@ Contains enums and data classes used across display modules.
 
 from enum import Enum, auto
 from dataclasses import dataclass
+from typing import Tuple
 
 @dataclass
 class RPMBands:
@@ -74,3 +75,126 @@ class ConnectionStatus(Enum):
     CONNECTING = 'yellow'
     CONNECTED = 'green'
 
+
+@dataclass(frozen=True)
+class Palette:
+    """Every colour the instrument draws.
+
+    The HyperPixel 2.1 Round's backlight cannot be reduced in
+    software, so the palette's own luminance is the only
+    control over emitted light. Two instances exist; the
+    operator chooses between them (display review §7.9,
+    recommendation 29; ai/task.md §7.3.14).
+
+    Frozen so a drawing path cannot mutate the active
+    palette.
+    """
+    name: str
+    ground: Tuple[int, int, int]
+    track: Tuple[int, int, int]
+    tick: Tuple[int, int, int]
+    line: Tuple[int, int, int]
+    edge: Tuple[int, int, int]
+    label: Tuple[int, int, int]
+    bands: Tuple[Tuple[int, int, int], ...]
+    shift_border_caution: Tuple[int, int, int]
+    shift_centre_lit: Tuple[int, int, int]
+    shift_centre_dark: Tuple[int, int, int]
+    shift_border_normal: Tuple[int, int, int]
+    shift_centre_normal: Tuple[int, int, int]
+    shift_border_down: Tuple[int, int, int]
+    shift_centre_down: Tuple[int, int, int]
+
+
+# Values copied verbatim from the constants in use before
+# change-5012004e — the six FACE_ constants and BAND_COLOURS added by
+# change-5014040c, and the five colours returned by _get_shift_cue — so
+# day rendering is provably unchanged.
+DAY_PALETTE = Palette(
+    name='day',
+    ground=(16, 16, 16),
+    track=(58, 58, 58),
+    tick=(225, 225, 225),
+    line=(90, 90, 90),
+    edge=(70, 70, 70),
+    label=(200, 80, 80),
+    bands=(
+        (0, 0, 255),        # 0 idle
+        (0, 0, 255),        # 1 torque approach
+        (0, 255, 0),        # 2 torque
+        (255, 255, 0),      # 3 caution
+        (255, 128, 0),      # 4 warning
+        (255, 0, 0),        # 5 danger
+    ),
+    shift_border_caution=(0, 180, 0),
+    shift_centre_lit=(0, 160, 0),
+    shift_centre_dark=(10, 10, 10),
+    shift_border_normal=(200, 0, 0),
+    shift_centre_normal=(26, 26, 26),
+    shift_border_down=(0, 100, 255),
+    shift_centre_down=(0, 40, 100),
+)
+
+# Authored, not derived. Scaling the day palette would compress the band
+# colours toward one another, and the band cue is the instrument's
+# primary signal — so value is reduced while hue separation is held, and
+# the separation is asserted by delta-E rather than judged by eye.
+NIGHT_PALETTE = Palette(
+    name='night',
+    ground=(3, 3, 3),
+    track=(24, 24, 24),
+    tick=(120, 120, 120),
+    line=(42, 42, 42),
+    edge=(30, 30, 30),
+    label=(100, 38, 38),
+    bands=(
+        (0, 0, 170),        # 0 idle
+        (0, 0, 170),        # 1 torque approach
+        (0, 140, 0),        # 2 torque
+        (150, 140, 0),      # 3 caution
+        (175, 75, 0),       # 4 warning
+        (200, 0, 0),        # 5 danger
+    ),
+    shift_border_caution=(0, 110, 0),
+    shift_centre_lit=(0, 95, 0),
+    shift_centre_dark=(3, 3, 3),
+    shift_border_normal=(120, 0, 0),
+    shift_centre_normal=(8, 8, 8),
+    shift_border_down=(0, 60, 150),
+    shift_centre_down=(0, 22, 55),
+)
+
+@dataclass
+class DisplayConfig:
+    """Display configuration settings"""
+    mode: DisplayMode
+    rpm_warning: int = 6500  # Fiat 500 Abarth redline
+    rpm_danger: int = 7000   # Danger zone
+    fps_limit: int = 60
+    touch_long_press: float = 1.0  # seconds
+
+    # Gesture navigation settings
+    gesture_swipe_threshold: int = 80          # Minimum swipe distance (px)
+    gesture_velocity_threshold: float = 200.0  # Minimum swipe velocity (px/s)
+    gesture_edge_width: int = 40              # Edge detection width (px)
+    gesture_max_time: float = 1.0             # Maximum gesture duration (s)
+    gesture_edge_timeout: float = 5.0         # Edge indicator timeout (s)
+
+    # Gesture enables per context
+    gesture_enable_main: bool = True          # Enable gestures in main display
+    gesture_enable_setup: bool = True         # Enable gestures in setup mode
+    gesture_enable_settings: bool = True      # Enable gestures in options
+
+    # Visual feedback settings
+    gesture_transition_duration: float = 0.2  # Screen transition time (s)
+    gesture_edge_indicator_size: int = 20     # Edge indicator size (px)
+    gesture_debug_mode: bool = False          # Show gesture debug visualization
+    engine_profile: str = 'abarth_595_turismo'  # Engine profile identifier for acknowledgement state
+
+    # RPM colour bands
+    rpm_bands: RPMBands = None  # Will be initialized with default in __post_init__
+
+    def __post_init__(self):
+        """Initialize rpm_bands if not provided."""
+        if self.rpm_bands is None:
+            self.rpm_bands = RPMBands()

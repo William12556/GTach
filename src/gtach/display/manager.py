@@ -43,7 +43,8 @@ from .input import TouchEventCoordinator, TouchAction, GestureType
 from .performance import PerformanceMonitor
 
 # Legacy imports for compatibility
-from .models import DisplayMode, DisplayConfig, ConnectionStatus
+from .models import (DisplayMode, DisplayConfig, ConnectionStatus,
+                     Palette, DAY_PALETTE, NIGHT_PALETTE)
 from .splash import SplashScreen
 from .typography import (get_font_manager, get_title_font, get_medium_font, get_small_font, get_minimal_font,
                          get_rpm_large_font, get_rpm_medium_font, get_label_small_font, 
@@ -61,41 +62,9 @@ class DisplayManager:
     through specialized components for improved maintainability and testing.
     """
 
-    # Gauge face palette. The HyperPixel's backlight cannot be
-    # reduced in software, so the face's own luminance is the
-    # only control over emitted light. The previous
-    # (200, 200, 200) ground put 169,100 px of near-maximum
-    # brightness in the driver's forward field of view
-    # (display review §7.2, recommendation 26). Named rather
-    # than inlined because task 7.3.12 varies all of them
-    # together for the night palette.
-    FACE_GROUND = (16, 16, 16)
-    FACE_TRACK = (58, 58, 58)
-    FACE_TICK = (225, 225, 225)
-    FACE_LINE = (90, 90, 90)
-    FACE_EDGE = (70, 70, 70)
-    FACE_LABEL = (200, 80, 80)
-
-    # The six band colours, indexed by band. One table, read by both
-    # _get_band_colour and the fill-arc loop in _draw_radial_mode; the
-    # arc previously restated them in a parallel inline table that
-    # carried no hysteresis (change-5014040c).
-    #
-    # Index 0 is BLUE, not the black that _get_band_colour's old
-    # (bg, text) palette carried there. That black was DIGITAL's idle
-    # SCREEN background, never an arc colour, and DIGITAL is retired
-    # (change-378703da). Taking it as the band colour would repaint the
-    # idle segment black on a near-black face and erase it. The six
-    # drawn colours — blue, blue, green, yellow, orange, red — are
-    # unchanged from the arc table they replace.
-    BAND_COLOURS = (
-        (0, 0, 255),        # 0 idle
-        (0, 0, 255),        # 1 torque approach
-        (0, 255, 0),        # 2 torque
-        (255, 255, 0),      # 3 caution
-        (255, 128, 0),      # 4 warning
-        (255, 0, 0),        # 5 danger
-    )
+    # The face and band colours that change-5014040c named as class
+    # constants here now live in Palette (models.py), so day and night
+    # are two instances rather than two sets of edits (change-5012004e).
 
     def __init__(self, thread_manager: ThreadManager, terminal_restorer: TerminalRestorer = None, config_path: str = 'config.yaml'):
         self.logger = logging.getLogger('DisplayManager')
@@ -138,6 +107,12 @@ class DisplayManager:
         self._ack_btn_dismiss = None
         self._confirm_btn_yes = None
         self._confirm_btn_no = None
+
+        # Active palette. The panel's backlight cannot be dimmed in
+        # software, so this is the only control over emitted light
+        # at night (display review §7.9, recommendation 29).
+        self._palette = DAY_PALETTE
+        self._palette_notice_until = 0.0
 
         # Component initialization
         self._initialize_components()
@@ -196,10 +171,76 @@ class DisplayManager:
             self.touch_coordinator.register_gesture_callback(
                 GestureType.LONG_PRESS, self._handle_long_press
             )
+
+            # The palette toggle (change-5012004e). GestureType carries
+            # no DOUBLE_TAP member and the touch subsystem performs no
+            # double-tap disambiguation; display/input is read-only to
+            # that change, so the gesture cannot be added here. The
+            # registration is conditional rather than absent so the
+            # toggle becomes live the moment the subsystem gains the
+            # gesture, with no edit to this method.
+            _double_tap = getattr(GestureType, 'DOUBLE_TAP', None)
+            if _double_tap is not None:
+                self.touch_coordinator.register_gesture_callback(
+                    _double_tap, self._handle_double_tap
+                )
+            else:
+                self.logger.debug(
+                    'GestureType has no DOUBLE_TAP; palette toggle is '
+                    'unreachable by gesture until the touch subsystem '
+                    'provides it'
+                )
             
         except Exception as e:
             self.logger.error(f"Touch callback setup failed: {e}")
     
+    def _toggle_palette(self) -> None:
+        """Swap the active palette, notify, and persist the choice.
+
+        A failed save leaves the palette as it was, so the display never
+        shows a state the configuration does not describe.
+        """
+        try:
+            self._palette = (
+                NIGHT_PALETTE if self._palette is DAY_PALETTE
+                else DAY_PALETTE
+            )
+            self._palette_notice_until = time.monotonic() + 2.0
+            self._save_config()
+            self.logger.info(
+                f'Palette switched to {self._palette.name}'
+            )
+        except Exception as e:
+            self.logger.error(
+                f'Palette toggle error: {e}', exc_info=True
+            )
+
+    def _handle_double_tap(self, start_pos: Tuple[int, int],
+                           end_pos: Tuple[int, int]) -> TouchAction:
+        """Toggle the palette, in RADIAL only.
+
+        Gated to RADIAL so the gesture cannot fire on the options,
+        acknowledgement or splash screens, or while the setup subsystem
+        owns the display.
+
+        Args:
+            start_pos: Gesture start coordinates.
+            end_pos: Gesture end coordinates.
+
+        Returns:
+            SETTINGS_CHANGE when the palette was toggled, NONE otherwise.
+        """
+        try:
+            if self._in_setup_mode:
+                return TouchAction.NONE
+            if self.config.mode != DisplayMode.RADIAL:
+                return TouchAction.NONE
+            self._toggle_palette()
+            return TouchAction.SETTINGS_CHANGE
+        except Exception as e:
+            self.logger.error(f'Double tap handling error: {e}')
+            return TouchAction.NONE
+
     def _handle_long_press(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
         """Handle long press gesture"""
         try:
@@ -311,6 +352,20 @@ class DisplayManager:
                         self.logger.warning(f"Unknown display mode '{saved_mode_str}', using RADIAL")
                         saved_mode = DisplayMode.RADIAL
 
+                    # An absent key yields day through the default and
+                    # warns nothing — that is every installation
+                    # predating change-5012004e, not an error.
+                    palette_name = config_data.get('palette', 'day')
+                    if palette_name == 'night':
+                        self._palette = NIGHT_PALETTE
+                    elif palette_name == 'day':
+                        self._palette = DAY_PALETTE
+                    else:
+                        self.logger.warning(
+                            f"Unknown palette '{palette_name}', using day"
+                        )
+                        self._palette = DAY_PALETTE
+
                     engine_profile = config_data.get('engine_profile', 'abarth_595_turismo')
 
                     # Load engine profile RPM bands
@@ -390,7 +445,8 @@ class DisplayManager:
                 'rpm_danger': self.config.rpm_danger,
                 'fps_limit': self.config.fps_limit,
                 'touch_long_press': self.config.touch_long_press,
-                'engine_profile': self.config.engine_profile
+                'engine_profile': self.config.engine_profile,
+                'palette': self._palette.name,
             }
             with open(self.config_path, 'w') as f:
                 yaml.dump(config_data, f)
@@ -666,7 +722,7 @@ class DisplayManager:
             # change-378703da removed; the RADIAL readout is
             # unconditionally white, so the pairing has no remaining
             # consumer (ai/task.md §7.3.14).
-            palette = self.BAND_COLOURS
+            palette = self._palette.bands
 
             # Ascending thresholds; threshold[i] separates band i from i+1.
             thresholds = (
@@ -724,20 +780,28 @@ class DisplayManager:
             half_period = max(1, int(round(self.config.fps_limit / 4.0)))
             flash = (self._frame_counter // half_period) % 2 == 0
 
+            palette = self._palette
+
             if rpm >= bands.caution_start:
                 # Upshift cue — green border 12 px, flashing green/dark centre
-                centre = (0, 160, 0) if flash else (10, 10, 10)
-                return (0, 180, 0), 12, True, centre
+                centre = (
+                    palette.shift_centre_lit if flash
+                    else palette.shift_centre_dark
+                )
+                return palette.shift_border_caution, 12, True, centre
             elif rpm <= bands.torque_start:
                 # Safe downshift — blue border 12 px, blue centre, no flash
-                return (0, 100, 255), 12, False, (0, 40, 100)
+                return (palette.shift_border_down, 12, False,
+                        palette.shift_centre_down)
             else:
                 # Normal operation — red border 12 px, dark centre, no flash
-                return (200, 0, 0), 12, False, (26, 26, 26)
+                return (palette.shift_border_normal, 12, False,
+                        palette.shift_centre_normal)
 
         except Exception as e:
             self.logger.error(f'Shift cue calculation error: {e}', exc_info=True)
-            return ((200, 0, 0), 12, False, (26, 26, 26))
+            return (DAY_PALETTE.shift_border_normal, 12, False,
+                    DAY_PALETTE.shift_centre_normal)
 
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
@@ -767,6 +831,11 @@ class DisplayManager:
             surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
             if not surface:
                 return
+
+            # Read the palette ONCE per frame. A toggle landing between
+            # two drawing calls would otherwise render half the frame in
+            # each palette (change-5012004e).
+            palette = self._palette
 
             # Arc geometry constants
             center = (240, 240)
@@ -818,18 +887,18 @@ class DisplayManager:
             surface.fill((0, 0, 0))
             border_colour, _, _, _ = self._get_shift_cue(rpm)
             self._draw_shift_border(border_colour)
-            pygame.draw.circle(surface, self.FACE_GROUND, center, 232)
+            pygame.draw.circle(surface, palette.ground, center, 232)
 
             # 2. Draw headroom arc (full active zone, unfilled track)
             start_angle_rad = clock_to_canvas_rad(start_clock_deg)
             end_angle_rad = clock_to_canvas_rad(start_clock_deg + active_sweep_deg)
-            draw_donut_arc(self.FACE_TRACK, start_angle_rad, end_angle_rad)
+            draw_donut_arc(palette.track, start_angle_rad, end_angle_rad)
 
             # 3. Draw inert bottom arc (5 o'clock to 7 o'clock, 60 deg, track)
             # 5 o'clock = 150 deg, 7 o'clock = 210 deg, short path clockwise
             inert_start_rad = clock_to_canvas_rad(150)
             inert_end_rad = clock_to_canvas_rad(210)
-            draw_donut_arc(self.FACE_TRACK, inert_start_rad, inert_end_rad)
+            draw_donut_arc(palette.track, inert_start_rad, inert_end_rad)
 
             # 4. Draw coloured fill arcs per RPMBands up to current rpm.
             #    The band has one owner: _get_band_colour applies the
@@ -852,7 +921,7 @@ class DisplayManager:
                 max_rpm,
             )
 
-            for index in range(len(self.BAND_COLOURS)):
+            for index in range(len(palette.bands)):
                 band_start = segment_bounds[index]
                 band_end = segment_bounds[index + 1]
                 if rpm <= band_start:
@@ -867,8 +936,8 @@ class DisplayManager:
                 # oscillating about a threshold no longer flips it.
                 leading = rpm <= band_end
                 colour = (
-                    self.BAND_COLOURS[active_band] if leading
-                    else self.BAND_COLOURS[index]
+                    palette.bands[active_band] if leading
+                    else palette.bands[index]
                 )
 
                 seg_start_rad = rpm_to_angle_rad(band_start)
@@ -882,12 +951,12 @@ class DisplayManager:
                 inner_y = center[1] + inner_radius * math.sin(angle_rad)
                 outer_x = center[0] + outer_radius * math.cos(angle_rad)
                 outer_y = center[1] + outer_radius * math.sin(angle_rad)
-                pygame.draw.line(surface, self.FACE_LINE, (inner_x, inner_y), (outer_x, outer_y), 2)
+                pygame.draw.line(surface, palette.line, (inner_x, inner_y), (outer_x, outer_y), 2)
 
             # 6. (Border already drawn at step 1)
 
             # 7. Draw inner arc edge ring (subtle dark stroke)
-            pygame.draw.circle(surface, self.FACE_EDGE, center, inner_radius, 2)
+            pygame.draw.circle(surface, palette.edge, center, inner_radius, 2)
 
             # 8. Draw major tick marks and numerals (1000-7000 RPM)
             tick_font = self._get_cached_font(52)
@@ -899,7 +968,7 @@ class DisplayManager:
                     tick_start_y = center[1] + (outer_radius - 28) * math.sin(angle_rad)
                     tick_end_x = center[0] + outer_radius * math.cos(angle_rad)
                     tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
-                    pygame.draw.line(surface, self.FACE_TICK,
+                    pygame.draw.line(surface, palette.tick,
                                    (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 7)
 
                     # Numeral - positioned 58px inward from outer radius
@@ -908,18 +977,20 @@ class DisplayManager:
                         num_x = center[0] + (outer_radius - 58) * math.cos(angle_rad)
                         num_y = center[1] + (outer_radius - 58) * math.sin(angle_rad)
                         self.rendering_engine.render_text(
-                            RenderTarget.BACK_BUFFER, numeral, tick_font, self.FACE_TICK,
+                            RenderTarget.BACK_BUFFER, numeral, tick_font, palette.tick,
                             (int(num_x), int(num_y)), center=True
                         )
 
             # 9. Draw band boundary marks at thresholds
+            # Each mark takes the colour of the band it opens, read from
+            # the active palette rather than restated (change-5012004e).
             boundary_colors = [
-                (bands.idle_max, (0, 0, 255)),  # Blue
-                (bands.torque_start, (0, 255, 0)),  # Green
-                (bands.caution_start, (255, 255, 0)),  # Yellow
-                (bands.warning_start, (255, 128, 0)),  # Orange
-                (bands.danger_start, (255, 0, 0)),  # Red
-                (bands.redline_rpm, (255, 0, 0))  # Red
+                (bands.idle_max, palette.bands[1]),       # Blue
+                (bands.torque_start, palette.bands[2]),   # Green
+                (bands.caution_start, palette.bands[3]),  # Yellow
+                (bands.warning_start, palette.bands[4]),  # Orange
+                (bands.danger_start, palette.bands[5]),   # Red
+                (bands.redline_rpm, palette.bands[5])     # Red
             ]
 
             for threshold_rpm, color in boundary_colors:
@@ -947,7 +1018,7 @@ class DisplayManager:
             label_font = self._get_cached_font(16)
             if label_font:
                 self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, "RPM \u00d7 1000", label_font, self.FACE_LABEL,
+                    RenderTarget.BACK_BUFFER, "RPM \u00d7 1000", label_font, palette.label,
                     (240, 420), center=True
                 )
 
@@ -974,6 +1045,19 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER, f"{rpm/1000:.1f}",
                     readout_font, (255, 255, 255), center, center=True
                 )
+
+            # Transient confirmation that the palette changed. Two
+            # seconds is long enough to read and short enough not to
+            # become part of the instrument (change-5012004e).
+            if time.monotonic() < self._palette_notice_until:
+                notice_font = self._get_cached_font(24)
+                if notice_font:
+                    self.rendering_engine.render_text(
+                        RenderTarget.BACK_BUFFER,
+                        'Night' if palette is NIGHT_PALETTE else 'Day',
+                        notice_font, palette.tick, (240, 330),
+                        center=True
+                    )
 
             self.logger.debug(f'Radial mode: RPM={rpm:.0f}')
 
