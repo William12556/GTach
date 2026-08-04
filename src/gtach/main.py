@@ -69,7 +69,13 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--version', action='version', version=_ver)
     parser.add_argument('--validate-config', action='store_true')
     parser.add_argument('--validate-dependencies', action='store_true')
-    parser.add_argument('--transport', choices=['tcp', 'serial', 'rfcomm', 'simtcp', 'simbt'], default=None)
+    # Imported here rather than at module scope: main.py is the entry
+    # point and importing comm.transport at import time would pull the
+    # transport stack in ahead of argument parsing (change-6481f8ce).
+    from .comm.transport import TRANSPORT_NAMES
+    parser.add_argument('--transport',
+                        choices=list(TRANSPORT_NAMES),
+                        default=None)
     parser.add_argument('--obd-host', default='localhost')
     parser.add_argument('--obd-port', type=int, default=35000)
     parser.add_argument('--serial-port', default=None)

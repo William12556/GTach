@@ -19,6 +19,7 @@ from typing import NoReturn
 import argparse
 from .core import ThreadManager, WatchdogMonitor
 from .comm import OBDProtocol, select_transport
+from .comm.transport import TRANSPORT_NAMES, TRANSPORT_FORCED, TRANSPORT_FAST
 from .comm.device_store import DeviceStore
 from .display import DisplayManager
 from .display.setup import SetupDisplayManager
@@ -77,11 +78,14 @@ class GTachApplication:
             # Check if setup is needed
             # If --transport is explicitly specified, bypass device store check
             transport_arg = getattr(self._args, 'transport', None)
-            transport_forced = transport_arg in ('tcp', 'serial', 'simtcp')
+            transport_forced = transport_arg in TRANSPORT_FORCED
             if transport_forced:
                 self.logger.info("Transport explicitly specified - skipping setup mode")
                 self._start_normal_mode()
-            elif transport_arg in ('simbt', 'rfcomm'):
+            # The complement of the forced set, computed rather than
+            # restated so the two cannot drift (core review §5.8).
+            elif (transport_arg in TRANSPORT_NAMES
+                  and transport_arg not in TRANSPORT_FORCED):
                 # Bluetooth transport — always enter setup mode for device pairing
                 from .comm.sim_bluetooth import SimBluetoothPairing
                 pairing_factory = (lambda: SimBluetoothPairing()) if transport_arg == 'simbt' else None
@@ -264,8 +268,7 @@ class GTachApplication:
         platform_type = get_platform_type()
         self._transport = select_transport(platform_type, self._args)
         transport_arg = getattr(self._args, 'transport', None)
-        _fast_transports = ('simbt', 'simtcp', 'tcp')
-        _poll_interval = 0.02 if transport_arg in _fast_transports else 0.05
+        _poll_interval = 0.02 if transport_arg in TRANSPORT_FAST else 0.05
         self._obd = OBDProtocol(self._transport, self._thread_manager, poll_interval_s=_poll_interval, adapter_pre_initialised=True)
         transport_thread = threading.Thread(
             target=self._transport.reconnect_indefinitely, name='transport', daemon=True

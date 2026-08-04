@@ -19,6 +19,24 @@ from ..utils.platform import PlatformType
 from .device_store import DeviceStore
 
 
+# The transport name set and its classifications, defined
+# once. Previously maintained in four places — main.py's
+# argparse choices, app.py's forced test, app.py's fast-poll
+# test and select_transport below — with an omission in any
+# one of them changing behaviour silently rather than
+# raising (core review §5.8).
+TRANSPORT_NAMES = ('tcp', 'serial', 'rfcomm', 'simtcp', 'simbt')
+
+# Forced transports skip setup mode. simtcp is forced while
+# simbt routes through setup: that asymmetry is deliberate
+# and serves the pairing-simulation design. Do not
+# 'correct' it.
+TRANSPORT_FORCED = ('tcp', 'serial', 'simtcp')
+
+# Fast transports poll at 0.02 s rather than 0.05 s.
+TRANSPORT_FAST = ('simbt', 'simtcp', 'tcp')
+
+
 class TransportState(Enum):
     """Enumeration of transport connection states."""
     
@@ -330,8 +348,12 @@ def select_transport(platform_type: PlatformType, args: argparse.Namespace) -> O
 
     transport_arg = getattr(args, 'transport', None)
 
-    # Simulation transports for hardware-free testing
-    if transport_arg in ('simtcp', 'simbt'):
+    # Simulation transports for hardware-free testing. SimTransport
+    # serves both simtcp and simbt; they are classified differently for
+    # forcing, which is the pairing-simulation design rather than an
+    # inconsistency (core review §5.8).
+    _simulated = tuple(n for n in TRANSPORT_NAMES if n.startswith('sim'))
+    if transport_arg in _simulated:
         from .sim_transport import SimTransport
         return SimTransport()
 
