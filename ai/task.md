@@ -28,13 +28,14 @@ Created: 2026 July 29
 [8.4 Observation Session](<#8.4 observation session>)
 [8.5 Release v0.4.0 — Gated and Appearance-Changing](<#8.5 release v0.4.0 — gated and appearance-changing>)
 [8.6 Versioning and Build](<#8.6 versioning and build>)
-[9.0 Cross-Check — 2026-07-31](<#9.0 cross-check — 2026-07-31>)
+[9.0 Cross-Check — 2026-08-04](<#9.0 cross-check — 2026-08-04>)
 [9.1 Method](<#9.1 method>)
 [9.2 Newly Implemented Triples — Prompt Closed, Issue/Change Open](<#9.2 newly implemented triples — prompt closed, issue/change open>)
 [9.3 Reclassification — 7.3.4 Moved to v0.3.0](<#9.3 reclassification — 7.3.4 moved to v0.3.0>)
 [9.4 Standing Closure Rule Deviation — `1143427b`](<#9.4 standing closure rule deviation — 1143427b>)
 [9.5 Confirmed Not Yet Implemented](<#9.5 confirmed not yet implemented>)
 [9.6 Verification Evidence](<#9.6 verification evidence>)
+[9.7 Remaining Eight Triples Authored — 2026-08-04](<#9.7 remaining eight triples authored — 2026-08-04>)
 [Version History](<#version history>)
 
 ---
@@ -51,10 +52,11 @@ Created: 2026 July 29
 | 4.1 | — | `faulthandler` output not captured under systemd | ☐ Open |
 | 5.1 | — | Splash audit §4.3 — WELCOME screen touch-unresponsiveness | ☐ Unverified |
 | 6.1 | — | UI Navigation audit — Finding C (terminology) | Deferred by design |
-| 7.3 | 13 UUIDs | Display review triples | 7 of 13 authored — 2 closed (`4c038bed`, `0b00759c`), 5 prompt-closed/issue+change open (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`) |
-| 7.4 | 8 UUIDs | Core/comm/utils review triples | 6 of 8 authored — 3 closed (`5a9dc15e`, `11be4865`, `1143427b`†), 3 prompt-closed/issue+change open (`52414414`, `2d545bf5`, `d32ccc49`) |
-| 7.5 | — | Verification prerequisites gating §7.3/§7.4 | 2 of 6 resolved — 7.5.4 decided (retire); 7.5.1's self-clearing mechanism has shipped (7.3.3), observation itself still pending §8.4 |
-| 8.0 | — | Two-release plan: v0.3.0 diagnostic and low-risk, v0.4.0 gated and appearance-changing | v0.3.0 substantially authored (13 of 14 items landed, see §9.0); v0.4.0 unchanged, 8 items to author |
+| 7.3 | 13 UUIDs | Display review triples | **13 of 13 authored.** 2 closed (`4c038bed`, `0b00759c`); 5 prompt-closed/issue+change open (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`); 6 authored not implemented (`821919ce`, `9ed1c77e`, `b02ed4ea`, `378703da`, `5014040c`, `5012004e`) |
+| 7.4 | 8 UUIDs | Core/comm/utils review triples | **8 of 8 authored.** 3 closed (`5a9dc15e`, `11be4865`, `1143427b`†); 3 prompt-closed/issue+change open (`52414414`, `2d545bf5`, `d32ccc49`); 2 authored not implemented (`394c3bbb`, `6481f8ce`) |
+| 7.5 | — | Verification prerequisites gating §7.3/§7.4 | 2 of 6 resolved — 7.5.4 decided (retire); 7.5.1's self-clearing mechanism has shipped (7.3.3), observation itself still pending §8.4. **7.5.3 and 7.5.5 now gate implementation of three authored triples** (§9.7.1) |
+| 8.0 | — | Two-release plan: v0.3.0 diagnostic and low-risk, v0.4.0 gated and appearance-changing | v0.3.0 fully authored and implemented (14 items, §8.3); v0.4.0 fully authored 2026-08-04, 0 implemented (§9.7) |
+| 9.7 | — | Eight remaining triples authored | ✅ Authored 2026-08-04; one open decision (§9.7.3) |
 
 † `1143427b` closed (issue, change and prompt) without a T06 result document, contrary to
 §8.2.1's Standing Closure Rule and without appearing on that section's grandfather list.
@@ -311,24 +313,24 @@ non-trivial work in the same file, so the full triple applies.
 Source: `ai/workspace/report/display-ui-graphics-review.md`. "Recs" are
 the numbered items in §9.0.
 
-| Task | UUID | Slug | Recs | Primary files | Status (2026-07-31) |
+| Task | UUID | Slug | Recs | Primary files | Status (2026-08-04) |
 |---|---|---|---|---|---|
 | 7.3.1 | `4c038bed` | `rpm-signal-conditioning` | 1, 5, 23 | `display/manager.py` | ✅ Closed |
 | 7.3.2 | `66ef59a0` | `framebuffer-write-path` | 2, 6, 7, 8 | `display/rendering/engine.py` | Implemented — prompt closed, issue/change open pending test |
 | 7.3.3 | `cb28980f` | `framebuffer-geometry-query` | 21 | `display/rendering/engine.py`, `utils/terminal.py` (ioctl pattern) | Implemented — prompt closed, issue/change open pending test |
 | 7.3.4 | `49b21ace` | `framebuffer-vsync-pageflip` | 3, 4 | `display/rendering/engine.py` | Implemented — prompt closed, issue/change open pending test. Reclassified from v0.4.0 into v0.3.0; see §9.3 |
-| 7.3.5 | `821919ce` | `render-caching` | 9, 10, 11 | `display/manager.py`, `display/rendering/engine.py` | ☐ To author |
-| 7.3.6 | `9ed1c77e` | `frame-pacing-conditional-render` | 12, 13, 14 | `display/manager.py`, `config/config.yaml` | ☐ To author |
+| 7.3.5 | `821919ce` | `render-caching` | 9, 10, 11 | `display/manager.py`, `display/rendering/engine.py` | Authored 2026-08-04 — ☐ not implemented. Gated: §7.5.3 baseline. Three assumptions recorded |
+| 7.3.6 | `9ed1c77e` | `frame-pacing-conditional-render` | 12, 13, 14 | `display/manager.py`, `config/config.yaml` | Authored 2026-08-04 — ☐ not implemented. Gated: §7.5.3 and 7.3.5 |
 | 7.3.7 | `0b00759c` | `performance-instrumentation` | 15, 16, 17, 18 | `display/performance/monitor.py`, `display/manager.py` | ✅ Closed |
 | 7.3.8 | `44bca479` | `display-defect-remediation` | 19, 20, 22 | `display/manager.py`, `display/input/touch_coordinator.py` | Implemented — prompt closed, issue/change open pending test |
-| 7.3.9 | `b02ed4ea` | `button-system-touch-targets` | 24, 27 | `display/manager.py`, `display/typography.py`, `display/input/touch_coordinator.py` | ☐ To author |
-| 7.3.10 | `378703da` | `radial-centre-readout` | 25 | `display/manager.py`, `display/models.py` | ☐ To author |
-| 7.3.11 | `5014040c` | `annular-band-indicator` | 26 | `display/manager.py`, `display/models.py` | ☐ To author |
-| 7.3.12 | `5012004e` | `night-palette-toggle` | 29 | `display/manager.py`, `display/models.py`, `config/config.yaml` | ☐ To author |
+| 7.3.9 | `b02ed4ea` | `button-system-touch-targets` | 24, 27 | `display/manager.py`, `display/typography.py` (`touch_coordinator.py` read-only) | Authored 2026-08-04 — ☐ not implemented. One open decision: see §9.7 |
+| 7.3.10 | `378703da` | `radial-centre-readout` | 25 | `display/manager.py`, `display/models.py`, `utils/config.py`, `config/config.yaml` | Authored 2026-08-04 — ☐ not implemented |
+| 7.3.11 | `5014040c` | `annular-band-indicator` | 26 | `display/manager.py` | Authored 2026-08-04 — ☐ not implemented. Must follow 7.3.10 |
+| 7.3.12 | `5012004e` | `night-palette-toggle` | 29 | `display/manager.py`, `display/models.py` | Authored 2026-08-04 — ☐ not implemented. Must follow 7.3.11 and 7.3.9 |
 | 7.3.13 | `4c3c3e1f` | `update-view-progress` | 28 | `display/manager.py` | Implemented — prompt closed, issue/change open pending test |
 
 Coverage check: recommendations 1–29 each appear exactly once across
-rows 7.3.1 to 7.3.13. Status column added 2026-07-31 per the residual
+rows 7.3.1 to 7.3.13. Status column added 2026-08-04 per the residual
 observation in `task-list-cross-check-discrepancies.md` §10.2; see §9.0
 for the verification behind each entry.
 
@@ -394,13 +396,13 @@ Source: `ai/workspace/report/core-comm-utils-code-review.md`. References
 are to that report's section numbers; `#n` refers to its §7.0 numbered
 list.
 
-| Task | UUID | Slug | Report items | Primary files | Status (2026-07-31) |
+| Task | UUID | Slug | Report items | Primary files | Status (2026-08-04) |
 |---|---|---|---|---|---|
-| 7.4.1 | `394c3bbb` | `config-device-persistence-retirement` | §3.6, §5.1; #1 (retirement branch), #6 | `utils/config.py`, `comm/device_store.py`, `comm/models.py` | ☐ To author — `get_device_by_address`/`add_or_update_device`/`remove_device` and `saved_devices` confirmed still present in `config.py`, unretired |
+| 7.4.1 | `394c3bbb` | `config-device-persistence-retirement` | §3.6, §5.1; #1 (retirement branch), #6 | `utils/config.py` only — see §9.7 | Authored 2026-08-04 — ☐ not implemented. Not gated; §7.5.4 decided |
 | 7.4.2 | `5a9dc15e` | `watchdog-lock-discipline` | §3.3, §4.1; #2 | `core/watchdog.py`, `core/thread.py` | ✅ Closed |
 | 7.4.3 | `11be4865` | `platform-detection-consolidation` | §3.2, §4.4; #3 | `utils/platform.py`, `utils/dependencies.py` | ✅ Closed |
 | 7.4.4 | `52414414` | `device-store-pairing-robustness` | §3.4, §3.5, §5.6, §5.7; #4, #5 | `comm/device_store.py`, `comm/pairing.py` | Implemented — prompt closed, issue/change open pending test |
-| 7.4.5 | `6481f8ce` | `transport-consolidation` | §4.3, §5.3, §5.8; #7 | `comm/transport.py`, `comm/rfcomm.py`, `comm/serial_transport.py`, `comm/tcp_transport.py`, `main.py`, `app.py` | ☐ To author |
+| 7.4.5 | `6481f8ce` | `transport-consolidation` | §4.3, §5.3, §5.8; #7 | `comm/transport.py`, `comm/rfcomm.py`, `comm/serial_transport.py`, `comm/tcp_transport.py`, `main.py`, `app.py` | Authored 2026-08-04 — ☐ not implemented. Gated: §7.5.5 reproduction |
 | 7.4.6 | `2d545bf5` | `thread-shutdown-budget` | §5.5, §5.9 | `core/thread.py`, `app.py` | Implemented — prompt closed, issue/change open pending test |
 | 7.4.7 | `d32ccc49` | `utils-comm-housekeeping` | §4.2, §5.2, §5.4; #8 | `utils/home.py`, `utils/config.py`, `comm/obd.py` | Implemented — prompt closed, issue/change open pending test |
 | 7.4.9 | `1143427b` | `rwlock-notification-defect` | §3.1; #1 (correction branch) | `utils/config.py` | ✅ Closed — but see §9.4, closure deviates from §8.2.1 |
@@ -674,10 +676,10 @@ Contents: work already implemented, plus every outstanding triple that
 carries no observational dependency and no change to the product's
 appearance.
 
-State as of 2026-07-31 (originally written 2026-07-30; see §9.0 for the
+State as of 2026-08-04 (originally written 2026-07-30; see §9.0 for the
 cross-check). All fourteen items below are now authored and implemented.
 
-| Triple | UUID | State (2026-07-31) |
+| Triple | UUID | State (2026-08-04) |
 |---|---|---|
 | 7.3.1 | `4c038bed` | Implemented, closed |
 | 7.3.7 | `0b00759c` | Implemented, closed |
@@ -742,24 +744,34 @@ triples they gate.
 
 Authored after §8.4, with the observations in hand.
 
-**Update 2026-07-31**: `49b21ace` (7.3.4) has already been authored and
-implemented — the §7.5.1 gate cleared mechanically once 7.3.3 shipped,
-per §8.3's own note. It is removed from this table and now tracked under
-§8.3. See §9.3.
+**Update 2026-08-04, two changes.** First, `49b21ace` (7.3.4) has
+already been authored and implemented — the §7.5.1 gate cleared
+mechanically once 7.3.3 shipped, per §8.3's own note. It is removed from
+this table and tracked under §8.3; see §9.3. Second, all eight triples
+below are now authored (§9.7). None is implemented.
 
-| Triple | UUID | Unblocked by |
-|---|---|---|
-| 7.3.5 | `821919ce` | 7.5.3 baseline; keyed cache per §7.6.1 |
-| 7.3.6 | `9ed1c77e` | 7.3.5 |
-| 7.3.9 | `b02ed4ea` | — grouped here as an appearance change |
-| 7.3.10 | `378703da` | — retires DIGITAL mode; largest behavioural change in the set |
-| 7.3.11 | `5014040c` | 7.3.1 |
-| 7.3.12 | `5012004e` | 7.3.11 |
-| 7.4.1 | `394c3bbb` | 7.5.4 decided — retire (§7.4.8). Large deletion, released here rather than with the v0.3.0 corrections |
-| 7.4.5 | `6481f8ce` | 7.5.5 reproduction |
+| Triple | UUID | Unblocked by | State |
+|---|---|---|---|
+| 7.3.5 | `821919ce` | 7.5.3 baseline; keyed cache per §7.6.1 | Authored — gated |
+| 7.3.6 | `9ed1c77e` | 7.3.5 | Authored — gated |
+| 7.3.9 | `b02ed4ea` | — grouped here as an appearance change | Authored |
+| 7.3.10 | `378703da` | — retires DIGITAL mode; largest behavioural change in the set | Authored |
+| 7.3.11 | `5014040c` | 7.3.1, and now 7.3.10 — see §9.7.2 item 6 | Authored |
+| 7.3.12 | `5012004e` | 7.3.11 and 7.3.9 | Authored |
+| 7.4.1 | `394c3bbb` | 7.5.4 decided — retire (§7.4.8). Large deletion, released here rather than with the v0.3.0 corrections | Authored — not gated |
+| 7.4.5 | `6481f8ce` | 7.5.5 reproduction | Authored — gated |
 
 The five user interface triples are deliberately released together so the
 product's appearance changes once rather than incrementally.
+
+**Implementation order within v0.4.0.** The authoring surfaced ordering
+constraints §7.6.1 does not carry, recorded in §9.7.2. The resulting
+order is: `394c3bbb` (independent) → `821919ce` → `9ed1c77e` →
+`b02ed4ea` → `378703da` → `5014040c` → `5012004e`, with `6481f8ce`
+independent of the display chain and placed wherever its §7.5.5
+reproduction is ready. `378703da` before `5014040c` is not optional:
+implementing the annular indicator first means editing code that
+`378703da` deletes.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -797,7 +809,7 @@ path for iteration. Release notes follow the
 
 ---
 
-## 9.0 Cross-Check — 2026-07-31
+## 9.0 Cross-Check — 2026-08-04
 
 William reported that several report-recommendation changes had been
 completed: prompts closed, with the coupled issues and changes left open
@@ -876,7 +888,7 @@ recorded and exempted: `4c038bed`, `5a9dc15e`, `11be4865`, `0b00759c`,
 
 `1143427b` (7.4.9, the `RWLock` notification defect) is not on that list.
 Its issue, change and prompt are nonetheless all in `closed/` as of
-2026-07-31. Its own change document (`change-1143427b`, version 1.2)
+2026-08-04. Its own change document (`change-1143427b`, version 1.2)
 records the closure explicitly against an unmet criterion:
 
 - `test_results` states on-target verification "is outstanding and ships
@@ -943,6 +955,107 @@ governance documents:
 
 [Return to Table of Contents](<#table of contents>)
 
+### 9.7 Remaining Eight Triples Authored — 2026-08-04
+
+All twenty triples in §7.3 and §7.4 now exist. The eight recorded in
+§9.5 as unauthored were written on 2026-08-04: `b02ed4ea`, `378703da`,
+`5014040c`, `5012004e`, `821919ce`, `9ed1c77e`, `394c3bbb`, `6481f8ce`.
+Twenty-four documents, one issue/change/prompt triple each, all at
+iteration 1 with `target_profile: claude_code`. None is implemented;
+§7.6.4's rule that no source changes until the T04 prompt is approved
+continues to apply.
+
+#### 9.7.1 Authored Against §8.1's Advice
+
+§8.1 records that four triples "cannot be authored correctly yet"
+because they depend on §7.5 observations not yet taken. Three of those
+— `821919ce`, `9ed1c77e`, `6481f8ce` — were authored anyway, on
+instruction. The consequence is recorded rather than concealed: each
+carries an explicit assumptions block in its issue and change
+documents, and each names the section to be revised if the observation
+contradicts it.
+
+| Triple | Gate | Assumptions recorded |
+|---|---|---|
+| `821919ce` | §7.5.3 frame-time baseline | Three: that render cost is material; that the static layer dominates it rather than the write path; that a third 921,600-byte surface is affordable |
+| `9ed1c77e` | §7.5.3, and 7.3.5 landing first | Two: that frame cost after 821919ce still justifies conditional rendering; that 30 Hz is visually acceptable for the needle |
+| `6481f8ce` | §7.5.5 race reproduction | One, narrow: that the failure mode is `AttributeError`. The reproduction supplies the regression test rather than confirming the mechanism |
+
+Each prompt makes collecting the observation its first implementation
+step and instructs the executor to stop and report if it contradicts
+the premise. `394c3bbb` is not gated — §7.5.4 is decided.
+
+#### 9.7.2 Corrections to §7.3, §7.4 and §7.3.14 Found While Authoring
+
+Seven, all recorded in the documents that carry them:
+
+1. **`394c3bbb` file list.** §7.4 names `comm/device_store.py` and
+   `comm/models.py` among its primary files. Neither may be modified:
+   `BluetoothDevice` is live via `DeviceStore`, and `DeviceStore` is
+   the surviving store. The change touches `utils/config.py` alone.
+   The §7.4 row is corrected above.
+2. **`b02ed4ea` file list.** `touch_coordinator.py` is read-only —
+   applying the touch expansion inside `register_button_region` would
+   enlarge every region in the application, including the setup
+   subsystem's. It is applied by the caller instead.
+3. **A fourth transport-name list.** Core §5.8 names three places
+   holding the transport name set. There is a fourth, `app.py:267`'s
+   `_fast_transports`, which classifies the same names by poll rate.
+   Consolidating three of four would have left the least visible one.
+4. **§7.3.14 omits `_handle_long_press`.** It says the swipe mode
+   change is removed with DIGITAL. `_handle_long_press` also assigns
+   DIGITAL (`manager.py:204`) and must survive with that assignment
+   changed to RADIAL — it is the only route to OPTIONS.
+5. **`_get_band_colour` must outlive its last caller.** Retiring
+   DIGITAL leaves it uncalled, and a correct dead-code sweep would
+   remove it — discarding the hysteresis `4c038bed` added, which
+   `5014040c` requires. Retention is recorded in three places.
+6. **Recommendation 26's subject largely dissolves.** The full-field
+   band fill it replaces exists only in DIGITAL, which `378703da`
+   retires. What remains for `5014040c` is RADIAL's light-grey ground,
+   the tick and numeral colours that depend on it, and
+   `_get_band_colour` losing a text-colour return that no longer has
+   any consumer — which answers both questions §7.3.14 puts to that
+   change document.
+7. **The night toggle has nowhere to go.** §7.3.14 notes the toggle is
+   subject to `b02ed4ea`'s geometry. It is also subject to that
+   change's three-control budget, which is full — `b02ed4ea` already
+   removes *Clear settings* for want of a fourth slot. `5012004e`
+   sites the toggle as a double-tap gesture and names the options menu
+   as its preferred home once display §7.7 frees space.
+
+#### 9.7.3 One Open Decision
+
+`b02ed4ea` leaves the options menu with no entry point to *Clear
+settings*: the three-control budget has no fourth slot, and the
+confirmation view recommendation 24 requires is reachable only from
+that absent control. This is a faithful consequence of recommendation
+24 as written, and display §7.7's re-layout (deferred to P10 per
+§7.3.15) is where the space would come from. If an entry point is
+required in v0.4.0 that is a scope extension to be agreed before the
+prompt is executed. The prompt instructs the executor not to resolve it
+by adding a fourth button.
+
+#### 9.7.4 Discrepancy Discharge Status
+
+- **D1** (type rule for core §5.x) — dischargeable. All five triples it
+  named now exist: `6481f8ce` and `394c3bbb` carry `type: defect` as
+  its §5.4 steps 4 and 5 require; `52414414`, `2d545bf5` and
+  `d32ccc49` were typed correctly when authored.
+- **D2** — discharged 2026-07-30; `d32ccc49` landed with its edit
+  confined to `ConfigManager.__init__`, verified not to overlap
+  `394c3bbb`'s deletion region.
+- **D3** — addressed in document but not discharged: `821919ce`
+  specifies the keyed cache with the palette and band members present
+  from the outset, and `5014040c` and `5012004e` each extend the key's
+  values. Discharge requires implementation and the night-toggle redraw
+  check.
+- **D4** — discharged; `44bca479` shipped, so `b02ed4ea` registers
+  through the mode-entry hook by construction.
+- **D5** — unchanged; awaits `b02ed4ea` on the panel.
+
+[Return to Table of Contents](<#table of contents>)
+
 ---
 
 ## Version History
@@ -957,7 +1070,8 @@ governance documents:
 | 6.0 | 2026-07-30 | Cross-checked §7.3 and §7.4 against both source reports. Coverage confirmed: display recommendations 1–29 and core §3.1–§3.6, §4.1–§4.4, §5.1–§5.9 and #1–#8 each map to exactly one triple, and every file attribution matches the reports' cited locations. Five discrepancies corrected: extended the §7.2 `issue_info.type` rule to cover core §5.x, which previously had no mapping; added three missing dependency rows to §7.6.1 (7.3.5→7.3.11/7.3.12 static-layer cache invalidation, 7.3.9→7.3.8 touch-registration relocation, 7.4.7→7.4.1 shared `utils/config.py` edit); and added §7.3.15 recording display report §7.7 as an explicit exclusion deferred to a future P10 cycle. |
 | 7.0 | 2026-07-30 | Added §8.0 Release Plan. The §7.0 remediation is delivered in two releases rather than one: v0.3.0 carries the implemented work plus the seven outstanding triples with no observational dependency and no appearance change; v0.4.0 carries the gated and user-interface work after a single on-target observation session collects all six §7.5 items. Records the rationale for rejecting a single sixteen-triple release (§8.1), a minimal pytest suite as a P06 prerequisite since `tests/` is currently empty (§8.2), the observation method for each §7.5 item after v0.3.0 (§8.4), and the build and release procedure (§8.6). Notes that 7.3.3 clears the §7.5.1 gate on 7.3.4 automatically by making the application report its own framebuffer geometry. |
 | 8.0 | 2026-07-30 | Recorded the §7.5.4 decision: **retire** the `ConfigManager` device-persistence path. Rewrote §7.4.8 with call-graph evidence (`DeviceStore` has ~15 live call sites; the `ConfigManager` device methods have none) and two corrections to its previous text — the "approximately 1,600 lines" figure conflated the whole of `utils/config.py` with the device-persistence subset, and retirement does **not** close §3.1, because `_rw_lock` guards the live `load_config`/`save_config` path that `app.py:75` and `main.py:107` exercise on every start. §3.1 accordingly separated into a new triple 7.4.9 (`1143427b`) — a re-partition of existing scope, not an addition; §7.0 item #1 is a disjunction whose correction and retirement branches are now claimed separately. 7.4.1 rescoped to the retirement (§3.6, §5.1) and reslugged `config-device-persistence-retirement`. §7.6.1 dependency on 7.5.4 cleared and a 7.4.7→7.4.9 row added. 7.4.9 assigned to v0.3.0 (§8.3) as a small correction on a live path; 7.4.1 remains in v0.4.0 (§8.5) as a large deletion. |
-| 9.0 | 2026-07-31 | Added §9.0, cross-checking §7.0's twenty triples against governance-document state, `src/gtach` and pushed git/GitHub history, following William's report that several prompts had closed with issues/changes left open pending test results. Confirmed the pattern for eight triples (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`, `52414414`, `2d545bf5`, `d32ccc49`) — prompt closed, issue and change open. Added a Status column to §7.3 and §7.4 (per the residual observation in `task-list-cross-check-discrepancies.md` §10.2) and updated §0.0, §7.5.1 and §8.3. Recorded that `49b21ace` (7.3.4) was reclassified from v0.4.0 into v0.3.0 once `cb28980f` (7.3.3) cleared its gate mechanically (§9.3); removed it from §8.5. Flagged `1143427b` (7.4.9) as closed — issue, change and prompt — without a T06 result document and without appearing on §8.2.1's grandfather list; its own change document records the on-target verification step as open and the coupled T05 as `status: planned` with all cases `not_run` (§9.4). Confirmed by direct source inspection that `394c3bbb` (7.4.1) remains unimplemented — the `ConfigManager` device-persistence methods are still present — and that all eight remaining v0.4.0 triples have no governance documents or matching commits (§9.5). |
+| 9.0 | 2026-08-04 | Added §9.0, cross-checking §7.0's twenty triples against governance-document state, `src/gtach` and pushed git/GitHub history, following William's report that several prompts had closed with issues/changes left open pending test results. Confirmed the pattern for eight triples (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`, `52414414`, `2d545bf5`, `d32ccc49`) — prompt closed, issue and change open. Added a Status column to §7.3 and §7.4 (per the residual observation in `task-list-cross-check-discrepancies.md` §10.2) and updated §0.0, §7.5.1 and §8.3. Recorded that `49b21ace` (7.3.4) was reclassified from v0.4.0 into v0.3.0 once `cb28980f` (7.3.3) cleared its gate mechanically (§9.3); removed it from §8.5. Flagged `1143427b` (7.4.9) as closed — issue, change and prompt — without a T06 result document and without appearing on §8.2.1's grandfather list; its own change document records the on-target verification step as open and the coupled T05 as `status: planned` with all cases `not_run` (§9.4). Confirmed by direct source inspection that `394c3bbb` (7.4.1) remains unimplemented — the `ConfigManager` device-persistence methods are still present — and that all eight remaining v0.4.0 triples have no governance documents or matching commits (§9.5). |
+| 10.0 | 2026-08-04 | Authored the eight remaining triples — `b02ed4ea`, `378703da`, `5014040c`, `5012004e`, `821919ce`, `9ed1c77e`, `394c3bbb`, `6481f8ce` — completing all twenty in §7.0. Twenty-four documents, all iteration 1, `target_profile: claude_code`, none implemented. Added §9.7 recording: that three gated triples were authored against §8.1's advice on instruction, each carrying an explicit assumptions block and a stop-and-report first implementation step (§9.7.1); seven corrections found while authoring, chiefly that `394c3bbb` must not touch `comm/models.py` or `comm/device_store.py`, that a fourth transport-name list exists at `app.py:267`, that `_handle_long_press` survives DIGITAL's retirement with its assignment changed, that `_get_band_colour` must outlive its last caller for `5014040c`'s benefit, and that recommendation 26's subject largely dissolves once DIGITAL is retired (§9.7.2); one open decision, the absent entry point to *Clear settings* under `b02ed4ea`'s three-control budget (§9.7.3); and the discharge status of all five cross-check discrepancies (§9.7.4). Added Status columns to the §7.3 and §7.4 rows, a state column and an implementation order to §8.5, and corrected §9.0's date, which revision 9.0 recorded as 2026-07-31 in error. |
 
 ---
 
