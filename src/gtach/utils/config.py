@@ -34,15 +34,11 @@ except ImportError:
     yaml = None
     YAML_AVAILABLE = False
 
-# Import the BluetoothDevice class from the comm module
-try:
-    from ..comm.models import BluetoothDevice
-except ImportError:
-    # Fall back for direct imports during development or testing
-    import sys
-    from pathlib import Path
-    sys.path.append(str(Path(__file__).parent.parent))
-    from comm.models import BluetoothDevice
+# BluetoothDevice is no longer imported here. It served only
+# BluetoothConfig's retired device-list field and ConfigManager's three
+# device-persistence methods, all retired by change-394c3bbb. The class
+# itself is live and unchanged in comm/models.py, where DeviceStore —
+# the sole device store — constructs it (ai/task.md §7.4.8).
 
 # Import OBDII_HOME utilities
 from .home import get_config_file, get_home_path, ensure_directories
@@ -432,7 +428,6 @@ class ConfigValidator:
 @dataclass
 class BluetoothConfig:
     """Bluetooth-specific configuration settings (Bleak-optimized)"""
-    saved_devices: List[BluetoothDevice] = field(default_factory=list)
     auto_connect: bool = True
     last_device: Optional[str] = None  # MAC address of last device
     
@@ -459,7 +454,6 @@ class BluetoothConfig:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization"""
         return {
-            "saved_devices": [device.to_dict() for device in self.saved_devices],
             "auto_connect": self.auto_connect,
             "last_device": self.last_device,
             "scan_duration": self.scan_duration,
@@ -482,14 +476,12 @@ class BluetoothConfig:
         if not data:
             return cls()
             
-        # Extract and convert the saved devices
-        saved_devices = []
-        for device_data in data.get("saved_devices", []):
-            if isinstance(device_data, dict):
-                saved_devices.append(BluetoothDevice.from_dict(device_data))
-                
+        # The retired device-list key, written by a build predating
+        # change-394c3bbb, is simply not read. from_dict reads named
+        # keys rather than iterating, so the stale entry is inert and
+        # disappears at the next save; DeviceStore is the sole device
+        # store (ai/task.md §7.4.8).
         return cls(
-            saved_devices=saved_devices,
             auto_connect=data.get("auto_connect", True),
             last_device=data.get("last_device"),
             scan_duration=data.get("scan_duration", 8.0),
@@ -1437,69 +1429,6 @@ class ConfigManager:
         """Get OBDII home directory path"""
         return get_home_path()
             
-    def get_device_by_address(self, config: OBDConfig, address: str) -> Optional[BluetoothDevice]:
-        """Find a device in the configuration by its address
-        
-        Args:
-            config: Configuration object to search
-            address: Device MAC address to find
-        
-        Returns:
-            BluetoothDevice if found, None otherwise
-        """
-        # Normalize address format
-        normalized_address = address.upper().replace(':', '')
-        
-        for device in config.bluetooth.saved_devices:
-            if device.address.upper().replace(':', '') == normalized_address:
-                return device
-                
-        return None
-        
-    def add_or_update_device(self, config: OBDConfig, device: BluetoothDevice) -> OBDConfig:
-        """Add or update a device in the configuration
-        
-        Args:
-            config: Current configuration
-            device: Device to add or update
-        
-        Returns:
-            Updated configuration
-        """
-        # Check if device already exists
-        existing_device = self.get_device_by_address(config, device.address)
-        
-        if existing_device:
-            # Update existing device
-            idx = config.bluetooth.saved_devices.index(existing_device)
-            config.bluetooth.saved_devices[idx] = device
-        else:
-            # Add new device
-            config.bluetooth.saved_devices.append(device)
-            
-        return config
-        
-    def remove_device(self, config: OBDConfig, address: str) -> OBDConfig:
-        """Remove a device from the configuration
-        
-        Args:
-            config: Current configuration
-            address: Device address to remove
-        
-        Returns:
-            Updated configuration
-        """
-        device = self.get_device_by_address(config, address)
-        
-        if device:
-            config.bluetooth.saved_devices.remove(device)
-            
-            # Reset last_device if it was the removed device
-            if config.bluetooth.last_device == device.address:
-                config.bluetooth.last_device = None
-                
-        return config
-    
     def generate_session_id(self) -> str:
         """Generate a unique session ID using UUID with timestamp prefix
         
