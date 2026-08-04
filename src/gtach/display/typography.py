@@ -115,7 +115,19 @@ class TypographyConstants:
     BUTTON_BORDER_WIDTH = 2      # Standard border width for outlined buttons (px)
     BUTTON_TOUCH_EXPANSION = 8   # Touch region expansion in all directions (px)
     BUTTON_PRESS_SCALE = 0.95    # Scale factor for pressed state (95% of original)
-    
+
+    # Minimum comfortable touch target for a panel operated by
+    # hand in a moving vehicle. 72 px = 8.0 mm at the HyperPixel
+    # 2.1 Round's 229 ppi. The four measured elements in the
+    # display review all fell below this
+    # (display review §7.3, recommendation 24).
+    BUTTON_MIN_TOUCH_HEIGHT = 72
+    BUTTON_MIN_SEPARATION = 16
+
+    # The circular viewport. A control outside it is invisible
+    # but still touch-sensitive — see display review §8.1.
+    VIEWPORT_RADIUS = 238
+
     # Button font sizes
     BUTTON_FONT_LARGE = 28       # Font size for BUTTON_LARGE
     BUTTON_FONT_MEDIUM = 20      # Font size for BUTTON_MEDIUM

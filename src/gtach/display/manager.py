@@ -20,7 +20,7 @@ import logging
 import threading
 import time
 from enum import Enum, auto
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, Sequence, Callable, List
 
 # Conditional imports for hardware dependencies
 try:
@@ -60,7 +60,7 @@ class DisplayManager:
     Orchestrates display rendering, touch handling, and performance monitoring
     through specialized components for improved maintainability and testing.
     """
-    
+
     def __init__(self, thread_manager: ThreadManager, terminal_restorer: TerminalRestorer = None, config_path: str = 'config.yaml'):
         self.logger = logging.getLogger('DisplayManager')
         self.thread_manager = thread_manager
@@ -71,7 +71,7 @@ class DisplayManager:
         self._debug_toggle_callback = None  # Set by app.py: Callable[[bool], None]
         self._debug_logging_on = False      # Reflects current debug logging state
         self._restart_callback = None       # Set by app.py: Callable[[], None]
-        self._options_view = 'menu'         # 'menu' | 'update'
+        self._options_view = 'menu'         # 'menu' | 'update' | 'confirm_clear'
         self._update_status = 'idle'        # checking|available|none|error|pending
         self._update_wheel = None
         self._update_version = None
@@ -100,6 +100,8 @@ class DisplayManager:
         self._disconnected_btn_setup = None
         self._disconnected_btn_sim = None
         self._ack_btn_dismiss = None
+        self._confirm_btn_yes = None
+        self._confirm_btn_no = None
 
         # Component initialization
         self._initialize_components()
@@ -200,7 +202,10 @@ class DisplayManager:
         """Handle long press gesture"""
         try:
             if self.config.mode == DisplayMode.OPTIONS:
-                # Exit options mode
+                # Exit options mode. Reset the sub-view so a
+                # confirmation abandoned by long press is not waiting
+                # on the next entry (change-b02ed4ea).
+                self._options_view = 'menu'
                 self.config.mode = DisplayMode.DIGITAL
                 return TouchAction.NAVIGATION
             else:
@@ -990,10 +995,12 @@ class DisplayManager:
             self.logger.error(f"Radial display error: {e}", exc_info=True)
     
     def _draw_options_mode(self) -> None:
-        """Draw options interface — menu or update sub-view."""
+        """Draw options interface — menu, update or confirm sub-view."""
         try:
             if self._options_view == 'update':
                 self._draw_update_view()
+            elif self._options_view == 'confirm_clear':
+                self._draw_confirm_view()
             else:
                 self._draw_options_menu()
         except Exception as e:
@@ -1074,6 +1081,8 @@ class DisplayManager:
             if self.config.mode == DisplayMode.OPTIONS:
                 if self._options_view == 'update':
                     self._register_update_view_regions()
+                elif self._options_view == 'confirm_clear':
+                    self._register_confirm_view_regions()
                 else:
                     self._register_options_menu_regions()
             elif self.config.mode == DisplayMode.ACKNOWLEDGEMENT:
@@ -1084,25 +1093,151 @@ class DisplayManager:
             self.logger.error(f"Touch region registration error: {e}", exc_info=True)
             raise
 
+    def _button_column(
+        self,
+        specs: Sequence[Tuple[str, TouchAction, Callable]],
+        width: int,
+        top: int,
+        height: Optional[int] = None,
+        separation: Optional[int] = None,
+    ) -> List[pygame.Rect]:
+        """Compute, validate and register a centred vertical stack of buttons.
+
+        One owner for button geometry. The register methods call this;
+        the render methods call _draw_button with what it returns. A
+        single helper doing both would put touch registration back into
+        the render path, which change-44bca479 removed
+        (display review §8.2, recommendation 20).
+
+        The returned rects are the VISUAL ones. The rects actually
+        registered with the touch coordinator are larger — each is
+        inflated by BUTTON_TOUCH_EXPANSION on every side, so the
+        registered rect is 2 * BUTTON_TOUCH_EXPANSION wider and taller
+        than the button that was designed. Drawing a registered rect
+        would therefore draw a control 16 px larger than intended;
+        draw the returned rect instead.
+
+        Args:
+            specs: (region_id, action, callback) per button, top to bottom.
+            width: Button width in pixels.
+            top: y of the first button's top edge.
+            height: Button height. Defaults to BUTTON_MIN_TOUCH_HEIGHT
+                and is clamped up to it.
+            separation: Vertical gap between buttons. Defaults to and is
+                clamped up to max(BUTTON_MIN_SEPARATION,
+                2 * BUTTON_TOUCH_EXPANSION), so adjacent registered
+                rects touch but never overlap.
+
+        Returns:
+            The visual rects, in the order given. Empty if specs is empty.
+        """
+        expansion = TypographyConstants.BUTTON_TOUCH_EXPANSION
+        min_height = TypographyConstants.BUTTON_MIN_TOUCH_HEIGHT
+        min_separation = max(
+            TypographyConstants.BUTTON_MIN_SEPARATION, 2 * expansion
+        )
+
+        if height is None:
+            height = min_height
+        elif height < min_height:
+            self.logger.warning(
+                f"Button height {height} below the {min_height} px minimum; "
+                f"using {min_height}"
+            )
+            height = min_height
+
+        if separation is None:
+            separation = min_separation
+        elif separation < min_separation:
+            self.logger.warning(
+                f"Button separation {separation} below the {min_separation} px "
+                f"minimum; using {min_separation}"
+            )
+            separation = min_separation
+
+        radius_sq = TypographyConstants.VIEWPORT_RADIUS ** 2
+        rects: List[pygame.Rect] = []
+
+        for index, (region_id, action, callback) in enumerate(specs):
+            rect = pygame.Rect(
+                240 - width // 2,
+                top + index * (height + separation),
+                width,
+                height,
+            )
+
+            # A control outside the circular viewport is invisible but
+            # still touch-sensitive. That is the failure mode of
+            # display review §8.1, which went unnoticed until a review
+            # found it, so it is logged at ERROR where it will be seen.
+            # It is not raised: a layout fault must not crash the
+            # instrument on a moving vehicle.
+            for corner_x, corner_y in (
+                rect.topleft, rect.topright, rect.bottomleft, rect.bottomright
+            ):
+                if (corner_x - 240) ** 2 + (corner_y - 240) ** 2 > radius_sq:
+                    self.logger.error(
+                        f"Button {region_id} falls outside the circular "
+                        f"viewport: {rect}"
+                    )
+                    break
+
+            self.touch_coordinator.register_button_region(
+                region_id,
+                rect.inflate(expansion * 2, expansion * 2),
+                action,
+                callback,
+            )
+            rects.append(rect)
+
+        return rects
+
     def _register_options_menu_regions(self) -> None:
-        """Compute and register the four options-menu button regions."""
-        button_width = 300
-        button_height = 55
-        center_x = 240
-        clear_btn_y = 92
-        sim_btn_y = 157
-        debug_btn_y = 222
-        update_btn_y = 287
+        """Compute and register the three options-menu button regions.
 
-        self._options_btn_clear = pygame.Rect(center_x - button_width // 2, clear_btn_y, button_width, button_height)
-        self._options_btn_sim = pygame.Rect(center_x - button_width // 2, sim_btn_y, button_width, button_height)
-        self._options_btn_debug = pygame.Rect(center_x - button_width // 2, debug_btn_y, button_width, button_height)
-        self._options_btn_update = pygame.Rect(center_x - button_width // 2, update_btn_y, button_width, button_height)
+        Three targets, not four. Clear settings has moved behind the
+        'confirm_clear' sub-view: a control that erases the paired
+        device must not be reachable in one tap, and the 72 px
+        ergonomic minimum leaves no room for a fourth item
+        (display review §7.3, recommendation 24).
+        """
+        # Explicitly None so any stale reference is a visible None
+        # rather than a rect from the previous four-item layout.
+        self._options_btn_clear = None
 
-        self.touch_coordinator.register_button_region("clear_settings", self._options_btn_clear, TouchAction.SETTINGS_CHANGE, lambda pos: self._on_clear_settings())
-        self.touch_coordinator.register_button_region("simulation_mode", self._options_btn_sim, TouchAction.SETTINGS_CHANGE, lambda pos: self._on_simulation_mode())
-        self.touch_coordinator.register_button_region("debug_toggle", self._options_btn_debug, TouchAction.SETTINGS_CHANGE, lambda pos: self._on_debug_toggle())
-        self.touch_coordinator.register_button_region("check_updates", self._options_btn_update, TouchAction.SETTINGS_CHANGE, lambda pos: self._on_check_updates())
+        rects = self._button_column(
+            (
+                ("simulation_mode", TouchAction.SETTINGS_CHANGE,
+                 lambda pos: self._on_simulation_mode()),
+                ("debug_toggle", TouchAction.SETTINGS_CHANGE,
+                 lambda pos: self._on_debug_toggle()),
+                ("check_updates", TouchAction.SETTINGS_CHANGE,
+                 lambda pos: self._on_check_updates()),
+            ),
+            width=300,
+            top=110,
+        )
+        (self._options_btn_sim,
+         self._options_btn_debug,
+         self._options_btn_update) = rects
+
+    def _register_confirm_view_regions(self) -> None:
+        """Compute and register the clear-settings confirmation's two regions.
+
+        Sited at y 250 so the consequence text above it is read before
+        either control is reachable.
+        """
+        rects = self._button_column(
+            (
+                ("confirm_clear_yes", TouchAction.SETTINGS_CHANGE,
+                 lambda pos: self._on_clear_settings()),
+                ("confirm_clear_no", TouchAction.SETTINGS_CHANGE,
+                 lambda pos: self._on_cancel_clear()),
+            ),
+            width=300,
+            top=250,
+        )
+        self._confirm_btn_yes, self._confirm_btn_no = rects
 
     def _register_update_view_regions(self) -> None:
         """Compute and register the update sub-view's regions.
@@ -1114,24 +1249,32 @@ class DisplayManager:
         cleared, so a render guard cannot draw a button that was never
         registered.
         """
-        center_x = 240
-        button_width = 280
-        button_height = 60
-
+        # Both cleared first: _draw_update_view guards on them, so a
+        # status that does not present a control must not leave the
+        # previous status' rect behind.
         self._update_btn_install = None
         self._update_btn_cancel = None
 
         if self._update_status == 'available':
-            install_y = 240
-            cancel_y = 320
-            self._update_btn_install = pygame.Rect(center_x - button_width // 2, install_y, button_width, button_height)
-            self._update_btn_cancel = pygame.Rect(center_x - button_width // 2, cancel_y, button_width, button_height)
-            self.touch_coordinator.register_button_region("update_install", self._update_btn_install, TouchAction.SETTINGS_CHANGE, lambda pos: self._on_confirm_install())
-            self.touch_coordinator.register_button_region("update_cancel", self._update_btn_cancel, TouchAction.SETTINGS_CHANGE, lambda pos: self._on_cancel_update())
+            self._update_btn_install, self._update_btn_cancel = self._button_column(
+                (
+                    ("update_install", TouchAction.SETTINGS_CHANGE,
+                     lambda pos: self._on_confirm_install()),
+                    ("update_cancel", TouchAction.SETTINGS_CHANGE,
+                     lambda pos: self._on_cancel_update()),
+                ),
+                width=280,
+                top=240,
+            )
         elif self._update_status in ('none', 'error'):
-            back_y = 300
-            self._update_btn_cancel = pygame.Rect(center_x - button_width // 2, back_y, button_width, button_height)
-            self.touch_coordinator.register_button_region("update_back", self._update_btn_cancel, TouchAction.SETTINGS_CHANGE, lambda pos: self._on_cancel_update())
+            (self._update_btn_cancel,) = self._button_column(
+                (
+                    ("update_back", TouchAction.SETTINGS_CHANGE,
+                     lambda pos: self._on_cancel_update()),
+                ),
+                width=280,
+                top=300,
+            )
 
     def _register_acknowledgement_regions(self) -> None:
         """Register the full-screen tap region that dismisses the notice."""
@@ -1144,42 +1287,76 @@ class DisplayManager:
         )
 
     def _register_disconnected_regions(self) -> None:
-        """Compute and register the DISCONNECTED screen's two regions."""
-        button_width = 240
-        button_height = 70
-        center_x = 240
+        """Compute and register the DISCONNECTED screen's two regions.
 
-        setup_btn_y = 240
-        self._disconnected_btn_setup = pygame.Rect(
-            center_x - button_width // 2,
-            setup_btn_y,
-            button_width,
-            button_height
-        )
-
-        sim_btn_y = 330
-        self._disconnected_btn_sim = pygame.Rect(
-            center_x - button_width // 2,
-            sim_btn_y,
-            button_width,
-            button_height
+        Height rises from 70 to the 72 px minimum and separation from
+        20 to the 16 px floor, so the column now spans y 240 to 400
+        rather than 240 to 400 — the same band, because a 240 px wide
+        control has a wider usable band inside the r=238 viewport than
+        the 300 px options column does.
+        """
+        self._disconnected_btn_setup, self._disconnected_btn_sim = self._button_column(
+            (
+                ("disconnected_setup", TouchAction.NAVIGATION,
+                 lambda pos: self._enter_setup_from_disconnected()),
+                ("disconnected_simulate", TouchAction.NAVIGATION,
+                 lambda pos: self._on_simulation_mode()),
+            ),
+            width=240,
+            top=240,
         )
 
-        self.touch_coordinator.register_button_region(
-            "disconnected_setup",
-            self._disconnected_btn_setup,
-            TouchAction.NAVIGATION,
-            lambda pos: self._enter_setup_from_disconnected()
+    def _draw_button(
+        self,
+        rect: pygame.Rect,
+        label: str,
+        fill: Tuple[int, int, int],
+        font,
+        text_colour: Tuple[int, int, int] = (255, 255, 255),
+    ) -> None:
+        """Draw one button in the style TypographyConstants declares.
+
+        The corner radius and border width were declared by
+        TypographyConstants but applied nowhere; every button in the
+        main UI was a bare filled rectangle
+        (display review §7.3, recommendation 27).
+
+        BUTTON_PRESS_SCALE is deliberately not applied. No pressed
+        state is tracked anywhere in DisplayManager, and adding one is
+        outside this change.
+
+        Args:
+            rect: The VISUAL rect, as returned by _button_column. Not
+                the larger registered rect.
+            label: Text centred on the rect.
+            fill: Interior colour.
+            font: Font for the label; nothing is drawn if None.
+            text_colour: Label colour.
+        """
+        surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
+        if surface is None:
+            return
+
+        radius = TypographyConstants.BUTTON_CORNER_RADIUS
+        pygame.draw.rect(surface, fill, rect, border_radius=radius)
+        pygame.draw.rect(
+            surface, (140, 140, 160), rect,
+            TypographyConstants.BUTTON_BORDER_WIDTH,
+            border_radius=radius,
         )
-        self.touch_coordinator.register_button_region(
-            "disconnected_simulate",
-            self._disconnected_btn_sim,
-            TouchAction.NAVIGATION,
-            lambda pos: self._on_simulation_mode()
-        )
+
+        if font:
+            self.rendering_engine.render_text(
+                RenderTarget.BACK_BUFFER, label, font, text_colour,
+                rect.center, center=True
+            )
 
     def _draw_options_menu(self) -> None:
-        """Draw the options menu with four tappable items."""
+        """Draw the options menu with three tappable items.
+
+        Clear settings is deliberately absent — it is reached through
+        the 'confirm_clear' sub-view (change-b02ed4ea).
+        """
         self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
         self._draw_shift_border((200, 0, 0))
 
@@ -1190,8 +1367,6 @@ class DisplayManager:
                 (255, 255, 255), (240, 55), center=True
             )
 
-        center_x = 240
-
         # Geometry is owned by _register_options_menu_regions, so the
         # drawn control and the registered region cannot diverge. Labels
         # are positioned from the rect rather than from a repeated
@@ -1201,26 +1376,61 @@ class DisplayManager:
         debug_label = "Debug: On" if self._debug_logging_on else "Debug: Off"
 
         for _btn, _label in (
-            (self._options_btn_clear, "Clear settings"),
             (self._options_btn_sim, sim_label),
             (self._options_btn_debug, debug_label),
             (self._options_btn_update, "Check for updates"),
         ):
             if _btn is None:
                 continue
-            self.rendering_engine.draw_rect(
-                RenderTarget.BACK_BUFFER, (80, 80, 100),
-                (_btn.x, _btn.y, _btn.width, _btn.height)
-            )
-            if button_font:
-                self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, _label, button_font, (255, 255, 255),
-                    (center_x, _btn.y + _btn.height // 2), center=True
-                )
+            self._draw_button(_btn, _label, (80, 80, 100), button_font)
 
         small_font = get_label_small_font()
         if small_font:
             self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Long press to return", small_font, (150, 150, 150), (240, 400), center=True)
+
+    def _draw_confirm_view(self) -> None:
+        """Draw the clear-settings confirmation.
+
+        States the consequence before offering either control. Clearing
+        the device store erases the pairing, so the next start has
+        nothing to connect to and must run setup — a result worth
+        naming in plain words before it happens
+        (display review §7.3, recommendation 24).
+        """
+        self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
+        self._draw_shift_border((200, 0, 0))
+
+        title_font = get_title_display_font()
+        if title_font:
+            self.rendering_engine.render_text(
+                RenderTarget.BACK_BUFFER, "Clear settings?", title_font,
+                (255, 255, 255), (240, 100), center=True
+            )
+
+        body_font = self._get_cached_font(22)
+        if body_font:
+            for _text, _y in (
+                ("This erases the paired device.", 170),
+                ("Setup will run at the next start.", 205),
+            ):
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER, _text, body_font,
+                    (200, 200, 200), (240, _y), center=True
+                )
+
+        button_font = self._get_cached_font(26)
+
+        # Geometry is owned by _register_confirm_view_regions. The
+        # confirming control is filled red so the destructive choice is
+        # not the visually neutral one.
+        if self._confirm_btn_yes is not None:
+            self._draw_button(
+                self._confirm_btn_yes, "Clear", (140, 40, 40), button_font
+            )
+        if self._confirm_btn_no is not None:
+            self._draw_button(
+                self._confirm_btn_no, "Cancel", (80, 80, 100), button_font
+            )
 
     def _draw_update_spinner(self) -> None:
         """Draw an indeterminate progress ring while a check runs.
@@ -1302,7 +1512,6 @@ class DisplayManager:
         if self._update_status == 'checking':
             self._draw_update_spinner()
 
-        center_x = 240
         button_font = self._get_cached_font(26)
 
         # Geometry is owned by _register_update_view_regions, which also
@@ -1310,25 +1519,49 @@ class DisplayManager:
         # drawn that was not registered.
         if self._update_status == 'available':
             if self._update_btn_install is not None:
-                _btn = self._update_btn_install
-                self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, (0, 120, 0), (_btn.x, _btn.y, _btn.width, _btn.height))
-                if button_font:
-                    self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Install", button_font, (255, 255, 255), (center_x, _btn.y + _btn.height // 2), center=True)
+                self._draw_button(
+                    self._update_btn_install, "Install", (0, 120, 0), button_font
+                )
             if self._update_btn_cancel is not None:
-                _btn = self._update_btn_cancel
-                self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, (80, 80, 100), (_btn.x, _btn.y, _btn.width, _btn.height))
-                if button_font:
-                    self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Cancel", button_font, (255, 255, 255), (center_x, _btn.y + _btn.height // 2), center=True)
+                self._draw_button(
+                    self._update_btn_cancel, "Cancel", (80, 80, 100), button_font
+                )
         elif self._update_status in ('none', 'error'):
             if self._update_btn_cancel is not None:
-                _btn = self._update_btn_cancel
-                self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, (80, 80, 100), (_btn.x, _btn.y, _btn.width, _btn.height))
-                if button_font:
-                    self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Back", button_font, (255, 255, 255), (center_x, _btn.y + _btn.height // 2), center=True)
+                self._draw_button(
+                    self._update_btn_cancel, "Back", (80, 80, 100), button_font
+                )
 
         small_font = get_label_small_font()
         if small_font:
             self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Long press to return", small_font, (150, 150, 150), (240, 410), center=True)
+
+    def _on_clear_settings_requested(self) -> None:
+        """Enter the clear-settings confirmation rather than acting.
+
+        Sets the sub-view and nothing else. It must not touch
+        DeviceStore — that is _on_clear_settings, which this flow
+        reaches only after the confirmation is accepted.
+
+        ENTRY POINT DELIBERATELY OPEN. Clear settings was removed from
+        the options menu because the 72 px ergonomic minimum of
+        recommendation 24 leaves room for three controls, not four, so
+        nothing currently binds this method. The recovered space comes
+        from the circular options re-layout of display report §7.7,
+        deferred to a P10 cycle (ai/task.md §7.3.15); bind this method
+        wherever Clear settings is offered then. Adding a fourth button
+        to the menu instead would fail the geometry requirement this
+        change exists to satisfy.
+        """
+        self._options_view = 'confirm_clear'
+
+    def _on_cancel_clear(self) -> None:
+        """Abandon the confirmation and return to the options menu.
+
+        Returns the sub-view and invokes nothing else. It must not
+        reach DeviceStore or _on_clear_settings.
+        """
+        self._options_view = 'menu'
 
     def _on_clear_settings(self) -> None:
         """Clear DeviceStore and enter SETUP mode"""
@@ -1659,7 +1892,6 @@ class DisplayManager:
 
             # Geometry is owned by _register_disconnected_regions, so the
             # drawn affordance and the registered region cannot diverge.
-            center_x = 240
             button_font = self._get_cached_font(28)
 
             for _btn, _label in (
@@ -1668,20 +1900,7 @@ class DisplayManager:
             ):
                 if _btn is None:
                     continue
-                self.rendering_engine.draw_rect(
-                    RenderTarget.BACK_BUFFER,
-                    (60, 60, 80),
-                    (_btn.x, _btn.y, _btn.width, _btn.height)
-                )
-                if button_font:
-                    self.rendering_engine.render_text(
-                        RenderTarget.BACK_BUFFER,
-                        _label,
-                        button_font,
-                        (255, 255, 255),
-                        (center_x, _btn.y + _btn.height // 2),
-                        center=True
-                    )
+                self._draw_button(_btn, _label, (60, 60, 80), button_font)
 
             self.logger.debug("DISCONNECTED screen rendered")
 
