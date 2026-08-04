@@ -152,13 +152,11 @@ class DisplayManager:
     def _setup_touch_callbacks(self) -> None:
         """Setup touch gesture callbacks"""
         try:
-            # Register gesture callbacks for navigation
-            self.touch_coordinator.register_gesture_callback(
-                GestureType.SWIPE_LEFT, self._handle_swipe_left
-            )
-            self.touch_coordinator.register_gesture_callback(
-                GestureType.SWIPE_RIGHT, self._handle_swipe_right
-            )
+            # Register gesture callbacks for navigation.
+            # The two horizontal swipes moved between DIGITAL and RADIAL
+            # and went with DIGITAL's retirement (change-378703da). The
+            # long press is the only route to the OPTIONS screen and must
+            # not be removed with them.
             self.touch_coordinator.register_gesture_callback(
                 GestureType.LONG_PRESS, self._handle_long_press
             )
@@ -166,47 +164,20 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Touch callback setup failed: {e}")
     
-    def _handle_swipe_left(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
-        """Handle left swipe gesture — DIGITAL → RADIAL"""
-        try:
-            # Block navigation when OBD not connected and not in simulation mode
-            if self.thread_manager.get_thread_status('obd_protocol') != ThreadStatus.RUNNING and not self._sim_mode:
-                self.logger.debug('Swipe blocked: OBD not connected')
-                return TouchAction.NONE
-
-            if self.config.mode == DisplayMode.DIGITAL:
-                self.config.mode = DisplayMode.RADIAL
-                return TouchAction.MODE_CHANGE
-            return TouchAction.NONE
-        except Exception as e:
-            self.logger.error(f"Swipe left handling error: {e}")
-            return TouchAction.NONE
-    
-    def _handle_swipe_right(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
-        """Handle right swipe gesture — RADIAL → DIGITAL"""
-        try:
-            # Block navigation when OBD not connected and not in simulation mode
-            if self.thread_manager.get_thread_status('obd_protocol') != ThreadStatus.RUNNING and not self._sim_mode:
-                self.logger.debug('Swipe blocked: OBD not connected')
-                return TouchAction.NONE
-
-            if self.config.mode == DisplayMode.RADIAL:
-                self.config.mode = DisplayMode.DIGITAL
-                return TouchAction.MODE_CHANGE
-            return TouchAction.NONE
-        except Exception as e:
-            self.logger.error(f"Swipe right handling error: {e}")
-            return TouchAction.NONE
-    
     def _handle_long_press(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
         """Handle long press gesture"""
         try:
             if self.config.mode == DisplayMode.OPTIONS:
-                # Exit options mode. Reset the sub-view so a
-                # confirmation abandoned by long press is not waiting
-                # on the next entry (change-b02ed4ea).
+                # Exit options mode. Returns to RADIAL, the only normal
+                # mode after DIGITAL's retirement (change-378703da).
+                # Previously this forced DIGITAL regardless of the mode
+                # in use before OPTIONS was entered.
+                #
+                # The sub-view is reset so a confirmation abandoned by
+                # long press is not waiting on the next entry
+                # (change-b02ed4ea).
                 self._options_view = 'menu'
-                self.config.mode = DisplayMode.DIGITAL
+                self.config.mode = DisplayMode.RADIAL
                 return TouchAction.NAVIGATION
             else:
                 # Enter options mode
@@ -278,6 +249,20 @@ class DisplayManager:
                 with open(self.config_path, 'r') as f:
                     config_data = yaml.safe_load(f)
                     saved_mode_str = config_data.get('mode', 'RADIAL')
+
+                    # DIGITAL was retired in v0.4.0 (display review
+                    # §7.5/§7.6, recommendation 25; ai/task.md §7.3.14).
+                    # Every system upgrading from an earlier build has it
+                    # persisted, so this is the expected case rather than
+                    # an error. RADIAL now shows the numeric readout
+                    # DIGITAL existed for. The migration is read-side
+                    # only — the operator's file is not rewritten.
+                    if saved_mode_str == 'DIGITAL':
+                        self.logger.info(
+                            "Display mode DIGITAL was retired; using RADIAL, "
+                            "which now shows the numeric readout"
+                        )
+                        saved_mode_str = 'RADIAL'
 
                     # Try to parse saved mode with GAUGE fallback to RADIAL
                     try:
@@ -550,9 +535,7 @@ class DisplayManager:
                 self._render_disconnected()
                 return
 
-            if self.config.mode == DisplayMode.DIGITAL:
-                self._draw_digital_mode()
-            elif self.config.mode == DisplayMode.RADIAL:
+            if self.config.mode == DisplayMode.RADIAL:
                 self._draw_radial_mode()
             elif self.config.mode == DisplayMode.OPTIONS:
                 self._draw_options_mode()
@@ -618,6 +601,12 @@ class DisplayManager:
             self.logger.error(f'RPM conditioning error: {e}', exc_info=True)
             return raw
 
+    # RETAINED DELIBERATELY. This method has no caller after DIGITAL's
+    # retirement (change-378703da) and a dead-code analysis will
+    # correctly report it as unreachable. It is kept because task 7.3.11
+    # (change-5014040c, the annular band indicator) requires exactly this
+    # band selection, including the hysteresis added by change-4c038bed.
+    # Do not remove it before that change lands.
     def _get_band_colour(self, rpm: float) -> Tuple[Tuple[int, int, int], Tuple[int, int, int]]:
         """Get background and text colours for the given RPM value.
 
@@ -716,79 +705,6 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f'Shift cue calculation error: {e}', exc_info=True)
             return ((200, 0, 0), 12, False, (26, 26, 26))
-
-    def _draw_digital_mode(self) -> None:
-        """Draw digital RPM display using rendering engine"""
-        try:
-            # Use synthetic RPM in simulation mode
-            if self._sim_mode:
-                rpm = int(3000 + 3000 * math.sin(time.time()))
-                self._last_rpm = rpm
-                rpm = self._condition_rpm(rpm)
-            else:
-                # Drain queue — keep only the latest value to avoid display lag
-                import queue
-                try:
-                    while True:
-                        rpm_data = self.thread_manager.message_queue.get_nowait()
-                        self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
-                except queue.Empty:
-                    pass
-                except Exception as e:
-                    self.logger.debug(f'Queue drain error: {e}')
-                rpm = self._condition_rpm(getattr(self, '_last_rpm', 0))
-
-            # Get band colours for current RPM
-            bg_colour, text_colour = self._get_band_colour(rpm)
-
-            # Draw shift border first — filled circle at r=244 forms the
-            # outer ring; subsequent draws render on top of it.
-            border_colour, _, _, _ = self._get_shift_cue(rpm)
-            self._draw_shift_border(border_colour)
-
-            # Fill background with band colour
-            self.rendering_engine.draw_circle(
-                RenderTarget.BACK_BUFFER,
-                bg_colour,
-                (240, 240),
-                238
-            )
-
-            # Debug logging for band transitions
-            self.logger.debug(f'RPM {rpm:.0f} band colour bg={bg_colour}')
-
-            # Cache font references — FontManager caches internally but
-            # the attribute lookup and call overhead adds up at 60 Hz
-            if not hasattr(self, '_rpm_font_large'):
-                self._rpm_font_large = get_rpm_large_font()
-            if not hasattr(self, '_rpm_label_font'):
-                self._rpm_label_font = get_font_manager().get_font(32)
-
-            # Render RPM text in band text colour
-            if self._rpm_font_large:
-                self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER,
-                    f"{rpm/1000:.1f}",
-                    self._rpm_font_large,
-                    text_colour,
-                    (240, 215),
-                    center=True
-                )
-
-            # Draw RPM multiplier label
-            if self._rpm_label_font:
-                self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER,
-                    "RPM \u00d7 1000",
-                    self._rpm_label_font,
-                    text_colour,
-                    (240, 390),
-                    center=True
-                )
-
-        except Exception as e:
-            self.logger.error(f"Digital display error: {e}")
-    
 
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
@@ -981,12 +897,23 @@ class DisplayManager:
             center_radius = 99
             pygame.draw.circle(surface, centre_colour, center, center_radius)
 
-            # Draw 'GTach' label in centre circle (always white text)
-            gtach_font = self._get_cached_font(42)
-            if gtach_font:
+            # The numeric readout. The centre disc is the largest
+            # uninterrupted region of the gauge and the point of highest
+            # visual acuity for a centred gaze; it previously carried a
+            # fixed brand string while the number the instrument exists
+            # to show appeared only in DIGITAL (display review §7.5,
+            # recommendation 25). White on every fill _get_shift_cue
+            # returns, including the flashing dark phase.
+            #
+            # 72 px, not FONT_RPM_LARGE's 180: the disc is r=99, which
+            # admits a 198 px chord, and three glyphs at 72 px measure
+            # roughly 120 x 72. The RPM is clamped to 7000 above, so the
+            # string is never wider than three glyphs.
+            readout_font = self._get_cached_font(72)
+            if readout_font:
                 self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, "GTach", gtach_font, (255, 255, 255),
-                    center, center=True
+                    RenderTarget.BACK_BUFFER, f"{rpm/1000:.1f}",
+                    readout_font, (255, 255, 255), center, center=True
                 )
 
             self.logger.debug(f'Radial mode: RPM={rpm:.0f}')
@@ -1087,7 +1014,7 @@ class DisplayManager:
                     self._register_options_menu_regions()
             elif self.config.mode == DisplayMode.ACKNOWLEDGEMENT:
                 self._register_acknowledgement_regions()
-            # DIGITAL and RADIAL register nothing.
+            # RADIAL registers nothing.
 
         except Exception as e:
             self.logger.error(f"Touch region registration error: {e}", exc_info=True)
@@ -1583,8 +1510,8 @@ class DisplayManager:
     def _on_simulation_mode(self) -> None:
         """Toggle session-only simulation mode.
 
-        Toggles synthetic RPM generation without changing the current layout.
-        Use swipe gestures to switch between DIGITAL and RADIAL layouts.
+        Toggles synthetic RPM generation without changing the current
+        layout. RADIAL is the only normal layout (change-378703da).
         """
         try:
             self._sim_mode = not self._sim_mode
@@ -1653,46 +1580,6 @@ class DisplayManager:
         self._options_view = 'menu'
         self._update_status = 'idle'
 
-    def _render_mode_selector(self) -> None:
-        """Render mode selector using touch coordinator"""
-        try:
-            # Mode selector layout
-            selector_height = 30
-            segment_width = 80
-            selector_x = 240 - segment_width
-            y_pos = 85
-            
-            # Digital button
-            digital_rect = pygame.Rect(selector_x, y_pos, segment_width, selector_height)
-            is_digital = self.config.mode == DisplayMode.DIGITAL
-            digital_color = (100, 150, 250) if is_digital else (80, 80, 80)
-            
-            self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, digital_color,
-                                          (digital_rect.x, digital_rect.y, digital_rect.width, digital_rect.height))
-            
-            # Register touch region
-            self.touch_coordinator.register_button_region(
-                "mode_digital", digital_rect, TouchAction.MODE_CHANGE,
-                lambda pos: setattr(self.config, 'mode', DisplayMode.DIGITAL)
-            )
-            
-            # Radial button
-            radial_rect = pygame.Rect(selector_x + segment_width, y_pos, segment_width, selector_height)
-            is_radial = self.config.mode == DisplayMode.RADIAL
-            radial_color = (100, 150, 250) if is_radial else (80, 80, 80)
-
-            self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, radial_color,
-                                          (radial_rect.x, radial_rect.y, radial_rect.width, radial_rect.height))
-
-            # Register touch region
-            self.touch_coordinator.register_button_region(
-                "mode_radial", radial_rect, TouchAction.MODE_CHANGE,
-                lambda pos: setattr(self.config, 'mode', DisplayMode.RADIAL)
-            )
-            
-        except Exception as e:
-            self.logger.error(f"Mode selector error: {e}")
-    
     def _register_rpm_sliders(self) -> None:
         """Register RPM sliders with touch coordinator"""
         try:
@@ -1935,9 +1822,9 @@ class DisplayManager:
             # (20, 20) is 311 px from the viewport centre (240, 240),
             # which has radius 238 — the dot was drawn 73 px beyond the
             # edge of the circular panel and could never be seen. This
-            # position is 180 px out, clear of the DIGITAL numeral and
-            # outside the RADIAL centre disc (display review §8.1,
-            # recommendation 19).
+            # position is 180 px out, outside the RADIAL centre disc
+            # and the numeric readout it now carries (display review
+            # §8.1, recommendation 19).
             self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER,
                                             (color.r, color.g, color.b), (240, 60), 5)
             

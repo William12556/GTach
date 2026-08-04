@@ -62,8 +62,9 @@ class RPMBands:
 class DisplayMode(Enum):
     """Display mode enumeration for different display screens"""
     SPLASH = auto()           # Application startup splash screen
-    DIGITAL = auto()          # Digital RPM display mode
-    RADIAL = auto()           # Radial arc RPM display mode
+    RADIAL = auto()           # The only normal display mode; carries the
+                              # arc, the indicator and the numeric readout
+                              # (change-378703da retired DIGITAL)
     OPTIONS = auto()          # Options configuration screen
     ACKNOWLEDGEMENT = auto()  # RPM threshold acknowledgement screen
 
@@ -73,37 +74,3 @@ class ConnectionStatus(Enum):
     CONNECTING = 'yellow'
     CONNECTED = 'green'
 
-@dataclass
-class DisplayConfig:
-    """Display configuration settings"""
-    mode: DisplayMode
-    rpm_warning: int = 6500  # Fiat 500 Abarth redline
-    rpm_danger: int = 7000   # Danger zone
-    fps_limit: int = 60
-    touch_long_press: float = 1.0  # seconds
-
-    # Gesture navigation settings
-    gesture_swipe_threshold: int = 80          # Minimum swipe distance (px)
-    gesture_velocity_threshold: float = 200.0  # Minimum swipe velocity (px/s)
-    gesture_edge_width: int = 40              # Edge detection width (px)
-    gesture_max_time: float = 1.0             # Maximum gesture duration (s)
-    gesture_edge_timeout: float = 5.0         # Edge indicator timeout (s)
-
-    # Gesture enables per context
-    gesture_enable_main: bool = True          # Enable gestures in main display
-    gesture_enable_setup: bool = True         # Enable gestures in setup mode
-    gesture_enable_settings: bool = True      # Enable gestures in options
-
-    # Visual feedback settings
-    gesture_transition_duration: float = 0.2  # Screen transition time (s)
-    gesture_edge_indicator_size: int = 20     # Edge indicator size (px)
-    gesture_debug_mode: bool = False          # Show gesture debug visualization
-    engine_profile: str = 'abarth_595_turismo'  # Engine profile identifier for acknowledgement state
-
-    # RPM colour bands
-    rpm_bands: RPMBands = None  # Will be initialized with default in __post_init__
-
-    def __post_init__(self):
-        """Initialize rpm_bands if not provided."""
-        if self.rpm_bands is None:
-            self.rpm_bands = RPMBands()

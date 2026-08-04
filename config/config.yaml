@@ -23,7 +23,7 @@ bluetooth:
   elm327_retries: 2
   elm327_init_delay: 1.0
 display:
-  mode: DIGITAL
+  mode: RADIAL
   rpm_warning: 6500
   rpm_danger: 7000
   fps_limit: 60

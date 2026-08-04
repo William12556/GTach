@@ -585,7 +585,7 @@ class DisplayConfig:
         splash_config = SplashConfig.from_dict(data.get("splash", {}))
             
         return cls(
-            mode=data.get("mode", "DIGITAL"),
+            mode=data.get("mode", "RADIAL"),
             rpm_warning=data.get("rpm_warning", 6500),
             rpm_danger=data.get("rpm_danger", 7000),
             fps_limit=data.get("fps_limit", 60),
