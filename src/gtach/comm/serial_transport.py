@@ -1,20 +1,13 @@
-#!/usr/bin/env python3
-# Copyright (c) 2025 William Watson
-#
-# This file is part of GTach.
-#
-# GTach is licensed under the MIT License.
-# See the LICENSE file in the project root for full license text.
-
 """
 Serial Transport Implementation
 
 This module provides an implementation of the OBDTransport interface using
-serial communication for direct connection to an ELM327 OBD-II adapter.
+pyserial for direct UART communication with an ELM327 OBD-II adapter.
+
+Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
 """
 
 import logging
-import threading
 from typing import Optional
 
 import serial
@@ -24,150 +17,78 @@ from .transport import OBDTransport, TransportState, TransportError
 
 
 class SerialTransport(OBDTransport):
-    """Serial transport implementation for direct UART communication."""
-    
+    """Serial transport implementation for direct UART communication.
+
+    Supplies the four handle primitives plus its own port discovery;
+    OBDTransport holds the connect/disconnect/send_command skeleton
+    (change-6481f8ce).
+    """
+
+    _IO_ERRORS = (serial.SerialException,)
+    # pyserial signals a timeout by returning b'' rather than raising.
+    _TIMEOUT_ERRORS = ()
+    # read_until returns b'' on timeout with the port still open, so an
+    # empty read must NOT be treated as the peer closing.
+    _EMPTY_READ_IS_EOF = False
+
     def __init__(self, port: Optional[str] = None, baudrate: int = 38400, retry_delay: float = 5.0):
         super().__init__()
         self._port = port
         self._baudrate = baudrate
         self._retry_delay = retry_delay
-        self._serial = None
-        self._state = TransportState.DISCONNECTED
-    
-    def connect(self) -> bool:
-        """Establish a serial connection to the OBD device.
-        
+        self._resolved_port = None
+
+    def _describe(self) -> str:
+        """Describe the endpoint, for log messages."""
+        port = self._resolved_port or self._port or 'auto'
+        return f"serial device {port} at {self._baudrate} baud"
+
+    def _open(self) -> Optional['serial.Serial']:
+        """Discover the port if necessary and open it.
+
         Returns:
-            bool: True if the connection was successful, False otherwise.
+            The open port, or None if no device could be found.
         """
         logger = logging.getLogger('SerialTransport')
-        with self._lock:
-            self._state = TransportState.CONNECTING
-        
+
         # Discover port if not specified
         resolved_port = self._port
         if resolved_port is None:
             resolved_port = self._discover_port()
-        
+
         if resolved_port is None:
             logger.warning("No serial port found")
-            with self._lock:
-                self._state = TransportState.DISCONNECTED
-            return False
-        
-        try:
-            self._serial = serial.Serial(
-                port=resolved_port,
-                baudrate=self._baudrate,
-                timeout=2
-            )
-            
-            with self._lock:
-                self._state = TransportState.CONNECTED
-            logger.info("Connected to serial device %s at %d baud", resolved_port, self._baudrate)
-            return True
-        except serial.SerialException as e:
-            logger.error("Failed to connect to serial device %s: %s", resolved_port, e)
-            self._close_serial()
-            with self._lock:
-                self._state = TransportState.DISCONNECTED
-            return False
-        except Exception as e:
-            logger.error("Unexpected error during serial connection: %s", e)
-            self._close_serial()
-            with self._lock:
-                self._state = TransportState.ERROR
-            return False
-    
-    def disconnect(self) -> None:
-        """Close the serial connection."""
-        logger = logging.getLogger('SerialTransport')
-        self._shutdown.set()
-        with self._lock:
-            self._close_serial()
-            self._state = TransportState.DISCONNECTED
-        logger.info("Disconnected from serial device")
-    
-    def _acquire_handle(self) -> Optional['serial.Serial']:
-        """Return the serial port captured under the lock.
-
-        is_connected() reads the state under the lock and releases it,
-        so a caller acting on its result is acting on a stale answer: a
-        concurrent disconnect() sets self._serial to None and the
-        subsequent call raises AttributeError instead of the SerialException the
-        handler below expects (core review §5.3). Capturing the
-        reference means a closed serial port fails the way the code already
-        handles.
-
-        Returns:
-            The serial port, or None if not connected.
-        """
-        with self._lock:
-            return self._serial
-
-    def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]:
-        """Send a command to the OBD device and receive the response.
-
-        Args:
-            command: The OBD command to send.
-            timeout: Timeout in seconds for the response.
-
-        Returns:
-            Optional[str]: The response from the device, or None if the command failed.
-        """
-        logger = logging.getLogger('SerialTransport')
-        # Capture ONCE, before the read. Re-capturing would reintroduce
-        # the window this closes.
-        handle = self._acquire_handle()
-        if handle is None:
-            logger.warning("Cannot send command: transport is not connected")
             return None
 
-        try:
-            # Prepare the command
-            encoded_cmd = (command.strip() + '\r').encode('ascii')
-            handle.write(encoded_cmd)
+        self._resolved_port = resolved_port
+        return serial.Serial(
+            port=resolved_port,
+            baudrate=self._baudrate,
+            timeout=2
+        )
 
-            # Set timeout for response
-            handle.timeout = timeout
+    def _close(self, handle) -> None:
+        """Close the serial port if it is open."""
+        if handle.is_open:
+            handle.close()
 
-            # Read response until '>' prompt is received
-            response = handle.read_until(b'>')
-            
-            # Decode and strip the response
-            decoded_response = response.decode('ascii', errors='ignore').strip()
-            # Remove the trailing '>' prompt
-            decoded_response = decoded_response.rstrip('>').strip()
-            return decoded_response
-        except serial.SerialException as e:
-            logger.error("Error communicating with device: %s", e)
-            with self._lock:
-                self._state = TransportState.DISCONNECTED
-            self._close_serial()
-            return None
-        except Exception as e:
-            logger.error("Unexpected error during command send: %s", e)
-            return None
-    
-    def is_connected(self) -> bool:
-        """Check if the transport is currently connected.
-        
-        Returns:
-            bool: True if connected, False otherwise.
+    def _write(self, handle, data: bytes) -> None:
+        """Write bytes to the serial port."""
+        handle.write(data)
+
+    def _read(self, handle, n: int) -> bytes:
+        """Read up to the '>' prompt.
+
+        pyserial supplies read_until, which returns the whole response
+        in one call, so the base class's loop breaks on the first
+        iteration. n is part of the abstract signature and unused here.
         """
-        with self._lock:
-            return self._state == TransportState.CONNECTED
-    
-    @property
-    def state(self) -> TransportState:
-        """Get the current state of the transport.
-        
-        Returns:
-            TransportState: The current state.
-        """
-        with self._lock:
-            return self._state
-    
+        return handle.read_until(b'>')
+
+    def _set_timeout(self, handle, timeout: float) -> None:
+        """Apply the read timeout. pyserial uses an attribute."""
+        handle.timeout = timeout
+
     def _discover_port(self) -> Optional[str]:
         """Discover available serial ports matching known OBD adapter patterns.
 
@@ -259,14 +180,3 @@ class SerialTransport(OBDTransport):
                         probe_serial.close()
                 except Exception:
                     pass
-
-    def _close_serial(self) -> None:
-        """Close the serial connection if it is open."""
-        if self._serial:
-            try:
-                if self._serial.is_open:
-                    self._serial.close()
-            except serial.SerialException:
-                pass
-            finally:
-                self._serial = None
