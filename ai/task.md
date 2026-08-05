@@ -40,6 +40,7 @@ Created: 2026 July 29
 [9.9 On-Target Session — 2026-08-05](<#9.9 on-target session — 2026-08-05>)
 [9.10 Second On-Target Session — 2026-08-05](<#9.10 second on-target session — 2026-08-05>)
 [9.11 §8.4 Observation Session — Discharged From Logs](<#9.11 §8.4 observation session — discharged from logs>)
+[9.11.6 Long Run — 52 Minutes, 2026-08-05 09:34](<#9.11.6 long run — 52 minutes, 2026-08-05 09:34>)
 [Version History](<#version history>)
 
 ---
@@ -66,8 +67,9 @@ Created: 2026 July 29
 | 9.9.2 | — | Debug toggle fires; `app.py:155` binds the `main` function, not the module | ☐ Open — **no T03 raised yet** (§9.9.2) |
 | 9.9.3 | `3e8b1d72` | Swipe-down/up navigation for OPTIONS — scope extension agreed | ✅ Implemented 2026-08-05, verified on target |
 | 9.10 | `c1d4b8e6` | Debug toggle broken by module shadowing; `engine_profiles.yaml` unpackaged; second stale footer | ☐ Authored 2026-08-05, not implemented. Ungated |
-| 9.10.4 | — | **OBD stream desynchronises after a timeout** — a single late response offsets every subsequent read | ☐ Open — **no T03 raised.** Reproduced again 2026-08-05 (§9.11.5). May corrupt the displayed reading; one specific test settles it |
-| 9.11 | — | §8.4 observation session | ✅ **5 of 6 items discharged from logs.** `821919ce` gate **CLEARS** — RADIAL renders in 14.7–19.3 ms against a 16.67 ms budget. Only §7.5.2 flicker needs the panel (§9.11.4) |
+| 9.10.4 | — | OBD stream desynchronises during initialisation | ☐ Open — no T03 raised. **Severity reduced** (§9.11.6): it recovers, and the displayed reading is correct. Init-phase robustness, not data integrity |
+| 9.11 | — | §8.4 observation session | ✅ **Complete but for §7.5.2.** `821919ce` gate **CLEARS**; baseline firm at 297 samples (§9.11.6). Only the flicker characterisation needs the panel |
+| 9.11.6 | `9ed1c77e` | `fps_limit` 30 would remove **every** observed budget overrun — 0 of 297 samples exceed 33.3 ms | ☐ **Ship recommendation 12 first**, ahead of `821919ce` |
 
 † `1143427b` closed (issue, change and prompt) without a T06 result document, contrary to
 §8.2.1's Standing Closure Rule and without appearing on that section's grandfather list.
@@ -1577,13 +1579,73 @@ TX: 010C   ->  (no response)
 matching it before a stale `0100` answer arrives. The offset does not
 recover.
 
-**This may corrupt the displayed reading, not merely the handshake.**
-Whether it does is *not established*: simulation mode was enabled at
-08:43:07 and the sine sweep accounts for nearly all subsequent RPM
-values, so the real-data window is too short to judge. Establishing it
-needs one specific test — run against the emulator with simulation mode
-**off** and compare displayed RPM against what the emulator is sending.
-Add that to the sitting in §9.11.4.
+Whether this corrupts the displayed reading was *not established* at the
+time of writing. **It was tested on 2026-08-05 and does not — see
+§9.11.6, which supersedes this section's severity assessment.**
+
+[Return to Table of Contents](<#table of contents>)
+
+### 9.11.6 Long Run — 52 Minutes, 2026-08-05 09:34
+
+The residual work of §9.11.4 was carried out: a 52-minute run
+(08:42:56 to 09:34:42), simulation mode for the bulk and Bluetooth
+against the ELM327 emulator for the final 75 seconds. 15.9 MB of debug
+log, **two warnings and no errors** — both warnings in the first two
+seconds, being the initial `010C` timeouts.
+
+**The frame-time baseline is now firm.** 297 samples:
+
+| | ms |
+|---|---|
+| min | 6.3 |
+| p25 | 14.3 |
+| **median** | **14.7** |
+| mean | 16.0 |
+| p90 | 19.7 |
+| max | 21.2 |
+
+- **32% of frames exceed the 16.67 ms budget at 60 Hz.**
+- **0% exceed the 33.3 ms budget at 30 Hz.** Not one sample in 297.
+
+Render cost is the same in both modes — median 14.7 ms in simulation
+(n=290) against 14.9 ms on Bluetooth (n=7) — so the large simulation
+sample is a valid baseline for render cost. The Bluetooth sample is too
+small to say anything about the tail.
+
+**Consequence for `9ed1c77e` recommendation 12.** Reducing `fps_limit`
+to 30 would eliminate **every** budget overrun observed, with a
+one-line configuration change and no code. That is a stronger result
+than the recommendation claimed for itself, and it reorders the
+sequence: recommendation 12 should ship *before* `821919ce`, which then
+becomes an optimisation on a renderer that already meets its deadline
+rather than a rescue for one that does not.
+
+**The OBD desynchronisation does not corrupt the reading — §9.10.4 and
+§9.11.5 are corrected.** Two findings:
+
+1. *It recovers.* In steady state every `TX: 010C` is answered by a
+   matching `410C…`, sampled across the run. The offset is confined to
+   the initialisation handshake, where the commands differ from one
+   another; once polling settles into uniform `010C` the stream
+   re-pairs. The earlier claim that "the offset does not recover" was
+   drawn from a 90-second session and was wrong.
+2. *The displayed value is correct.* Over the Bluetooth window — 874
+   responses, 4,193 frames drawn — the emulator sent 14 distinct values
+   spanning 0 to 4,208 RPM, and **not one displayed value fell outside
+   that range**. Displayed values lie between the discrete received
+   ones because `_condition_rpm`'s EMA interpolates, which is
+   `4c038bed` working as designed.
+
+§9.10.4's severity accordingly drops from *may corrupt the primary
+reading* to *initialisation-phase robustness*: two timeouts, one ERROR
+and a few seconds of delay at startup. Still worth a triple — a
+one-second timeout against an ELM327 protocol search that emits
+`SEARCHING…` is simply too short, and the undrained buffer is what
+makes the first responses arrive concatenated — but it is not urgent
+and it does not threaten the instrument's accuracy.
+
+**§7.5.2 remains the only outstanding observation.** The flicker
+characterisation still needs eyes on the panel; no log answers it.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -1603,6 +1665,7 @@ Add that to the sitting in §9.11.4.
 | 8.0 | 2026-07-30 | Recorded the §7.5.4 decision: **retire** the `ConfigManager` device-persistence path. Rewrote §7.4.8 with call-graph evidence (`DeviceStore` has ~15 live call sites; the `ConfigManager` device methods have none) and two corrections to its previous text — the "approximately 1,600 lines" figure conflated the whole of `utils/config.py` with the device-persistence subset, and retirement does **not** close §3.1, because `_rw_lock` guards the live `load_config`/`save_config` path that `app.py:75` and `main.py:107` exercise on every start. §3.1 accordingly separated into a new triple 7.4.9 (`1143427b`) — a re-partition of existing scope, not an addition; §7.0 item #1 is a disjunction whose correction and retirement branches are now claimed separately. 7.4.1 rescoped to the retirement (§3.6, §5.1) and reslugged `config-device-persistence-retirement`. §7.6.1 dependency on 7.5.4 cleared and a 7.4.7→7.4.9 row added. 7.4.9 assigned to v0.3.0 (§8.3) as a small correction on a live path; 7.4.1 remains in v0.4.0 (§8.5) as a large deletion. |
 | 9.0 | 2026-08-04 | Added §9.0, cross-checking §7.0's twenty triples against governance-document state, `src/gtach` and pushed git/GitHub history, following William's report that several prompts had closed with issues/changes left open pending test results. Confirmed the pattern for eight triples (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`, `52414414`, `2d545bf5`, `d32ccc49`) — prompt closed, issue and change open. Added a Status column to §7.3 and §7.4 (per the residual observation in `task-list-cross-check-discrepancies.md` §10.2) and updated §0.0, §7.5.1 and §8.3. Recorded that `49b21ace` (7.3.4) was reclassified from v0.4.0 into v0.3.0 once `cb28980f` (7.3.3) cleared its gate mechanically (§9.3); removed it from §8.5. Flagged `1143427b` (7.4.9) as closed — issue, change and prompt — without a T06 result document and without appearing on §8.2.1's grandfather list; its own change document records the on-target verification step as open and the coupled T05 as `status: planned` with all cases `not_run` (§9.4). Confirmed by direct source inspection that `394c3bbb` (7.4.1) remains unimplemented — the `ConfigManager` device-persistence methods are still present — and that all eight remaining v0.4.0 triples have no governance documents or matching commits (§9.5). |
 | 10.0 | 2026-08-04 | Authored the eight remaining triples — `b02ed4ea`, `378703da`, `5014040c`, `5012004e`, `821919ce`, `9ed1c77e`, `394c3bbb`, `6481f8ce` — completing all twenty in §7.0. Twenty-four documents, all iteration 1, `target_profile: claude_code`, none implemented. Added §9.7 recording: that three gated triples were authored against §8.1's advice on instruction, each carrying an explicit assumptions block and a stop-and-report first implementation step (§9.7.1); seven corrections found while authoring, chiefly that `394c3bbb` must not touch `comm/models.py` or `comm/device_store.py`, that a fourth transport-name list exists at `app.py:267`, that `_handle_long_press` survives DIGITAL's retirement with its assignment changed, that `_get_band_colour` must outlive its last caller for `5014040c`'s benefit, and that recommendation 26's subject largely dissolves once DIGITAL is retired (§9.7.2); one open decision, the absent entry point to *Clear settings* under `b02ed4ea`'s three-control budget (§9.7.3); and the discharge status of all five cross-check discrepancies (§9.7.4). Added Status columns to the §7.3 and §7.4 rows, a state column and an implementation order to §8.5, and corrected §9.0's date, which revision 9.0 recorded as 2026-07-31 in error. |
+| 15.0 | 2026-08-05 | Added §9.11.6 recording the 52-minute run that completed the §8.4 residual work. Frame-time baseline firm at 297 samples: median 14.7 ms, mean 16.0, p90 19.7, max 21.2 against a 16.67 ms budget, with 32% of frames overrunning at 60 Hz and **none of 297 overrunning at 30 Hz**. Render cost verified equivalent in simulation and Bluetooth modes, validating the large simulation sample. Consequence recorded: `9ed1c77e` recommendation 12 alone would eliminate every observed overrun for a one-line configuration change, so it should ship *ahead* of `821919ce` rather than after it. **Corrected two earlier over-claims about the OBD desynchronisation** (§9.10.4, §9.11.5): it recovers once polling settles into uniform `010C` commands — the "does not recover" claim was drawn from a 90-second session — and it does not corrupt the displayed reading, 874 responses spanning 0–4,208 RPM producing 4,193 frames with not one displayed value outside that range, the intermediate values being `4c038bed`'s EMA interpolating as designed. Severity reduced from data integrity to initialisation-phase robustness. §7.5.2's flicker characterisation remains the only outstanding observation. |
 | 14.0 | 2026-08-05 | Added §9.11 discharging the §8.4 observation session from logs already pulled, five of its six items being answerable because the instrumentation each depended on has since shipped. §7.5.1 discharged — framebuffer is 32-bit at stride 1920, exactly as `engine.py` assumed, so display report §8.3 is not an active fault and page flip is confirmed operating. §7.5.3 discharged indicatively: correlating the four periodic samples against what was on screen gives RADIAL at 14.7–19.3 ms against a 16.67 ms budget and the static OPTIONS screen at 6.3 ms, with the caveat that three RADIAL samples from one 90-second session is a direction rather than a baseline. §7.5.6 substantively answered — platform detection selects `RASPBERRY_PI_ZERO_2W` correctly, though the raw revision string is not logged. **`821919ce`'s gate clears**: assumption A1 holds more strongly than it was framed, render cost being at or over the whole budget rather than merely material; A3 confirmed at 37.1 MB steady; A2 supported but not isolated. `9ed1c77e`'s two recommendations separate — recommendation 12 is now supported independently of any assumption, the application demonstrably not sustaining 60 Hz. Residual on-panel work reduced from six items to two: §7.5.2's flicker characterisation and a five-minute run for a firmer baseline (§9.11.4). Recorded that the OBD desynchronisation reproduces and is clearer than §9.10.4 stated — `0100` receives `ATSP0`'s acknowledgement and `010C` is polled three times unanswered — and that whether it corrupts the displayed reading is not established, simulation mode having masked the real-data window (§9.11.5). |
 | 13.0 | 2026-08-05 | Added §9.10 recording the second on-target session, after `7f2a9c04` and `3e8b1d72` were implemented. Both verified: one ERROR in 362 KB and no `DIGITAL` line. Raised `c1d4b8e6` grouping three small faults on the `change-d32ccc49` pattern — the debug toggle still failing because `gtach/__init__.py:11` binds `main` to the function so `app.py` cannot reach the module's handlers, a fault that is self-concealing because both sites log at DEBUG and one of them is the DEBUG control (§9.10.1); `engine_profiles.yaml` absent from the wheel, confirmed against the built artefact, with zero current impact because the abarth profile's thresholds coincide with the dataclass defaults but two profiles unreachable and the `engine_profile` key inert (§9.10.2); and the second stale *"Long press to return"* footer in `_draw_update_view`, carried from the `3e8b1d72` report §6.2 at the operator's request (§9.10.3). Recorded a fourth finding not yet raised: the OBD response stream desynchronises permanently after a timeout — `0100` times out at 1.0 s during the ELM327 protocol search, the late response is not drained, and every subsequent read returns the previous command's answer, which is why initialisation fails against a paired and answering emulator (§9.10.4). |
 | 12.0 | 2026-08-05 | Added §9.9 recording the on-target `gtach.local` session. Confirmed §9.8.5 item 1 from `logs/start.log` — five `handling error: DIGITAL` lines, no other errors in 3.5 MB — and established two facts the static review did not: `TouchHandler` is the handler that fires, being registered on a started touch interface, and the fault is swallowed by its own except-Exception handler, which is why it presents as an inert control (§9.9.1). Raised `7f2a9c04` (issue/change/prompt, severity high, ungated) to complete `change-378703da`'s enum removal across the two runtime-instantiated modules its four-file scope excluded. Recorded a new defect not yet raised as a T03: the debug toggle fires but `app.py:155` binds the `main` **function** rather than the module, so `_debug_handler` is never reached — `debug.log` is empty while `start.log` holds 57,560 DEBUG lines, and the options label reads *Debug: Off* while debug is on (§9.9.2). Recorded the operator's swipe-navigation proposal as a scope extension agreed by consensus and authored it as `3e8b1d72`, separate from `7f2a9c04` so a navigation problem stays attributable; scoping found that the touch subsystem already detects and dispatches both vertical swipes, and that two live long-press handlers exist which must change together (§9.9.3). Recorded the root cause as a file-scoped constraint on a package-wide interface change, with `prompt-378703da` carrying three mutually unsatisfiable requirements (§9.9.4). |
