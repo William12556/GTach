@@ -77,6 +77,13 @@ class DisplayManager:
         self._debug_logging_on = False      # Reflects current debug logging state
         self._restart_callback = None       # Set by app.py: Callable[[], None]
         self._options_view = 'menu'         # 'menu' | 'update' | 'confirm_clear'
+
+        # The mode OPTIONS was entered from, restored on exit.
+        # Not simply RADIAL: OPTIONS is reachable from the
+        # DISCONNECTED condition too, and returning to a gauge with
+        # no data would be wrong (change-3e8b1d72).
+        self._pre_options_mode = None
+
         self._update_status = 'idle'        # checking|available|none|error|pending
         self._update_wheel = None
         self._update_version = None
@@ -165,11 +172,18 @@ class DisplayManager:
         try:
             # Register gesture callbacks for navigation.
             # The two horizontal swipes moved between DIGITAL and RADIAL
-            # and went with DIGITAL's retirement (change-378703da). The
-            # long press is the only route to the OPTIONS screen and must
-            # not be removed with them.
+            # and went with DIGITAL's retirement (change-378703da).
+            #
+            # OPTIONS is entered by a downward swipe and left by an
+            # upward one. The long press that did both was a toggle
+            # with no second route when one direction failed
+            # (change-3e8b1d72). The coordinator already recognises
+            # both gestures; only the callbacks were missing.
             self.touch_coordinator.register_gesture_callback(
-                GestureType.LONG_PRESS, self._handle_long_press
+                GestureType.SWIPE_DOWN, self._handle_swipe_down
+            )
+            self.touch_coordinator.register_gesture_callback(
+                GestureType.SWIPE_UP, self._handle_swipe_up
             )
 
             # The palette toggle (change-5012004e). GestureType carries
@@ -241,30 +255,81 @@ class DisplayManager:
             self.logger.error(f'Double tap handling error: {e}')
             return TouchAction.NONE
 
-    def _handle_long_press(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]) -> TouchAction:
-        """Handle long press gesture"""
+    def _handle_swipe_down(self, start_pos: Tuple[int, int],
+                           end_pos: Tuple[int, int]) -> TouchAction:
+        """Enter the OPTIONS screen.
+
+        Paired with _handle_swipe_up. The long press that previously did
+        both was a toggle, and when its leaving branch failed the
+        operator had no second route (issue-3e8b1d72).
+
+        The mode in use on entry is recorded so the exit returns there.
+        The sub-view is reset so a confirmation abandoned by swipe is
+        not waiting on the next entry (change-b02ed4ea).
+
+        Args:
+            start_pos: Gesture start coordinates.
+            end_pos: Gesture end coordinates.
+
+        Returns:
+            NAVIGATION when OPTIONS was entered, NONE otherwise.
+        """
         try:
-            if self.config.mode == DisplayMode.OPTIONS:
-                # Exit options mode. Returns to RADIAL, the only normal
-                # mode after DIGITAL's retirement (change-378703da).
-                # Previously this forced DIGITAL regardless of the mode
-                # in use before OPTIONS was entered.
-                #
-                # The sub-view is reset so a confirmation abandoned by
-                # long press is not waiting on the next entry
-                # (change-b02ed4ea).
-                self._options_view = 'menu'
-                self.config.mode = DisplayMode.RADIAL
-                return TouchAction.NAVIGATION
-            else:
-                # Enter options mode
-                self._options_view = 'menu'
-                self.config.mode = DisplayMode.OPTIONS
-                return TouchAction.NAVIGATION
+            if self._in_setup_mode:
+                self.logger.debug('Swipe down ignored: setup mode')
+                return TouchAction.NONE
+            if self.config.mode in (
+                DisplayMode.OPTIONS,
+                DisplayMode.SPLASH,
+                DisplayMode.ACKNOWLEDGEMENT,
+            ):
+                self.logger.debug(
+                    f'Swipe down ignored: mode {self.config.mode.name}'
+                )
+                return TouchAction.NONE
+            self._pre_options_mode = self.config.mode
+            self._options_view = 'menu'
+            self.config.mode = DisplayMode.OPTIONS
+            return TouchAction.NAVIGATION
         except Exception as e:
-            self.logger.error(f"Long press handling error: {e}")
+            self.logger.error(f'Swipe down handling error: {e}')
             return TouchAction.NONE
-    
+
+    def _handle_swipe_up(self, start_pos: Tuple[int, int],
+                         end_pos: Tuple[int, int]) -> TouchAction:
+        """Return to the screen OPTIONS was entered from.
+
+        Restores the mode recorded by _handle_swipe_down rather than
+        assuming RADIAL: OPTIONS is reachable from the DISCONNECTED
+        condition, which is derived from the recorded mode and reasserts
+        itself on return while the condition holds (change-3e8b1d72).
+
+        Args:
+            start_pos: Gesture start coordinates.
+            end_pos: Gesture end coordinates.
+
+        Returns:
+            NAVIGATION when OPTIONS was left, NONE otherwise.
+        """
+        try:
+            if self._in_setup_mode:
+                self.logger.debug('Swipe up ignored: setup mode')
+                return TouchAction.NONE
+            if self.config.mode != DisplayMode.OPTIONS:
+                self.logger.debug(
+                    f'Swipe up ignored: mode {self.config.mode.name}'
+                )
+                return TouchAction.NONE
+            self._options_view = 'menu'
+            self.config.mode = (
+                self._pre_options_mode or DisplayMode.RADIAL
+            )
+            self._pre_options_mode = None
+            return TouchAction.NAVIGATION
+        except Exception as e:
+            self.logger.error(f'Swipe up handling error: {e}')
+            return TouchAction.NONE
+
     def _initialize_legacy_components(self) -> None:
         """Initialize legacy components for backward compatibility"""
         try:
@@ -1456,7 +1521,7 @@ class DisplayManager:
 
         small_font = get_label_small_font()
         if small_font:
-            self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Long press to return", small_font, (150, 150, 150), (240, 400), center=True)
+            self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Swipe up to return", small_font, (150, 150, 150), (240, 400), center=True)
 
     def _draw_confirm_view(self) -> None:
         """Draw the clear-settings confirmation.

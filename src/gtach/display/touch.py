@@ -165,16 +165,10 @@ class TouchHandler:
                 # Actual SETUP entry requires app controller coordination
                 return
 
-            if self.display_manager.config.mode != DisplayMode.OPTIONS:
-                self.display_manager.change_mode(DisplayMode.OPTIONS)
-            else:
-                # RADIAL is the only normal display mode after
-                # DIGITAL's retirement (change-378703da). This line
-                # still named DIGITAL, so leaving OPTIONS raised
-                # AttributeError, was swallowed by the handler
-                # below, and the operator could not get off the
-                # options screen (issue-7f2a9c04).
-                self.display_manager.change_mode(DisplayMode.RADIAL)
+            # OPTIONS is reached by swiping, not by long press
+            # (change-3e8b1d72). Retained without a mode change so
+            # the disconnected early return above still runs.
+            self.logger.debug('Long press: no action')
 
         except Exception as e:
             self.logger.error(f"Long press handling error: {e}")
@@ -186,6 +180,35 @@ class TouchHandler:
             self.logger.debug(f"Short press at ({x}, {y}), in_setup_mode={in_setup}")
             if in_setup:
                 self._handle_setup_touch(x, y)
+                return
+
+            # Vertical swipes move between the gauge and OPTIONS.
+            # Tested before the OPTIONS early return, or an upward
+            # swipe inside OPTIONS would be routed to
+            # _handle_options_touch and the screen would again have
+            # only one exit (change-3e8b1d72).
+            #
+            # The entry and exit rules are the DisplayManager's; this
+            # path delegates rather than duplicating them, so the two
+            # live handler paths agree by construction.
+            #
+            # The coordinator's own threshold, so the two paths accept
+            # the same movement; 100 — the value the removed horizontal
+            # branch used — if the coordinator is unavailable.
+            swipe_threshold = getattr(
+                getattr(self.display_manager, 'touch_coordinator', None),
+                'swipe_threshold', 100
+            )
+            dy = y - start_y
+            if abs(dy) >= swipe_threshold:
+                if dy > 0:
+                    self.display_manager._handle_swipe_down(
+                        (start_x, start_y), (x, y)
+                    )
+                else:
+                    self.display_manager._handle_swipe_up(
+                        (start_x, start_y), (x, y)
+                    )
                 return
 
             if self.display_manager.config.mode == DisplayMode.OPTIONS:
