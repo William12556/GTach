@@ -423,19 +423,21 @@ class NavigationGestureHandler:
             self.logger.error(f"Error changing display mode: {e}")
 
     def _cycle_display_mode(self, direction: int) -> None:
-        """Cycle through DIGITAL and RADIAL in the given direction (+1 or -1)."""
-        try:
-            _cycle = [DisplayMode.DIGITAL, DisplayMode.RADIAL]
-            current = self.display_manager.config.mode
-            try:
-                idx = _cycle.index(current)
-            except ValueError:
-                idx = 0
-            next_mode = _cycle[(idx + direction) % len(_cycle)]
-            self.display_manager.change_mode(next_mode)
-            self.logger.info(f"Display mode cycled to {next_mode.name}")
-        except Exception as e:
-            self.logger.error(f"Error cycling display mode: {e}")
+        """Do nothing; display mode cycling no longer applies.
+
+        Args:
+            direction: Retained for signature compatibility (+1 or -1)
+        """
+        # Mode cycling ended with DIGITAL's retirement
+        # (change-378703da); RADIAL is the only normal display
+        # mode, so there is nothing to cycle through. Retained
+        # as a no-op because the 'main_left' and 'main_right'
+        # navigation callbacks still call it.
+        self.logger.debug(
+            'Display mode cycling is a no-op: RADIAL is the '
+            'only normal mode'
+        )
+        return
     
     def _handle_main_down_swipe(self) -> None:
         """Handle down swipe in main display."""
@@ -471,7 +473,8 @@ class NavigationGestureHandler:
     def _exit_settings(self) -> None:
         """Exit settings mode."""
         try:
-            self.display_manager.change_mode(DisplayMode.DIGITAL)
+            # RADIAL is the only normal mode (change-378703da).
+            self.display_manager.change_mode(DisplayMode.RADIAL)
             self.logger.info("Exited settings via gesture")
         except Exception as e:
             self.logger.error(f"Error exiting settings: {e}")

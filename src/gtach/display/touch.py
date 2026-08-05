@@ -168,7 +168,13 @@ class TouchHandler:
             if self.display_manager.config.mode != DisplayMode.OPTIONS:
                 self.display_manager.change_mode(DisplayMode.OPTIONS)
             else:
-                self.display_manager.change_mode(DisplayMode.DIGITAL)
+                # RADIAL is the only normal display mode after
+                # DIGITAL's retirement (change-378703da). This line
+                # still named DIGITAL, so leaving OPTIONS raised
+                # AttributeError, was swallowed by the handler
+                # below, and the operator could not get off the
+                # options screen (issue-7f2a9c04).
+                self.display_manager.change_mode(DisplayMode.RADIAL)
 
         except Exception as e:
             self.logger.error(f"Long press handling error: {e}")
@@ -185,23 +191,12 @@ class TouchHandler:
             if self.display_manager.config.mode == DisplayMode.OPTIONS:
                 self._handle_options_touch(x, y)
                 return
-                
-            # Detect left/right swipe
-            swipe_threshold = 100
-            dx = x - start_x
 
-            if abs(dx) >= swipe_threshold:
-                if dx > 0:  # Right swipe
-                    if self.display_manager.config.mode == DisplayMode.DIGITAL:
-                        self.display_manager.change_mode(DisplayMode.RADIAL)
-                    else:
-                        self.display_manager.change_mode(DisplayMode.DIGITAL)
-                else:  # Left swipe
-                    if self.display_manager.config.mode == DisplayMode.DIGITAL:
-                        self.display_manager.change_mode(DisplayMode.RADIAL)
-                    else:
-                        self.display_manager.change_mode(DisplayMode.DIGITAL)
-                    
+            # No horizontal swipe handling. It switched between
+            # DIGITAL and RADIAL; DIGITAL was retired
+            # (change-378703da) and RADIAL is the only normal mode,
+            # so there is nothing to switch to (issue-7f2a9c04).
+
         except Exception as e:
             self.logger.error(f"Short press handling error: {e}")
 
@@ -238,14 +233,7 @@ class TouchHandler:
             rpm_step = 100  # Increment/decrement step for RPM values
             
             # Handle different setting controls
-            if setting_id == "mode":
-                # Toggle between DIGITAL and RADIAL modes
-                if config.mode == DisplayMode.DIGITAL:
-                    config.mode = DisplayMode.RADIAL
-                else:
-                    config.mode = DisplayMode.DIGITAL
-            
-            elif setting_id == "warn_decrease":
+            if setting_id == "warn_decrease":
                 # Decrease warning RPM (with minimum bound)
                 new_value = max(config.rpm_warning - rpm_step, 3000)
                 # Ensure warning threshold stays below danger threshold
@@ -270,10 +258,9 @@ class TouchHandler:
             elif setting_id == "save":
                 # Save settings and exit settings mode
                 self.display_manager._save_config()
-                self.display_manager.change_mode(
-                    DisplayMode.DIGITAL if config.mode == DisplayMode.DIGITAL
-                    else DisplayMode.RADIAL
-                )
+                # One normal mode remains (change-378703da), so the
+                # ternary that chose between them collapses.
+                self.display_manager.change_mode(DisplayMode.RADIAL)
             
             # Add visual feedback for touch interaction
             self._provide_touch_feedback()
