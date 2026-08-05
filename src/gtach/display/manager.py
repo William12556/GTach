@@ -187,25 +187,16 @@ class DisplayManager:
                 GestureType.SWIPE_UP, self._handle_swipe_up
             )
 
-            # The palette toggle (change-5012004e). GestureType carries
-            # no DOUBLE_TAP member and the touch subsystem performs no
-            # double-tap disambiguation; display/input is read-only to
-            # that change, so the gesture cannot be added here. The
-            # registration is conditional rather than absent so the
-            # toggle becomes live the moment the subsystem gains the
-            # gesture, with no edit to this method.
-            _double_tap = getattr(GestureType, 'DOUBLE_TAP', None)
-            if _double_tap is not None:
-                self.touch_coordinator.register_gesture_callback(
-                    _double_tap, self._handle_double_tap
-                )
-            else:
-                self.logger.debug(
-                    'GestureType has no DOUBLE_TAP; palette toggle is '
-                    'unreachable by gesture until the touch subsystem '
-                    'provides it'
-                )
-            
+            # The palette toggle is NOT registered here. Gesture
+            # callbacks registered with the coordinator are never
+            # invoked: handle_touch_up and handle_touch_move, which
+            # dispatch to them, are called by nothing
+            # (issue-2b6f4d91). The registrations above are inert for
+            # the same reason — the vertical swipes work because
+            # TouchHandler calls the handlers directly at
+            # touch.py:202-209, and the palette toggle is wired the
+            # same way in TouchHandler._handle_long_press.
+
         except Exception as e:
             self.logger.error(f"Touch callback setup failed: {e}")
     
@@ -230,20 +221,25 @@ class DisplayManager:
                 f'Palette toggle error: {e}', exc_info=True
             )
 
-    def _handle_double_tap(self, start_pos: Tuple[int, int],
+    def _handle_long_press(self, start_pos: Tuple[int, int],
                            end_pos: Tuple[int, int]) -> TouchAction:
-        """Toggle the palette, in RADIAL only.
+        """Toggle the day/night palette. Long press, RADIAL only.
 
-        Gated to RADIAL so the gesture cannot fire on the options,
-        acknowledgement or splash screens, or while the setup subsystem
-        owns the display.
+        NOT the OPTIONS toggle. A method of this name existed on
+        this class until change-3e8b1d72 moved OPTIONS to the
+        vertical swipes and deleted it; a reader of the git history
+        will otherwise assume it has returned. This is
+        change-2b6f4d91's palette toggle, which took over the long
+        press because that gesture was left unclaimed.
 
         Args:
             start_pos: Gesture start coordinates.
-            end_pos: Gesture end coordinates.
+            end_pos: Gesture end coordinates. For a long press this
+                is the same point as start_pos.
 
         Returns:
-            SETTINGS_CHANGE when the palette was toggled, NONE otherwise.
+            SETTINGS_CHANGE when the palette was toggled, NONE
+            otherwise.
         """
         try:
             if self._in_setup_mode:

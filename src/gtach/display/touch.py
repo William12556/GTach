@@ -168,7 +168,15 @@ class TouchHandler:
             # OPTIONS is reached by swiping, not by long press
             # (change-3e8b1d72). Retained without a mode change so
             # the disconnected early return above still runs.
-            self.logger.debug('Long press: no action')
+            #
+            # Delegate to the DisplayManager, which owns the mode
+            # gating and the palette state. Called directly rather
+            # than through the touch coordinator, whose gesture
+            # callbacks are never dispatched (issue-2b6f4d91) —
+            # the same route change-3e8b1d72 used for the vertical
+            # swipes. A long press has one position, so it is
+            # passed as both start and end.
+            self.display_manager._handle_long_press((x, y), (x, y))
 
         except Exception as e:
             self.logger.error(f"Long press handling error: {e}")
