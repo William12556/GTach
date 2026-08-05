@@ -773,6 +773,37 @@ class DisplayManager:
             self.logger.error(f"Setup mode render error: {e}")
             self._draw_setup_mode_fallback()
     
+    def _drain_samples(self) -> None:
+        """Consume queued RPM samples and record their arrival.
+
+        Keeps only the latest value, to avoid display lag.
+
+        CALLED FROM _render_normal_modes, BEFORE THE LINK TEST — not
+        from _draw_radial_mode, where the drain used to live. The
+        DISCONNECTED screen pre-empts the gauge, so draining only while
+        the gauge is drawn would mean that once the link was declared
+        lost no sample could ever be consumed, no arrival could ever be
+        recorded, and the link could never recover: the instrument
+        would sit on the DISCONNECTED screen until restart while the
+        adapter delivered perfectly good data (issue-4d9e2f18).
+
+        Returns immediately in simulation mode, so no synthetic value
+        is ever mistaken for evidence of an adapter.
+        """
+        if self._sim_mode:
+            return
+        try:
+            while True:
+                rpm_data = self.thread_manager.message_queue.get_nowait()
+                self._last_rpm = (
+                    (256 * rpm_data.data[0]) + rpm_data.data[1]
+                ) / 4
+                self._note_sample()
+        except queue.Empty:
+            pass
+        except Exception as e:
+            self.logger.debug(f'Queue drain error: {e}')
+
     def _note_sample(self) -> None:
         """Record the arrival of one real sample from the adapter.
 
@@ -874,6 +905,13 @@ class DisplayManager:
     def _render_normal_modes(self) -> None:
         """Render normal display modes"""
         try:
+            # Consume samples first, whatever is about to be drawn.
+            # This is what lets a lost link recover: the drain is the
+            # only place an arrival is recorded, and the gauge that
+            # used to host it is exactly what stops being drawn when
+            # the link is declared lost (issue-4d9e2f18).
+            self._drain_samples()
+
             # Link state, not thread liveness. The obd_protocol thread
             # stays RUNNING while its transport retries indefinitely,
             # so the old test reported a live connection whenever the
@@ -1077,17 +1115,9 @@ class DisplayManager:
                 self._last_rpm = rpm
                 rpm = self._condition_rpm(rpm)
             else:
-                # Drain queue — keep only the latest value to avoid display lag
-                try:
-                    while True:
-                        rpm_data = self.thread_manager.message_queue.get_nowait()
-                        self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
-                        self._note_sample()
-                except queue.Empty:
-                    pass
-                except Exception as e:
-                    self.logger.debug(f'Queue drain error: {e}')
-
+                # The queue is drained by _drain_samples, called from
+                # _render_normal_modes before the link test rather than
+                # here. See that method for why.
                 rpm = self._condition_rpm(getattr(self, '_last_rpm', 0))
             # Clamp RPM to valid range
             rpm = max(0, min(7000, rpm))
