@@ -67,6 +67,11 @@ class DisplayManager:
     # constants here now live in Palette (models.py), so day and night
     # are two instances rather than two sets of edits (change-5012004e).
 
+    # How many pages the options menu holds. Named rather than written
+    # as a literal in the paging modulo, so a third page is a data
+    # change (change-8c5a1e73).
+    OPTIONS_PAGE_COUNT = 2
+
     def __init__(self, thread_manager: ThreadManager, terminal_restorer: TerminalRestorer = None, config_path: str = 'config.yaml'):
         self.logger = logging.getLogger('DisplayManager')
         self.thread_manager = thread_manager
@@ -84,6 +89,11 @@ class DisplayManager:
         # DISCONNECTED condition too, and returning to a gauge with
         # no data would be wrong (change-3e8b1d72).
         self._pre_options_mode = None
+
+        # Which options page is displayed. Session state; not
+        # persisted, so OPTIONS always opens on page 0
+        # (change-8c5a1e73).
+        self._options_page = 0
 
         self._update_status = 'idle'        # checking|available|none|error|pending
         self._update_wheel = None
@@ -262,7 +272,9 @@ class DisplayManager:
 
         The mode in use on entry is recorded so the exit returns there.
         The sub-view is reset so a confirmation abandoned by swipe is
-        not waiting on the next entry (change-b02ed4ea).
+        not waiting on the next entry (change-b02ed4ea), and the page
+        with it, so OPTIONS always opens on page 0 rather than wherever
+        the last visit left off (change-8c5a1e73).
 
         Args:
             start_pos: Gesture start coordinates.
@@ -286,6 +298,7 @@ class DisplayManager:
                 return TouchAction.NONE
             self._pre_options_mode = self.config.mode
             self._options_view = 'menu'
+            self._options_page = 0
             self.config.mode = DisplayMode.OPTIONS
             return TouchAction.NAVIGATION
         except Exception as e:
@@ -325,6 +338,72 @@ class DisplayManager:
             return TouchAction.NAVIGATION
         except Exception as e:
             self.logger.error(f'Swipe up handling error: {e}')
+            return TouchAction.NONE
+
+    def _handle_swipe_left(self, start_pos: Tuple[int, int],
+                           end_pos: Tuple[int, int]) -> TouchAction:
+        """Page forward through the options menu, wrapping.
+
+        Args:
+            start_pos: Gesture start coordinates.
+            end_pos: Gesture end coordinates.
+
+        Returns:
+            NAVIGATION when the page changed, NONE otherwise.
+        """
+        return self._page_options(+1)
+
+    def _handle_swipe_right(self, start_pos: Tuple[int, int],
+                            end_pos: Tuple[int, int]) -> TouchAction:
+        """Page back through the options menu, wrapping.
+
+        Args:
+            start_pos: Gesture start coordinates.
+            end_pos: Gesture end coordinates.
+
+        Returns:
+            NAVIGATION when the page changed, NONE otherwise.
+        """
+        return self._page_options(-1)
+
+    def _page_options(self, delta: int) -> TouchAction:
+        """Move the options menu on by delta pages, wrapping both ways.
+
+        Paging acts only on the options menu itself. The update and
+        confirmation sub-views are single screens, and setup owns the
+        display outright, so a horizontal swipe in any of them is
+        ignored rather than silently changing a page underneath them.
+
+        Args:
+            delta: Pages to advance; negative to go back.
+
+        Returns:
+            NAVIGATION when the page changed, NONE otherwise.
+        """
+        try:
+            if self._in_setup_mode:
+                self.logger.debug('Options paging ignored: setup mode')
+                return TouchAction.NONE
+            if self.config.mode != DisplayMode.OPTIONS:
+                self.logger.debug(
+                    f'Options paging ignored: mode {self.config.mode.name}'
+                )
+                return TouchAction.NONE
+            if self._options_view != 'menu':
+                self.logger.debug(
+                    f'Options paging ignored: sub-view {self._options_view}'
+                )
+                return TouchAction.NONE
+
+            # Modulo gives the wrapping in both directions, and the
+            # named count means a third page is a data change.
+            self._options_page = (
+                self._options_page + delta
+            ) % self.OPTIONS_PAGE_COUNT
+            self.logger.debug(f'Options page -> {self._options_page}')
+            return TouchAction.NAVIGATION
+        except Exception as e:
+            self.logger.error(f'Options paging error: {e}')
             return TouchAction.NONE
 
     def _initialize_legacy_components(self) -> None:
@@ -1160,10 +1239,14 @@ class DisplayManager:
           - _in_setup_mode: the setup subsystem owns its own regions.
             It is in the key so that leaving setup re-registers the
             normal view.
+          - _options_page: the menu pages its controls, so the page
+            is part of what determines which regions exist. Omitting
+            it would register one page's regions and draw the
+            other's.
 
         Returns:
             (mode, options sub-view, update status, disconnected,
-            in setup mode).
+            in setup mode, options page).
         """
         disconnected = (
             self.thread_manager.get_thread_status('obd_protocol')
@@ -1176,6 +1259,7 @@ class DisplayManager:
             self._update_status,
             disconnected,
             self._in_setup_mode,
+            self._options_page,
         )
 
     def _register_view_regions(self) -> None:
@@ -1329,33 +1413,56 @@ class DisplayManager:
         return rects
 
     def _register_options_menu_regions(self) -> None:
-        """Compute and register the three options-menu button regions.
+        """Compute and register the current options page's two button regions.
 
-        Three targets, not four. Clear settings has moved behind the
-        'confirm_clear' sub-view: a control that erases the paired
-        device must not be reachable in one tap, and the 72 px
-        ergonomic minimum leaves no room for a fourth item
-        (display review §7.3, recommendation 24).
+        The menu holds four controls and the circular viewport admits
+        three targets at the 72 px ergonomic minimum, so the controls
+        are paged two at a time (change-8c5a1e73):
+
+          page 0 — simulation_mode, debug_toggle
+          page 1 — clear_settings, check_updates
+
+        clear_settings binds _on_clear_settings_requested, which enters
+        the confirmation sub-view. It never binds _on_clear_settings:
+        a control that erases the paired device must not be reachable
+        in one tap (display review §7.3, recommendation 24).
+
+        _options_page is a member of _current_view_key, so this method
+        re-runs whenever the page changes and the registered regions
+        cannot disagree with the drawn page.
         """
-        # Explicitly None so any stale reference is a visible None
-        # rather than a rect from the previous four-item layout.
+        # Every rect explicitly None first, so a reference to a control
+        # on the other page is a visible None rather than a stale rect
+        # from the page previously registered.
         self._options_btn_clear = None
+        self._options_btn_sim = None
+        self._options_btn_debug = None
+        self._options_btn_update = None
 
-        rects = self._button_column(
-            (
+        if self._options_page == 0:
+            specs = (
                 ("simulation_mode", TouchAction.SETTINGS_CHANGE,
                  lambda pos: self._on_simulation_mode()),
                 ("debug_toggle", TouchAction.SETTINGS_CHANGE,
                  lambda pos: self._on_debug_toggle()),
+            )
+        else:
+            specs = (
+                ("clear_settings", TouchAction.SETTINGS_CHANGE,
+                 lambda pos: self._on_clear_settings_requested()),
                 ("check_updates", TouchAction.SETTINGS_CHANGE,
                  lambda pos: self._on_check_updates()),
-            ),
-            width=300,
-            top=110,
-        )
-        (self._options_btn_sim,
-         self._options_btn_debug,
-         self._options_btn_update) = rects
+            )
+
+        # Two 72 px targets separated by 16 px span y 140 to 300,
+        # inside the 55-425 band a 300 px width leaves on the r=238
+        # viewport, and clear of the indicator at y 350.
+        rects = self._button_column(specs, width=300, top=140)
+
+        if self._options_page == 0:
+            self._options_btn_sim, self._options_btn_debug = rects
+        else:
+            self._options_btn_clear, self._options_btn_update = rects
 
     def _register_confirm_view_regions(self) -> None:
         """Compute and register the clear-settings confirmation's two regions.
@@ -1488,10 +1595,16 @@ class DisplayManager:
             )
 
     def _draw_options_menu(self) -> None:
-        """Draw the options menu with three tappable items.
+        """Draw the current options page and the page indicator.
 
-        Clear settings is deliberately absent — it is reached through
-        the 'confirm_clear' sub-view (change-b02ed4ea).
+        Two tappable items per page, paged by horizontal swipe
+        (change-8c5a1e73). Clear settings is on page 1 and opens the
+        'confirm_clear' sub-view rather than acting (change-b02ed4ea).
+
+        The indicator is drawn only. It is not registered, so it
+        consumes none of the screen's touch-target budget — the
+        discoverability answer display review §7.6 asked for, at no
+        ergonomic cost.
         """
         self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
         self._draw_shift_border((200, 0, 0))
@@ -1511,14 +1624,35 @@ class DisplayManager:
         sim_label = "Simulation mode" if self._sim_mode else "Bluetooth"
         debug_label = "Debug: On" if self._debug_logging_on else "Debug: Off"
 
-        for _btn, _label in (
-            (self._options_btn_sim, sim_label),
-            (self._options_btn_debug, debug_label),
-            (self._options_btn_update, "Check for updates"),
-        ):
+        if self._options_page == 0:
+            page_items = (
+                (self._options_btn_sim, sim_label),
+                (self._options_btn_debug, debug_label),
+            )
+        else:
+            page_items = (
+                (self._options_btn_clear, "Clear settings"),
+                (self._options_btn_update, "Check for updates"),
+            )
+
+        for _btn, _label in page_items:
             if _btn is None:
                 continue
             self._draw_button(_btn, _label, (80, 80, 100), button_font)
+
+        # The page indicator. Read the palette once, as
+        # _draw_radial_mode does, so a toggle mid-frame cannot draw one
+        # dot in each palette. The active page is filled; the others
+        # are outlined.
+        surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
+        if surface is not None:
+            palette = self._palette
+            for i in range(self.OPTIONS_PAGE_COUNT):
+                cx = 230 + i * 20
+                if i == self._options_page:
+                    pygame.draw.circle(surface, palette.tick, (cx, 350), 4)
+                else:
+                    pygame.draw.circle(surface, palette.tick, (cx, 350), 4, 1)
 
         small_font = get_label_small_font()
         if small_font:

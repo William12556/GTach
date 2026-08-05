@@ -190,15 +190,17 @@ class TouchHandler:
                 self._handle_setup_touch(x, y)
                 return
 
-            # Vertical swipes move between the gauge and OPTIONS.
-            # Tested before the OPTIONS early return, or an upward
-            # swipe inside OPTIONS would be routed to
-            # _handle_options_touch and the screen would again have
-            # only one exit (change-3e8b1d72).
+            # Vertical swipes move between the gauge and OPTIONS
+            # (change-3e8b1d72); horizontal swipes page within the
+            # options menu (change-8c5a1e73). Both are tested before
+            # the OPTIONS early return below, or neither would reach a
+            # handler from inside OPTIONS: that return sends every
+            # short press there to _handle_options_touch, which would
+            # leave the screen with one exit and no way to page.
             #
-            # The entry and exit rules are the DisplayManager's; this
-            # path delegates rather than duplicating them, so the two
-            # live handler paths agree by construction.
+            # The entry, exit and paging rules are the DisplayManager's;
+            # this path delegates rather than duplicating them, so the
+            # two live handler paths agree by construction.
             #
             # The coordinator's own threshold, so the two paths accept
             # the same movement; 100 — the value the removed horizontal
@@ -207,26 +209,36 @@ class TouchHandler:
                 getattr(self.display_manager, 'touch_coordinator', None),
                 'swipe_threshold', 100
             )
+            dx = x - start_x
             dy = y - start_y
-            if abs(dy) >= swipe_threshold:
-                if dy > 0:
-                    self.display_manager._handle_swipe_down(
-                        (start_x, start_y), (x, y)
-                    )
+            if max(abs(dx), abs(dy)) >= swipe_threshold:
+                # The dominant axis wins. An exact diagonal
+                # (abs(dx) == abs(dy)) falls to the vertical branch
+                # deliberately: leaving OPTIONS is the more recoverable
+                # outcome of the two, being one swipe from undone.
+                if abs(dx) > abs(dy):
+                    if dx < 0:
+                        self.display_manager._handle_swipe_left(
+                            (start_x, start_y), (x, y)
+                        )
+                    else:
+                        self.display_manager._handle_swipe_right(
+                            (start_x, start_y), (x, y)
+                        )
                 else:
-                    self.display_manager._handle_swipe_up(
-                        (start_x, start_y), (x, y)
-                    )
+                    if dy > 0:
+                        self.display_manager._handle_swipe_down(
+                            (start_x, start_y), (x, y)
+                        )
+                    else:
+                        self.display_manager._handle_swipe_up(
+                            (start_x, start_y), (x, y)
+                        )
                 return
 
             if self.display_manager.config.mode == DisplayMode.OPTIONS:
                 self._handle_options_touch(x, y)
                 return
-
-            # No horizontal swipe handling. It switched between
-            # DIGITAL and RADIAL; DIGITAL was retired
-            # (change-378703da) and RADIAL is the only normal mode,
-            # so there is nothing to switch to (issue-7f2a9c04).
 
         except Exception as e:
             self.logger.error(f"Short press handling error: {e}")
