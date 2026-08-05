@@ -151,7 +151,26 @@ class DisplayManager:
         
         # Configuration
         self._load_config()
-        
+
+        # Performance monitor, built here rather than in
+        # _initialize_components because it takes the frame rate in
+        # its constructor and self.config does not exist until
+        # _load_config has run. It was previously given a literal 60
+        # for that reason, which made every dropped-frame figure
+        # wrong at any other rate and reported a constant in the
+        # startup line (issue-6a3b7c52).
+        try:
+            _fps = getattr(self.config, 'fps_limit', 0) or 0
+            if _fps <= 0:
+                _fps = DisplayConfig.fps_limit
+            self.performance_monitor = PerformanceMonitor(target_fps=_fps)
+            self.performance_monitor.start_monitoring()
+        except Exception as e:
+            self.logger.error(
+                f'Performance monitor initialization failed: {e}',
+                exc_info=True
+            )
+
         # Legacy components
         self._initialize_legacy_components()
         
@@ -178,10 +197,6 @@ class DisplayManager:
             # Initialize touch coordinator
             self.touch_coordinator = TouchEventCoordinator((480, 480))
             self._setup_touch_callbacks()
-
-            # Initialize performance monitor
-            self.performance_monitor = PerformanceMonitor(target_fps=60)
-            self.performance_monitor.start_monitoring()
 
             # Initialize acknowledgement state manager
             self._ack_state_manager = AcknowledgementStateManager()

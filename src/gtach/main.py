@@ -7,6 +7,7 @@
 
 """GTach application entry point."""
 
+import os
 import sys
 import logging
 import argparse
@@ -22,7 +23,13 @@ _LOG_FORMAT = '%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s'
 _LOG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
 _START_LOG = '/opt/gtach/start.log'
 _DEBUG_LOG = '/opt/gtach/debug.log'
-_DEBUG_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
+# 10 MB is about ninety minutes of debug output at 30 Hz.
+# Ten backups gives roughly sixteen hours of history for
+# 110 MB of card. bin/gtach.service caps a restart loop at
+# three rapid starts (StartLimitBurst), so rotate-at-start
+# cannot exhaust the backups (issue-6a3b7c52).
+_DEBUG_MAX_BYTES = 10 * 1024 * 1024
+_DEBUG_BACKUPS = 10
 
 
 def setup_logging(debug: bool = False) -> None:
@@ -41,12 +48,40 @@ def setup_logging(debug: bool = False) -> None:
     except OSError as e:
         print(f'[gtach] WARNING: could not open {_START_LOG}: {e}', file=sys.stderr)
 
-    # debug.log — truncated at boot; suppressed unless toggled on.
+    # debug.log — rotated at boot, so each run has its own file
+    # and the previous ten survive; suppressed unless toggled on.
+    #
+    # NOTE the absence of mode='w'. RotatingFileHandler discards
+    # it whenever maxBytes > 0 and opens in append mode
+    # regardless — deliberate CPython behaviour, so that
+    # rotation is not defeated by truncation. The previous
+    # mode='w' here was dead, and debug.log had never truncated
+    # despite the comment saying it did (issue-6a3b7c52).
+    # Rotation at start is done explicitly below instead, which
+    # keeps the previous run rather than discarding it — the
+    # distinction that matters under systemd Restart=always.
+    #
+    # The size is read BEFORE the handler is constructed, because
+    # construction opens the file.
+    _had_content = False
+    try:
+        _had_content = os.path.getsize(_DEBUG_LOG) > 0
+    except OSError:
+        _had_content = False
+
     try:
         _debug_handler = RotatingFileHandler(
-            _DEBUG_LOG, mode='w', maxBytes=_DEBUG_MAX_BYTES,
-            backupCount=0, encoding='utf-8'
+            _DEBUG_LOG, maxBytes=_DEBUG_MAX_BYTES,
+            backupCount=_DEBUG_BACKUPS, encoding='utf-8'
         )
+        if _had_content:
+            try:
+                _debug_handler.doRollover()
+            except Exception as e:
+                print(
+                    f'[gtach] WARNING: could not rotate '
+                    f'{_DEBUG_LOG}: {e}', file=sys.stderr
+                )
         _debug_handler.setLevel(logging.CRITICAL + 1)  # suppressed
         _debug_handler.setFormatter(formatter)
         root.addHandler(_debug_handler)
