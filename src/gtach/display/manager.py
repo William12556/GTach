@@ -51,7 +51,7 @@ from .typography import (get_font_manager, get_title_font, get_medium_font, get_
                          get_rpm_large_font, get_rpm_medium_font, get_label_small_font, 
                          get_title_display_font, get_heading_font, TypographyConstants,
                          get_button_renderer, ButtonSize, ButtonState)
-from ..core import ThreadManager, ThreadStatus
+from ..core import ThreadManager
 from ..utils import TerminalRestorer
 from ..utils.ack_state import AcknowledgementStateManager
 
@@ -71,6 +71,11 @@ class DisplayManager:
     # as a literal in the paging modulo, so a third page is a data
     # change (change-8c5a1e73).
     OPTIONS_PAGE_COUNT = 2
+
+    # A lost link is 40 to 100 consecutive missed samples at the
+    # 20-50 Hz data rate, not a blip (issue-4d9e2f18).
+    LINK_LOSS_TIMEOUT = 2.0
+    LINK_RECOVERY_SAMPLES = 2
 
     def __init__(self, thread_manager: ThreadManager, terminal_restorer: TerminalRestorer = None, config_path: str = 'config.yaml'):
         self.logger = logging.getLogger('DisplayManager')
@@ -94,6 +99,15 @@ class DisplayManager:
         # persisted, so OPTIONS always opens on page 0
         # (change-8c5a1e73).
         self._options_page = 0
+
+        # Link state. The obd_protocol thread stays RUNNING while its
+        # transport retries indefinitely, so thread liveness cannot
+        # answer "is the adapter delivering data" (issue-4d9e2f18).
+        # These are what answers it instead.
+        self._last_sample_ts = None          # monotonic time of the last real sample
+        self._link_connected_callback = None  # injected by app.py; asks the transport
+        self._link_ok = False                # latch: data is confirmed flowing
+        self._recovery_count = 0             # consecutive samples close enough together
 
         self._update_status = 'idle'        # checking|available|none|error|pending
         self._update_wheel = None
@@ -759,12 +773,122 @@ class DisplayManager:
             self.logger.error(f"Setup mode render error: {e}")
             self._draw_setup_mode_fallback()
     
+    def _note_sample(self) -> None:
+        """Record the arrival of one real sample from the adapter.
+
+        Called for every message drained from the queue, and never for a
+        synthetic value: a simulated RPM is not evidence that an adapter
+        exists (issue-4d9e2f18).
+
+        Recovery deliberately requires LINK_RECOVERY_SAMPLES samples
+        arriving within LINK_LOSS_TIMEOUT of one another rather than a
+        single sample. A link delivering one sample every few seconds
+        would otherwise alternate between the gauge and the DISCONNECTED
+        screen once per sample, which is worse than either state.
+        """
+        now = time.monotonic()
+        if (self._last_sample_ts is not None
+                and now - self._last_sample_ts <= self.LINK_LOSS_TIMEOUT):
+            self._recovery_count += 1
+        else:
+            # A gap longer than the timeout is itself a loss condition,
+            # so the latch is dropped here and not left to _link_lost to
+            # notice. This method refreshes _last_sample_ts below, which
+            # would otherwise hide the gap from the staleness test: a
+            # link delivering one sample every few seconds would then
+            # read as up. _link_lost does clear the latch during the gap
+            # when it is polled each frame, but the guarantee should not
+            # depend on the render cadence.
+            self._recovery_count = 1
+            self._link_ok = False
+        self._last_sample_ts = now
+        if self._recovery_count >= self.LINK_RECOVERY_SAMPLES:
+            if not self._link_ok:
+                self.logger.info('Link restored')
+            self._link_ok = True
+
+    def _link_lost(self) -> bool:
+        """Whether the adapter has stopped delivering data.
+
+        Two signals, because neither alone suffices. The transport's own
+        view catches a clean disconnect at once. Staleness catches an
+        adapter that vanishes without closing its socket — a flat
+        battery — which is the failure this method exists for and the
+        one the previous thread-status proxy could never see: the
+        obd_protocol thread stays RUNNING while its transport retries
+        indefinitely, so that proxy reported a live connection whenever
+        the software was running (issue-4d9e2f18).
+
+        EVERY FAILURE PATH RETURNS True. The asymmetry is the safety
+        property of this method. A false 'disconnected' costs the
+        operator a screen they can leave in one swipe; a false
+        'connected' puts a stale needle and a green light in front of a
+        driver. An absent or raising callback therefore means 'socket
+        state unavailable', never 'connected'.
+
+        Called from the render path at 30 Hz, so it stays cheap and logs
+        only on a transition.
+
+        Returns:
+            True when the link is lost or its state cannot be
+            established; False only while data is confirmed flowing, or
+            in simulation mode.
+        """
+        try:
+            # FIRST, and unconditionally. Simulation is a display
+            # without an adapter; that is its purpose, so it must never
+            # report a lost link.
+            if self._sim_mode:
+                return False
+
+            connected = None
+            cb = self._link_connected_callback
+            if cb is not None:
+                try:
+                    connected = bool(cb())
+                except Exception:
+                    connected = None   # unavailable, NOT connected
+
+            if connected is False:
+                self._link_ok = False
+                self._recovery_count = 0
+                return True
+
+            if self._last_sample_ts is None:
+                return True
+
+            age = time.monotonic() - self._last_sample_ts
+            if age > self.LINK_LOSS_TIMEOUT:
+                if self._link_ok:
+                    self.logger.info('Link lost — no data for %.1fs', age)
+                self._link_ok = False
+                self._recovery_count = 0
+                return True
+
+            return not self._link_ok
+
+        except Exception as e:
+            self.logger.error(f'Link state error: {e}', exc_info=True)
+            return True
+
     def _render_normal_modes(self) -> None:
         """Render normal display modes"""
         try:
-            # Check if transport is disconnected and not in simulation mode
-            thread_status = self.thread_manager.get_thread_status('obd_protocol')
-            if thread_status != ThreadStatus.RUNNING and not self._sim_mode:
+            # Link state, not thread liveness. The obd_protocol thread
+            # stays RUNNING while its transport retries indefinitely,
+            # so the old test reported a live connection whenever the
+            # software was running (issue-4d9e2f18). _link_lost is
+            # already False in simulation mode, so the _sim_mode clause
+            # is subsumed rather than duplicated.
+            #
+            # RADIAL only. The DISCONNECTED screen replaces the GAUGE,
+            # which is the thing a lost link falsifies — not the
+            # settings screens. Ungated, this would make OPTIONS
+            # unreachable exactly when the adapter is down, which is
+            # when Simulate and Clear settings are most wanted. The old
+            # test could never fire, so it never needed the gate; this
+            # one fires routinely.
+            if self._link_lost() and self.config.mode == DisplayMode.RADIAL:
                 self._render_disconnected()
                 return
 
@@ -958,6 +1082,7 @@ class DisplayManager:
                     while True:
                         rpm_data = self.thread_manager.message_queue.get_nowait()
                         self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
+                        self._note_sample()
                 except queue.Empty:
                     pass
                 except Exception as e:
@@ -1233,9 +1358,13 @@ class DisplayManager:
           - _options_view: selects menu or update sub-view.
           - disconnected: DISCONNECTED is NOT a DisplayMode. It is a
             derived condition — _render_normal_modes shows that screen
-            when the obd_protocol thread is not RUNNING and simulation
-            mode is off. Omitting it would mean the Setup and Simulate
-            buttons were never registered when the transport drops.
+            in place of the gauge when _link_lost() (issue-4d9e2f18;
+            it previously asked the obd_protocol thread's status, which
+            never changed). Omitting it would mean the Setup and
+            Simulate buttons were never registered when the link drops.
+            The mode gate _render_normal_modes applies is not repeated
+            here: config.mode is already a member, so no registration
+            decision can change without this key changing.
           - _in_setup_mode: the setup subsystem owns its own regions.
             It is in the key so that leaving setup re-registers the
             normal view.
@@ -1248,11 +1377,7 @@ class DisplayManager:
             (mode, options sub-view, update status, disconnected,
             in setup mode, options page).
         """
-        disconnected = (
-            self.thread_manager.get_thread_status('obd_protocol')
-            != ThreadStatus.RUNNING
-            and not self._sim_mode
-        )
+        disconnected = self._link_lost()
         return (
             self.config.mode,
             self._options_view,
@@ -1288,11 +1413,15 @@ class DisplayManager:
 
             # DISCONNECTED is a derived condition, not a DisplayMode,
             # and _render_normal_modes gives it precedence over the
-            # mode. The dispatch must mirror that order exactly.
+            # mode. The dispatch must mirror that order exactly — so
+            # this asks _link_lost, exactly as that method now does
+            # (issue-4d9e2f18). Left on thread status it would register
+            # the gauge's regions, which are none, while the
+            # DISCONNECTED screen was drawn: Setup and Simulate would
+            # be visible and dead, and that screen is the operator's
+            # only route out of a lost link.
             disconnected = (
-                self.thread_manager.get_thread_status('obd_protocol')
-                != ThreadStatus.RUNNING
-                and not self._sim_mode
+                self._link_lost() and self.config.mode == DisplayMode.RADIAL
             )
             if disconnected:
                 self._register_disconnected_regions()
@@ -2156,14 +2285,20 @@ class DisplayManager:
     def _draw_status_indicator(self) -> None:
         """Draw connection status indicator"""
         try:
-            # Check transport thread status via locked public accessor
-            thread_status = self.thread_manager.get_thread_status('obd_protocol')
-            if thread_status == ThreadStatus.RUNNING:
-                status = ConnectionStatus.CONNECTED
-            elif thread_status == ThreadStatus.STARTING:
+            # The indicator names the link, so it is derived from the
+            # link. It previously mapped ThreadStatus.RUNNING to
+            # CONNECTED, which made it green whenever the software was
+            # running (issue-4d9e2f18).
+            #
+            # CONNECTING is the honest state between a transport that
+            # says it is connected and the two samples that confirm
+            # data is actually flowing.
+            if self._link_lost():
+                status = ConnectionStatus.DISCONNECTED
+            elif not self._link_ok:
                 status = ConnectionStatus.CONNECTING
             else:
-                status = ConnectionStatus.DISCONNECTED
+                status = ConnectionStatus.CONNECTED
 
             color = pygame.Color(status.value)
             # (20, 20) is 311 px from the viewport centre (240, 240),

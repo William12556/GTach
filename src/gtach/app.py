@@ -203,6 +203,16 @@ class GTachApplication:
             self._display._restart_callback = self._request_restart
             self._display._debug_toggle_callback = self.toggle_debug_logging
             self._display._debug_logging_on = self._debug
+            # The display asks the transport whether the link is up.
+            # Guarded: during setup, and before select_transport has
+            # run, there is no transport — and 'no transport' is
+            # correctly 'not connected' (issue-4d9e2f18).
+            self._display._link_connected_callback = (
+                lambda: bool(
+                    getattr(self, '_transport', None)
+                    and self._transport.is_connected()
+                )
+            )
             self._display.start()
             self.logger.info("Splash screen activated for setup mode")
         else:
@@ -303,6 +313,16 @@ class GTachApplication:
         self._display._restart_callback = self._request_restart
         self._display._debug_toggle_callback = self.toggle_debug_logging
         self._display._debug_logging_on = self._debug
+        # The display asks the transport whether the link is up.
+        # Guarded: before select_transport has run there is no
+        # transport — and 'no transport' is correctly 'not connected'
+        # (issue-4d9e2f18).
+        self._display._link_connected_callback = (
+            lambda: bool(
+                getattr(self, '_transport', None)
+                and self._transport.is_connected()
+            )
+        )
         self._display.start()  # This automatically starts the splash screen
         self.logger.info("Splash screen activated for normal mode")
         
