@@ -19,7 +19,7 @@ change_info:
   title: "Three separately revertible parts: the per-frame import moves to module scope and the debug f-string is guarded; fps_limit falls to 30; a conditional render skips frames whose displayed state — including the shift-cue flash phase — is unchanged"
   date: "2026-08-04"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -383,6 +383,17 @@ version_history:
       - "Recorded that halving fps_limit shifts the flash period by 7% through the rounding at manager.py:697 — within tolerance, but observed rather than discovered."
       - "Recorded that only the render block is conditional: heartbeat, counter, shutdown check and periodic log run on every iteration."
       - "Recorded taking the fps_limit reduction alone as the stated fallback if assumption A1 fails."
+  - version: "1.1"
+    date: "2026-08-05"
+    author: "William Watson"
+    changes:
+      - "Status proposed -> implemented. PARTS 1 AND 2 ONLY. PART 3 IS DEFERRED."
+      - "Part 1 (the module-scope import and the guarded debug f-string) and Part 2 (fps_limit 30) were implemented on 2026-08-05; see ai/workspace/report/v0.4.0-9ed1c77e-frame-pacing-parts-1-2.md."
+      - "Part 2's measured effect exceeded what this document claimed for it. Against the 297-sample baseline at 60 Hz — median 14.7 ms, 32% of frames overrunning — the 30 Hz run showed FPS at exactly 30.0 in all 32 samples and ZERO overruns of the 33.3 ms budget. Frame pacing went from six distinct observed rates to one."
+      - "Part 3, the conditional render, is DEFERRED. This document recorded the fallback explicitly: take the fps_limit reduction alone if assumption A1 fails. It has. With no overruns, 46% of budget used and the flicker resolved (ai/task.md §9.11.7), skipping frames solves nothing and carries the flash-suppression risk its own prompt warns about at length."
+      - "Static screens do still redraw thirty times a second to no effect, which is genuine waste. It is waste the instrument can afford, and that is the whole of the argument for deferring rather than proceeding."
+      - "Part 3 remains implementable as authored. Its prompt, tests and the flash-phase key member are complete."
+      - "The prompt T-Doc was left active after Parts 1 and 2 precisely so Part 3 would not be stranded. With Part 3 deferred it can now be closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -399,6 +410,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-9ed1c77e. Specifies three independently revertible parts, with the shift-cue flash phase added to the skip condition the report omits it from. |
+| 1.1 | 2026-08-05 | Status proposed → **implemented, Parts 1 and 2 only**. Part 2 removed every budget overrun — 30.0 FPS in all 32 samples, zero over 33.3 ms — exceeding what this document claimed for it. **Part 3 deferred** under this document's own stated fallback: with no overruns and the flicker resolved, conditional rendering solves nothing and carries the flash-suppression risk. |
 
 ---
 

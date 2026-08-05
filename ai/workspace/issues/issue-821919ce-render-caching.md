@@ -19,7 +19,7 @@ issue_info:
   title: "RADIAL redraws its invariant layer every frame, every text surface is rasterised afresh on every call, and draw_donut_arc tessellates a 20-degree segment with the same 122 vertices as a 300-degree arc"
   date: "2026-08-04"
   reporter: "William Watson"
-  status: "open"
+  status: "deferred"
   severity: "medium"
   type: "performance"
   iteration: 1
@@ -296,6 +296,15 @@ version_history:
       - "Recorded that D3's keyed-cache branch is mandatory rather than optional, the recommended authoring order placing this triple before the two changes that invalidate the layer."
       - "Recorded one correction to the report: §5.4's 71 numerals against six colours becomes 71 against one, the DIGITAL call site having gone to change-378703da and the domain having survived at the RADIAL centre."
       - "Enumerated the static and varying primitive sets from current source rather than from the report, whose list predates 378703da."
+  - version: "1.1"
+    date: "2026-08-05"
+    author: "William Watson"
+    changes:
+      - "Status open -> deferred. The waste this issue describes is real and unchanged — twenty-seven invariant primitives and eight invariant text rasterisations per frame — but it no longer costs anything the instrument needs."
+      - "The §7.5.3 baseline was collected (ai/task.md §9.11.6) and change-9ed1c77e Part 2 halved the frame rate. Frames complete at a 15.3 ms median against a 33.3 ms budget, with zero overruns in 32 samples, and the flicker is resolved (§9.11.7)."
+      - "Of the three assumptions recorded in technical_notes, A1 is now false: render cost is no longer a material fraction of the budget. A3 was confirmed at 37.1 MB steady. A2 was never isolated and now need not be."
+      - "Deferred rather than closed. Nothing here was wrong; the measurement arrived after the analysis and moved the conclusion. The triple is complete and implementable should a heavier render path, a slower target or measured GIL contention make it relevant."
+      - "This is the outcome ai/task.md §8.1 predicted when it recorded that this triple could not be authored correctly before its observation was taken."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."

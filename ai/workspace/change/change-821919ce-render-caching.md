@@ -19,7 +19,7 @@ change_info:
   title: "The RADIAL invariant layer is pre-rendered into a surface keyed by the state it depends on and blitted per frame; rendered text surfaces are cached by (text, size, colour); draw_donut_arc scales its vertex count with the sweep angle"
   date: "2026-08-04"
   author: "William Watson"
-  status: "proposed"
+  status: "deferred"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -377,6 +377,16 @@ version_history:
       - "Specified the key with the palette and active-band members present from the outset, so 5014040c and 5012004e extend its values rather than its structure."
       - "Recorded the id(font) subtlety in the text cache key, pygame Font objects not being hashable by value."
       - "Rejected the report's eager pre-render of the 71 numerals in favour of general lazy memoisation."
+  - version: "1.1"
+    date: "2026-08-05"
+    author: "William Watson"
+    changes:
+      - "Status proposed -> deferred. This document's own withdrawal condition was met: it stated that if RADIAL frames already complete well inside the budget, the change buys little and its medium risk is not justified — withdraw or defer rather than proceed."
+      - "The §7.5.3 baseline was collected on 2026-08-05 over 52 minutes and 297 samples (ai/task.md §9.11.6), and change-9ed1c77e Part 2 then reduced fps_limit to 30. Frames now complete at a 15.3 ms median against a 33.3 ms budget — 46% used, zero overruns in 32 samples at the new rate."
+      - "Assumption A1 held when written and does not hold now. It was framed as 'render cost is a material fraction of the 16.67 ms budget', and at 60 Hz it consumed 88% of it with 32% of frames overrunning. At 30 Hz neither is true."
+      - "The flicker that motivated the efficiency work is resolved (ai/task.md §9.11.7): no tearing, flashing or band thrash observed on the panel. The symptom this change would have served no longer exists."
+      - "Deferred rather than rejected: the design is sound and the document is complete. A heavier render path, a slower target, or a measured GIL-contention problem would make it relevant again, and it can be implemented as authored."
+      - "The prompt was never executed. Its gate — stop and report if render cost is not material — would have halted it, which is the gate working as intended."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -393,6 +403,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-821919ce. Specifies the keyed static layer, the bounded text-surface cache and the sweep-proportional tessellation, with the §7.5.3 baseline as the first implementation step. |
+| 1.1 | 2026-08-05 | Status proposed → **deferred**. The §7.5.3 baseline was collected and `9ed1c77e` Part 2 reduced `fps_limit` to 30; frames now use 46% of budget with zero overruns and the flicker is resolved. This document's own withdrawal condition is met. Deferred, not rejected — the design is sound and implementable as authored should a heavier render path make it relevant. |
 
 ---
 

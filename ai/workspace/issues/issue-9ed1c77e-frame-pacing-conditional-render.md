@@ -19,7 +19,7 @@ issue_info:
   title: "fps_limit is 60 against a 20-50 Hz data rate, every frame is rendered whether or not the displayed state changed, an import statement executes inside the render function on every frame, and two per-frame debug f-strings are formatted before the logging call that discards them"
   date: "2026-08-04"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "medium"
   type: "performance"
   iteration: 1
@@ -289,6 +289,17 @@ version_history:
       - "Recorded that the three recommendations differ greatly in risk and that the change document separates them into independently revertible parts."
       - "Recorded that one of each pair of rec 14's sites has already gone with change-378703da, and identified the survivors."
       - "Recorded two assumptions arising from authoring ahead of the §7.5.3 baseline and of change-821919ce."
+  - version: "1.1"
+    date: "2026-08-05"
+    author: "William Watson"
+    changes:
+      - "Status open -> resolved. Recommendations 12 and 14 are implemented; recommendation 13 is deferred."
+      - "Recommendation 14 (module-scope import, guarded debug f-string) and recommendation 12 (fps_limit 30) landed on 2026-08-05 as Parts 1 and 2."
+      - "Recommendation 12's effect was larger than this issue claimed. It removed EVERY budget overrun: 32 samples at exactly 30.0 FPS, none exceeding 33.3 ms, against 32% overrunning at 60 Hz. Measured FPS went from six distinct values to one, which is the frame-time jitter of display report §4.5 eliminated rather than reduced."
+      - "That jitter removal is the most likely contributor to the flicker's disappearance (ai/task.md §9.11.7), though no single change is provable as the cause and this document does not claim one."
+      - "Recommendation 13 (conditional render) is DEFERRED. Assumption A1 — that frame cost would still justify skipping — is false at 46% of budget with no overruns and no visible fault. Static screens redrawing thirty times a second remains real waste that the instrument can afford."
+      - "Both remaining assumptions are now settled: A1 false, and A2 (30 Hz acceptable for the needle) confirmed by observation on the panel."
+      - "Left active pending a T06 result for the implemented parts, per ai/task.md §8.2.1. Recommendation 13 does not gate that closure; it is deferred, not outstanding."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."

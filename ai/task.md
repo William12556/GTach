@@ -41,6 +41,7 @@ Created: 2026 July 29
 [9.10 Second On-Target Session — 2026-08-05](<#9.10 second on-target session — 2026-08-05>)
 [9.11 §8.4 Observation Session — Discharged From Logs](<#9.11 §8.4 observation session — discharged from logs>)
 [9.11.6 Long Run — 52 Minutes, 2026-08-05 09:34](<#9.11.6 long run — 52 minutes, 2026-08-05 09:34>)
+[9.13 The Efficiency Triples Deferred — 2026-08-05](<#9.13 the efficiency triples deferred — 2026-08-05>)
 [Version History](<#version history>)
 
 ---
@@ -64,12 +65,13 @@ Created: 2026 July 29
 | 9.7 | — | Eight remaining triples authored | ✅ Authored 2026-08-04; one open decision (§9.7.3), now live in source (§9.8.5 item 4) |
 | 9.8 | — | Six of the eight v0.4.0 triples implemented | ✅ 2026-08-04 — 8 commits on `v0.4.0-display-triples`, unpushed. **Four findings require decision** (§9.8.5); three prompt deviations recorded (§9.8.6) |
 | 9.9 | `7f2a9c04` | On-target session — operator trapped on OPTIONS screen | ☐ **Open, high.** §9.8.5 item 1 confirmed in `logs/start.log`. Triple authored 2026-08-05, not implemented. **Ship ahead of the rest of v0.4.0** |
-| 9.9.2 | — | Debug toggle fires; `app.py:155` binds the `main` function, not the module | ☐ Open — **no T03 raised yet** (§9.9.2) |
+| 9.9.2 | `c1d4b8e6` | Debug toggle fires; `app.py:155` binds the `main` function, not the module | ✅ Raised and implemented 2026-08-05. `debug.log` now fills and `start.log` closes after startup |
 | 9.9.3 | `3e8b1d72` | Swipe-down/up navigation for OPTIONS — scope extension agreed | ✅ Implemented 2026-08-05, verified on target |
 | 9.10 | `c1d4b8e6` | Debug toggle broken by module shadowing; `engine_profiles.yaml` unpackaged; second stale footer | ☐ Authored 2026-08-05, not implemented. Ungated |
 | 9.10.4 | — | OBD stream desynchronises during initialisation | ☐ Open — no T03 raised. **Severity reduced** (§9.11.6): it recovers, and the displayed reading is correct. Init-phase robustness, not data integrity |
 | 9.11 | — | §8.4 observation session | ✅ **Complete but for §7.5.2.** `821919ce` gate **CLEARS**; baseline firm at 297 samples (§9.11.6). Only the flicker characterisation needs the panel |
-| 9.11.6 | `9ed1c77e` | `fps_limit` 30 would remove **every** observed budget overrun — 0 of 297 samples exceed 33.3 ms | ☐ **Ship recommendation 12 first**, ahead of `821919ce` |
+| 9.11.6 | `9ed1c77e` | `fps_limit` 30 removes **every** observed budget overrun | ✅ Parts 1 and 2 implemented 2026-08-05. **Part 3 deferred** (§9.13) |
+| 9.13 | `821919ce` | Render caching | ⏸ **Deferred 2026-08-05.** Its own withdrawal condition met — 46% of budget, zero overruns, flicker resolved |
 
 † `1143427b` closed (issue, change and prompt) without a T06 result document, contrary to
 §8.2.1's Standing Closure Rule and without appearing on that section's grandfather list.
@@ -1738,6 +1740,78 @@ its deadline and shows no visible fault.
 
 [Return to Table of Contents](<#table of contents>)
 
+### 9.13 The Efficiency Triples Deferred — 2026-08-05
+
+`821919ce` and `9ed1c77e` Part 3 are deferred. Neither is wrong; both
+were overtaken by measurement.
+
+#### 9.13.1 The Condition Was Written in Advance and Was Met
+
+`change-821919ce` recorded its own withdrawal condition when it was
+authored on 2026-08-04, before any baseline existed:
+
+> If RADIAL frames already complete well inside the budget, this change
+> buys little and its medium risk is not justified — withdraw or defer
+> it rather than proceeding.
+
+The baseline was collected on 2026-08-05 (§9.11.6) and `9ed1c77e`
+Part 2 then halved the frame rate. The condition holds:
+
+| | At authoring (60 Hz) | Now (30 Hz) |
+|---|---|---|
+| Budget | 16.67 ms | 33.3 ms |
+| Median render | 14.7 ms | 15.3 ms |
+| Budget used | 88% | **46%** |
+| Frames over budget | **32%** | **0 of 32** |
+| Flicker | the open question | **resolved** (§9.11.7) |
+
+Assumption A1 — "render cost is a material fraction of the budget" —
+was true when written and is not true now. A3 was confirmed at 37.1 MB
+steady. A2 was never isolated and now need not be.
+
+`9ed1c77e` Part 3 falls with it. Its own change document named the
+fallback: *take the fps_limit reduction alone if assumption A1 fails.*
+It did.
+
+#### 9.13.2 What Remains True
+
+The waste both triples describe is real and unchanged. Twenty-seven
+invariant primitives and eight invariant text rasterisations are drawn
+per frame, and the static screens redraw thirty times a second to no
+effect. It is waste the instrument can afford, which is the whole of
+the argument.
+
+Both are **deferred, not rejected**. The documents are complete and
+implementable as authored. A heavier render path, a slower target, or a
+measured GIL-contention problem would make either relevant again.
+
+#### 9.13.3 A T02 Schema Gap This Exposed
+
+`change_info.status` had no `deferred` value, though `issue_info.status`
+has carried one since v1.0. The only available label for a sound change
+not being taken forward was `rejected`, which asserts it was found wrong
+on its merits.
+
+`deferred` was added to the T02 enum (T04… T02-change.md v1.4) rather
+than mislabelling these two. There is precedent: v1.3 added `closed` for
+the same kind of reason.
+
+#### 9.13.4 §8.1 Vindicated Twice
+
+§8.1 recorded that these triples "cannot be authored correctly yet"
+because they depended on observations not yet taken, and §9.7.1 recorded
+that they were authored against that advice on instruction, each
+carrying explicit assumptions.
+
+Both halves of that record proved useful. The prompts halted at their
+gates rather than optimising a renderer with no fault, and the
+enumerated assumptions made the deferral a matter of checking A1 against
+a number rather than re-arguing the design. Authoring ahead of the
+measurement cost two documents that will not be used; authoring the code
+ahead of it would have cost a medium-risk change to the render path.
+
+[Return to Table of Contents](<#table of contents>)
+
 ---
 
 ## Version History
@@ -1754,6 +1828,7 @@ its deadline and shows no visible fault.
 | 8.0 | 2026-07-30 | Recorded the §7.5.4 decision: **retire** the `ConfigManager` device-persistence path. Rewrote §7.4.8 with call-graph evidence (`DeviceStore` has ~15 live call sites; the `ConfigManager` device methods have none) and two corrections to its previous text — the "approximately 1,600 lines" figure conflated the whole of `utils/config.py` with the device-persistence subset, and retirement does **not** close §3.1, because `_rw_lock` guards the live `load_config`/`save_config` path that `app.py:75` and `main.py:107` exercise on every start. §3.1 accordingly separated into a new triple 7.4.9 (`1143427b`) — a re-partition of existing scope, not an addition; §7.0 item #1 is a disjunction whose correction and retirement branches are now claimed separately. 7.4.1 rescoped to the retirement (§3.6, §5.1) and reslugged `config-device-persistence-retirement`. §7.6.1 dependency on 7.5.4 cleared and a 7.4.7→7.4.9 row added. 7.4.9 assigned to v0.3.0 (§8.3) as a small correction on a live path; 7.4.1 remains in v0.4.0 (§8.5) as a large deletion. |
 | 9.0 | 2026-08-04 | Added §9.0, cross-checking §7.0's twenty triples against governance-document state, `src/gtach` and pushed git/GitHub history, following William's report that several prompts had closed with issues/changes left open pending test results. Confirmed the pattern for eight triples (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`, `52414414`, `2d545bf5`, `d32ccc49`) — prompt closed, issue and change open. Added a Status column to §7.3 and §7.4 (per the residual observation in `task-list-cross-check-discrepancies.md` §10.2) and updated §0.0, §7.5.1 and §8.3. Recorded that `49b21ace` (7.3.4) was reclassified from v0.4.0 into v0.3.0 once `cb28980f` (7.3.3) cleared its gate mechanically (§9.3); removed it from §8.5. Flagged `1143427b` (7.4.9) as closed — issue, change and prompt — without a T06 result document and without appearing on §8.2.1's grandfather list; its own change document records the on-target verification step as open and the coupled T05 as `status: planned` with all cases `not_run` (§9.4). Confirmed by direct source inspection that `394c3bbb` (7.4.1) remains unimplemented — the `ConfigManager` device-persistence methods are still present — and that all eight remaining v0.4.0 triples have no governance documents or matching commits (§9.5). |
 | 10.0 | 2026-08-04 | Authored the eight remaining triples — `b02ed4ea`, `378703da`, `5014040c`, `5012004e`, `821919ce`, `9ed1c77e`, `394c3bbb`, `6481f8ce` — completing all twenty in §7.0. Twenty-four documents, all iteration 1, `target_profile: claude_code`, none implemented. Added §9.7 recording: that three gated triples were authored against §8.1's advice on instruction, each carrying an explicit assumptions block and a stop-and-report first implementation step (§9.7.1); seven corrections found while authoring, chiefly that `394c3bbb` must not touch `comm/models.py` or `comm/device_store.py`, that a fourth transport-name list exists at `app.py:267`, that `_handle_long_press` survives DIGITAL's retirement with its assignment changed, that `_get_band_colour` must outlive its last caller for `5014040c`'s benefit, and that recommendation 26's subject largely dissolves once DIGITAL is retired (§9.7.2); one open decision, the absent entry point to *Clear settings* under `b02ed4ea`'s three-control budget (§9.7.3); and the discharge status of all five cross-check discrepancies (§9.7.4). Added Status columns to the §7.3 and §7.4 rows, a state column and an implementation order to §8.5, and corrected §9.0's date, which revision 9.0 recorded as 2026-07-31 in error. |
+| 17.0 | 2026-08-05 | Added §9.13 recording the deferral of `821919ce` and `9ed1c77e` Part 3. `change-821919ce`'s own withdrawal condition, written on 2026-08-04 before any baseline existed, was met by the 2026-08-05 measurement: frames now use 46% of a 33.3 ms budget with zero overruns in 32 samples and the flicker resolved, where at authoring they used 88% of 16.67 ms with 32% overrunning. Assumption A1 was true when written and is not now; A3 was confirmed; A2 need not be isolated. `9ed1c77e` Part 3 falls under its own document's stated fallback. Both **deferred, not rejected** — the documents are complete and implementable should a heavier render path or slower target make them relevant. Statuses set: `issue-821919ce` deferred, `change-821919ce` deferred, `issue-9ed1c77e` resolved, `change-9ed1c77e` implemented for Parts 1 and 2. Recorded that this exposed a T02 schema gap — `change_info.status` had no `deferred` value though T03 has carried one since v1.0, so a sound change not taken forward could only be labelled `rejected`; `deferred` was added in T02-change.md v1.4 rather than mislabelling these two, with precedent in v1.3's addition of `closed`. Also corrected the §9.9.2 summary row, which still read "no T03 raised" after `c1d4b8e6` had raised and implemented it. |
 | 16.0 | 2026-08-05 | Added §9.11.7 discharging §7.5.2, the last §8.4 observation. With `fps_limit` at 30 on the target: **no tearing, no flashing, no band thrash, and an acceptable needle** — display report §4.0 closes in full. 30 Hz baseline over 32 samples: **FPS exactly 30.0 in every sample** against six distinct values at 60 Hz, median frame 15.3 ms, **zero overruns**, 46% of budget used. Recorded that frame pacing has gone from irregular to exact and that all five §4.x flicker mechanisms have been addressed, while declining to claim any single change as *the* fix. **Recommends deferring `821919ce` and `9ed1c77e` Part 3 and cutting v0.4.0 without them**: `821919ce`'s own change document set withdrawal's condition as frames completing well inside budget, and that condition is now met, so both would be medium-risk optimisation of a renderer that meets its deadline and shows no visible fault. Recorded two defects the change exposed — `PerformanceMonitor` is constructed with a hardcoded `target_fps=60` so every dropped-frame figure at 30 Hz is wrong, and `RotatingFileHandler` silently overrides `mode='w'` to `'a'` when `maxBytes > 0`, verified against CPython source, so `debug.log` has never truncated and reached 31.6 MB across three sessions. |
 | 15.0 | 2026-08-05 | Added §9.11.6 recording the 52-minute run that completed the §8.4 residual work. Frame-time baseline firm at 297 samples: median 14.7 ms, mean 16.0, p90 19.7, max 21.2 against a 16.67 ms budget, with 32% of frames overrunning at 60 Hz and **none of 297 overrunning at 30 Hz**. Render cost verified equivalent in simulation and Bluetooth modes, validating the large simulation sample. Consequence recorded: `9ed1c77e` recommendation 12 alone would eliminate every observed overrun for a one-line configuration change, so it should ship *ahead* of `821919ce` rather than after it. **Corrected two earlier over-claims about the OBD desynchronisation** (§9.10.4, §9.11.5): it recovers once polling settles into uniform `010C` commands — the "does not recover" claim was drawn from a 90-second session — and it does not corrupt the displayed reading, 874 responses spanning 0–4,208 RPM producing 4,193 frames with not one displayed value outside that range, the intermediate values being `4c038bed`'s EMA interpolating as designed. Severity reduced from data integrity to initialisation-phase robustness. §7.5.2's flicker characterisation remains the only outstanding observation. |
 | 14.0 | 2026-08-05 | Added §9.11 discharging the §8.4 observation session from logs already pulled, five of its six items being answerable because the instrumentation each depended on has since shipped. §7.5.1 discharged — framebuffer is 32-bit at stride 1920, exactly as `engine.py` assumed, so display report §8.3 is not an active fault and page flip is confirmed operating. §7.5.3 discharged indicatively: correlating the four periodic samples against what was on screen gives RADIAL at 14.7–19.3 ms against a 16.67 ms budget and the static OPTIONS screen at 6.3 ms, with the caveat that three RADIAL samples from one 90-second session is a direction rather than a baseline. §7.5.6 substantively answered — platform detection selects `RASPBERRY_PI_ZERO_2W` correctly, though the raw revision string is not logged. **`821919ce`'s gate clears**: assumption A1 holds more strongly than it was framed, render cost being at or over the whole budget rather than merely material; A3 confirmed at 37.1 MB steady; A2 supported but not isolated. `9ed1c77e`'s two recommendations separate — recommendation 12 is now supported independently of any assumption, the application demonstrably not sustaining 60 Hz. Residual on-panel work reduced from six items to two: §7.5.2's flicker characterisation and a five-minute run for a firmer baseline (§9.11.4). Recorded that the OBD desynchronisation reproduces and is clearer than §9.10.4 stated — `0100` receives `ATSP0`'s acknowledgement and `010C` is polled three times unanswered — and that whether it corrupts the displayed reading is not established, simulation mode having masked the real-data window (§9.11.5). |
