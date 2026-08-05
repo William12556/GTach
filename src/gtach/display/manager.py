@@ -1813,15 +1813,19 @@ class DisplayManager:
         DeviceStore — that is _on_clear_settings, which this flow
         reaches only after the confirmation is accepted.
 
-        ENTRY POINT DELIBERATELY OPEN. Clear settings was removed from
-        the options menu because the 72 px ergonomic minimum of
-        recommendation 24 leaves room for three controls, not four, so
-        nothing currently binds this method. The recovered space comes
-        from the circular options re-layout of display report §7.7,
-        deferred to a P10 cycle (ai/task.md §7.3.15); bind this method
-        wherever Clear settings is offered then. Adding a fourth button
-        to the menu instead would fail the geometry requirement this
-        change exists to satisfy.
+        Bound by the options menu's page 1 (change-8c5a1e73). Clear
+        settings had been removed from the menu altogether, because the
+        72 px ergonomic minimum of recommendation 24 leaves room for
+        three controls and the screen had four, and this method was
+        left deliberately unbound until a route was agreed. The route
+        is paging, not the circular re-layout of display report §7.7
+        that change-b02ed4ea anticipated: two pages of two controls are
+        inside the same geometric budget.
+
+        The budget still binds. Page 1 must keep offering this method
+        rather than _on_clear_settings, and adding a fourth button to
+        one page would fail the geometry requirement recommendation 24
+        exists to satisfy.
         """
         self._options_view = 'confirm_clear'
 
