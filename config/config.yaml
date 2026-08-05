@@ -26,7 +26,7 @@ display:
   mode: RADIAL
   rpm_warning: 6500
   rpm_danger: 7000
-  fps_limit: 60
+  fps_limit: 30
   touch_long_press: 1.0
   splash:
     enabled: true
