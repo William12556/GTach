@@ -281,7 +281,7 @@ testing_requirements:
     - "python -m py_compile on both Python files passes."
     - "pyproject.toml parses."
     - "pytest tests/ passes with no new failures."
-    - "No 'from . import main' remains in the repository."
+    - "No EXECUTABLE occurrence of 'from . import main' remains in src/. Amended 2026-08-05 from 'remains in the repository', which was unsatisfiable: the string necessarily appears in this cycle's own T-Docs, in ai/task.md, in the closed prompt-bd8f95b7 where the faulty sites were written, and in the explanatory comments prompt-c1d4b8e6's own EDIT A text mandates verbatim. Those are documentation of the fault and are correct. See the implementation report §5.2."
     - "A freshly built wheel contains gtach/assets/engine_profiles.yaml."
     - "src/gtach/__init__.py and src/gtach/main.py are byte-identical."
 
@@ -343,6 +343,12 @@ version_history:
       - "Recorded that packaging the YAML changes no displayed value, the abarth profile's thresholds equalling the dataclass defaults, and made that an explicit assertion rather than an assumption."
       - "Added an assertion on a non-default profile as the only test that proves the file is genuinely being read."
       - "Left _debug_logging_on's initial value out of scope, to be judged against evidence after the handler demotion works."
+  - version: "1.1"
+    date: "2026-08-05"
+    author: "William Watson"
+    changes:
+      - "Amended the fourth validation criterion to cover executable occurrences in src/ only. As written it was unsatisfiable: the string necessarily appears in this cycle's own T-Docs, in ai/task.md, in the closed prompt-bd8f95b7, and in the explanatory comments prompt-c1d4b8e6's own EDIT A text mandates verbatim. Reported at implementation report §5.2 and amended here rather than in prompt-c1d4b8e6, which is closed and immutable per P00 §1.1.14.2."
+      - "Second occurrence of this criterion defect; prompt-378703da was the first, and the prevention note recorded in change-7f2a9c04 did not bind subsequent authoring. The durable correction is a template rule — see T04-prompt.md v1.4 — rather than a further note."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -359,6 +365,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-05 | Initial change document coupled to issue-c1d4b8e6. Corrects the module retrieval at both `app.py` sites, packages `assets/*.yaml`, and fixes the update view's footer. |
+| 1.1 | 2026-08-05 | Amended the fourth validation criterion to executable occurrences in `src/` only; as written it was unsatisfiable. Second occurrence of the defect, so the durable correction is a T04 template rule rather than another prevention note. |
 
 ---
 
