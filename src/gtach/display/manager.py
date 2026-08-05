@@ -17,6 +17,7 @@ import os
 import sys
 import math
 import logging
+import queue
 import threading
 import time
 from enum import Enum, auto
@@ -878,7 +879,6 @@ class DisplayManager:
                 rpm = self._condition_rpm(rpm)
             else:
                 # Drain queue — keep only the latest value to avoid display lag
-                import queue
                 try:
                     while True:
                         rpm_data = self.thread_manager.message_queue.get_nowait()
@@ -1124,7 +1124,12 @@ class DisplayManager:
                         center=True
                     )
 
-            self.logger.debug(f'Radial mode: RPM={rpm:.0f}')
+            # The f-string is formatted before the call, so at 60 Hz
+            # the cost was paid whether or not DEBUG was enabled —
+            # and production configures a NullHandler
+            # (display review §5.6, recommendation 14).
+            if self.logger.isEnabledFor(logging.DEBUG):
+                self.logger.debug(f'Radial mode: RPM={rpm:.0f}')
 
         except Exception as e:
             self.logger.error(f"Radial display error: {e}", exc_info=True)
