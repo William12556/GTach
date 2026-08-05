@@ -38,6 +38,7 @@ Created: 2026 July 29
 [9.7 Remaining Eight Triples Authored — 2026-08-04](<#9.7 remaining eight triples authored — 2026-08-04>)
 [9.8 Implementation — 2026-08-04](<#9.8 implementation — 2026-08-04>)
 [9.9 On-Target Session — 2026-08-05](<#9.9 on-target session — 2026-08-05>)
+[9.10 Second On-Target Session — 2026-08-05](<#9.10 second on-target session — 2026-08-05>)
 [Version History](<#version history>)
 
 ---
@@ -62,7 +63,9 @@ Created: 2026 July 29
 | 9.8 | — | Six of the eight v0.4.0 triples implemented | ✅ 2026-08-04 — 8 commits on `v0.4.0-display-triples`, unpushed. **Four findings require decision** (§9.8.5); three prompt deviations recorded (§9.8.6) |
 | 9.9 | `7f2a9c04` | On-target session — operator trapped on OPTIONS screen | ☐ **Open, high.** §9.8.5 item 1 confirmed in `logs/start.log`. Triple authored 2026-08-05, not implemented. **Ship ahead of the rest of v0.4.0** |
 | 9.9.2 | — | Debug toggle fires; `app.py:155` binds the `main` function, not the module | ☐ Open — **no T03 raised yet** (§9.9.2) |
-| 9.9.3 | `3e8b1d72` | Swipe-down/up navigation for OPTIONS — scope extension agreed | ☐ Authored 2026-08-05, not implemented. Depends on `7f2a9c04` |
+| 9.9.3 | `3e8b1d72` | Swipe-down/up navigation for OPTIONS — scope extension agreed | ✅ Implemented 2026-08-05, verified on target |
+| 9.10 | `c1d4b8e6` | Debug toggle broken by module shadowing; `engine_profiles.yaml` unpackaged; second stale footer | ☐ Authored 2026-08-05, not implemented. Ungated |
+| 9.10.4 | — | **OBD stream desynchronises after a timeout** — a single late response offsets every subsequent read | ☐ Open — **no T03 raised.** Explains the init failure against a working emulator |
 
 † `1143427b` closed (issue, change and prompt) without a T06 result document, contrary to
 §8.2.1's Standing Closure Rule and without appearing on that section's grandfather list.
@@ -1359,6 +1362,108 @@ repository-wide grep.
 
 [Return to Table of Contents](<#table of contents>)
 
+### 9.10 Second On-Target Session — 2026-08-05
+
+`7f2a9c04` and `3e8b1d72` were implemented and deployed. The session
+log carries **one ERROR in 362 KB** and no `DIGITAL` line: both fixes
+work, swipe navigation operates, and the operator confirmed entering
+and leaving OPTIONS. Four further findings.
+
+#### 9.10.1 The Debug Toggle Is Still Broken — Raised as `c1d4b8e6`
+
+The operator reported it working. The log disagrees, three presses,
+three identical failures:
+
+```
+07:59:38,814  DisplayManager INFO  Debug logging toggle -> on
+07:59:38,815  gtach.app DEBUG      Could not toggle debug logging:
+                                   'function' object has no attribute '_debug_handler'
+```
+
+Root cause established: `gtach/__init__.py:11` does
+`from .main import main`, so the package attribute `main` **is** the
+function. `app.py`'s `from . import main as _main` therefore retrieves
+the function, whose namespace holds no `_debug_handler`. The same
+pattern breaks `_finish_startup_logging`, so `_start_handler` is never
+demoted — which is why `start.log` reached 3.5 MB in one session while
+`debug.log` stayed at 0 bytes.
+
+The fault is **self-concealing**: both sites log at DEBUG, and one of
+them is the control that turns DEBUG on. The label flips because
+`_debug_logging_on` is inverted before the callback runs, which is
+exactly why it appears to work.
+
+Recorded as §9.9.2 on 2026-08-05 without a T03. Now raised.
+
+#### 9.10.2 New — `engine_profiles.yaml` Is Not in the Wheel
+
+```
+07:59:15,874  load_engine_profile WARNING  Engine profiles file not found at
+              /opt/gtach/venv/.../gtach/assets/engine_profiles.yaml, using defaults
+```
+
+`pyproject.toml:69` declares package-data as `assets/fonts/*.ttf` and
+`*.otf` only. Confirmed against the built wheel: `Michroma-Regular.ttf`
+is the sole entry under `assets/`.
+
+**Current impact is zero**, and the reason matters: the
+`abarth_595_turismo` profile's six thresholds are identical to the
+`RPMBands` dataclass defaults, so the fallback yields the correct
+numbers by coincidence. What is broken is everything the file exists
+for — `generic_turbo_4cyl` and `generic_na_4cyl` are unreachable, the
+`engine_profile` key is inert, and the first threshold tuning will not
+reach the target.
+
+Second occurrence of this defect class; `issue-d7f2b4e6` (Michroma font
+missing from wheel) was the first, and its fix added the fonts glob
+that still stands beside the unpackaged YAML.
+
+#### 9.10.3 Carried Forward — A Second Stale Footer
+
+`_draw_update_view` (`manager.py:1672`) still renders *"Long press to
+return"*. `change-3e8b1d72` corrected the identical string in
+`_draw_options_menu` and made long press inert in both handler paths;
+this one was outside that prompt's stated scope and its executor
+reported it at §6.2 rather than exceeding scope. The update view now
+instructs a gesture that does nothing.
+
+Raised at the operator's explicit request so it is not lost.
+
+**§9.10.1 to §9.10.3 are grouped into one triple, `c1d4b8e6`**, on the
+`change-d32ccc49` pattern: three small faults in three files, none
+dependent on another. Authored 2026-08-05, not implemented.
+
+#### 9.10.4 Open — OBD Response Stream Desynchronises After a Timeout
+
+Not raised. Needs its own investigation and triple.
+
+The ELM327 emulator is paired and answering — the log shows a clean
+connect and a correct `ATZ` → `ELM327 v1.5` handshake. Then:
+
+```
+07:59:17,588  TX: 0100
+07:59:18,632  WARNING  Timeout waiting for response (cmd='0100', timeout=1.0s)
+07:59:18,633  ERROR    Initialization failed: No connection to vehicle
+07:59:20,629  RX: '4100983A8013\r4100BE3FA813'      <- 0100's answer, late, doubled
+07:59:21,133  RX: 'ELM327 v1.5'   after TX ATE0     <- ATZ's answer
+07:59:21,137  RX: 'ATE0\rOK'      after TX ATL0     <- ATE0's answer
+07:59:21,167  RX: 'OK\r\r>SEARCHING...' after TX 0100
+```
+
+Two distinct faults. The `0100` timeout of 1.0 s is shorter than the
+ELM327's protocol search, which emits `SEARCHING...` and can take
+several seconds. And the late response is **not drained**, so it sits
+in the buffer and every subsequent read returns the previous command's
+answer — the stream is offset by one and stays offset.
+
+The second is the more serious: a single timeout permanently
+desynchronises the session. Same class as `issue-a3f1d8e2` (ATZ on
+reconnect causing init timeout), which is closed.
+
+This is why OBD initialisation fails against a working emulator.
+
+[Return to Table of Contents](<#table of contents>)
+
 ---
 
 ## Version History
@@ -1375,6 +1480,7 @@ repository-wide grep.
 | 8.0 | 2026-07-30 | Recorded the §7.5.4 decision: **retire** the `ConfigManager` device-persistence path. Rewrote §7.4.8 with call-graph evidence (`DeviceStore` has ~15 live call sites; the `ConfigManager` device methods have none) and two corrections to its previous text — the "approximately 1,600 lines" figure conflated the whole of `utils/config.py` with the device-persistence subset, and retirement does **not** close §3.1, because `_rw_lock` guards the live `load_config`/`save_config` path that `app.py:75` and `main.py:107` exercise on every start. §3.1 accordingly separated into a new triple 7.4.9 (`1143427b`) — a re-partition of existing scope, not an addition; §7.0 item #1 is a disjunction whose correction and retirement branches are now claimed separately. 7.4.1 rescoped to the retirement (§3.6, §5.1) and reslugged `config-device-persistence-retirement`. §7.6.1 dependency on 7.5.4 cleared and a 7.4.7→7.4.9 row added. 7.4.9 assigned to v0.3.0 (§8.3) as a small correction on a live path; 7.4.1 remains in v0.4.0 (§8.5) as a large deletion. |
 | 9.0 | 2026-08-04 | Added §9.0, cross-checking §7.0's twenty triples against governance-document state, `src/gtach` and pushed git/GitHub history, following William's report that several prompts had closed with issues/changes left open pending test results. Confirmed the pattern for eight triples (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`, `52414414`, `2d545bf5`, `d32ccc49`) — prompt closed, issue and change open. Added a Status column to §7.3 and §7.4 (per the residual observation in `task-list-cross-check-discrepancies.md` §10.2) and updated §0.0, §7.5.1 and §8.3. Recorded that `49b21ace` (7.3.4) was reclassified from v0.4.0 into v0.3.0 once `cb28980f` (7.3.3) cleared its gate mechanically (§9.3); removed it from §8.5. Flagged `1143427b` (7.4.9) as closed — issue, change and prompt — without a T06 result document and without appearing on §8.2.1's grandfather list; its own change document records the on-target verification step as open and the coupled T05 as `status: planned` with all cases `not_run` (§9.4). Confirmed by direct source inspection that `394c3bbb` (7.4.1) remains unimplemented — the `ConfigManager` device-persistence methods are still present — and that all eight remaining v0.4.0 triples have no governance documents or matching commits (§9.5). |
 | 10.0 | 2026-08-04 | Authored the eight remaining triples — `b02ed4ea`, `378703da`, `5014040c`, `5012004e`, `821919ce`, `9ed1c77e`, `394c3bbb`, `6481f8ce` — completing all twenty in §7.0. Twenty-four documents, all iteration 1, `target_profile: claude_code`, none implemented. Added §9.7 recording: that three gated triples were authored against §8.1's advice on instruction, each carrying an explicit assumptions block and a stop-and-report first implementation step (§9.7.1); seven corrections found while authoring, chiefly that `394c3bbb` must not touch `comm/models.py` or `comm/device_store.py`, that a fourth transport-name list exists at `app.py:267`, that `_handle_long_press` survives DIGITAL's retirement with its assignment changed, that `_get_band_colour` must outlive its last caller for `5014040c`'s benefit, and that recommendation 26's subject largely dissolves once DIGITAL is retired (§9.7.2); one open decision, the absent entry point to *Clear settings* under `b02ed4ea`'s three-control budget (§9.7.3); and the discharge status of all five cross-check discrepancies (§9.7.4). Added Status columns to the §7.3 and §7.4 rows, a state column and an implementation order to §8.5, and corrected §9.0's date, which revision 9.0 recorded as 2026-07-31 in error. |
+| 13.0 | 2026-08-05 | Added §9.10 recording the second on-target session, after `7f2a9c04` and `3e8b1d72` were implemented. Both verified: one ERROR in 362 KB and no `DIGITAL` line. Raised `c1d4b8e6` grouping three small faults on the `change-d32ccc49` pattern — the debug toggle still failing because `gtach/__init__.py:11` binds `main` to the function so `app.py` cannot reach the module's handlers, a fault that is self-concealing because both sites log at DEBUG and one of them is the DEBUG control (§9.10.1); `engine_profiles.yaml` absent from the wheel, confirmed against the built artefact, with zero current impact because the abarth profile's thresholds coincide with the dataclass defaults but two profiles unreachable and the `engine_profile` key inert (§9.10.2); and the second stale *"Long press to return"* footer in `_draw_update_view`, carried from the `3e8b1d72` report §6.2 at the operator's request (§9.10.3). Recorded a fourth finding not yet raised: the OBD response stream desynchronises permanently after a timeout — `0100` times out at 1.0 s during the ELM327 protocol search, the late response is not drained, and every subsequent read returns the previous command's answer, which is why initialisation fails against a paired and answering emulator (§9.10.4). |
 | 12.0 | 2026-08-05 | Added §9.9 recording the on-target `gtach.local` session. Confirmed §9.8.5 item 1 from `logs/start.log` — five `handling error: DIGITAL` lines, no other errors in 3.5 MB — and established two facts the static review did not: `TouchHandler` is the handler that fires, being registered on a started touch interface, and the fault is swallowed by its own except-Exception handler, which is why it presents as an inert control (§9.9.1). Raised `7f2a9c04` (issue/change/prompt, severity high, ungated) to complete `change-378703da`'s enum removal across the two runtime-instantiated modules its four-file scope excluded. Recorded a new defect not yet raised as a T03: the debug toggle fires but `app.py:155` binds the `main` **function** rather than the module, so `_debug_handler` is never reached — `debug.log` is empty while `start.log` holds 57,560 DEBUG lines, and the options label reads *Debug: Off* while debug is on (§9.9.2). Recorded the operator's swipe-navigation proposal as a scope extension agreed by consensus and authored it as `3e8b1d72`, separate from `7f2a9c04` so a navigation problem stays attributable; scoping found that the touch subsystem already detects and dispatches both vertical swipes, and that two live long-press handlers exist which must change together (§9.9.3). Recorded the root cause as a file-scoped constraint on a package-wide interface change, with `prompt-378703da` carrying three mutually unsatisfiable requirements (§9.9.4). |
 | 11.0 | 2026-08-04 | Recorded the implementation of six of the eight v0.4.0 triples in §9.8 — `b02ed4ea`, `378703da`, `5014040c`, `5012004e`, `394c3bbb` and `6481f8ce` — as eight commits on the unpushed branch `v0.4.0-display-triples`, with all six prompt T-Docs closed and all sixteen issue and change T-Docs left active per §8.2.1. Recorded that `821919ce` and `9ed1c77e` were **not** implemented: both stopped at their §7.5.3 gate, which is the outcome §8.1 predicted and §9.7.1 anticipated (§9.8.2). Discharged §7.5.5, reproduced under `6481f8ce` against the unchanged files and again after Stage 1, with the correction that the `AttributeError` is caught by the broad handler and the defect was therefore silent in production (§9.8.4). Recorded four findings requiring decision (§9.8.5): live `DisplayMode.DIGITAL` references surviving `378703da` in `display/touch.py` and `display/navigation_gestures.py`, both runtime-instantiated, which is the only finding that can fault the running application; the night palette toggle being unreachable because no `DOUBLE_TAP` gesture exists; the contrast criterion in `5014040c` and `5012004e` being arithmetically unsatisfiable alongside the fixed palette values; and `b02ed4ea` leaving *Clear settings* with no entry point, previously hypothetical under §9.7.3 and now live in source. Recorded three prompt deviations (§9.8.6), chiefly that the transport primitives could not be `@abstractmethod` without making `SimTransport` uninstantiable and breaking `simtcp` and `simbt`. Recorded three governance gaps left open (§9.8.7): no T06 result documents, §8.2's pytest suite still unwritten with `tests/` collecting zero items, and the branch unpushed. Updated §0.0, the §7.3, §7.4 and §7.5 tables, and §8.5's state column and implementation order. Full detail in `ai/workspace/report/v0.4.0-triple-implementation-session.md`. |
 
