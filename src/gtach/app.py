@@ -136,7 +136,16 @@ class GTachApplication:
             import logging
             import sys
             if sys.platform.startswith('linux'):
-                from . import main as _main
+                # gtach/__init__.py re-exports the main FUNCTION under
+                # the name 'main', so the package attribute shadows the
+                # module and 'from . import main' retrieves the
+                # function — whose namespace has no _debug_handler or
+                # _start_handler. The module object is retrievable from
+                # sys.modules, which the import system keys by the full
+                # dotted name (issue-c1d4b8e6).
+                _main = sys.modules.get('gtach.main')
+                if _main is None:
+                    return
                 if _main._start_handler is not None:
                     self.logger.info("Startup complete — start.log closed")
                     _main._start_handler.setLevel(logging.CRITICAL + 1)
@@ -154,7 +163,16 @@ class GTachApplication:
             import sys
             if not sys.platform.startswith('linux'):
                 return
-            from . import main as _main
+            # gtach/__init__.py re-exports the main FUNCTION under the
+            # name 'main', so the package attribute shadows the module
+            # and 'from . import main' retrieves the function — whose
+            # namespace has no _debug_handler or _start_handler. The
+            # module object is retrievable from sys.modules, which the
+            # import system keys by the full dotted name
+            # (issue-c1d4b8e6).
+            _main = sys.modules.get('gtach.main')
+            if _main is None:
+                return
             if _main._debug_handler is None:
                 return
             if enable:

@@ -66,7 +66,17 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-"gtach" = ["assets/fonts/*.ttf", "assets/fonts/*.otf"]
+# assets/*.yaml carries engine_profiles.yaml, which
+# load_engine_profile reads at startup. Its absence made two
+# of three engine profiles unreachable and the
+# engine_profile setting inert, and produced a WARNING on
+# every start (issue-c1d4b8e6). The fonts glob dates from
+# issue-d7f2b4e6, the same class of defect.
+"gtach" = [
+    "assets/fonts/*.ttf",
+    "assets/fonts/*.otf",
+    "assets/*.yaml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

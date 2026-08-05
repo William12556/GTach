@@ -1669,7 +1669,7 @@ class DisplayManager:
 
         small_font = get_label_small_font()
         if small_font:
-            self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Long press to return", small_font, (150, 150, 150), (240, 410), center=True)
+            self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Swipe up to return", small_font, (150, 150, 150), (240, 410), center=True)
 
     def _on_clear_settings_requested(self) -> None:
         """Enter the clear-settings confirmation rather than acting.
