@@ -1646,6 +1646,95 @@ and it does not threaten the instrument's accuracy.
 
 **§7.5.2 remains the only outstanding observation.** The flicker
 characterisation still needs eyes on the panel; no log answers it.
+**Discharged 2026-08-05 — see §9.11.7.**
+
+[Return to Table of Contents](<#table of contents>)
+
+### 9.11.7 §7.5.2 Discharged — The Flicker Is Gone
+
+`fps_limit` was set to 30 on the target and the application restarted at
+10:17:18. Observed on the panel: **no tearing, no flashing, no band
+thrash, and the needle reads acceptably at 30 Hz.**
+
+That discharges §7.5.2, the last §8.4 item, and closes display report
+§4.0 in full.
+
+#### 9.11.7.1 The 30 Hz Baseline
+
+32 samples:
+
+| | 60 Hz (n=297) | 30 Hz (n=32) |
+|---|---|---|
+| FPS observed | 52, 53, 54, 56, 59, 60 | **30.0 in every sample** |
+| frame median | 14.7 ms | 15.3 ms |
+| frame p90 | 19.7 ms | 18.7 ms |
+| frame max | 21.2 ms | 19.1 ms |
+| **over budget** | **32%** | **0 of 32** |
+| budget used at median | 88% | **46%** |
+
+Render cost is unchanged, as it should be — only the deadline moved.
+
+#### 9.11.7.2 Why the Flicker Went
+
+The FPS column is the finding. At 60 Hz the measured rate varied across
+six distinct values; at 30 Hz it is 30.0 in all 32 samples. **Frame
+pacing has gone from irregular to exact.**
+
+Display report §4.5 identified frame-time jitter as what makes a tear
+seam "move erratically instead of drifting smoothly", and §4.1 named
+unsynchronised writes as the primary tearing mechanism. The causes were
+addressed in sequence and the symptom is now absent:
+
+| Mechanism | Addressed by |
+|---|---|
+| §4.1 unsynchronised writes | `66ef59a0` removed the per-frame flush/sync; `49b21ace` added page flip |
+| §4.2 band colour thrash | `4c038bed` added threshold hysteresis |
+| §4.3 displayed value churn | `4c038bed` added EMA smoothing |
+| §4.4 unstable flash duty cycle | `4c038bed` derived the phase from the frame counter |
+| §4.5 frame-time jitter | `9ed1c77e` Part 2 — `fps_limit` 30 removed every overrun |
+
+No single change is provable as *the* fix, and this document should not
+claim one. What is established is that all five candidate mechanisms
+have been addressed and the symptom no longer occurs.
+
+#### 9.11.7.3 Consequence — The Two Remaining Triples Lose Their Justification
+
+`821919ce`'s own change document set the condition for withdrawal: "If
+RADIAL frames already complete well inside the budget, this change buys
+little and its medium risk is not justified — withdraw or defer it
+rather than proceeding." Frames now complete at 46% of budget with zero
+overruns and no flicker. **That condition is met.**
+
+`9ed1c77e` Part 3 (conditional render) is in the same position. Static
+screens still redraw 30 times a second to no effect, which is real
+waste, but there is no longer a problem it solves — and its own risk is
+the flash-suppression trap recorded in its prompt.
+
+**Recommendation: defer both, and cut v0.4.0 without them.** They remain
+authored and can be implemented if a future need appears — a heavier
+render path, a slower target, or a measured GIL contention problem. What
+should not happen is medium-risk optimisation of a renderer that meets
+its deadline and shows no visible fault.
+
+#### 9.11.7.4 Two Small Defects the Change Exposed
+
+1. **`PerformanceMonitor` does not follow `fps_limit`.**
+   `manager.py:159` constructs it as `PerformanceMonitor(target_fps=60)`,
+   hardcoded. At 30 Hz its `frame_time_target` is still 16.67 ms, its
+   dropped-frame threshold 25 ms rather than 50, its `min_fps` alarm 48
+   rather than 24, and its history deque sized for 60 fps. Any
+   dropped-frame figure read at 30 Hz is wrong. The startup line
+   reporting "target: 60 FPS" is the visible symptom — and it misled
+   this analysis once, being cited as evidence of the running frame rate
+   before the measured FPS samples corrected it.
+
+2. **`debug.log` never truncates.** `main.py:47` passes `mode='w'` to
+   `RotatingFileHandler`, which **silently overrides it to `'a'`
+   whenever `maxBytes > 0`** — verified against CPython's source and
+   reproduced. The intent is defeated and the `mode='w'` is dead code.
+   With `maxBytes` at 100 MB, rotation has never fired; the file reached
+   31.6 MB spanning three sessions, and had to be segmented by timestamp
+   for every analysis in §9.11.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -1665,6 +1754,7 @@ characterisation still needs eyes on the panel; no log answers it.
 | 8.0 | 2026-07-30 | Recorded the §7.5.4 decision: **retire** the `ConfigManager` device-persistence path. Rewrote §7.4.8 with call-graph evidence (`DeviceStore` has ~15 live call sites; the `ConfigManager` device methods have none) and two corrections to its previous text — the "approximately 1,600 lines" figure conflated the whole of `utils/config.py` with the device-persistence subset, and retirement does **not** close §3.1, because `_rw_lock` guards the live `load_config`/`save_config` path that `app.py:75` and `main.py:107` exercise on every start. §3.1 accordingly separated into a new triple 7.4.9 (`1143427b`) — a re-partition of existing scope, not an addition; §7.0 item #1 is a disjunction whose correction and retirement branches are now claimed separately. 7.4.1 rescoped to the retirement (§3.6, §5.1) and reslugged `config-device-persistence-retirement`. §7.6.1 dependency on 7.5.4 cleared and a 7.4.7→7.4.9 row added. 7.4.9 assigned to v0.3.0 (§8.3) as a small correction on a live path; 7.4.1 remains in v0.4.0 (§8.5) as a large deletion. |
 | 9.0 | 2026-08-04 | Added §9.0, cross-checking §7.0's twenty triples against governance-document state, `src/gtach` and pushed git/GitHub history, following William's report that several prompts had closed with issues/changes left open pending test results. Confirmed the pattern for eight triples (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`, `52414414`, `2d545bf5`, `d32ccc49`) — prompt closed, issue and change open. Added a Status column to §7.3 and §7.4 (per the residual observation in `task-list-cross-check-discrepancies.md` §10.2) and updated §0.0, §7.5.1 and §8.3. Recorded that `49b21ace` (7.3.4) was reclassified from v0.4.0 into v0.3.0 once `cb28980f` (7.3.3) cleared its gate mechanically (§9.3); removed it from §8.5. Flagged `1143427b` (7.4.9) as closed — issue, change and prompt — without a T06 result document and without appearing on §8.2.1's grandfather list; its own change document records the on-target verification step as open and the coupled T05 as `status: planned` with all cases `not_run` (§9.4). Confirmed by direct source inspection that `394c3bbb` (7.4.1) remains unimplemented — the `ConfigManager` device-persistence methods are still present — and that all eight remaining v0.4.0 triples have no governance documents or matching commits (§9.5). |
 | 10.0 | 2026-08-04 | Authored the eight remaining triples — `b02ed4ea`, `378703da`, `5014040c`, `5012004e`, `821919ce`, `9ed1c77e`, `394c3bbb`, `6481f8ce` — completing all twenty in §7.0. Twenty-four documents, all iteration 1, `target_profile: claude_code`, none implemented. Added §9.7 recording: that three gated triples were authored against §8.1's advice on instruction, each carrying an explicit assumptions block and a stop-and-report first implementation step (§9.7.1); seven corrections found while authoring, chiefly that `394c3bbb` must not touch `comm/models.py` or `comm/device_store.py`, that a fourth transport-name list exists at `app.py:267`, that `_handle_long_press` survives DIGITAL's retirement with its assignment changed, that `_get_band_colour` must outlive its last caller for `5014040c`'s benefit, and that recommendation 26's subject largely dissolves once DIGITAL is retired (§9.7.2); one open decision, the absent entry point to *Clear settings* under `b02ed4ea`'s three-control budget (§9.7.3); and the discharge status of all five cross-check discrepancies (§9.7.4). Added Status columns to the §7.3 and §7.4 rows, a state column and an implementation order to §8.5, and corrected §9.0's date, which revision 9.0 recorded as 2026-07-31 in error. |
+| 16.0 | 2026-08-05 | Added §9.11.7 discharging §7.5.2, the last §8.4 observation. With `fps_limit` at 30 on the target: **no tearing, no flashing, no band thrash, and an acceptable needle** — display report §4.0 closes in full. 30 Hz baseline over 32 samples: **FPS exactly 30.0 in every sample** against six distinct values at 60 Hz, median frame 15.3 ms, **zero overruns**, 46% of budget used. Recorded that frame pacing has gone from irregular to exact and that all five §4.x flicker mechanisms have been addressed, while declining to claim any single change as *the* fix. **Recommends deferring `821919ce` and `9ed1c77e` Part 3 and cutting v0.4.0 without them**: `821919ce`'s own change document set withdrawal's condition as frames completing well inside budget, and that condition is now met, so both would be medium-risk optimisation of a renderer that meets its deadline and shows no visible fault. Recorded two defects the change exposed — `PerformanceMonitor` is constructed with a hardcoded `target_fps=60` so every dropped-frame figure at 30 Hz is wrong, and `RotatingFileHandler` silently overrides `mode='w'` to `'a'` when `maxBytes > 0`, verified against CPython source, so `debug.log` has never truncated and reached 31.6 MB across three sessions. |
 | 15.0 | 2026-08-05 | Added §9.11.6 recording the 52-minute run that completed the §8.4 residual work. Frame-time baseline firm at 297 samples: median 14.7 ms, mean 16.0, p90 19.7, max 21.2 against a 16.67 ms budget, with 32% of frames overrunning at 60 Hz and **none of 297 overrunning at 30 Hz**. Render cost verified equivalent in simulation and Bluetooth modes, validating the large simulation sample. Consequence recorded: `9ed1c77e` recommendation 12 alone would eliminate every observed overrun for a one-line configuration change, so it should ship *ahead* of `821919ce` rather than after it. **Corrected two earlier over-claims about the OBD desynchronisation** (§9.10.4, §9.11.5): it recovers once polling settles into uniform `010C` commands — the "does not recover" claim was drawn from a 90-second session — and it does not corrupt the displayed reading, 874 responses spanning 0–4,208 RPM producing 4,193 frames with not one displayed value outside that range, the intermediate values being `4c038bed`'s EMA interpolating as designed. Severity reduced from data integrity to initialisation-phase robustness. §7.5.2's flicker characterisation remains the only outstanding observation. |
 | 14.0 | 2026-08-05 | Added §9.11 discharging the §8.4 observation session from logs already pulled, five of its six items being answerable because the instrumentation each depended on has since shipped. §7.5.1 discharged — framebuffer is 32-bit at stride 1920, exactly as `engine.py` assumed, so display report §8.3 is not an active fault and page flip is confirmed operating. §7.5.3 discharged indicatively: correlating the four periodic samples against what was on screen gives RADIAL at 14.7–19.3 ms against a 16.67 ms budget and the static OPTIONS screen at 6.3 ms, with the caveat that three RADIAL samples from one 90-second session is a direction rather than a baseline. §7.5.6 substantively answered — platform detection selects `RASPBERRY_PI_ZERO_2W` correctly, though the raw revision string is not logged. **`821919ce`'s gate clears**: assumption A1 holds more strongly than it was framed, render cost being at or over the whole budget rather than merely material; A3 confirmed at 37.1 MB steady; A2 supported but not isolated. `9ed1c77e`'s two recommendations separate — recommendation 12 is now supported independently of any assumption, the application demonstrably not sustaining 60 Hz. Residual on-panel work reduced from six items to two: §7.5.2's flicker characterisation and a five-minute run for a firmer baseline (§9.11.4). Recorded that the OBD desynchronisation reproduces and is clearer than §9.10.4 stated — `0100` receives `ATSP0`'s acknowledgement and `010C` is polled three times unanswered — and that whether it corrupts the displayed reading is not established, simulation mode having masked the real-data window (§9.11.5). |
 | 13.0 | 2026-08-05 | Added §9.10 recording the second on-target session, after `7f2a9c04` and `3e8b1d72` were implemented. Both verified: one ERROR in 362 KB and no `DIGITAL` line. Raised `c1d4b8e6` grouping three small faults on the `change-d32ccc49` pattern — the debug toggle still failing because `gtach/__init__.py:11` binds `main` to the function so `app.py` cannot reach the module's handlers, a fault that is self-concealing because both sites log at DEBUG and one of them is the DEBUG control (§9.10.1); `engine_profiles.yaml` absent from the wheel, confirmed against the built artefact, with zero current impact because the abarth profile's thresholds coincide with the dataclass defaults but two profiles unreachable and the `engine_profile` key inert (§9.10.2); and the second stale *"Long press to return"* footer in `_draw_update_view`, carried from the `3e8b1d72` report §6.2 at the operator's request (§9.10.3). Recorded a fourth finding not yet raised: the OBD response stream desynchronises permanently after a timeout — `0100` times out at 1.0 s during the ELM327 protocol search, the late response is not drained, and every subsequent read returns the previous command's answer, which is why initialisation fails against a paired and answering emulator (§9.10.4). |
