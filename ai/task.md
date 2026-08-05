@@ -36,6 +36,8 @@ Created: 2026 July 29
 [9.5 Confirmed Not Yet Implemented](<#9.5 confirmed not yet implemented>)
 [9.6 Verification Evidence](<#9.6 verification evidence>)
 [9.7 Remaining Eight Triples Authored — 2026-08-04](<#9.7 remaining eight triples authored — 2026-08-04>)
+[9.8 Implementation — 2026-08-04](<#9.8 implementation — 2026-08-04>)
+[9.9 On-Target Session — 2026-08-05](<#9.9 on-target session — 2026-08-05>)
 [Version History](<#version history>)
 
 ---
@@ -52,11 +54,15 @@ Created: 2026 July 29
 | 4.1 | — | `faulthandler` output not captured under systemd | ☐ Open |
 | 5.1 | — | Splash audit §4.3 — WELCOME screen touch-unresponsiveness | ☐ Unverified |
 | 6.1 | — | UI Navigation audit — Finding C (terminology) | Deferred by design |
-| 7.3 | 13 UUIDs | Display review triples | **13 of 13 authored.** 2 closed (`4c038bed`, `0b00759c`); 5 prompt-closed/issue+change open (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`); 6 authored not implemented (`821919ce`, `9ed1c77e`, `b02ed4ea`, `378703da`, `5014040c`, `5012004e`) |
-| 7.4 | 8 UUIDs | Core/comm/utils review triples | **8 of 8 authored.** 3 closed (`5a9dc15e`, `11be4865`, `1143427b`†); 3 prompt-closed/issue+change open (`52414414`, `2d545bf5`, `d32ccc49`); 2 authored not implemented (`394c3bbb`, `6481f8ce`) |
-| 7.5 | — | Verification prerequisites gating §7.3/§7.4 | 2 of 6 resolved — 7.5.4 decided (retire); 7.5.1's self-clearing mechanism has shipped (7.3.3), observation itself still pending §8.4. **7.5.3 and 7.5.5 now gate implementation of three authored triples** (§9.7.1) |
-| 8.0 | — | Two-release plan: v0.3.0 diagnostic and low-risk, v0.4.0 gated and appearance-changing | v0.3.0 fully authored and implemented (14 items, §8.3); v0.4.0 fully authored 2026-08-04, 0 implemented (§9.7) |
-| 9.7 | — | Eight remaining triples authored | ✅ Authored 2026-08-04; one open decision (§9.7.3) |
+| 7.3 | 13 UUIDs | Display review triples | **13 of 13 authored.** 2 closed (`4c038bed`, `0b00759c`); 9 prompt-closed/issue+change open (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`, `b02ed4ea`, `378703da`, `5014040c`, `5012004e`); **2 not implemented — gated** (`821919ce`, `9ed1c77e`) |
+| 7.4 | 8 UUIDs | Core/comm/utils review triples | **8 of 8 authored.** 3 closed (`5a9dc15e`, `11be4865`, `1143427b`†); 5 prompt-closed/issue+change open (`52414414`, `2d545bf5`, `d32ccc49`, `394c3bbb`, `6481f8ce`). **All 8 implemented** |
+| 7.5 | — | Verification prerequisites gating §7.3/§7.4 | 3 of 6 resolved — 7.5.4 decided (retire); **7.5.5 discharged 2026-08-04** by the reproduction carried out under `6481f8ce` (§9.8.4); 7.5.1's self-clearing mechanism has shipped (7.3.3), observation itself still pending §8.4. **7.5.3 alone now gates the last two triples** (§9.8.2) |
+| 8.0 | — | Two-release plan: v0.3.0 diagnostic and low-risk, v0.4.0 gated and appearance-changing | v0.3.0 fully authored and implemented (14 items, §8.3); v0.4.0 fully authored 2026-08-04, **6 of 8 implemented 2026-08-04** (§9.8) |
+| 9.7 | — | Eight remaining triples authored | ✅ Authored 2026-08-04; one open decision (§9.7.3), now live in source (§9.8.5 item 4) |
+| 9.8 | — | Six of the eight v0.4.0 triples implemented | ✅ 2026-08-04 — 8 commits on `v0.4.0-display-triples`, unpushed. **Four findings require decision** (§9.8.5); three prompt deviations recorded (§9.8.6) |
+| 9.9 | `7f2a9c04` | On-target session — operator trapped on OPTIONS screen | ☐ **Open, high.** §9.8.5 item 1 confirmed in `logs/start.log`. Triple authored 2026-08-05, not implemented. **Ship ahead of the rest of v0.4.0** |
+| 9.9.2 | — | Debug toggle fires; `app.py:155` binds the `main` function, not the module | ☐ Open — **no T03 raised yet** (§9.9.2) |
+| 9.9.3 | `3e8b1d72` | Swipe-down/up navigation for OPTIONS — scope extension agreed | ☐ Authored 2026-08-05, not implemented. Depends on `7f2a9c04` |
 
 † `1143427b` closed (issue, change and prompt) without a T06 result document, contrary to
 §8.2.1's Standing Closure Rule and without appearing on that section's grandfather list.
@@ -319,14 +325,14 @@ the numbered items in §9.0.
 | 7.3.2 | `66ef59a0` | `framebuffer-write-path` | 2, 6, 7, 8 | `display/rendering/engine.py` | Implemented — prompt closed, issue/change open pending test |
 | 7.3.3 | `cb28980f` | `framebuffer-geometry-query` | 21 | `display/rendering/engine.py`, `utils/terminal.py` (ioctl pattern) | Implemented — prompt closed, issue/change open pending test |
 | 7.3.4 | `49b21ace` | `framebuffer-vsync-pageflip` | 3, 4 | `display/rendering/engine.py` | Implemented — prompt closed, issue/change open pending test. Reclassified from v0.4.0 into v0.3.0; see §9.3 |
-| 7.3.5 | `821919ce` | `render-caching` | 9, 10, 11 | `display/manager.py`, `display/rendering/engine.py` | Authored 2026-08-04 — ☐ not implemented. Gated: §7.5.3 baseline. Three assumptions recorded |
-| 7.3.6 | `9ed1c77e` | `frame-pacing-conditional-render` | 12, 13, 14 | `display/manager.py`, `config/config.yaml` | Authored 2026-08-04 — ☐ not implemented. Gated: §7.5.3 and 7.3.5 |
+| 7.3.5 | `821919ce` | `render-caching` | 9, 10, 11 | `display/manager.py`, `display/rendering/engine.py` | ☐ **Not implemented — gate failed 2026-08-04.** §7.5.3 baseline does not exist; the prompt's own gate instructs stop-and-report. Prompt T-Doc remains active. Three assumptions recorded (§9.8.2) |
+| 7.3.6 | `9ed1c77e` | `frame-pacing-conditional-render` | 12, 13, 14 | `display/manager.py`, `config/config.yaml` | ☐ **Not implemented — gate failed 2026-08-04.** Gated twice: §7.5.3 and 7.3.5 landing first. Prompt T-Doc remains active (§9.8.2) |
 | 7.3.7 | `0b00759c` | `performance-instrumentation` | 15, 16, 17, 18 | `display/performance/monitor.py`, `display/manager.py` | ✅ Closed |
 | 7.3.8 | `44bca479` | `display-defect-remediation` | 19, 20, 22 | `display/manager.py`, `display/input/touch_coordinator.py` | Implemented — prompt closed, issue/change open pending test |
-| 7.3.9 | `b02ed4ea` | `button-system-touch-targets` | 24, 27 | `display/manager.py`, `display/typography.py` (`touch_coordinator.py` read-only) | Authored 2026-08-04 — ☐ not implemented. One open decision: see §9.7 |
-| 7.3.10 | `378703da` | `radial-centre-readout` | 25 | `display/manager.py`, `display/models.py`, `utils/config.py`, `config/config.yaml` | Authored 2026-08-04 — ☐ not implemented |
-| 7.3.11 | `5014040c` | `annular-band-indicator` | 26 | `display/manager.py` | Authored 2026-08-04 — ☐ not implemented. Must follow 7.3.10 |
-| 7.3.12 | `5012004e` | `night-palette-toggle` | 29 | `display/manager.py`, `display/models.py` | Authored 2026-08-04 — ☐ not implemented. Must follow 7.3.11 and 7.3.9 |
+| 7.3.9 | `b02ed4ea` | `button-system-touch-targets` | 24, 27 | `display/manager.py`, `display/typography.py` (`touch_coordinator.py` read-only) | Implemented 2026-08-04 (`a34fd49`) — prompt closed, issue/change open pending test. *Clear settings* now has no entry point in source (§9.8.5 item 4) |
+| 7.3.10 | `378703da` | `radial-centre-readout` | 25 | `display/manager.py`, `display/models.py`, `utils/config.py`, `config/config.yaml` | Implemented 2026-08-04 (`7035a93`) — prompt closed, issue/change open pending test. Live `DisplayMode.DIGITAL` refs survive outside the four-file scope (§9.8.5 item 1) |
+| 7.3.11 | `5014040c` | `annular-band-indicator` | 26 | `display/manager.py` | Implemented 2026-08-04 (`730ae56`) — prompt closed, issue/change open pending test. Contrast criterion unsatisfiable as specified (§9.8.5 item 3); `BAND_COLOURS[0]` corrected (§9.8.6 item 1) |
+| 7.3.12 | `5012004e` | `night-palette-toggle` | 29 | `display/manager.py`, `display/models.py` | Implemented 2026-08-04 (`2242387`) — prompt closed, issue/change open pending test. **Toggle cannot fire**: no `DOUBLE_TAP` gesture exists (§9.8.5 item 2) |
 | 7.3.13 | `4c3c3e1f` | `update-view-progress` | 28 | `display/manager.py` | Implemented — prompt closed, issue/change open pending test |
 
 Coverage check: recommendations 1–29 each appear exactly once across
@@ -398,11 +404,11 @@ list.
 
 | Task | UUID | Slug | Report items | Primary files | Status (2026-08-04) |
 |---|---|---|---|---|---|
-| 7.4.1 | `394c3bbb` | `config-device-persistence-retirement` | §3.6, §5.1; #1 (retirement branch), #6 | `utils/config.py` only — see §9.7 | Authored 2026-08-04 — ☐ not implemented. Not gated; §7.5.4 decided |
+| 7.4.1 | `394c3bbb` | `config-device-persistence-retirement` | §3.6, §5.1; #1 (retirement branch), #6 | `utils/config.py` only — see §9.7 | Implemented 2026-08-04 (`251ea74`) — prompt closed, issue/change open pending test. Pre-flight grep confirmed no caller of the three retired methods |
 | 7.4.2 | `5a9dc15e` | `watchdog-lock-discipline` | §3.3, §4.1; #2 | `core/watchdog.py`, `core/thread.py` | ✅ Closed |
 | 7.4.3 | `11be4865` | `platform-detection-consolidation` | §3.2, §4.4; #3 | `utils/platform.py`, `utils/dependencies.py` | ✅ Closed |
 | 7.4.4 | `52414414` | `device-store-pairing-robustness` | §3.4, §3.5, §5.6, §5.7; #4, #5 | `comm/device_store.py`, `comm/pairing.py` | Implemented — prompt closed, issue/change open pending test |
-| 7.4.5 | `6481f8ce` | `transport-consolidation` | §4.3, §5.3, §5.8; #7 | `comm/transport.py`, `comm/rfcomm.py`, `comm/serial_transport.py`, `comm/tcp_transport.py`, `main.py`, `app.py` | Authored 2026-08-04 — ☐ not implemented. Gated: §7.5.5 reproduction |
+| 7.4.5 | `6481f8ce` | `transport-consolidation` | §4.3, §5.3, §5.8; #7 | `comm/transport.py`, `comm/rfcomm.py`, `comm/serial_transport.py`, `comm/tcp_transport.py`, `main.py`, `app.py` | Implemented 2026-08-04 in three stage commits (`3f5fc5e`, `fe879f9`, `51a930b`) — prompt closed, issue/change open pending test. **Gate cleared by carrying out the §7.5.5 reproduction first** (§9.8.4) |
 | 7.4.6 | `2d545bf5` | `thread-shutdown-budget` | §5.5, §5.9 | `core/thread.py`, `app.py` | Implemented — prompt closed, issue/change open pending test |
 | 7.4.7 | `d32ccc49` | `utils-comm-housekeeping` | §4.2, §5.2, §5.4; #8 | `utils/home.py`, `utils/config.py`, `comm/obd.py` | Implemented — prompt closed, issue/change open pending test |
 | 7.4.9 | `1143427b` | `rwlock-notification-defect` | §3.1; #1 (correction branch) | `utils/config.py` | ✅ Closed — but see §9.4, closure deviates from §8.2.1 |
@@ -480,9 +486,9 @@ and 7.5.6 require the live devices (`gtach.local`, and a paired ELM327 or
 |---|---|---|---|
 | 7.5.1 | Read `bits_per_pixel`, `stride`, `virtual_size` from `/sys/class/graphics/fb0`; `fbset -i` | display §10.1 | **Gated 7.3.3 and 7.3.4.** 7.3.3 has shipped (`cb28980f`) and confirmed in source: `engine.py` queries `FBIOGET_VSCREENINFO`/`FBIOGET_FSCREENINFO` before mapping and logs a mismatch at ERROR. The gate is mechanically satisfied per §8.3's note, and 7.3.4 (`49b21ace`) has been authored and implemented on that basis. The actual on-device log line has not yet been read; do so in §8.4 as a confirmation rather than a gate |
 | 7.5.2 | Characterise the flicker: moving horizontal band vs. full-field alternation vs. above-caution-only vs. last-digit churn; then the simulation-mode sweep test | display §10.3, §10.4 | Determines whether 7.3.1 or 7.3.4 is the effective fix; may reduce 7.3.4 to an efficiency item |
-| 7.5.3 | Read `frame_time_ms` from the periodic log line | display §10.2 | **Depends on 7.3.7** (rec 15). Until that ships the logged figure measures padded, not render, time. Establishes the baseline against which 7.3.5, 7.3.6 are judged |
+| 7.5.3 | Read `frame_time_ms` from the periodic log line | display §10.2 | **Depends on 7.3.7** (rec 15), which has shipped. **Still not taken — this is now the sole outstanding gate on 7.3.5 and 7.3.6**, both of which were stopped and reported on 2026-08-04 rather than implemented (§9.8.2). Establishes the baseline against which they are judged |
 | 7.5.4 | ✅ **DECIDED 2026-07-30 — retire.** No intended future use; `DeviceStore` is the sole device store. Call-graph evidence and two corrections to the previous framing are recorded in §7.4.8 | core §8.0 | 7.4.1 is unblocked and scoped to retirement (§3.6, §5.1). §3.1 is separated into 7.4.9, being independent of the disposition |
-| 7.5.5 | Reproduce the transport race: concurrent `disconnect()` and `send_command()` | core §8.0 | Confirms the §5.3 failure mode and supplies the regression test for 7.4.5 |
+| 7.5.5 | ✅ **DISCHARGED 2026-08-04.** Reproduced under 7.4.5 with explicit synchronisation, against the unchanged files and again after Stage 1. Pre-change: `AttributeError` in all three transports. Post-change: handled `OSError`/`SerialException`, transport marked DISCONNECTED. Both results recorded (§9.8.4) | core §8.0 | Confirmed the §5.3 failure mode and supplied the regression test for 7.4.5. **Correction:** the `AttributeError` is caught by `send_command`'s broad handler, so the defect was silent in production — the reproduction discriminates by logged message, not by return value |
 | 7.5.6 | Record the actual hardware revision string on the Pi Zero 2W | core §8.0 | Confirms whether the §3.2 `lstrip()` defect corrupts detection for the revision in field use; sets the severity recorded in 7.4.3 |
 
 [Return to Table of Contents](<#table of contents>)
@@ -750,16 +756,19 @@ mechanically once 7.3.3 shipped, per §8.3's own note. It is removed from
 this table and tracked under §8.3; see §9.3. Second, all eight triples
 below are now authored (§9.7). None is implemented.
 
+**Update 2026-08-04, implementation.** Six of the eight are implemented
+(§9.8). The two that remain are the two §7.5.3 gates.
+
 | Triple | UUID | Unblocked by | State |
 |---|---|---|---|
-| 7.3.5 | `821919ce` | 7.5.3 baseline; keyed cache per §7.6.1 | Authored — gated |
-| 7.3.6 | `9ed1c77e` | 7.3.5 | Authored — gated |
-| 7.3.9 | `b02ed4ea` | — grouped here as an appearance change | Authored |
-| 7.3.10 | `378703da` | — retires DIGITAL mode; largest behavioural change in the set | Authored |
-| 7.3.11 | `5014040c` | 7.3.1, and now 7.3.10 — see §9.7.2 item 6 | Authored |
-| 7.3.12 | `5012004e` | 7.3.11 and 7.3.9 | Authored |
-| 7.4.1 | `394c3bbb` | 7.5.4 decided — retire (§7.4.8). Large deletion, released here rather than with the v0.3.0 corrections | Authored — not gated |
-| 7.4.5 | `6481f8ce` | 7.5.5 reproduction | Authored — gated |
+| 7.3.5 | `821919ce` | 7.5.3 baseline; keyed cache per §7.6.1 | ☐ **Gate failed — not implemented** |
+| 7.3.6 | `9ed1c77e` | 7.3.5 | ☐ **Gate failed — not implemented** |
+| 7.3.9 | `b02ed4ea` | — grouped here as an appearance change | ✅ Implemented (`a34fd49`) |
+| 7.3.10 | `378703da` | — retires DIGITAL mode; largest behavioural change in the set | ✅ Implemented (`7035a93`) |
+| 7.3.11 | `5014040c` | 7.3.1, and now 7.3.10 — see §9.7.2 item 6 | ✅ Implemented (`730ae56`) |
+| 7.3.12 | `5012004e` | 7.3.11 and 7.3.9 | ✅ Implemented (`2242387`) — feature unreachable, §9.8.5 item 2 |
+| 7.4.1 | `394c3bbb` | 7.5.4 decided — retire (§7.4.8). Large deletion, released here rather than with the v0.3.0 corrections | ✅ Implemented (`251ea74`) |
+| 7.4.5 | `6481f8ce` | 7.5.5 reproduction | ✅ Implemented (`3f5fc5e`, `fe879f9`, `51a930b`) — gate cleared by carrying out the reproduction |
 
 The five user interface triples are deliberately released together so the
 product's appearance changes once rather than incrementally.
@@ -772,6 +781,14 @@ independent of the display chain and placed wherever its §7.5.5
 reproduction is ready. `378703da` before `5014040c` is not optional:
 implementing the annular indicator first means editing code that
 `378703da` deletes.
+
+**Order actually used, 2026-08-04.** `b02ed4ea` → `378703da` →
+`5014040c` → `5012004e` → `394c3bbb` → `6481f8ce`, with the two gated
+triples skipped. This differs from the above only in placing `394c3bbb`
+sixth rather than first, which is immaterial: it touches
+`utils/config.py` alone and is independent of the display chain. The
+binding constraint — `378703da` before `5014040c` before `5012004e` —
+was preserved.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -1058,6 +1075,292 @@ by adding a fourth button.
 
 ---
 
+### 9.8 Implementation — 2026-08-04
+
+Six of the eight v0.4.0 triples were implemented in a single session.
+Full detail is in
+`ai/workspace/report/v0.4.0-triple-implementation-session.md`; this
+section records what the task list needs to carry.
+
+#### 9.8.1 Outcome
+
+| Triple | Outcome | Commit |
+|---|---|---|
+| `b02ed4ea` | ✅ Implemented, verified, prompt closed | `a34fd49` |
+| `378703da` | ✅ Implemented, verified, prompt closed | `7035a93` |
+| `5014040c` | ✅ Implemented, verified, prompt closed | `730ae56` |
+| `5012004e` | ✅ Implemented, verified, prompt closed | `2242387` |
+| `394c3bbb` | ✅ Implemented, verified, prompt closed | `251ea74` |
+| `6481f8ce` | ✅ Implemented, verified, prompt closed | `3f5fc5e`, `fe879f9`, `51a930b` |
+| `821919ce` | ☐ Gate failed — stopped and reported | — |
+| `9ed1c77e` | ☐ Gate failed — stopped and reported | — |
+
+Branch `v0.4.0-display-triples` from `32927fc`, eight commits, **not
+pushed**. `main` is unchanged. Each commit carries one triple's source
+changes plus that triple's prompt T-Doc move into `closed/`.
+`6481f8ce` is three commits, one per stage, as its prompt requires.
+
+All sixteen issue and change T-Docs remain **active** per §8.2.1. No T06
+result documents were produced.
+
+#### 9.8.2 The Two Gated Triples
+
+`821919ce` and `9ed1c77e` were not implemented. Both prompts make the
+§7.5.3 `frame_time_ms` baseline a gate and instruct stop-and-report if
+it is absent. It is absent: `ai/workspace/test/result/` is empty, §7.5
+records 7.5.3 unresolved, and the §8.4 session requires deployment to
+`gtach.local`.
+
+No substitute measurement was taken. A frame time from macOS Apple
+Silicon is not a proxy for a Pi Zero 2W and would not have cleared the
+gate honestly.
+
+This is §8.1's advice vindicated: §9.7.1 recorded that these two were
+authored against it, and the first attempt to execute them stopped at
+exactly the point §8.1 predicted. Nothing else depended on them —
+`5012004e`'s prompt anticipates the case and instructs that the
+static-layer invalidation check be recorded as not applicable.
+
+#### 9.8.3 Verification Method
+
+`pytest tests/` was not used and proves nothing: the suite collects zero
+items and pytest is not importable in the working environment. Each
+triple was verified by an ephemeral script asserting its own prompt's
+success criteria against the real source, executing extracted functions
+against stubs rather than inspecting text. Equivalence claims were
+asserted against the pre-change source pulled from git — notably the
+band-index sequence for `5014040c` and the day palette for `5012004e`.
+
+The harnesses were not retained as project artefacts. See §9.8.7.
+
+#### 9.8.4 §7.5.5 Discharged
+
+The transport-race reproduction was carried out under `6481f8ce`, first
+against the unchanged files and again after Stage 1, with explicit
+synchronisation rather than sleeps. Pre-change: `AttributeError` in all
+three transports. Post-change: handled `OSError`/`SerialException` with
+the transport marked DISCONNECTED. Both results recorded.
+
+One correction to the §5.3 framing: the `AttributeError` is caught by
+`send_command`'s broad `except Exception` and returns `None` exactly as
+a handled I/O error does. The defect was therefore **silent in
+production**, and a reproduction that classifies by return value does
+not discriminate. The first attempt did not; it was rewritten to
+classify by logged message.
+
+#### 9.8.5 Findings Requiring Decision
+
+Four defects outside an implementing executor's authority. None is a
+defect in the delivered code; each is a defect in a specification or a
+gap the specifications did not anticipate. Each warrants a T03 issue
+under P04 if it is to be tracked.
+
+1. **Live `DisplayMode.DIGITAL` references survive `378703da`.**
+   `display/touch.py` (8 sites) and `display/navigation_gestures.py`
+   (2 sites) still reference the removed enum member, and both are
+   instantiated at runtime by
+   `DisplayManager._initialize_legacy_components`. The references sit in
+   method bodies, so imports still succeed; those paths will raise
+   `AttributeError` if executed. `378703da`'s four-file constraint
+   excludes both modules, and its success criterion
+   "grep -r 'DIGITAL' src/gtach returns no match" is unsatisfiable
+   within that constraint — and additionally conflicts with its own
+   EDIT 6(a), which mandates the literal string in the migration branch.
+   **This is the only finding that can fault the running application.**
+
+2. **The night palette toggle cannot fire.** `5012004e` specifies a
+   double-tap. `GestureType` has no `DOUBLE_TAP` member and the touch
+   coordinator performs no double-tap disambiguation; the prompt
+   declares `display/input` read-only. The prompt's own edge-case list
+   asked for this to be verified rather than assumed, and the answer is
+   that no such disambiguation exists. Delivered with the registration
+   conditional on `getattr(GestureType, 'DOUBLE_TAP', None)`, so the
+   toggle goes live the moment the subsystem provides the gesture. Until
+   then the feature is complete and unreachable.
+
+3. **The contrast requirement is arithmetically unsatisfiable.**
+   `5014040c` and `5012004e` each fix the palette values *and* require
+   every band colour to reach 3:1 against the face ground. Both cannot
+   hold: pure blue's relative luminance is 0.0722 and 3:1 against a
+   near-black ground needs ~0.103. `5012004e` compounds it by also
+   requiring every night colour to be dimmer than its day counterpart,
+   capping blue from the other side. Measured as delivered: day blue
+   2.21:1, night blue 1.55:1, `FACE_TRACK` 1.67:1, `FACE_EDGE` 2.02:1,
+   `FACE_LINE` 2.76:1. All other pairs pass, including day tick 14.55:1
+   and night tick 4.67:1. The specified constants were implemented as
+   written rather than silently altered, because both prompts forbid
+   changing the colours. Resolution requires a lighter blue (breaking
+   the dimmer-than-day rule), a lighter ground (breaking the
+   emitted-light goal), or dropping the 3:1 bar for band fills. The
+   subordinate case is that a 3:1 bar may simply be the wrong test for a
+   deliberately subtle track and hairline edge.
+
+4. **`b02ed4ea` leaves *Clear settings* with no entry point.** Recorded
+   as an open decision in §9.7.3 before implementation; now live in
+   source. The options screen offers no route to the control at all.
+   §7.7's circular re-layout is where the recovered space comes from.
+
+#### 9.8.6 Deviations from Prompt Specifications
+
+Three, each recorded in source and in the relevant commit message.
+
+1. **`BAND_COLOURS[0]`** — `5014040c` EDIT C specifies `(0, 0, 0)`;
+   delivered as `(0, 0, 255)`. That black was DIGITAL's idle *screen*
+   background and was never an arc colour; adopting it would have
+   repainted the idle arc segment black on a near-black face and erased
+   it. The prompt's EDIT C palette and its constraint "Blue, blue,
+   green, yellow, orange, red are unchanged" contradict each other; the
+   constraint governs, because it describes what is drawn.
+
+2. **Transport primitives are not `@abstractmethod`** — `6481f8ce`
+   Stage 2 specifies them as abstract; delivered as concrete methods
+   raising `NotImplementedError`, with a type check in
+   `OBDTransport.__init__` preserving the `TypeError` on direct
+   instantiation. Declaring them abstract makes `SimTransport`
+   uninstantiable — it inherits `OBDTransport`, overrides all five
+   skeleton methods and supplies none of the four primitives — and the
+   same prompt forbids modifying it. Abstract declarations would have
+   broken `simtcp` and `simbt` outright. Caught by the verification
+   pass, not by inspection.
+
+3. **`saved_devices` in comments** — `394c3bbb` requires the string to
+   appear nowhere in `src/gtach`. Delivered with the token absent from
+   code and the two explanatory comments reworded, so the criterion
+   passes literally while the migration behaviour stays documented.
+
+A fourth, minor: `app.py:91` still tests `transport_arg == 'simbt'` to
+select the pairing factory. `6481f8ce` Stage 3 names three sites and
+says to change nothing else, so it was left; it is a fourth place a
+transport name appears as a literal.
+
+#### 9.8.7 Governance Gaps Left Open
+
+- **No T06 result documents.** The verification of §9.8.3 is recorded in
+  the report and in commit messages, not in T05/T06 form. If §8.2.1's
+  closure path is to be followed for these six triples, T05 test
+  documents and T06 results are the missing artefacts.
+- **§8.2's minimal pytest suite remains unwritten.** `tests/` still
+  collects zero items. Every verification claim rests on ephemeral
+  scripts that were not retained. Converting the six harnesses into
+  `tests/` would preserve the evidence and discharge §8.2 together.
+- **The branch is unpushed and unmerged.** v0.4.0 cannot be cut: two of
+  its eight triples are unimplemented and one delivered feature cannot
+  be operated (§9.8.5 item 2).
+
+[Return to Table of Contents](<#table of contents>)
+
+### 9.9 On-Target Session — 2026-08-05
+
+The `v0.4.0-display-triples` branch was deployed to `gtach.local` and
+`logs/` pulled back. The session confirmed §9.8.5 item 1 and produced
+two further findings.
+
+#### 9.9.1 §9.8.5 Item 1 Confirmed — Operator Trapped on the Options Screen
+
+`logs/start.log` carries five lines and no other errors in 3.5 MB:
+
+```
+06:39:54,899  TouchHandler ERROR Short press handling error: DIGITAL
+06:39:55,878  TouchHandler ERROR Short press handling error: DIGITAL
+06:39:57,403  TouchHandler ERROR Short press handling error: DIGITAL
+06:40:08,372  TouchHandler ERROR Long press handling error: DIGITAL
+06:40:09,798  TouchHandler ERROR Long press handling error: DIGITAL
+```
+
+The operator could not leave the OPTIONS screen. `touch.py:171` names
+`DisplayMode.DIGITAL`, which `change-378703da` removed; the access
+raises `AttributeError('DIGITAL')`, `touch.py:174` catches it, and the
+gesture silently does nothing. The message body is the bare word
+because both handlers log `f'...: {e}'` without the exception type.
+
+Two facts the static review did not establish. First, `TouchHandler`
+registers `_handle_touch_event` on a **started** touch interface
+(`touch.py:78`), so its handlers are the ones that fire — the log
+attributes all five errors to `TouchHandler`, not `DisplayManager`.
+Second, the fault is swallowed, which is why it presents as an inert
+control rather than a crash, and why five ERROR lines sat in the log
+from the first session without anything appearing to be wrong.
+
+Raised as **`7f2a9c04`** — issue, change and prompt authored 2026-08-05,
+severity high. Not gated. Should ship ahead of the rest of v0.4.0 if a
+partial deployment is possible.
+
+#### 9.9.2 New — Debug Toggle Fires but the Handler Fails
+
+The operator reported being unable to toggle debug mode. The control
+worked; what it calls did not:
+
+```
+06:40:05,090  TouchEventCoordinator DEBUG Button debug_toggle pressed at (306, 255)
+06:40:05,091  DisplayManager INFO Debug logging toggle -> on
+06:40:05,091  gtach.app DEBUG Could not toggle debug logging:
+              'function' object has no attribute '_debug_handler'
+```
+
+`app.py:155` does `from . import main as _main` and then reads
+`_main._debug_handler`. `_main` binds to the **function** `main`, not
+the module — `gtach/__init__.py` exports the name — so the attribute
+access fails. The exception is caught at `app.py:166` and logged at
+DEBUG, so nothing surfaces to the operator.
+
+Two consequences, both visible in the log. `debug.log` is 0 bytes while
+`start.log` holds 57,560 DEBUG lines, so debug output is going to the
+wrong file. And `_debug_logging_on` starts False while the application
+is already logging at DEBUG, so the options label reads *Debug: Off*
+when debug is in fact on — the toggle inverts a flag that never
+described reality.
+
+**Not yet raised.** It is a defect in `change-bd8f95b7`'s two-file
+logging rather than in any v0.4.0 triple, and it wants its own T03.
+Recorded here so it is not lost.
+
+#### 9.9.3 Scope Extension Agreed — Swipe Navigation for OPTIONS
+
+The operator proposed replacing the long-press OPTIONS toggle with
+swipe-down to enter and swipe-up to leave, reasoning that a toggle has
+no second route when one direction fails — which is exactly what
+§9.9.1 produced.
+
+Agreed by consensus and authored as **`3e8b1d72`**, separate from
+`7f2a9c04` rather than folded into it: a defect fix and a navigation
+redesign landing together would make a subsequent navigation problem
+unattributable. `3e8b1d72` depends on `7f2a9c04`.
+
+Two findings from scoping it. The touch subsystem **already** detects
+and dispatches `SWIPE_UP` and `SWIPE_DOWN` — `GestureType` declares
+them, `_recognize_gesture` returns them, `handle_gesture` dispatches
+them — so no work in `display/input` is required. This distinguishes it
+sharply from `5012004e`'s double-tap palette toggle, which is
+unreachable because no `DOUBLE_TAP` member exists.
+
+And there are **two live long-press handlers**, in `manager.py` and
+`touch.py`. Any change to how OPTIONS is reached must address both or
+produce the enterable-but-unleavable asymmetry the proposal exists to
+prevent. `3e8b1d72` has the legacy path delegate to the `DisplayManager`
+handlers so the two agree by construction.
+
+#### 9.9.4 Root Cause of §9.9.1 — A File-Scoped Constraint on a Package-Wide Change
+
+`prompt-378703da` removed an enum member — a package-wide interface
+change — under a constraint permitting four files, and carried three
+requirements no two of which could hold together: *grep -r 'DIGITAL'
+src/gtach returns no match*, the four-file list, and its own EDIT 6(a)
+mandating the literal string in the migration branch.
+
+The executor recorded the conflict at report §6.3 and did not exceed
+its scope, which was correct. The defect is in the prompt.
+
+The lesson is recorded in `issue-7f2a9c04` prevention: a change that
+alters a package-wide interface cannot be scoped by file list — the
+scope is every reference, and the prompt should be written by grepping
+for them rather than by naming the files the author expected to be
+involved. `change-7f2a9c04` accordingly makes its success criterion a
+repository-wide grep.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
 ## Version History
 
 | Version | Date | Description |
@@ -1072,6 +1375,8 @@ by adding a fourth button.
 | 8.0 | 2026-07-30 | Recorded the §7.5.4 decision: **retire** the `ConfigManager` device-persistence path. Rewrote §7.4.8 with call-graph evidence (`DeviceStore` has ~15 live call sites; the `ConfigManager` device methods have none) and two corrections to its previous text — the "approximately 1,600 lines" figure conflated the whole of `utils/config.py` with the device-persistence subset, and retirement does **not** close §3.1, because `_rw_lock` guards the live `load_config`/`save_config` path that `app.py:75` and `main.py:107` exercise on every start. §3.1 accordingly separated into a new triple 7.4.9 (`1143427b`) — a re-partition of existing scope, not an addition; §7.0 item #1 is a disjunction whose correction and retirement branches are now claimed separately. 7.4.1 rescoped to the retirement (§3.6, §5.1) and reslugged `config-device-persistence-retirement`. §7.6.1 dependency on 7.5.4 cleared and a 7.4.7→7.4.9 row added. 7.4.9 assigned to v0.3.0 (§8.3) as a small correction on a live path; 7.4.1 remains in v0.4.0 (§8.5) as a large deletion. |
 | 9.0 | 2026-08-04 | Added §9.0, cross-checking §7.0's twenty triples against governance-document state, `src/gtach` and pushed git/GitHub history, following William's report that several prompts had closed with issues/changes left open pending test results. Confirmed the pattern for eight triples (`66ef59a0`, `cb28980f`, `49b21ace`, `44bca479`, `4c3c3e1f`, `52414414`, `2d545bf5`, `d32ccc49`) — prompt closed, issue and change open. Added a Status column to §7.3 and §7.4 (per the residual observation in `task-list-cross-check-discrepancies.md` §10.2) and updated §0.0, §7.5.1 and §8.3. Recorded that `49b21ace` (7.3.4) was reclassified from v0.4.0 into v0.3.0 once `cb28980f` (7.3.3) cleared its gate mechanically (§9.3); removed it from §8.5. Flagged `1143427b` (7.4.9) as closed — issue, change and prompt — without a T06 result document and without appearing on §8.2.1's grandfather list; its own change document records the on-target verification step as open and the coupled T05 as `status: planned` with all cases `not_run` (§9.4). Confirmed by direct source inspection that `394c3bbb` (7.4.1) remains unimplemented — the `ConfigManager` device-persistence methods are still present — and that all eight remaining v0.4.0 triples have no governance documents or matching commits (§9.5). |
 | 10.0 | 2026-08-04 | Authored the eight remaining triples — `b02ed4ea`, `378703da`, `5014040c`, `5012004e`, `821919ce`, `9ed1c77e`, `394c3bbb`, `6481f8ce` — completing all twenty in §7.0. Twenty-four documents, all iteration 1, `target_profile: claude_code`, none implemented. Added §9.7 recording: that three gated triples were authored against §8.1's advice on instruction, each carrying an explicit assumptions block and a stop-and-report first implementation step (§9.7.1); seven corrections found while authoring, chiefly that `394c3bbb` must not touch `comm/models.py` or `comm/device_store.py`, that a fourth transport-name list exists at `app.py:267`, that `_handle_long_press` survives DIGITAL's retirement with its assignment changed, that `_get_band_colour` must outlive its last caller for `5014040c`'s benefit, and that recommendation 26's subject largely dissolves once DIGITAL is retired (§9.7.2); one open decision, the absent entry point to *Clear settings* under `b02ed4ea`'s three-control budget (§9.7.3); and the discharge status of all five cross-check discrepancies (§9.7.4). Added Status columns to the §7.3 and §7.4 rows, a state column and an implementation order to §8.5, and corrected §9.0's date, which revision 9.0 recorded as 2026-07-31 in error. |
+| 12.0 | 2026-08-05 | Added §9.9 recording the on-target `gtach.local` session. Confirmed §9.8.5 item 1 from `logs/start.log` — five `handling error: DIGITAL` lines, no other errors in 3.5 MB — and established two facts the static review did not: `TouchHandler` is the handler that fires, being registered on a started touch interface, and the fault is swallowed by its own except-Exception handler, which is why it presents as an inert control (§9.9.1). Raised `7f2a9c04` (issue/change/prompt, severity high, ungated) to complete `change-378703da`'s enum removal across the two runtime-instantiated modules its four-file scope excluded. Recorded a new defect not yet raised as a T03: the debug toggle fires but `app.py:155` binds the `main` **function** rather than the module, so `_debug_handler` is never reached — `debug.log` is empty while `start.log` holds 57,560 DEBUG lines, and the options label reads *Debug: Off* while debug is on (§9.9.2). Recorded the operator's swipe-navigation proposal as a scope extension agreed by consensus and authored it as `3e8b1d72`, separate from `7f2a9c04` so a navigation problem stays attributable; scoping found that the touch subsystem already detects and dispatches both vertical swipes, and that two live long-press handlers exist which must change together (§9.9.3). Recorded the root cause as a file-scoped constraint on a package-wide interface change, with `prompt-378703da` carrying three mutually unsatisfiable requirements (§9.9.4). |
+| 11.0 | 2026-08-04 | Recorded the implementation of six of the eight v0.4.0 triples in §9.8 — `b02ed4ea`, `378703da`, `5014040c`, `5012004e`, `394c3bbb` and `6481f8ce` — as eight commits on the unpushed branch `v0.4.0-display-triples`, with all six prompt T-Docs closed and all sixteen issue and change T-Docs left active per §8.2.1. Recorded that `821919ce` and `9ed1c77e` were **not** implemented: both stopped at their §7.5.3 gate, which is the outcome §8.1 predicted and §9.7.1 anticipated (§9.8.2). Discharged §7.5.5, reproduced under `6481f8ce` against the unchanged files and again after Stage 1, with the correction that the `AttributeError` is caught by the broad handler and the defect was therefore silent in production (§9.8.4). Recorded four findings requiring decision (§9.8.5): live `DisplayMode.DIGITAL` references surviving `378703da` in `display/touch.py` and `display/navigation_gestures.py`, both runtime-instantiated, which is the only finding that can fault the running application; the night palette toggle being unreachable because no `DOUBLE_TAP` gesture exists; the contrast criterion in `5014040c` and `5012004e` being arithmetically unsatisfiable alongside the fixed palette values; and `b02ed4ea` leaving *Clear settings* with no entry point, previously hypothetical under §9.7.3 and now live in source. Recorded three prompt deviations (§9.8.6), chiefly that the transport primitives could not be `@abstractmethod` without making `SimTransport` uninstantiable and breaking `simtcp` and `simbt`. Recorded three governance gaps left open (§9.8.7): no T06 result documents, §8.2's pytest suite still unwritten with `tests/` collecting zero items, and the branch unpushed. Updated §0.0, the §7.3, §7.4 and §7.5 tables, and §8.5's state column and implementation order. Full detail in `ai/workspace/report/v0.4.0-triple-implementation-session.md`. |
 
 ---
 
