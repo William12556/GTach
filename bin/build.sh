@@ -32,7 +32,7 @@ if ! python3 -m build --version >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------------
-# Extract version from pyproject.toml and auto-increment patch
+# Extract current version from pyproject.toml and prompt for new version
 # ---------------------------------------------------------------------------
 PREV_VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
 
@@ -41,11 +41,19 @@ if [ -z "$PREV_VERSION" ]; then
     exit 1
 fi
 
-VER_MAJOR=$(echo "$PREV_VERSION" | cut -d'.' -f1)
-VER_MINOR=$(echo "$PREV_VERSION" | cut -d'.' -f2)
-VER_PATCH=$(echo "$PREV_VERSION" | cut -d'.' -f3)
-VER_PATCH=$((VER_PATCH + 1))
-VERSION="${VER_MAJOR}.${VER_MINOR}.${VER_PATCH}"
+SEMVER_RE='^[0-9]+\.[0-9]+\.[0-9]+$'
+
+while true; do
+    read -r -p "Current version: $PREV_VERSION. New version [Enter to keep current]: " VERSION
+    if [ -z "$VERSION" ]; then
+        VERSION="$PREV_VERSION"
+        break
+    fi
+    if [[ "$VERSION" =~ $SEMVER_RE ]]; then
+        break
+    fi
+    echo "ERROR: Version must be in X.Y.Z format"
+done
 
 python3 -c "
 import re, pathlib
