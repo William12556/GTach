@@ -1,0 +1,23 @@
+[Unit]
+Description=GTach Boot Splash
+DefaultDependencies=no
+After=local-fs.target
+Before=gtach.service
+Conflicts=getty@tty1.service
+
+# Requires bin/quiet-boot.sh to have been applied: getty@tty1 must be
+# masked so tty1 is free for fbi to take as its controlling terminal.
+# If getty@tty1 is still active, this unit will fail to start; that
+# failure is non-fatal to boot (gtach.service starts regardless) but
+# the splash will not display.
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/fbi -d /dev/fb0 --noverbose -a /opt/gtach/boot-splash.png
+StandardInput=tty
+StandardOutput=tty
+StandardError=journal
+TTYPath=/dev/tty1
+
+[Install]
+WantedBy=multi-user.target

@@ -49,6 +49,14 @@ if ! command -v python3 &>/dev/null; then
 fi
 
 # ---------------------------------------------------------------------------
+# fbi availability check (boot splash) — Linux only
+# ---------------------------------------------------------------------------
+if [ "$OS" = "Linux" ] && ! command -v fbi &>/dev/null; then
+    echo "==> Installing fbi (boot splash)"
+    apt-get install -y fbi
+fi
+
+# ---------------------------------------------------------------------------
 # Directory structure and clean state (Linux only)
 # ---------------------------------------------------------------------------
 if [ "$OS" = "Linux" ]; then
@@ -118,6 +126,12 @@ else
     chmod 0755 "$INSTALL_DIR/gtach-preflight.sh"
 fi
 cp -f "$WHEEL_PATH" "$INSTALL_DIR/installed.whl"
+
+echo "==> Registering boot splash"
+install -m 0644 "$SCRIPT_DIR/gtach-boot-splash.service" /etc/systemd/system/gtach-boot-splash.service
+install -m 0644 "$SCRIPT_DIR/boot-splash.png" "$INSTALL_DIR/boot-splash.png"
+systemctl enable gtach-boot-splash
+
 systemctl daemon-reload
 systemctl enable gtach
 echo "    Service 'gtach' enabled. Start now with: systemctl start gtach"

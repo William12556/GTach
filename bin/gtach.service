@@ -1,6 +1,6 @@
 [Unit]
 Description=GTach OBD-II Tachometer
-After=multi-user.target bluetooth.service
+After=multi-user.target bluetooth.service gtach-boot-splash.service
 StartLimitIntervalSec=60
 StartLimitBurst=3
 
@@ -8,6 +8,9 @@ StartLimitBurst=3
 Type=simple
 User=root
 WorkingDirectory=/opt/gtach
+# SIGKILL, not stop/terminate: fbi must not get a chance to restore text
+# mode on exit, which would blank the framebuffer it just handed off.
+ExecStartPre=-/usr/bin/pkill -9 -f 'fbi -d /dev/fb0'
 ExecStartPre=-/opt/gtach/gtach-preflight.sh
 ExecStart=/opt/gtach/venv/bin/gtach
 Restart=always
