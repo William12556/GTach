@@ -1078,14 +1078,20 @@ class DisplayManager:
             # Fallback to band 0, black
             return (0, (0, 0, 0))
 
-    def _get_shift_cue(self, rpm: float) -> Tuple[Tuple[int, int, int], int, bool, Tuple[int, int, int]]:
+    def _get_shift_cue(self, rpm: float, active_band: int) -> Tuple[Tuple[int, int, int], int, bool, Tuple[int, int, int]]:
         """Determine shift cue state from RPM.
 
         Two shift states: upshift (green) and safe downshift (blue).
         RPM alone is insufficient to determine unsafe downshift.
 
+        The border comes from the shift state and the centre from the
+        band, so the border carries what the driver should do and the
+        centre carries what the engine is doing (change-64d8d8fc).
+
         Args:
             rpm: Current RPM value
+            active_band: Active band index from _get_band_colour,
+                hysteresised. Selects the centre disc fill.
 
         Returns:
             Tuple of (border_colour, border_width, flash_centre, centre_colour)
@@ -1101,25 +1107,31 @@ class DisplayManager:
             palette = self._palette
 
             if rpm >= bands.caution_start:
-                # Upshift cue — green border 12 px, flashing green/dark centre
+                # Upshift cue. The border stays green — it says what the
+                # driver should DO. The centre takes the band's colour,
+                # which says what the engine IS DOING, and flashes
+                # against the dark phase to carry the shift imperative
+                # on the temporal channel (change-64d8d8fc).
                 centre = (
-                    palette.shift_centre_lit if flash
+                    palette.band_centres_lit[active_band] if flash
                     else palette.shift_centre_dark
                 )
                 return palette.shift_border_caution, 12, True, centre
             elif rpm <= bands.torque_start:
-                # Safe downshift — blue border 12 px, blue centre, no flash
+                # Safe downshift — blue border 12 px, band centre, no flash
                 return (palette.shift_border_down, 12, False,
-                        palette.shift_centre_down)
+                        palette.band_centres[active_band])
             else:
-                # Normal operation — red border 12 px, dark centre, no flash
+                # Normal operation — red border 12 px, band centre, no flash
                 return (palette.shift_border_normal, 12, False,
-                        palette.shift_centre_normal)
+                        palette.band_centres[active_band])
 
         except Exception as e:
             self.logger.error(f'Shift cue calculation error: {e}', exc_info=True)
+            # Index 0, not active_band — the fallback runs precisely
+            # when the band cannot be trusted (change-64d8d8fc).
             return (DAY_PALETTE.shift_border_normal, 12, False,
-                    DAY_PALETTE.shift_centre_normal)
+                    DAY_PALETTE.band_centres[0])
 
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
@@ -1146,6 +1158,16 @@ class DisplayManager:
             # two drawing calls would otherwise render half the frame in
             # each palette (change-5012004e).
             palette = self._palette
+
+            # One lookup each per frame. _get_band_colour's sticky
+            # selection advances at most one band per call, so a second
+            # call would halve the effective hysteresis — which now
+            # governs the whole sweep and the centre disc, not one
+            # segment (change-64d8d8fc).
+            active_band, band_colour = self._get_band_colour(rpm)
+            border_colour, _, _, centre_colour = self._get_shift_cue(
+                rpm, active_band
+            )
 
             # Arc geometry constants
             center = (240, 240)
@@ -1195,7 +1217,6 @@ class DisplayManager:
             # 1. Fill corners black (outside circular viewport), draw border
             #    ring as solid filled circle at r=244, then background at r=232.
             surface.fill((0, 0, 0))
-            border_colour, _, _, _ = self._get_shift_cue(rpm)
             self._draw_shift_border(border_colour)
             pygame.draw.circle(surface, palette.ground, center, 232)
 
@@ -1210,49 +1231,22 @@ class DisplayManager:
             inert_end_rad = clock_to_canvas_rad(210)
             draw_donut_arc(palette.track, inert_start_rad, inert_end_rad)
 
-            # 4. Draw coloured fill arcs per RPMBands up to current rpm.
-            #    The band has one owner: _get_band_colour applies the
-            #    hysteresis and names the active band, replacing an
-            #    inline threshold table that restated the six bands and
-            #    carried no hysteresis (change-5014040c).
+            # 4. Draw the filled sweep in the active band's colour.
+            #    One colour, not six: reading the zone from a graduated
+            #    arc means localising the sweep's leading edge and then
+            #    judging which band it falls in, and both stages degrade
+            #    in peripheral vision. A uniform sweep makes it a single
+            #    colour judgement. The headroom cue the graduation
+            #    carried moves to the bolded boundary marks at step 9
+            #    (change-64d8d8fc; withdraws prompt-5014040c's
+            #    graduated-arc constraint).
             bands = self.config.rpm_bands
-            active_band, _active_colour = self._get_band_colour(rpm)
-
-            # Segment boundaries, ascending. Six segments, so seven
-            # bounds; index i spans bounds[i] to bounds[i + 1] and takes
-            # BAND_COLOURS[i].
-            segment_bounds = (
-                0,
-                bands.idle_max,
-                bands.torque_start,
-                bands.caution_start,
-                bands.warning_start,
-                bands.danger_start,
-                max_rpm,
-            )
-
-            for index in range(len(palette.bands)):
-                band_start = segment_bounds[index]
-                band_end = segment_bounds[index + 1]
-                if rpm <= band_start:
-                    break
-
-                segment_end = min(rpm, band_end)
-
-                # The arc stays graduated — every segment below the
-                # leading one keeps its own colour. Only the leading
-                # segment, the one containing the current RPM, is drawn
-                # in the hysteresised active band's colour, so a value
-                # oscillating about a threshold no longer flips it.
-                leading = rpm <= band_end
-                colour = (
-                    palette.bands[active_band] if leading
-                    else palette.bands[index]
+            if rpm > 0:
+                draw_donut_arc(
+                    band_colour,
+                    rpm_to_angle_rad(0),
+                    rpm_to_angle_rad(rpm),
                 )
-
-                seg_start_rad = rpm_to_angle_rad(band_start)
-                seg_end_rad = rpm_to_angle_rad(segment_end)
-                draw_donut_arc(colour, seg_start_rad, seg_end_rad)
 
             # 5. Draw zone boundary lines at 5 o'clock and 7 o'clock
             for boundary_deg in [150, 210]:
@@ -1291,7 +1285,12 @@ class DisplayManager:
                             (int(num_x), int(num_y)), center=True
                         )
 
-            # 9. Draw band boundary marks at thresholds
+            # 9. Draw band boundary marks at thresholds.
+            #    7 px, matching the major ticks: with the sweep drawn in
+            #    one colour these marks carry the whole of the
+            #    anticipatory cue — where the next zone begins — and are
+            #    distinguished from the major ticks by colour, not
+            #    weight (change-64d8d8fc).
             # Each mark takes the colour of the band it opens, read from
             # the active palette rather than restated (change-5012004e).
             boundary_colors = [
@@ -1312,7 +1311,7 @@ class DisplayManager:
                     mark_end_x = center[0] + outer_radius * math.cos(angle_rad)
                     mark_end_y = center[1] + outer_radius * math.sin(angle_rad)
                     pygame.draw.line(surface, color,
-                                   (mark_start_x, mark_start_y), (mark_end_x, mark_end_y), 3)
+                                   (mark_start_x, mark_start_y), (mark_end_x, mark_end_y), 7)
 
             # 10. Draw white indicator line at current RPM
             if rpm > 0:
@@ -1332,8 +1331,9 @@ class DisplayManager:
                     (240, 420), center=True
                 )
 
-            # 12-14. Draw centre circle with shift cue colour
-            _, _, flash_centre, centre_colour = self._get_shift_cue(rpm)
+            # 12-14. Draw centre circle with shift cue colour.
+            #    centre_colour is in scope from the single _get_shift_cue
+            #    call at the top of the method (change-64d8d8fc).
             center_radius = 99
             pygame.draw.circle(surface, centre_colour, center, center_radius)
 

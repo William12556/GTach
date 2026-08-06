@@ -97,19 +97,21 @@ class Palette:
     edge: Tuple[int, int, int]
     label: Tuple[int, int, int]
     bands: Tuple[Tuple[int, int, int], ...]
+    band_centres: Tuple[Tuple[int, int, int], ...]
+    band_centres_lit: Tuple[Tuple[int, int, int], ...]
     shift_border_caution: Tuple[int, int, int]
-    shift_centre_lit: Tuple[int, int, int]
     shift_centre_dark: Tuple[int, int, int]
     shift_border_normal: Tuple[int, int, int]
-    shift_centre_normal: Tuple[int, int, int]
     shift_border_down: Tuple[int, int, int]
-    shift_centre_down: Tuple[int, int, int]
 
 
 # Values copied verbatim from the constants in use before
 # change-5012004e — the six FACE_ constants and BAND_COLOURS added by
-# change-5014040c, and the five colours returned by _get_shift_cue — so
-# day rendering is provably unchanged.
+# change-5014040c, and the colours returned by _get_shift_cue — so day
+# rendering is provably unchanged. _get_shift_cue now draws its centre
+# from band_centres and band_centres_lit, so what it returns is the
+# three shift_border_* constants plus shift_centre_dark and one entry
+# from each of the two band-indexed tuples (change-64d8d8fc).
 DAY_PALETTE = Palette(
     name='day',
     ground=(16, 16, 16),
@@ -118,21 +120,67 @@ DAY_PALETTE = Palette(
     line=(90, 90, 90),
     edge=(70, 70, 70),
     label=(200, 80, 80),
+    # Torque and caution were the two brightest elements on the panel —
+    # 0.715 and 0.928 relative luminance against a danger band at 0.213
+    # — so the instrument's brightness order ran almost exactly counter
+    # to its urgency order, and the operator reported both as too bright
+    # in daylight (issue-e7c3a512).
+    #
+    # sRGB weights green at 0.7152 and red at 0.2126, so a palette chosen
+    # for hue distinctness at full saturation inherits that ordering
+    # rather than choosing it. These two values are set deliberately and
+    # are not arbitrary; they sit between the previous full-saturation
+    # pair and the night set, and were measured against ground
+    # (16, 16, 16):
+    #
+    #   2 torque   (0, 170, 0)     lum 0.287   6.12:1
+    #   3 caution  (205, 180, 0)   lum 0.456   9.17:1
+    #
+    # Band 1's 2.21:1 is below the 3:1 used elsewhere and is not
+    # correctable — pure blue is 0.0722 and cannot reach 3:1 against any
+    # ground darker than itself (ai/task.md §9.8.5 item 3). Danger is
+    # deliberately not brightened to lead the ordering: urgency is
+    # carried by the shift-cue flash, not by band brightness.
     bands=(
         (0, 0, 255),        # 0 idle
         (0, 0, 255),        # 1 torque approach
-        (0, 255, 0),        # 2 torque
-        (255, 255, 0),      # 3 caution
+        (0, 170, 0),        # 2 torque
+        (205, 180, 0),      # 3 caution
         (255, 128, 0),      # 4 warning
         (255, 0, 0),        # 5 danger
     ),
+    # The centre disc takes the active band's colour, so the zone
+    # reading is present at the point of fixation and not only at the
+    # rim (change-64d8d8fc). Dim, because the disc is 30,800 px in the
+    # driver's forward field of view and the HyperPixel's backlight
+    # cannot be reduced in software — full-saturation band colour here
+    # would reinstate the glare change-5014040c removed from the face,
+    # and would leave the white readout at 1.07:1 against band 3.
+    band_centres=(
+        (0, 0, 89),         # 0 idle
+        (0, 0, 89),         # 1 torque approach
+        (0, 89, 0),         # 2 torque
+        (89, 89, 0),        # 3 caution
+        (89, 45, 0),        # 4 warning
+        (89, 0, 0),         # 5 danger
+    ),
+    # The lit phase of the upshift flash. Bright, and displayed only
+    # while rpm >= caution_start and only on half the cycle. A single
+    # dim tuple flashed against shift_centre_dark measures 1.34:1 to
+    # 2.69:1 for bands 3 to 5 — the only bands that flash — which would
+    # make the upshift cue weakest in the danger band.
+    band_centres_lit=(
+        (0, 0, 200),        # 0 idle — never displayed
+        (0, 0, 200),        # 1 torque approach — never displayed
+        (0, 130, 0),        # 2 torque — never displayed
+        (115, 115, 0),      # 3 caution
+        (180, 90, 0),       # 4 warning
+        (220, 0, 0),        # 5 danger
+    ),
     shift_border_caution=(0, 180, 0),
-    shift_centre_lit=(0, 160, 0),
     shift_centre_dark=(10, 10, 10),
     shift_border_normal=(200, 0, 0),
-    shift_centre_normal=(26, 26, 26),
     shift_border_down=(0, 100, 255),
-    shift_centre_down=(0, 40, 100),
 )
 
 # Authored, not derived. Scaling the day palette would compress the band
@@ -155,13 +203,34 @@ NIGHT_PALETTE = Palette(
         (175, 75, 0),       # 4 warning
         (200, 0, 0),        # 5 danger
     ),
+    # The band-coloured centre disc, dimmed for night on the same
+    # reasoning as the day tuple above (change-64d8d8fc).
+    band_centres=(
+        (0, 0, 59),
+        (0, 0, 59),
+        (0, 49, 0),
+        (52, 49, 0),
+        (61, 26, 0),
+        (70, 0, 0),
+    ),
+    # Equal to NIGHT_PALETTE.bands at present. The night band colours
+    # are already dim enough that no separate lit variant is needed to
+    # satisfy the flash contrast, and dimming them further drops bands
+    # 4 and 5 to 2.98:1 and 2.66:1 against shift_centre_dark. Kept as
+    # its own tuple for structural symmetry with DAY_PALETTE and so the
+    # two can diverge without a signature change.
+    band_centres_lit=(
+        (0, 0, 170),
+        (0, 0, 170),
+        (0, 140, 0),
+        (150, 140, 0),
+        (175, 75, 0),
+        (200, 0, 0),
+    ),
     shift_border_caution=(0, 110, 0),
-    shift_centre_lit=(0, 95, 0),
     shift_centre_dark=(3, 3, 3),
     shift_border_normal=(120, 0, 0),
-    shift_centre_normal=(8, 8, 8),
     shift_border_down=(0, 60, 150),
-    shift_centre_down=(0, 22, 55),
 )
 
 @dataclass
