@@ -19,7 +19,7 @@ issue_info:
   title: "Every touch target in the main UI is below the comfortable minimum for a hand-operated panel subject to vehicle motion, the four options-menu items are separated by 10 px, and TypographyConstants declares a button design system that DisplayManager does not apply at any call site"
   date: "2026-08-04"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "enhancement"
   iteration: 1
@@ -270,15 +270,33 @@ resolution:
     Apply corner radius, border and touch expansion from the declared
     constants at every site. See change-b02ed4ea.
   change_ref: "change-b02ed4ea"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-04"
+  resolved_by: "Claude Code, per prompt-b02ed4ea"
+  fix_description: >
+    Options menu reduced to three 72x72 px targets at 16 px separation;
+    Clear settings moved behind a confirm_clear sub-view. Disconnected
+    and update views brought to the same minimum. Geometry and draw
+    responsibilities split into two helpers so registration stays out of
+    the render path (44bca479). Touch expansion, corner radius and
+    border now sourced from TypographyConstants at every site.
+    touch_coordinator.py left unmodified. See
+    ai/workspace/report/v0.4.0-triple-implementation-session.md §4.1.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Development-platform script asserted rect geometry, corner
+    containment and adjacency against the real source (report §4.1, all
+    checks passing). On-target session 2026-08-05 (task.md §9.10) shows
+    the application running clean after the related 378703da defect was
+    corrected: one ERROR in 362 KB, swipe navigation confirmed working.
+  closure_notes: >
+    William confirmed on 2026-08-07 that GTach is functioning correctly
+    on gtach.local. Clear settings has no entry point from the reduced
+    three-control menu (§9.8.5 item 4) — a known, accepted consequence of
+    recommendation 24's own budget, deferred to display report §7.7's
+    circular re-layout (task.md §7.3.15). Not a defect in this triple.
 
 prevention:
   preventive_measures: >
@@ -363,6 +381,13 @@ version_history:
       - "Recorded three corrections to the source report: the cited line numbers predate 44bca479 and the geometry now lives in the register methods; the 8 px touch expansion must be applied by the caller rather than inside register_button_region, to avoid changing behaviour for the setup subsystem; and the 'three items per screen' proposal is a consequence of the circular viewport's vertical budget, computed inline."
       - "Recorded that D4's dependency on 7.3.8 is discharged in substance, and what that changes: the §7.4 'single helper' becomes a geometry helper plus a draw helper, so registration is not reintroduced into the render path."
       - "Recorded the disposition of the fourth options item as an open decision with a recommendation, for confirmation before the change document is approved."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. change-b02ed4ea implemented 2026-08-04 (a34fd49); resolution and verification recorded from the v0.4.0 triple implementation session and the 2026-08-05 on-target sessions."
+      - "Closed on William's confirmation that GTach functions correctly on gtach.local. Clear settings' absent entry point (§9.8.5 item 4) recorded as an accepted, deferred consequence rather than a defect."
+      - "Moved to ai/workspace/issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -379,6 +404,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial issue document from display review findings §7.3 and §7.4 with recommendations 24 and 27. Records three corrections to the source report, the vertical-budget arithmetic behind the three-item constraint, the discharged D4 dependency on 44bca479 and its consequence for the helper design, and the open decision on which fourth options item leaves the menu. |
+| 1.1 | 2026-08-07 | Status open → closed. Resolution and verification recorded; closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

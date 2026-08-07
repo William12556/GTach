@@ -19,7 +19,7 @@ change_info:
   title: "Every drawn colour gains a night variant behind a Palette selector; the toggle is a double-tap on the gauge face rather than an options-menu item, because b02ed4ea's three-control budget is full; the selection persists in config.yaml"
   date: "2026-08-04"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -341,12 +341,20 @@ implementation:
     discoverability weakness.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-08-04"
+  implemented_by: "Claude Code, per prompt-5012004e (commit 2242387)"
+  verification_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Delivered as specified: frozen Palette dataclass, DAY_PALETTE and
+    NIGHT_PALETTE instances, per-frame selector. DAY_PALETTE matched
+    the pre-change constants field by field; every night field lower
+    luminance than day; adjacent night bands separated by delta-E
+    29-177; night tick 4.67:1 against night ground; area-weighted night
+    luminance 24.2% of day; a failed save does not escape. William
+    confirmed 2026-08-07 that GTach functions correctly on gtach.local.
+  issues_found:
+    - "The originally specified double-tap toggle cannot fire — no GestureType.DOUBLE_TAP exists and display/input was read-only to this prompt — recorded at implementation (task.md §9.8.5 item 2). Source re-check 2026-08-07 shows this is superseded: DisplayManager._handle_long_press now toggles the palette directly, per change-2b6f4d91, itself untracked in ai/task.md. Flagged for William."
 
 traceability:
   design_updates: []
@@ -387,6 +395,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-5012004e. Specifies the Palette dataclass, the day and night instances, the double-tap toggle and its siting rationale, and persistence through config.yaml. |
+| 1.1 | 2026-08-07 | Status proposed → closed. Implementation and verification recorded (commit 2242387); the double-tap unreachability finding corrected — superseded by change-2b6f4d91's long-press toggle. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

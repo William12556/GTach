@@ -19,7 +19,7 @@ change_info:
   title: "ConfigManager's three device-persistence methods, BluetoothConfig.saved_devices and its two serialisation sites are removed; a saved_devices key found in an existing configuration file is ignored rather than rejected, and the operator's file is not rewritten"
   date: "2026-08-04"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -302,11 +302,19 @@ implementation:
     the v0.3.0 corrections because it is a large deletion.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-04"
+  implemented_by: "Claude Code, per prompt-394c3bbb (commit 251ea74)"
+  verification_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Delivered as specified. Development-platform script confirmed
+    BluetoothConfig's field count, to_dict/from_dict behaviour on a
+    legacy payload, and byte-identity of comm/models.py,
+    comm/device_store.py, RWLock and the d32ccc49 singleton warning.
+    Source re-check 2026-08-07 confirms all three retired methods,
+    saved_devices and the BluetoothDevice import absent from
+    utils/config.py. William confirmed GTach functions correctly on
+    gtach.local.
   issues_found: []
 
 traceability:
@@ -347,6 +355,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-394c3bbb. Specifies the deletion of the three `ConfigManager` device methods, `saved_devices` and its serialisation, with `comm/models.py` and `comm/device_store.py` explicitly out of scope. |
+| 1.1 | 2026-08-07 | Status proposed → closed. Implementation and verification recorded (commit 251ea74); source re-check confirms clean. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

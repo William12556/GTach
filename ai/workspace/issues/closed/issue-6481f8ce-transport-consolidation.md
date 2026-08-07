@@ -19,7 +19,7 @@ issue_info:
   title: "Each transport's send_command checks is_connected() under the lock and then uses the socket or serial handle outside it, so a concurrent disconnect() produces an AttributeError instead of the handled OSError; the same logic is duplicated across three files, and the set of valid transport names is maintained independently in four places"
   date: "2026-08-04"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -227,15 +227,43 @@ resolution:
     classifications once, in transport.py, and have main.py and app.py
     read them. See change-6481f8ce.
   change_ref: "change-6481f8ce"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-04"
+  resolved_by: "Claude Code, per prompt-6481f8ce (commits 3f5fc5e, fe879f9, 51a930b)"
+  fix_description: >
+    Landed in three stage commits, as required. Stage 1 captured the
+    transport handle under the lock in all three transports before any
+    restructuring. Stage 2 hoisted the common connect/disconnect/
+    send_command skeleton onto OBDTransport, with the four primitives
+    (_open/_close/_write/_read) concrete and raising NotImplementedError
+    rather than @abstractmethod — declaring them abstract would make
+    SimTransport uninstantiable, which the same prompt forbade modifying.
+    Stage 3 defined the transport name set once (TRANSPORT_NAMES,
+    TRANSPORT_FORCED, TRANSPORT_FAST in transport.py) and had main.py
+    and app.py read them. See
+    ai/workspace/report/v0.4.0-triple-implementation-session.md §4.6.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    The §7.5.5 reproduction (task.md §9.8.4) was carried out first,
+    against the unchanged files and again after Stage 1, with explicit
+    synchronisation rather than sleeps: pre-change all three transports
+    raised AttributeError; post-Stage-1 each raised its handled
+    transport error (OSError/SerialException) and marked DISCONNECTED.
+    Correction to the report's own framing: the AttributeError is
+    caught by send_command's broad except-Exception and returns None
+    exactly as a handled I/O error does, so the defect was silent in
+    production — the reproduction discriminates by logged message, not
+    return value. Source re-check 2026-08-07: OBDTransport declares
+    _open/_close/_write/_read and the connect/disconnect/send_command
+    skeleton exactly as delivered.
+  closure_notes: >
+    William confirmed on 2026-08-07 that GTach is functioning correctly
+    on gtach.local. One documented, deliberate residual: app.py:91
+    still tests transport_arg == 'simbt' as a literal for the pairing
+    factory, a fourth site the prompt named three sites and instructed
+    to leave alone. Not a blocker.
 
 prevention:
   preventive_measures: >
@@ -311,6 +339,12 @@ version_history:
       - "Recorded that the receive loops dereference the handle unguarded as well as the send paths."
       - "Recorded the narrow assumption created by authoring ahead of §7.5.5 — that the failure mode is AttributeError — and that what the reproduction supplies is the regression test rather than confirmation of the mechanism."
       - "Recorded that the three findings differ sharply in risk and that the change document stages them accordingly."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. change-6481f8ce implemented 2026-08-04 in three stage commits; §7.5.5 reproduction discharged, discriminating pre/post-fix by logged message. Source re-check confirms the hoisted skeleton and name-set constants."
+      - "Closed on William's confirmation that GTach functions correctly on gtach.local. One documented residual (app.py:91 literal 'simbt'), not a blocker. Moved to ai/workspace/issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -327,6 +361,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial issue document from core review findings §5.3, §4.3 and §5.8 with recommendation #7. Records the race window line by line, a fourth transport-name list the report omits, and the assumption created by authoring ahead of the §7.5.5 reproduction. |
+| 1.1 | 2026-08-07 | Status open → closed. Resolution and verification recorded (three stage commits); §7.5.5 reproduction discharged; source re-check confirms clean apart from one documented residual. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

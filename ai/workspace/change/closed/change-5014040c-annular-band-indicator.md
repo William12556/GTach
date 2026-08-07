@@ -19,7 +19,7 @@ change_info:
   title: "RADIAL's r=232 ground becomes a fixed dark fill, ticks and numerals are re-coloured for it, the coloured fill arc becomes the sole band indicator, and _get_band_colour returns a band index and one colour instead of a background/text pair"
   date: "2026-08-04"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -294,12 +294,22 @@ implementation:
     for adjustment.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-08-04"
+  implemented_by: "Claude Code, per prompt-5014040c (commit 730ae56)"
+  verification_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Delivered as specified: dark ground, re-coloured ticks and
+    numerals, inline threshold table removed, arc coloured from
+    _get_band_colour. Band-index sequence proved identical to the real
+    pre-change source across rising and falling sweeps at 10 RPM steps,
+    hysteresis asymmetry included; no alternation under a +/-50 RPM
+    oscillation about a threshold; 5000 RPM shows blue/green/yellow
+    rather than one colour. William confirmed 2026-08-07 that GTach
+    functions correctly on gtach.local.
+  issues_found:
+    - "BAND_COLOURS[0] delivered as (0, 0, 255) rather than the prompt's specified (0, 0, 0); justified in source and in issue-5014040c — the specified value was DIGITAL's screen background, never an arc colour, and the prompt's own unchanged-colours constraint governs."
+    - "The WCAG 3:1 band-fill contrast requirement is arithmetically unsatisfiable alongside the fixed palette values this change and 5012004e both specify (task.md §9.8.5 item 3). Open design decision, not an implementation gap."
 
 traceability:
   design_updates: []
@@ -324,6 +334,11 @@ version_history:
       - "Recorded EDIT D — routing the arc's colour through _get_band_colour — as the substantive part of the change: without it the ring is coloured by an unhysteresised parallel table and the method retained by 378703da still has no caller."
       - "Recorded the daylight-legibility trade as the item most likely to require revision after v0.4.0, and the ground colour as a single named constant so that revision is cheap."
       - "Recorded that a separate fixed band ring was considered and rejected as restating the arc's leading edge."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status proposed -> closed. Implementation and verification recorded (commit 730ae56); the arithmetically-unsatisfiable contrast criterion recorded as an open design question. Closed on William's confirmation that GTach functions correctly on gtach.local."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -340,6 +355,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-5014040c. Specifies the dark gauge face, the re-coloured ticks and numerals, the arc as the sole band cue routed through `_get_band_colour`, and the removal of its text-colour return. |
+| 1.1 | 2026-08-07 | Status proposed → closed. Implementation and verification recorded (commit 730ae56). Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

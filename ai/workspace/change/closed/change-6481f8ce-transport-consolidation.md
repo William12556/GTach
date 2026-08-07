@@ -19,7 +19,7 @@ change_info:
   title: "Three stages: each transport captures its handle under the lock and uses the captured reference; the common connect/disconnect/send_command skeleton is hoisted into OBDTransport; and the transport name set with its three classifications is defined once in transport.py"
   date: "2026-08-04"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -371,12 +371,19 @@ implementation:
     the race.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-08-04"
+  implemented_by: "Claude Code, per prompt-6481f8ce (commits 3f5fc5e, fe879f9, 51a930b)"
+  verification_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Delivered as specified across three stage commits. §7.5.5
+    reproduction discharged pre- and post-Stage-1 with explicit
+    synchronisation, discriminating by logged message rather than
+    return value. Source re-check 2026-08-07 confirms OBDTransport's
+    hoisted skeleton and the consolidated TRANSPORT_NAMES/FORCED/FAST
+    constants imported and used by main.py and app.py.
+  issues_found:
+    - "app.py:91 still tests transport_arg == 'simbt' as a literal, a fourth transport-name site the prompt named three sites and instructed to leave alone. Documented, not a blocker."
 
 traceability:
   design_updates: []
@@ -414,6 +421,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-6481f8ce. States the §7.6.3 ordering decision — fix then refactor — and stages the work so the concurrency fix survives abandonment of either later stage. |
+| 1.1 | 2026-08-07 | Status proposed → closed. Implementation and verification recorded (three stage commits); source re-check confirms the hoisted skeleton and consolidated name-set constants. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

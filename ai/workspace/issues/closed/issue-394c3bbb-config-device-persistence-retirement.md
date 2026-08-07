@@ -19,7 +19,7 @@ issue_info:
   title: "ConfigManager carries a device-persistence path parallel to DeviceStore with no live caller, and its three methods reference a .address attribute that BluetoothDevice does not define, so any call would raise AttributeError immediately"
   date: "2026-08-04"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -213,15 +213,32 @@ resolution:
     without failing and without rewriting it. Change nothing in
     comm/models.py or comm/device_store.py. See change-394c3bbb.
   change_ref: "change-394c3bbb"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-04"
+  resolved_by: "Claude Code, per prompt-394c3bbb (commit 251ea74)"
+  fix_description: >
+    The three ConfigManager device methods, BluetoothConfig.saved_devices
+    and its two serialisation sites removed from utils/config.py.
+    comm/models.py and comm/device_store.py untouched. Pre-flight grep
+    confirmed no caller of the three retired methods before deletion.
+    See ai/workspace/report/v0.4.0-triple-implementation-session.md §4.5.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Development-platform script (report §4.5) confirmed BluetoothConfig
+    has exactly fourteen fields; to_dict emits no saved_devices key;
+    from_dict on a payload carrying populated device entries constructs
+    without raising and reads every other field correctly; round trip
+    equals the original; comm/models.py, comm/device_store.py, RWLock
+    and the d32ccc49 singleton warning all byte-identical. Direct
+    source re-check 2026-08-07: get_device_by_address, add_or_update_
+    device, remove_device, saved_devices and BluetoothDevice all absent
+    from utils/config.py except the explanatory comment.
+  closure_notes: >
+    William confirmed on 2026-08-07 that GTach is functioning correctly
+    on gtach.local. Source re-check found the retirement complete and
+    clean, no residual findings.
 
 prevention:
   preventive_measures: >
@@ -294,6 +311,12 @@ version_history:
       - "Recorded three scope corrections to ai/task.md §7.4: comm/models.py must not be modified, its BluetoothDevice being live via DeviceStore; comm/device_store.py requires no change, being the survivor; and the report's 1,600-line figure describes the whole file rather than the subset deleted."
       - "Recorded that the 7.4.7 ordering constraint is already discharged, change-d32ccc49 having confined its edit to ConfigManager.__init__."
       - "Recorded that the retirement does not close §3.1, which change-1143427b handled separately and which is closed."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. change-394c3bbb implemented 2026-08-04 (251ea74); source re-check confirmed the three methods, the saved_devices field and BluetoothDevice all absent from utils/config.py."
+      - "Closed on William's confirmation that GTach functions correctly on gtach.local. Moved to ai/workspace/issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -310,6 +333,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial issue document from core review findings §5.1 and §3.6 with recommendations #1 (retirement branch) and #6. Re-verifies the call-graph evidence at 0.3.2 and records three scope corrections to ai/task.md §7.4, chiefly that `comm/models.py` must not be modified. |
+| 1.1 | 2026-08-07 | Status open → closed. Resolution and verification recorded (commit 251ea74); source re-check confirms clean, no residual findings. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

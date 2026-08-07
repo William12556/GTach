@@ -19,7 +19,7 @@ issue_info:
   title: "The RPM band is signalled by filling the viewport with the band colour in DIGITAL and by a light-grey r=232 ground in RADIAL; both emit more light than a ring would, and the DIGITAL form couples the readout's text colour to the band"
   date: "2026-08-04"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "enhancement"
   iteration: 1
@@ -232,15 +232,50 @@ resolution:
     arc to the explicit band indicator, and reduce _get_band_colour to
     returning the band index and its colour. See change-5014040c.
   change_ref: "change-5014040c"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-04"
+  resolved_by: "Claude Code, per prompt-5014040c (commit 730ae56)"
+  fix_description: >
+    Six FACE_ constants and BAND_COLOURS relocated to models.py's
+    Palette dataclass (day and night instances, per change-5012004e).
+    RADIAL ground darkened; ticks and numerals re-coloured for it;
+    inline threshold table removed and the arc's leading segment now
+    takes its colour from _get_band_colour, which is reduced to index +
+    colour. See ai/workspace/report/v0.4.0-triple-implementation-session.md
+    §4.3.
+
+    One deviation, recorded in source: BAND_COLOURS index 0 delivered
+    as (0, 0, 255) rather than the prompt's specified (0, 0, 0). That
+    black was DIGITAL's idle screen background, never an arc colour;
+    adopting it would repaint the idle arc segment black on a
+    near-black face. The prompt's own "six drawn colours unchanged"
+    constraint governs over its EDIT C palette literal.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Development-platform script (report §4.3) proved the band-index
+    sequence identical to the pre-change implementation across rising
+    and falling sweeps at 10 RPM steps, hysteresis asymmetry included,
+    against the real pre-change source pulled from git — not
+    hand-written expectations. No band-index alternation under a
+    +/-50 RPM oscillation about a threshold. Arc shows blue, green and
+    yellow at 5000 RPM rather than one colour.
+  closure_notes: >
+    William confirmed on 2026-08-07 that GTach is functioning correctly
+    on gtach.local. One open finding remains, recorded rather than
+    resolved: the WCAG 3:1 band-fill contrast this issue's own
+    verification_steps calls for is arithmetically unsatisfiable
+    alongside the fixed palette values both this change and 5012004e
+    specify (task.md §9.8.5 item 3; measured day blue 2.21:1, night
+    blue 1.55:1, FACE_TRACK 1.67:1, FACE_EDGE 2.02:1, FACE_LINE 2.76:1,
+    against every other pair passing including day tick 14.55:1). The
+    constants were implemented as specified rather than silently
+    altered, since both prompts forbid changing them. Resolution
+    requires a design decision — a lighter blue, a lighter ground, or
+    dropping the 3:1 bar for band fills — not further implementation.
+    Not a blocker to this triple's closure; the same open question is
+    recorded on issue-5012004e.
 
 prevention:
   preventive_measures: >
@@ -312,6 +347,13 @@ version_history:
       - "Recorded that 378703da must precede this change, which ai/task.md §7.6.2 does not state."
       - "Recorded that §4.2 was already closed by change-4c038bed's hysteresis and is not re-addressed here."
       - "Recorded the D3 cache-key obligation toward 7.3.5 and the interaction with 7.3.12's night palette, which varies the ground this change introduces."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. change-5014040c implemented 2026-08-04 (730ae56); band-index sequence proved identical to pre-change source across rising/falling sweeps. One documented deviation: BAND_COLOURS[0] delivered as blue rather than the specified black, justified in source."
+      - "Recorded the open contrast-criterion finding (task.md §9.8.5 item 3) as unresolved by design decision, not by implementation gap. Not a blocker."
+      - "Closed on William's confirmation that GTach functions correctly on gtach.local. Moved to ai/workspace/issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -328,6 +370,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial issue document from display review finding §7.2 with recommendation 26. Records that change-378703da removes the full-field fill this recommendation targets, restating the triple's scope as RADIAL's ground, tick and numeral colours, the arc annulus, and `_get_band_colour`'s return shape. |
+| 1.1 | 2026-08-07 | Status open → closed. Resolution and verification recorded (commit 730ae56); the arithmetically-unsatisfiable contrast criterion recorded as an open design question, not a defect. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

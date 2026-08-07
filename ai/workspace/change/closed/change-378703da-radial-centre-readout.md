@@ -19,7 +19,7 @@ change_info:
   title: "The RADIAL centre disc renders the conditioned RPM in place of the brand string; DisplayMode.DIGITAL, _draw_digital_mode, the two swipe handlers and _render_mode_selector are removed, with a read-side migration for persisted DIGITAL values"
   date: "2026-08-04"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -360,12 +360,24 @@ implementation:
     in v0.4.0 per ai/task.md §8.5.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-08-04"
+  implemented_by: "Claude Code, per prompt-378703da (commit 7035a93)"
+  verification_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local, sessions §9.9-§9.10)"
+  test_results: >
+    Delivered per implementation_approach, all six steps. Development-
+    platform script confirmed enum membership, migration for a
+    persisted and an unknown mode, numeral contrast, and byte-identity
+    of _get_band_colour, _condition_rpm and _get_shift_cue. On-target
+    session §9.9 found a defect outside this change's four-file scope
+    (touch.py, navigation_gestures.py still referencing DisplayMode.
+    DIGITAL, trapping the operator on OPTIONS); corrected under
+    issue-7f2a9c04 and confirmed clean in session §9.10 (one ERROR in
+    362 KB, no DIGITAL line). William confirmed 2026-08-07 that GTach
+    functions correctly on gtach.local.
+  issues_found:
+    - "On-target: display/touch.py and display/navigation_gestures.py, both runtime-instantiated and outside this change's four-file scope, still referenced the removed DisplayMode.DIGITAL member, trapping the operator on the OPTIONS screen. Corrected under issue-7f2a9c04, confirmed on-target."
+    - "Residual: utils/config.py's DisplayConfig dataclass field default and its legacy-INI-reader default both still read the literal 'DIGITAL' (config.py:552, 1344), missed by this change's own validation_criteria grep because it targets DisplayMode.DIGITAL usage, not this string default. Not on DisplayManager's own (confirmed-correct) config path. Flagged for a follow-up trivial fix."
 
 traceability:
   design_updates: []
@@ -404,6 +416,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-378703da. Specifies the centre readout, the removal of DIGITAL and its reachability machinery, the read-side migration, and the deliberate retention of `_get_band_colour` for 7.3.11. |
+| 1.1 | 2026-08-07 | Status proposed → closed. Implementation and verification recorded (commit 7035a93), including the on-target defect found and fixed under issue-7f2a9c04 and a residual config.py default flagged for follow-up. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

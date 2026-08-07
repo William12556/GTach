@@ -19,7 +19,7 @@ issue_info:
   title: "The RADIAL centre disc displays the fixed string 'GTach' and the numeric RPM is not shown in RADIAL at all; DIGITAL is reachable only by an unadvertised horizontal swipe, and the mode selector written to advertise it is never called"
   date: "2026-08-04"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "enhancement"
   iteration: 1
@@ -244,15 +244,50 @@ resolution:
     defaulted DIGITAL to RADIAL on read. Retain _get_band_colour for
     7.3.11. See change-378703da.
   change_ref: "change-378703da"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-04"
+  resolved_by: "Claude Code, per prompt-378703da (commit 7035a93)"
+  fix_description: >
+    RADIAL centre disc renders the conditioned RPM in place of the
+    brand string; _draw_digital_mode, both swipe handlers and
+    _render_mode_selector removed; DisplayMode.DIGITAL retired with a
+    read-side migration (manager.py:507-511) mapping a persisted or
+    defaulted DIGITAL to RADIAL; _get_band_colour retained for 5014040c.
+    _handle_long_press's DIGITAL assignment corrected to RADIAL. See
+    ai/workspace/report/v0.4.0-triple-implementation-session.md §4.2.
+
+    A defect in this change's own four-file scope surfaced on-target
+    2026-08-05 (§9.9.1): display/touch.py and
+    display/navigation_gestures.py, both runtime-instantiated and both
+    outside the four-file constraint, still referenced
+    DisplayMode.DIGITAL, raising AttributeError and trapping the
+    operator on the OPTIONS screen. Root cause: a package-wide enum
+    removal cannot be correctly scoped by file list (task.md §9.9.4).
+    Corrected under issue-7f2a9c04 (implemented, closed) and confirmed
+    clean on-target (§9.10: one ERROR in 362 KB, no DIGITAL line).
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local, sessions §9.9-§9.10)"
+  test_results: >
+    Development-platform script (report §4.2) confirmed the DisplayMode
+    enum membership, the DIGITAL->RADIAL migration for both a persisted
+    and an unknown mode string, readout contrast against every
+    shift-cue fill, and byte-identity of _condition_rpm/_get_shift_cue.
+    On-target: the trapped-OPTIONS defect (§9.9.1) was found, fixed
+    under 7f2a9c04 and confirmed absent in the following session
+    (§9.10, one ERROR in 362 KB).
+  closure_notes: >
+    William confirmed on 2026-08-07 that GTach is functioning correctly
+    on gtach.local. One item from this issue's own
+    verification_steps remains outstanding on source re-check: 
+    utils/config.py's DisplayConfig dataclass field still defaults
+    mode to the literal "DIGITAL" (config.py:552), and the legacy INI
+    reader still defaults to it too (config.py:1344). Neither is on
+    DisplayManager's own config path — manager.py reads config.yaml
+    directly and performs its own migration (§9.9's confirmed-clean
+    on-target path) — and config/config.yaml no longer carries
+    display.mode: DIGITAL. Recorded as a residual finding for a
+    follow-up trivial fix, not a blocker to this triple's closure.
 
 prevention:
   preventive_measures: >
@@ -331,6 +366,13 @@ version_history:
       - "Recorded a third, unadvertised route into DIGITAL that the report does not: _handle_long_press forces DIGITAL when leaving OPTIONS, so any operator who visits the options screen is switched out of RADIAL."
       - "Recorded one correction to §7.3.14 — _handle_long_press survives the retirement and only its DIGITAL assignment changes — and one addition: _get_band_colour becomes uncalled but must be retained for 7.3.11, or the hysteresis added by 4c038bed is lost to a correct dead-code deletion."
       - "Recorded the persistence surface requiring migration: config/config.yaml display.mode, utils/config.py:588's 'DIGITAL' default, and the display's own config.yaml read at manager.py:275."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. change-378703da implemented 2026-08-04 (7035a93); on-target defect (operator trapped on OPTIONS, §9.9.1) found, fixed under issue-7f2a9c04 and confirmed clean 2026-08-05 (§9.10)."
+      - "Recorded a residual finding on source re-check: utils/config.py's DisplayConfig field default and legacy INI reader default still read 'DIGITAL', outside DisplayManager's own (confirmed-correct) migration path. Not a blocker; flagged for a follow-up trivial fix."
+      - "Closed on William's confirmation that GTach functions correctly on gtach.local. Moved to ai/workspace/issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -347,6 +389,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial issue document from display review findings §7.5 and §7.6 with recommendation 25, scoped to ai/task.md §7.3.14's directed decision. Records the undocumented OPTIONS-exit route into DIGITAL, a correction and an addition to §7.3.14, and the full persistence surface requiring migration. |
+| 1.1 | 2026-08-07 | Status open → closed. On-target defect found and fixed (7f2a9c04); a residual default-value finding recorded but not blocking. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

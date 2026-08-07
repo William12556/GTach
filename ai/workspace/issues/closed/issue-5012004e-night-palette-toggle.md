@@ -19,7 +19,7 @@ issue_info:
   title: "The display palette is fixed at full saturation with no day/night provision, and the panel backlight cannot be reduced in software, so at night the instrument is a bright light source in the driver's forward field of view"
   date: "2026-08-04"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -188,15 +188,40 @@ resolution:
     a single palette selector. Add a manual toggle, sited per
     change-5012004e, and persist its state. See change-5012004e.
   change_ref: "change-5012004e"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-04"
+  resolved_by: "Claude Code, per prompt-5012004e (commit 2242387)"
+  fix_description: >
+    A frozen Palette dataclass (models.py) holds all seventeen drawable
+    colours; DAY_PALETTE and NIGHT_PALETTE instances; DisplayManager
+    reads self._palette once per frame. Every night field verified
+    lower luminance than its day counterpart; state persisted via
+    _save_config. See
+    ai/workspace/report/v0.4.0-triple-implementation-session.md §4.4.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Development-platform script (report §4.4) confirmed DAY_PALETTE
+    matches the pre-change constants field by field; every night field
+    lower luminance than day; adjacent night bands separated by delta-E
+    29-177; night tick 4.67:1 against night ground; area-weighted night
+    luminance 24.2% of day; a failed save does not escape.
+  closure_notes: >
+    William confirmed on 2026-08-07 that GTach is functioning correctly
+    on gtach.local, and this toggle is part of that confirmation.
+    CORRECTION TO THE RECORD: the 2026-08-04 implementation report and
+    ai/task.md §9.8.5 item 2 state the toggle is unreachable because no
+    GestureType.DOUBLE_TAP exists. Source re-check (2026-08-07) shows
+    this is superseded — DisplayManager._handle_long_press now toggles
+    the palette directly (RADIAL only), per a docstring citing
+    change-2b6f4d91, "which took over the long press because that
+    gesture was left unclaimed." The toggle IS reachable in current
+    source. issue-2b6f4d91 and change-2b6f4d91 (report
+    v0.4.0-2b6f4d91-palette-long-press-toggle.md exists) are themselves
+    still recorded status open/proposed and do not appear anywhere in
+    ai/task.md — a governance-tracking gap outside this triple's scope,
+    flagged for William's attention rather than corrected here.
 
 prevention:
   preventive_measures: >
@@ -265,6 +290,13 @@ version_history:
       - "Recorded that the fill arc, not the face, is the dominant night emitter after 5014040c, so the band colours require night variants that remain mutually distinguishable — the substantive design constraint."
       - "Recorded that the dependency on 5014040c is structural, not merely a matter of covering the indicator's colours: it creates the named constants this change varies."
       - "Recorded the D3 cache-key obligation toward 7.3.5."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. change-5012004e implemented 2026-08-04 (2242387); day/night palette verified against source."
+      - "Corrected the 'toggle unreachable' finding recorded at implementation (task.md §9.8.5 item 2): source re-check shows _handle_long_press now toggles the palette directly, per change-2b6f4d91, which is itself undocumented in ai/task.md. Flagged for William, not resolved here."
+      - "Closed on William's confirmation that GTach functions correctly on gtach.local. Moved to ai/workspace/issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -281,6 +313,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial issue document from display review finding §7.9 with recommendation 29. Records the siting conflict with b02ed4ea's three-control budget, the fill arc as the dominant night emitter, and the structural dependency on 5014040c. |
+| 1.1 | 2026-08-07 | Status open → closed. Resolution and verification recorded (commit 2242387); the 'toggle unreachable' finding corrected — change-2b6f4d91 makes it reachable via long press, itself flagged as untracked in ai/task.md. Closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 

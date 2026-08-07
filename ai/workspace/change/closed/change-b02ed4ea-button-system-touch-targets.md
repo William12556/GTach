@@ -19,7 +19,7 @@ change_info:
   title: "DisplayManager gains a button geometry helper and a button draw helper driven by TypographyConstants; the options menu is re-laid to three targets at >= 72 px with >= 16 px separation and Clear settings moves behind a confirmation view"
   date: "2026-08-04"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -443,12 +443,22 @@ implementation:
     find Clear settings has moved.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-08-04"
+  implemented_by: "Claude Code, per prompt-b02ed4ea (commit a34fd49)"
+  verification_date: "2026-08-05"
+  verified_by: "Claude Code (development-platform script); William Watson (gtach.local)"
+  test_results: >
+    Delivered per implementation_approach: _button_column and
+    _draw_button added; options menu re-laid to three 72x72 px targets
+    at 16 px separation; Clear settings moved behind confirm_clear.
+    Development-platform script (report §4.1) confirmed rect placement,
+    corner containment inside r=238, exact-touching adjacency and the
+    corner-radius/expansion contract, all passing; touch_coordinator.py
+    byte-identical. On-target session 2026-08-05 (task.md §9.10) shows
+    the application running clean. William confirmed 2026-08-07 that
+    GTach functions correctly on gtach.local.
+  issues_found:
+    - "Clear settings has no entry point from the reduced three-control menu (§9.8.5 item 4) — an accepted consequence of the three-item budget, deferred to display report §7.7's re-layout."
 
 traceability:
   design_updates: []
@@ -490,6 +500,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-b02ed4ea. Specifies the two helpers, the three-item options menu, the Clear-settings confirmation sub-view, and the application of the declared TypographyConstants at every main-UI button site. |
+| 1.1 | 2026-08-07 | Status proposed → closed. Implementation and verification recorded (commit a34fd49); closed on William's confirmation that GTach functions correctly on gtach.local. |
 
 ---
 
