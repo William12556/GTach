@@ -19,7 +19,7 @@ issue_info:
   title: "gtach/__init__.py binds the name 'main' to the function, so app.py's 'from . import main as _main' retrieves the function and the debug and startup log handlers are unreachable; engine_profiles.yaml is absent from the wheel because package-data names only fonts; and _draw_update_view still instructs a long press that no longer returns"
   date: "2026-08-05"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -258,15 +258,25 @@ resolution:
     package-data to include assets/*.yaml; correct the update view's
     footer. See change-c1d4b8e6.
   change_ref: "change-c1d4b8e6"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-05"
+  resolved_by: "Claude Code"
+  fix_description: >
+    All three edits confirmed present in source as of 2026-08-07:
+    sys.modules retrieval at both app.py sites, assets/*.yaml in
+    pyproject.toml package-data, and the update view's footer corrected.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-07"
+  verified_by: "William Watson (direct confirmation); Claude (source re-inspection)"
+  test_results: >
+    No T06 result document — §8.2's pytest suite remains unwritten.
+    Verified by source re-inspection against verification_enhanced's
+    steps and William's direct on-target confirmation. See
+    change-c1d4b8e6 v1.2 for detail.
+  closure_notes: >
+    Closed on human confirmation plus source verification rather than a
+    passing regression suite, matching the gap already recorded against
+    issue-1143427b (ai/task.md §11.2).
 
 prevention:
   preventive_measures: >
@@ -341,6 +351,11 @@ version_history:
       - "Recorded issue-d7f2b4e6 as the precedent: the same packaging defect, whose fix added the fonts glob that still stands beside the unpackaged YAML."
       - "Recorded that correcting (a) will visibly shrink start.log, that being change-bd8f95b7's intended design working for the first time."
       - "Recorded the OBD response desynchronisation found in the same log as explicitly out of scope."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Closed on William Watson's direct confirmation, cross-checked by source re-inspection of all three fixes. No T06 exists; closes on human confirmation plus source verification, the same gap already recorded against issue-1143427b (ai/task.md §11.2)."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -357,6 +372,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-05 | Initial issue document grouping the `__init__` module shadowing that breaks debug logging, the unpackaged `engine_profiles.yaml`, and the stale update-view footer. |
+| 1.1 | 2026-08-07 | Closed on William Watson's confirmation, cross-checked by source re-inspection. No T06 exists; closes per the `1143427b` precedent. |
 
 ---
 

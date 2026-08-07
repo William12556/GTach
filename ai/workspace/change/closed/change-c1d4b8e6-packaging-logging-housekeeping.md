@@ -19,7 +19,7 @@ change_info:
   title: "app.py retrieves the gtach.main module from sys.modules instead of by attribute traversal of a package that shadows it; package-data gains assets/*.yaml; and _draw_update_view's footer is corrected to the gesture that works"
   date: "2026-08-05"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -315,11 +315,21 @@ implementation:
     carries the same six thresholds the built-in defaults did.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-05"
+  implemented_by: "Claude Code"
+  verification_date: "2026-08-07"
+  verified_by: "William Watson (confirmed resolved); source re-inspection by Claude"
+  test_results: >
+    No T06 exists — §8.2's pytest suite is still unwritten. Verified
+    instead by source re-inspection against this document's success
+    criteria: app.py:146 and app.py:173 both retrieve
+    sys.modules.get('gtach.main') rather than the shadowed package
+    attribute (EDIT A present at both sites); pyproject.toml:78 lists
+    "assets/*.yaml" beside the fonts glob (EDIT B present); manager.py
+    no longer contains the string "Long press to return" (EDIT C
+    present). William confirmed on-target behaviour directly: debug
+    toggle reaches the handler, engine profiles load, and the update
+    view's footer reads correctly.
   issues_found: []
 
 traceability:
@@ -349,6 +359,11 @@ version_history:
     changes:
       - "Amended the fourth validation criterion to cover executable occurrences in src/ only. As written it was unsatisfiable: the string necessarily appears in this cycle's own T-Docs, in ai/task.md, in the closed prompt-bd8f95b7, and in the explanatory comments prompt-c1d4b8e6's own EDIT A text mandates verbatim. Reported at implementation report §5.2 and amended here rather than in prompt-c1d4b8e6, which is closed and immutable per P00 §1.1.14.2."
       - "Second occurrence of this criterion defect; prompt-378703da was the first, and the prevention note recorded in change-7f2a9c04 did not bind subsequent authoring. The durable correction is a template rule — see T04-prompt.md v1.4 — rather than a further note."
+  - version: "1.2"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Closed on William Watson's direct confirmation that all three faults are resolved, cross-checked by source re-inspection: sys.modules retrieval present at both app.py sites, assets/*.yaml present in pyproject.toml package-data, and 'Long press to return' absent from manager.py. No T06 result document exists — §8.2's pytest suite remains unwritten — so this closes on human confirmation plus source verification rather than a passing regression suite, the same gap already recorded against change-1143427b (ai/task.md §11.2)."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -366,6 +381,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-08-05 | Initial change document coupled to issue-c1d4b8e6. Corrects the module retrieval at both `app.py` sites, packages `assets/*.yaml`, and fixes the update view's footer. |
 | 1.1 | 2026-08-05 | Amended the fourth validation criterion to executable occurrences in `src/` only; as written it was unsatisfiable. Second occurrence of the defect, so the durable correction is a T04 template rule rather than another prevention note. |
+| 1.2 | 2026-08-07 | Closed on William Watson's confirmation, cross-checked by source re-inspection of all three edits. No T06 exists; closes on human confirmation plus source verification per the `1143427b` precedent. |
 
 ---
 
