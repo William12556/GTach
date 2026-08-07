@@ -69,7 +69,7 @@ scp "$SCRIPT_DIR/install.sh" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/gtach.service" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/gtach-preflight.sh" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/gtach-boot-splash.service" "${PI}:${INSTALL_DIR}/"
-scp "$SCRIPT_DIR/boot-splash.png" "${PI}:${INSTALL_DIR}/"
+scp "$SCRIPT_DIR/boot-splash.raw" "${PI}:${INSTALL_DIR}/"
 
 echo "==> Running install on Pi..."
 ssh "$PI" "$INSTALL_DIR/install.sh /tmp/$WHEEL_NAME"

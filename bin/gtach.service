@@ -8,9 +8,6 @@ StartLimitBurst=3
 Type=simple
 User=root
 WorkingDirectory=/opt/gtach
-# SIGKILL, not stop/terminate: fbi must not get a chance to restore text
-# mode on exit, which would blank the framebuffer it just handed off.
-ExecStartPre=-/usr/bin/pkill -9 -f 'fbi -d /dev/fb0'
 ExecStartPre=-/opt/gtach/gtach-preflight.sh
 ExecStart=/opt/gtach/venv/bin/gtach
 Restart=always

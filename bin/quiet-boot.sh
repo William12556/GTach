@@ -15,11 +15,20 @@
 #     console — once boot completes, and which then sits on the panel until
 #     GTach draws over it;
 #   - systemd's own '[ OK ] Started ...' lines, which do not come from the
-#     kernel and are unaffected by 'quiet';
-#   - fsck output after an unclean shutdown.
+#     kernel and are unaffected by 'quiet'.
 #
-# This script closes those three. It is idempotent: running it twice changes
-# nothing the second time.
+# This script masks getty@tty1 (no more login prompt on the panel) and adds
+# systemd.show_status=0 (no more '[ OK ]' lines). console= is left at tty1;
+# an earlier version of this script redirected console output to tty3 on
+# the theory that tty3 is never displayed. It is not: console= also selects
+# the active/foreground VT at boot, so redirecting there made tty3 — not
+# tty1 — the VT sharing fbcon's framebuffer with GTach's direct /dev/fb0
+# writes. Any later console write (an unmasked autovt getty, cron, wall,
+# journald-to-console forwarding) then overwrote GTach's display. Leaving
+# console=tty1 and masking only getty@tty1 avoids this.
+#
+# This script is idempotent: running it twice changes nothing the second
+# time.
 #
 # WHAT YOU LOSE: masking getty@tty1 removes the local console login. SSH is
 # unaffected. Recover with --revert, or from another machine.
@@ -32,10 +41,8 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 
-# Parameters added to cmdline.txt. console= is handled separately below,
-# because it must REPLACE any existing console=tty1 rather than be appended:
-# the kernel writes messages to every console= given, so appending would
-# leave tty1 receiving them.
+# Parameters added to cmdline.txt. console= is intentionally left untouched
+# — see header comment for why redirecting it to another VT is unsafe.
 CMDLINE_PARAMS=(
     "quiet"
     "loglevel=0"
@@ -44,7 +51,6 @@ CMDLINE_PARAMS=(
     "systemd.show_status=0"
 )
 
-CONSOLE_TARGET="tty3"   # a VT that is never displayed
 CONFIG_PARAMS=( "disable_splash=1" )
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
@@ -126,18 +132,7 @@ say "Reading $CMDLINE"
 ORIGINAL="$(tr -d '\n' < "$CMDLINE")"
 NEW="$ORIGINAL"
 
-# 1. console= — replace tty1 with tty3 if present, otherwise append.
-if grep -qE '(^| )console=tty1( |$)' <<<"$NEW"; then
-    NEW="$(sed -E "s/(^| )console=tty1( |$)/\1console=$CONSOLE_TARGET\2/g" <<<"$NEW")"
-    say "  console=tty1 -> console=$CONSOLE_TARGET"
-elif grep -qE "(^| )console=$CONSOLE_TARGET( |$)" <<<"$NEW"; then
-    say "  console=$CONSOLE_TARGET already set"
-else
-    NEW="$NEW console=$CONSOLE_TARGET"
-    say "  + console=$CONSOLE_TARGET"
-fi
-
-# 2. The remaining parameters, added only if absent.
+# Parameters, added only if absent. console= is not touched (see header).
 for p in "${CMDLINE_PARAMS[@]}"; do
     key="${p%%=*}"
     if grep -qE "(^| )${key}(=| |$)" <<<"$NEW"; then

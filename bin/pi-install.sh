@@ -102,10 +102,15 @@ curl -fsSL "${GITHUB_RAW}/gtach.service"       -o /etc/systemd/system/gtach.serv
 curl -fsSL "${GITHUB_RAW}/gtach-preflight.sh"  -o "${INSTALL_DIR}/gtach-preflight.sh"
 chmod 0755 "${INSTALL_DIR}/gtach-preflight.sh"
 
+echo "==> Fetching boot splash..."
+curl -fsSL "${GITHUB_RAW}/gtach-boot-splash.service" -o /etc/systemd/system/gtach-boot-splash.service
+curl -fsSL "${GITHUB_RAW}/boot-splash.raw"            -o "${INSTALL_DIR}/boot-splash.raw"
+
 # ---------------------------------------------------------------------------
 # systemd registration
 # ---------------------------------------------------------------------------
 echo "==> Registering systemd service..."
 systemctl daemon-reload
 systemctl enable gtach
+systemctl enable gtach-boot-splash
 echo "    Service 'gtach' enabled. Start now with: systemctl start gtach"
