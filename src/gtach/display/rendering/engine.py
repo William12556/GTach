@@ -448,6 +448,14 @@ class DisplayRenderingEngine(RenderingEngineInterface):
     def _pan_display(self, index: int) -> bool:
         """Present a framebuffer half by moving the scan-out origin.
 
+        Uses FB_ACTIVATE_NOW rather than FB_ACTIVATE_VBL. Page
+        flipping's correctness does not depend on waiting for the
+        next blanking interval — nothing reads the off-screen half
+        being panned to — and FB_ACTIVATE_VBL was found to risk
+        blocking this ioctl indefinitely on this target's driver,
+        hanging the display thread with no exception and no way for
+        the caller to detect or recover (issue-e7a92c4f).
+
         Args:
             index: 0 or 1 — which half to display.
 
@@ -460,11 +468,17 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         try:
             var = list(struct.unpack(FB_VAR_STRUCT, self._panning_var))
             var[FB_VAR_YOFFSET] = index * var[FB_VAR_YRES]
-            # Asks the driver to latch at the next blanking interval.
-            # Not all drivers honour it; correctness does not depend on it.
-            var[FB_VAR_ACTIVATE] = FB_ACTIVATE_VBL
+            # Applied immediately. FB_ACTIVATE_VBL asked the driver
+            # to defer to the next blanking interval for a benefit
+            # this design does not need, and was found to risk
+            # blocking indefinitely on this target (issue-e7a92c4f).
+            var[FB_VAR_ACTIVATE] = FB_ACTIVATE_NOW
+            if self.logger.isEnabledFor(logging.DEBUG):
+                self.logger.debug(f"Panning to buffer {index}")
             fcntl.ioctl(self.fb_dev.fileno(), FBIOPAN_DISPLAY,
                         struct.pack(FB_VAR_STRUCT, *var))
+            if self.logger.isEnabledFor(logging.DEBUG):
+                self.logger.debug(f"Panned to buffer {index}")
             return True
         except Exception as e:
             if not self._pan_failed_logged:
