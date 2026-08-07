@@ -209,15 +209,39 @@ resolution:
     condition includes the flash phase alongside the quantised RPM, band
     and mode. See change-9ed1c77e.
   change_ref: "change-9ed1c77e"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-05"
+  resolved_by: "Claude Code, per prompt-9ed1c77e (Parts 1 and 2 only)"
+  fix_description: >
+    Recommendation 14: 'import queue' moved to module scope (confirmed
+    live at manager.py:20); the debug f-string guarded by
+    logger.isEnabledFor(logging.DEBUG) (confirmed live at
+    manager.py:1376). Recommendation 12: config/config.yaml
+    display.fps_limit reduced to 30 (confirmed live). Recommendation 13
+    (conditional render, the flash-phase-sensitive skip logic) is NOT
+    implemented — deferred alongside issue-821919ce per ai/task.md
+    §9.13, its own assumption A1 (frame cost material enough to justify
+    skipping) having been falsified by the measured 46%-of-budget
+    result recommendation 12 alone produced.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-05"
+  verified_by: "William Watson (gtach.local, task.md §9.11.6-§9.13)"
+  test_results: >
+    On-target: 32 samples at exactly 30.0 FPS, zero exceeding 33.3 ms,
+    against 32% overrunning at 60 Hz pre-change. Source re-check
+    2026-08-07 confirms both Part 1 and Part 2 fixes live and byte-
+    identical to the recorded description.
+  closure_notes: >
+    NOT MOVED TO closed/. This issue is intentionally left at
+    "resolved" rather than "closed", per the same distinction task.md
+    §17.0 introduced for change_info.status: Parts 1-2 are complete and
+    on-target verified, but Part 3 is a genuine, deliberate deferral of
+    part of this issue's own original scope, not an oversight or a
+    closure formality. William confirmed 2026-08-07 that GTach is
+    functioning correctly on gtach.local, which covers what Parts 1-2
+    deliver. Should Part 3 (or 821919ce) later be picked up, revise
+    this document rather than opening a new one — the assumptions and
+    the flash-phase risk are already recorded here in full.
 
 prevention:
   preventive_measures: >
@@ -300,6 +324,12 @@ version_history:
       - "Recommendation 13 (conditional render) is DEFERRED. Assumption A1 — that frame cost would still justify skipping — is false at 46% of budget with no overruns and no visible fault. Static screens redrawing thirty times a second remains real waste that the instrument can afford."
       - "Both remaining assumptions are now settled: A1 false, and A2 (30 Hz acceptable for the needle) confirmed by observation on the panel."
       - "Left active pending a T06 result for the implemented parts, per ai/task.md §8.2.1. Recommendation 13 does not gate that closure; it is deferred, not outstanding."
+  - version: "1.2"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Resolution and verification recorded for Parts 1-2 (module-scope import, guarded debug f-string, fps_limit 30), confirmed live by source re-check."
+      - "Deliberately left at status resolved, not closed. Part 3 remains a genuine open deferral of this issue's original scope, not a closure formality. William confirmed GTach functions correctly on gtach.local, covering what Parts 1-2 deliver."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -316,6 +346,8 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial issue document from display review findings §5.6, §5.7 and §4.5 with recommendations 12, 13 and 14. Records the flash-phase omission in the report's stated skip condition, the differing risk profiles of the three recommendations, and two assumptions from authoring ahead of the §7.5.3 baseline. |
+| 1.1 | 2026-08-05 | Status open → resolved. Recommendations 12 and 14 implemented as Parts 1-2, measured to remove every budget overrun; recommendation 13 deferred, its own assumption A1 falsified by that result. |
+| 1.2 | 2026-08-07 | Resolution and verification recorded for Parts 1-2, confirmed by source re-check. Deliberately left at "resolved", not "closed" — Part 3 remains a genuine open deferral, not a closure formality. William confirmed GTach functions correctly on gtach.local. |
 
 ---
 

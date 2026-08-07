@@ -353,12 +353,17 @@ implementation:
     821919ce.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-08-05"
+  implemented_by: "Claude Code, per prompt-9ed1c77e (Parts 1 and 2 only)"
+  verification_date: "2026-08-05"
+  verified_by: "William Watson (gtach.local, task.md §9.11.6-§9.13)"
+  test_results: >
+    On-target: 32 samples at exactly 30.0 FPS, zero exceeding 33.3 ms,
+    against 32% overrunning at 60 Hz pre-change. Source re-check
+    2026-08-07 confirms the module-scope import and the guarded debug
+    f-string both live in manager.py.
+  issues_found:
+    - "Part 3 (conditional render, recommendation 13) not implemented. Deferred alongside issue-821919ce per ai/task.md §9.13: its own assumption A1 was falsified by the 46%-of-budget result Parts 1-2 alone produced. Not moved to closed/; status remains implemented rather than closed, reflecting this document's incomplete original scope."
 
 traceability:
   design_updates: []
