@@ -305,6 +305,11 @@ version_history:
       - "Of the three assumptions recorded in technical_notes, A1 is now false: render cost is no longer a material fraction of the budget. A3 was confirmed at 37.1 MB steady. A2 was never isolated and now need not be."
       - "Deferred rather than closed. Nothing here was wrong; the measurement arrived after the analysis and moved the conclusion. The triple is complete and implementable should a heavier render path, a slower target or measured GIL contention make it relevant."
       - "This is the outcome ai/task.md §8.1 predicted when it recorded that this triple could not be authored correctly before its observation was taken."
+  - version: "1.2"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Formally closed and moved to closed/ on William Watson's decision. This is closure of the deferral decision itself, not a claim of implementation: no static-layer surface cache, text-surface cache or vertex-count scaling exists in src/gtach as of this date (confirmed by source grep and git log — no commit implements any part of this triple). Status remains 'deferred', unchanged from v1.1; only the document's active/closed location changes, so it stops appearing as an open work item while remaining implementable per v1.1's stated condition."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -321,6 +326,8 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial issue document from display review findings §5.2–§5.5 with recommendations 9, 10 and 11. Records the three assumptions arising from authoring ahead of the §7.5.3 baseline, the mandatory keyed-cache branch of D3, and the revised scope of the text pre-render after DIGITAL's retirement. |
+| 1.1 | 2026-08-05 | Status open → deferred. The §7.5.3 baseline (frames at 15.3 ms median against a 33.3 ms budget, zero overruns) removed assumption A1; deferred, not closed, and implementable if conditions change. |
+| 1.2 | 2026-08-07 | Formally closed and moved to `closed/` on William Watson's decision — closure of the deferral, not a claim of implementation. No caching code exists in source as of this date. |
 
 ---
 

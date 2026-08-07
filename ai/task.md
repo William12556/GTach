@@ -28,8 +28,8 @@ Created: 2026 July 29
 | 4.2 | — | OBD stream desynchronises during initialisation | ☐ Open — not yet raised as a triple; severity is init-phase robustness, not data integrity |
 | 4.3 | — | Minimal pytest suite (P06 prerequisite) | ☐ Open — `tests/` collects zero items; blocks formal T06 closure for §5.0 items |
 | 5.0 | 15 triples | Implemented, prompt closed, issue/change open pending T06 | See §5.0 |
-| 6.1 | `821919ce` | Render caching | ⏸ Deferred — own withdrawal condition met, zero measured overruns |
-| 6.2 | `9ed1c77e` Part 3 | Conditional render | ⏸ Deferred — same basis; Parts 1–2 shipped |
+| 6.1 | `821919ce` | Render caching | ⏸ Deferred, governance docs closed 2026-08-07 — own withdrawal condition met, zero measured overruns. Not implemented |
+| 6.2 | `9ed1c77e` Part 3 | Conditional render | ⏸ Deferred, governance docs closed 2026-08-07 — same basis; Parts 1–2 shipped and verified. Part 3 not implemented |
 | 7.1 | — | UI Navigation audit — Finding C (terminology) | Deferred by design |
 | 7.2 | — | Display report §7.7 (options screen re-layout) | Deferred to P10 |
 
@@ -187,12 +187,19 @@ Both items below are complete, authored documents that were withdrawn
 rather than implemented further, on the strength of a condition each
 change document set for itself in advance. Deferred, not rejected — both
 remain implementable if a heavier render path, a slower target, or a
-measured GIL-contention problem makes them relevant again.
+measured GIL-contention problem makes them relevant again. As of
+2026-08-07 both are also formally closed in governance terms — their
+issue/change documents moved to `closed/` on William Watson's decision —
+which closes the deferral itself, not a claim that either was
+implemented. Source re-inspection and git log confirm neither the
+static-layer/text-surface cache nor the conditional-render skip logic
+exists anywhere in `src/gtach`; only the `fps_limit` reduction and the
+import/f-string housekeeping (`9ed1c77e` Parts 1–2) actually shipped.
 
 | ID | Item | Basis |
 |---|---|---|
-| `821919ce` | Render caching (`display/manager.py`, `display/rendering/engine.py`) | Own withdrawal condition — "if RADIAL frames already complete well inside budget" — met: 46% of a 33.3 ms budget used at median, zero overruns in 32 samples, flicker resolved |
-| `9ed1c77e` Part 3 | Conditional render (`display/manager.py`) | Falls under the same document's stated fallback once the `fps_limit` reduction (Parts 1–2, shipped) removed all measured overruns on its own |
+| `821919ce` | Render caching (`display/manager.py`, `display/rendering/engine.py`) | Own withdrawal condition — "if RADIAL frames already complete well inside budget" — met: 46% of a 33.3 ms budget used at median, zero overruns in 32 samples, flicker resolved. Not implemented; closed as deferred |
+| `9ed1c77e` Part 3 | Conditional render (`display/manager.py`) | Falls under the same document's stated fallback once the `fps_limit` reduction (Parts 1–2, shipped and verified) removed all measured overruns on its own. Not implemented; closed as deferred |
 
 Full measurement history: `task-log-2026-08.md` §8.0–§9.0.
 
@@ -307,6 +314,36 @@ revision. `change-c1d4b8e6`'s citation of "task.md §9.10" for the OBD
 desynchronisation now resolves to §4.2 above (current state) or
 `task-log-2026-08.md` §6.4/§8.2 (narrative).
 
+### 9.4a Discovery: a parallel closure pass had already run
+
+Before this session's own closures, a separate pass (commit `41e6598`,
+2026-08-07, prior to this document's rebuild) had already closed sixteen
+of the seventeen remaining active issue/change pairs, including several
+this document's prior revision did not know existed as closed
+(`2b6f4d91`, `4d9e2f18`, `64d8d8fc`, `6a3b7c52`, `8c5a1e73`,
+`e7c3a512`). That pass deliberately left `9ed1c77e` at `resolved`
+(Parts 1–2 only) and `c1d4b8e6` untouched. This document's §5.0 table
+and its "pending test closure" framing were built from the *prior*
+revision's claims rather than a fresh directory listing, and were
+already stale on that point by the time of writing — worth recording so
+the same mistake is not repeated: **check the actual `status` field and
+folder location, not what the previous task.md revision says.**
+
+### 9.4b `821919ce` and `9ed1c77e` — closed on decision, not implementation
+
+William asked to close "the last two open issue/change docs," believing
+the underlying work had been implemented. Source grep and git log found
+no evidence of either the static-layer/text-surface cache (`821919ce`)
+or the conditional-render skip logic (`9ed1c77e` Part 3) anywhere in
+`src/gtach` — only `9ed1c77e` Parts 1–2 (`fps_limit` 30, import/f-string
+housekeeping) are genuinely implemented, matching what §6.0 already
+recorded. Reported this discrepancy rather than closing on the stated
+belief; William's decision was to close both documents anyway, as a
+formal closure of the *deferral*, not as a claim of implementation. Both
+moved to `closed/` with version-history entries stating this explicitly
+(`issue-821919ce` v1.2, `change-821919ce` v1.2, `issue-9ed1c77e` v1.3,
+`change-9ed1c77e` v1.2).
+
 ### 9.5 What changed in the 2026-08-07 rebuild
 
 The prior revision (17.0, 1,841 lines) mixed current state with a full
@@ -334,6 +371,7 @@ confirmation, each independently cross-checked against source.
 | 1.0–17.0 | 2026-07-29 to 2026-08-05 | See `ai/workspace/report/task-log-2026-08.md` for the full history of these revisions; their content is preserved there. |
 | 18.0 | 2026-08-07 | Rebuilt from a 1,841-line revision that had accumulated a full investigation diary (former §9.0–§9.13) and extended per-item verification prose alongside current task state. That narrative was relocated, unaltered, to `ai/workspace/report/task-log-2026-08.md`. Restructured around current state only. Corrected three discrepancies found during the rebuild: `7f2a9c04` and `3e8b1d72` shown open/pending despite being closed and on-target-verified; `c1d4b8e6` carried two contradictory status rows, resolved to "not implemented" per its change document; `821919ce` shown in an active-gate table despite its own change document recording `status: deferred`. Document length reduced from 1,841 to approximately 330 lines. |
 | 19.0 | 2026-08-07 | William Watson confirmed five further items resolved: `c1d4b8e6`, the WELCOME-screen touch-unresponsiveness verification item, and the three findings blocking `b02ed4ea`, `5014040c` and `5012004e`. Each cross-checked against source before closing (§9.3): `c1d4b8e6`'s three edits confirmed present in `app.py`/`pyproject.toml`/`manager.py`, its governance documents updated to `status: closed` and moved to `closed/`; `b02ed4ea`'s entry-point gap resolved by the separately-shipped `change-8c5a1e73` paged options menu; `5014040c`'s contrast criterion resolved as an accepted-limitation decision recorded in source comments; `5012004e` confirmed implemented via `change-2b6f4d91`'s long-press repurposing rather than the originally specified `DOUBLE_TAP` gesture, which still does not exist. Collapsed the now-empty former §5.0 (Requires Live-Device Verification) and §6.0 (Blocked) sections; renumbered §7.0–§11.0 to §5.0–§9.0 accordingly. |
+| 20.0 | 2026-08-07 | Discovered a parallel closure pass (commit `41e6598`) had already closed sixteen active issue/change pairs this document's prior revision didn't know about, leaving only `821919ce` and `9ed1c77e` active — recorded at §9.4a as a caution against trusting the previous task.md revision over the actual `status` field and folder location. William asked to close both on the belief they were implemented; source grep and git log found no static-layer/text-surface cache and no conditional-render skip logic anywhere in `src/gtach` — reported the discrepancy rather than closing on the stated belief. William's decision: close both as formal closure of the deferral, not a claim of implementation (§9.4b). Both moved to `closed/` with version-history entries stating this explicitly; §6.0 updated accordingly. |
 
 ---
 

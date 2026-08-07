@@ -330,6 +330,11 @@ version_history:
     changes:
       - "Resolution and verification recorded for Parts 1-2 (module-scope import, guarded debug f-string, fps_limit 30), confirmed live by source re-check."
       - "Deliberately left at status resolved, not closed. Part 3 remains a genuine open deferral of this issue's original scope, not a closure formality. William confirmed GTach functions correctly on gtach.local, covering what Parts 1-2 deliver."
+  - version: "1.3"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Formally closed and moved to closed/, superseding v1.2's decision to leave this document active. Status left at 'resolved', unchanged — this closes the Part 3 deferral decision so the document stops appearing as an open work item, not a claim that Part 3 was implemented. No conditional-render logic exists in src/gtach as of this date, confirmed by source grep and git log."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -348,6 +353,7 @@ metadata:
 | 1.0 | 2026-08-04 | Initial issue document from display review findings §5.6, §5.7 and §4.5 with recommendations 12, 13 and 14. Records the flash-phase omission in the report's stated skip condition, the differing risk profiles of the three recommendations, and two assumptions from authoring ahead of the §7.5.3 baseline. |
 | 1.1 | 2026-08-05 | Status open → resolved. Recommendations 12 and 14 implemented as Parts 1-2, measured to remove every budget overrun; recommendation 13 deferred, its own assumption A1 falsified by that result. |
 | 1.2 | 2026-08-07 | Resolution and verification recorded for Parts 1-2, confirmed by source re-check. Deliberately left at "resolved", not "closed" — Part 3 remains a genuine open deferral, not a closure formality. William confirmed GTach functions correctly on gtach.local. |
+| 1.3 | 2026-08-07 | Formally closed and moved to `closed/`, superseding v1.2's decision to stay active. Status unchanged ("resolved"). Closes the Part 3 deferral decision, not a claim of implementation. |
 
 ---
 

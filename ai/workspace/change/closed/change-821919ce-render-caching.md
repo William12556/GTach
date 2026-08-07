@@ -387,6 +387,11 @@ version_history:
       - "The flicker that motivated the efficiency work is resolved (ai/task.md §9.11.7): no tearing, flashing or band thrash observed on the panel. The symptom this change would have served no longer exists."
       - "Deferred rather than rejected: the design is sound and the document is complete. A heavier render path, a slower target, or a measured GIL-contention problem would make it relevant again, and it can be implemented as authored."
       - "The prompt was never executed. Its gate — stop and report if render cost is not material — would have halted it, which is the gate working as intended."
+  - version: "1.2"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Formally closed and moved to closed/ on William Watson's decision. This closes the deferral decision itself, not a claim of implementation: source re-inspection and git log confirm no static-layer cache, text-surface cache or sweep-proportional tessellation exists in src/gtach as of this date. Status remains 'deferred', unchanged from v1.1."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -404,6 +409,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-821919ce. Specifies the keyed static layer, the bounded text-surface cache and the sweep-proportional tessellation, with the §7.5.3 baseline as the first implementation step. |
 | 1.1 | 2026-08-05 | Status proposed → **deferred**. The §7.5.3 baseline was collected and `9ed1c77e` Part 2 reduced `fps_limit` to 30; frames now use 46% of budget with zero overruns and the flicker is resolved. This document's own withdrawal condition is met. Deferred, not rejected — the design is sound and implementable as authored should a heavier render path make it relevant. |
+| 1.2 | 2026-08-07 | Formally closed and moved to `closed/` on William Watson's decision — closure of the deferral, not a claim of implementation. No caching code exists in source as of this date. |
 
 ---
 

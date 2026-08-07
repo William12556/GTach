@@ -399,6 +399,11 @@ version_history:
       - "Static screens do still redraw thirty times a second to no effect, which is genuine waste. It is waste the instrument can afford, and that is the whole of the argument for deferring rather than proceeding."
       - "Part 3 remains implementable as authored. Its prompt, tests and the flash-phase key member are complete."
       - "The prompt T-Doc was left active after Parts 1 and 2 precisely so Part 3 would not be stranded. With Part 3 deferred it can now be closed."
+  - version: "1.2"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Formally closed and moved to closed/ on William Watson's decision. Status left at 'implemented', unchanged from v1.1 — Parts 1-2 are genuinely implemented and on-target verified; Part 3 remains deferred, not implemented. Source re-inspection and git log confirm no conditional-render/skip-if-unchanged logic exists in manager.py as of this date. This closes the deferral decision on Part 3, not a claim that it was built."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -416,6 +421,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-08-04 | Initial change document coupled to issue-9ed1c77e. Specifies three independently revertible parts, with the shift-cue flash phase added to the skip condition the report omits it from. |
 | 1.1 | 2026-08-05 | Status proposed → **implemented, Parts 1 and 2 only**. Part 2 removed every budget overrun — 30.0 FPS in all 32 samples, zero over 33.3 ms — exceeding what this document claimed for it. **Part 3 deferred** under this document's own stated fallback: with no overruns and the flicker resolved, conditional rendering solves nothing and carries the flash-suppression risk. |
+| 1.2 | 2026-08-07 | Formally closed and moved to `closed/` on William Watson's decision. Status unchanged ("implemented") — Parts 1–2 remain genuinely implemented and verified; Part 3 remains deferred, not built. Closes the Part 3 deferral decision, not a claim of its implementation. |
 
 ---
 
