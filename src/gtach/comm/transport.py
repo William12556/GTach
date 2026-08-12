@@ -58,6 +58,19 @@ _CONNECT_FAULT_CAUSES = {
     _errno.ECONNREFUSED: 'connection refused by adapter',
 }
 
+# Recorded when a link is torn down for sustained silence rather than
+# failing to open. Without it the DISCONNECTED screen had no
+# explanation in exactly the mid-session case change-9c2f41d8 exists to
+# handle, because only connect() ever set a cause (issue-5e7a03c4
+# iteration 2).
+_SILENT_LINK_CAUSE = 'adapter stopped responding'
+
+# Reported after sustained consecutive connect failures with a
+# controller present. No single errno identifies a wedged controller;
+# persistence is the only signal available, and it is second-order —
+# which is why this is an escalation rather than a mapping entry.
+_WEDGED_LINK_CAUSE = 'bluetooth wedged - reset required'
+
 # Sysfs path listing Bluetooth controllers. PlatformDetector already
 # probes this same path (platform.py:706), so reading it here is a
 # precedented pattern rather than a new dependency.
@@ -162,6 +175,19 @@ class OBDTransport(ABC):
     # watchdog has anything to say about it (issue-9c2f41d8).
     _MAX_CONSECUTIVE_TIMEOUTS: int = 5
 
+    # Consecutive CONNECT failures after which a controller that is
+    # present but never usable is reported as wedged. At the 5.0 s
+    # retry interval this is ~30 s of sustained failure: above any
+    # transient, and below the point an operator would reasonably keep
+    # waiting without being told something is wrong.
+    #
+    # Deliberately separate from _MAX_CONSECUTIVE_TIMEOUTS above. That
+    # counts read timeouts on an ESTABLISHED link; this counts failures
+    # to establish one. Different events, different thresholds, and
+    # merging them would make either one's tuning change the other's
+    # behaviour.
+    _MAX_CONSECUTIVE_CONNECT_FAILURES: int = 6
+
     def __init__(self):
         # OBDTransport is abstract. The four handle primitives below are
         # deliberately NOT @abstractmethod: SimTransport overrides the
@@ -178,6 +204,7 @@ class OBDTransport(ABC):
         self._handle = None
         self._state = TransportState.DISCONNECTED
         self._consecutive_timeouts = 0
+        self._consecutive_connect_failures = 0
         self._last_failure_cause: Optional[str] = None
 
     def _open(self):
@@ -315,15 +342,44 @@ class OBDTransport(ABC):
                 self._handle = handle
                 self._state = TransportState.CONNECTED
                 self._last_failure_cause = None
+                self._consecutive_connect_failures = 0
             logger.info("Connected to %s", self._describe())
             return True
         except self._IO_ERRORS as e:
+            with self._lock:
+                self._consecutive_connect_failures += 1
+                failures = self._consecutive_connect_failures
+
             cause = self._classify_connect_error(e)
-            logger.error("Failed to connect to %s: %s (%s)",
-                         self._describe(), e, cause)
+
+            # Escalate to a wedge diagnosis once failure has persisted.
+            # Guarded on the controller being present: if it is
+            # genuinely absent, that is the more specific fact and must
+            # not be masked. _bluetooth_adapter_present touches the
+            # filesystem, so it is called outside the lock.
+            #
+            # The counter is NOT reset here. Unlike the read-timeout
+            # counter, this one latches: the condition persists until a
+            # connect succeeds, and the cause should keep reporting it.
+            if (failures >= self._MAX_CONSECUTIVE_CONNECT_FAILURES
+                    and cause != 'no bluetooth controller'
+                    and _bluetooth_adapter_present()):
+                cause = _WEDGED_LINK_CAUSE
+
+            # Append the cause only when it says something the
+            # exception text does not. An errno-less socket.timeout
+            # otherwise logged 'timed out (timed out)'.
+            if cause != str(e):
+                logger.error("Failed to connect to %s: %s (%s)",
+                             self._describe(), e, cause)
+            else:
+                logger.error("Failed to connect to %s: %s",
+                             self._describe(), e)
+
             self._discard_handle()
             with self._lock:
                 self._state = TransportState.DISCONNECTED
+                # Set in both branches: the display has no other source.
                 self._last_failure_cause = cause
             return False
         except Exception as e:
@@ -343,8 +399,15 @@ class OBDTransport(ABC):
             self._state = TransportState.DISCONNECTED
         logger.info("Disconnected from %s", self._describe())
 
-    def drop_link(self) -> None:
+    def drop_link(self, cause: Optional[str] = None) -> None:
         """Close the current link while leaving reconnection possible.
+
+        Records why, so the DISCONNECTED screen has an explanation in
+        the mid-session case. Iteration 1 populated the cause only from
+        :meth:`connect`, which left a link that connected cleanly and
+        then died of silence showing no explanation at all — precisely
+        the failure mode change-9c2f41d8 exists to handle
+        (issue-5e7a03c4 iteration 2).
 
         The distinction from :meth:`disconnect` is the whole point of
         this method and must not be collapsed. ``disconnect()`` ends the
@@ -361,11 +424,19 @@ class OBDTransport(ABC):
 
         Safe to call when nothing is connected: ``_discard_handle_locked``
         tolerates a None handle.
+
+        Args:
+            cause: Why the link was dropped. Defaults to
+                ``_SILENT_LINK_CAUSE``. The parameter exists so a
+                future caller with better information can supply its
+                own without changing the existing call sites, both of
+                which pass nothing.
         """
         logger = logging.getLogger(self.__class__.__name__)
         with self._lock:
             self._discard_handle_locked()
             self._state = TransportState.DISCONNECTED
+            self._last_failure_cause = cause or _SILENT_LINK_CAUSE
         logger.info("Link to %s dropped - will attempt to reconnect",
                     self._describe())
 

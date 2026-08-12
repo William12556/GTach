@@ -27,6 +27,8 @@ import pytest
 from gtach.comm import transport as transport_module
 from gtach.comm.transport import (
     _CONNECT_FAULT_CAUSES,
+    _SILENT_LINK_CAUSE,
+    _WEDGED_LINK_CAUSE,
     OBDTransport,
     TransportState,
     _bluetooth_adapter_present,
@@ -484,3 +486,261 @@ class TestNoHostActions:
         assert 'os.listdir' in source
         for verb in ('write', 'system', 'Popen', 'run('):
             assert verb not in source, verb
+
+
+# ---------------------------------------------------------------------
+# change-5e7a03c4 iteration 2: a cause on link drop, and escalation to a
+# wedge diagnosis after sustained connect failure. Everything above this
+# line is iteration 1's and is unmodified.
+# ---------------------------------------------------------------------
+
+
+class TestDropLinkRecordsACause:
+    """A link torn down for silence must explain itself too."""
+
+    def test_default_cause_on_a_connected_transport(self, adapter_present):
+        stub = _StubTransport()
+        assert stub.connect() is True
+
+        stub.drop_link()
+
+        assert stub.last_failure_cause == _SILENT_LINK_CAUSE
+        assert stub.state is TransportState.DISCONNECTED
+        # Still the load-bearing assertion from iteration 1:
+        # reconnection must remain possible.
+        assert stub._shutdown.is_set() is False
+
+    def test_explicit_cause_is_used(self):
+        stub = _StubTransport()
+
+        stub.drop_link('custom reason')
+
+        assert stub.last_failure_cause == 'custom reason'
+
+    def test_no_argument_call_sites_still_work(self):
+        """Both existing callers pass nothing."""
+        import inspect
+
+        parameter = inspect.signature(OBDTransport.drop_link).parameters['cause']
+        assert parameter.default is None
+
+        stub = _StubTransport()
+        stub.drop_link()  # must not raise
+
+        assert stub.last_failure_cause == _SILENT_LINK_CAUSE
+
+    def test_when_already_disconnected(self):
+        stub = _StubTransport()
+
+        stub.drop_link()
+        stub.drop_link()
+
+        assert stub.last_failure_cause == _SILENT_LINK_CAUSE
+        assert stub._shutdown.is_set() is False
+
+    def test_single_lock_acquisition(self):
+        """The cause is set in the existing block, not a second one."""
+        import inspect
+
+        source = inspect.getsource(OBDTransport.drop_link)
+        assert source.count('with self._lock:') == 1
+
+    def test_still_never_touches_shutdown(self):
+        code = '\n'.join(
+            line for line in inspect_source_body(OBDTransport.drop_link)
+        )
+        assert '_shutdown' not in code
+
+
+def inspect_source_body(func):
+    """Executable lines of func, docstring and comments removed."""
+    import ast
+    import inspect
+    import textwrap
+
+    source = textwrap.dedent(inspect.getsource(func))
+    tree = ast.parse(source).body[0]
+    if (tree.body and isinstance(tree.body[0], ast.Expr)
+            and isinstance(tree.body[0].value, ast.Constant)
+            and isinstance(tree.body[0].value.value, str)):
+        first = tree.body[1]
+    else:
+        first = tree.body[0]
+    lines = source.splitlines()[first.lineno - 1:]
+    return [line for line in lines
+            if line.strip() and not line.lstrip().startswith('#')]
+
+
+class TestWedgeEscalation:
+    """Persistence is the only signal a wedged controller gives."""
+
+    def _fail(self, stub, times, code=errno.EBUSY):
+        for _ in range(times):
+            stub._outcome = OSError(code, 'Device or resource busy')
+            assert stub.connect() is False
+
+    def test_threshold_constant(self):
+        assert OBDTransport._MAX_CONSECUTIVE_CONNECT_FAILURES == 6
+
+    def test_counter_starts_at_zero(self):
+        assert _StubTransport()._consecutive_connect_failures == 0
+
+    def test_five_failures_do_not_escalate(self, adapter_present):
+        stub = _StubTransport()
+
+        self._fail(stub, 5)
+
+        assert stub.last_failure_cause == _CONNECT_FAULT_CAUSES[errno.EBUSY]
+
+    def test_six_failures_escalate(self, adapter_present):
+        stub = _StubTransport()
+
+        self._fail(stub, 6)
+
+        assert stub.last_failure_cause == _WEDGED_LINK_CAUSE
+
+    def test_counter_latches_beyond_the_threshold(self, adapter_present):
+        """Crossing must not reset it; the condition persists."""
+        stub = _StubTransport()
+
+        self._fail(stub, 8)
+
+        assert stub.last_failure_cause == _WEDGED_LINK_CAUSE
+        assert stub._consecutive_connect_failures == 8
+
+    def test_absent_adapter_is_not_masked(self, adapter_absent):
+        """The more specific fact wins over the wedge diagnosis."""
+        stub = _StubTransport()
+
+        self._fail(stub, 6)
+
+        assert stub.last_failure_cause == 'no bluetooth controller'
+
+    def test_adapter_becoming_absent_mid_run(self, monkeypatch):
+        """The absent-controller cause wins from that point."""
+        stub = _StubTransport()
+        present = [True]
+        monkeypatch.setattr(
+            transport_module, '_bluetooth_adapter_present',
+            lambda: present[0]
+        )
+
+        self._fail(stub, 6)
+        assert stub.last_failure_cause == _WEDGED_LINK_CAUSE
+
+        present[0] = False
+        self._fail(stub, 1)
+
+        assert stub.last_failure_cause == 'no bluetooth controller'
+
+    def test_success_resets_the_counter(self, adapter_present):
+        stub = _StubTransport()
+
+        self._fail(stub, 5)
+        stub._outcome = object()
+        assert stub.connect() is True
+        self._fail(stub, 5)
+
+        assert stub.last_failure_cause == _CONNECT_FAULT_CAUSES[errno.EBUSY]
+
+    def test_success_clears_cause_and_counter(self, adapter_present):
+        stub = _StubTransport()
+
+        self._fail(stub, 8)
+        assert stub.last_failure_cause == _WEDGED_LINK_CAUSE
+
+        stub._outcome = object()
+        assert stub.connect() is True
+
+        assert stub.last_failure_cause is None
+        assert stub._consecutive_connect_failures == 0
+
+
+class TestCountersAreIndependent:
+    """Read timeouts and connect failures count different events."""
+
+    def test_read_timeouts_do_not_touch_the_connect_counter(self, adapter_present):
+        class _TimeoutStub(_StubTransport):
+            _TIMEOUT_ERRORS = (TimeoutError,)
+
+            def _open(self):
+                return object()
+
+            def _write(self, handle, data):
+                pass
+
+            def _set_timeout(self, handle, timeout):
+                pass
+
+            def _read(self, handle, size):
+                raise TimeoutError('silent')
+
+        stub = _TimeoutStub()
+        assert stub.connect() is True
+
+        drops = []
+        original = stub.drop_link
+        stub.drop_link = lambda cause=None: (drops.append(cause),
+                                             original(cause))[1]
+
+        for _ in range(OBDTransport._MAX_CONSECUTIVE_TIMEOUTS):
+            assert stub.send_command('010C') is None
+
+        assert len(drops) == 1
+        assert stub._consecutive_connect_failures == 0
+
+    def test_attributes_are_distinct(self):
+        stub = _StubTransport()
+
+        stub._consecutive_timeouts = 3
+        stub._consecutive_connect_failures = 7
+
+        assert stub._consecutive_timeouts == 3
+        assert stub._consecutive_connect_failures == 7
+
+    def test_timeout_threshold_unchanged(self):
+        assert OBDTransport._MAX_CONSECUTIVE_TIMEOUTS == 5
+
+
+class TestSuffixSuppression:
+    """Stop emitting 'timed out (timed out)'."""
+
+    def test_no_suffix_when_the_cause_duplicates_the_exception(
+            self, adapter_present, caplog):
+        # An errno-less exception: _classify_connect_error falls through
+        # to str(exc), so cause == str(e).
+        stub = _StubTransport(OSError('timed out'))
+
+        with caplog.at_level('ERROR'):
+            assert stub.connect() is False
+
+        messages = [r.getMessage() for r in caplog.records]
+        assert any(m == 'Failed to connect to stub-peer: timed out'
+                   for m in messages), messages
+        assert not any('(timed out)' in m for m in messages)
+        # The cause is still recorded — the display has no other source.
+        assert stub.last_failure_cause == 'timed out'
+
+    def test_suffix_present_when_the_cause_adds_information(
+            self, adapter_present, caplog):
+        stub = _StubTransport(OSError(errno.EBUSY, 'Device or resource busy'))
+
+        with caplog.at_level('ERROR'):
+            assert stub.connect() is False
+
+        messages = [r.getMessage() for r in caplog.records]
+        expected = _CONNECT_FAULT_CAUSES[errno.EBUSY]
+        assert any(f'({expected})' in m for m in messages), messages
+
+
+class TestEveryCauseFitsTheDisplay:
+    """480x480 leaves no room for a long line."""
+
+    def test_all_causes_within_forty_characters(self):
+        for text in (
+            list(_CONNECT_FAULT_CAUSES.values())
+            + [_SILENT_LINK_CAUSE, _WEDGED_LINK_CAUSE]
+        ):
+            assert len(text) <= 40, (text, len(text))
+            assert text == text.strip()
+            assert text
