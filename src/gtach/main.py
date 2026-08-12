@@ -11,6 +11,7 @@ import os
 import sys
 import logging
 import argparse
+import faulthandler
 from pathlib import Path
 from typing import Optional
 from logging.handlers import RotatingFileHandler
@@ -18,11 +19,15 @@ from logging.handlers import RotatingFileHandler
 # Module-level handler references for runtime manipulation.
 _start_handler: logging.Handler = None
 _debug_handler: logging.Handler = None
+# Kept referenced so faulthandler's fd stays open for the process
+# lifetime; faulthandler writes to the file descriptor directly.
+_stacks_file = None
 
 _LOG_FORMAT = '%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s'
 _LOG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
 _START_LOG = '/opt/gtach/start.log'
 _DEBUG_LOG = '/opt/gtach/debug.log'
+_STACKS_LOG = '/opt/gtach/stacks.log'
 # 10 MB is about ninety minutes of debug output at 30 Hz.
 # Ten backups gives roughly sixteen hours of history for
 # 110 MB of card. bin/gtach.service caps a restart loop at
@@ -33,7 +38,7 @@ _DEBUG_BACKUPS = 10
 
 
 def setup_logging(debug: bool = False) -> None:
-    global _start_handler, _debug_handler
+    global _start_handler, _debug_handler, _stacks_file
 
     formatter = logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FMT)
     root = logging.getLogger()
@@ -90,6 +95,25 @@ def setup_logging(debug: bool = False) -> None:
 
     if debug and _debug_handler is not None:
         _debug_handler.setLevel(logging.DEBUG)
+
+    # stacks.log — periodic all-thread stack dumps, debug only.
+    #
+    # faulthandler's repeat timer runs in a C thread and never takes
+    # the GIL to schedule itself, so its dumps still land while every
+    # Python thread is stalled — which is exactly the window that
+    # needs observing (issue-2ac1c602). This was previously armed in
+    # GTachApplication.__init__ against sys.stderr; under systemd
+    # stderr is the journal, not the app-owned log set beside
+    # start.log and debug.log, so the dumps were not recoverable
+    # alongside the run they belonged to.
+    if debug:
+        try:
+            _stacks_file = open(_STACKS_LOG, mode='a', buffering=1, encoding='utf-8')
+            faulthandler.enable(file=_stacks_file)
+            faulthandler.dump_traceback_later(15, repeat=True, file=_stacks_file)
+        except OSError as e:
+            print(f'[gtach] WARNING: could not open {_STACKS_LOG}: {e}', file=sys.stderr)
+            _stacks_file = None
 
 
 def parse_arguments() -> argparse.Namespace:

@@ -4,9 +4,9 @@
 # Usage:
 #   ./pull_logs.sh
 #
-# Pulls /opt/gtach/start.log and /opt/gtach/debug.log from root@gtach.local
-# and saves them to logs/ in the local repository. Edit PI= below if the
-# address changes.
+# Deletes all existing files in logs/, then pulls every *.log and rotated
+# log (*.log.N) from /opt/gtach on root@gtach.local and saves them to logs/
+# in the local repository. Edit PI= below if the address changes.
 
 set -e
 
@@ -18,8 +18,10 @@ LOG_DIR="$PROJECT_ROOT/logs"
 
 mkdir -p "$LOG_DIR"
 
+echo "==> Removing old logs from $LOG_DIR ..."
+rm -f "$LOG_DIR"/*
+
 echo "==> Pulling logs from $PI:$REMOTE_DIR ..."
-scp "$PI:$REMOTE_DIR/start.log" "$LOG_DIR/start.log"
-scp "$PI:$REMOTE_DIR/debug.log" "$LOG_DIR/debug.log"
+scp "$PI:$REMOTE_DIR/*.log" "$PI:$REMOTE_DIR/*.log.*" "$LOG_DIR/"
 
 echo "==> Logs saved to $LOG_DIR"

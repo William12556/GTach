@@ -11,6 +11,7 @@ Main application class for GTach display application.
 Manages component lifecycle and initialization.
 """
 
+import os
 import signal
 import logging
 import atexit
@@ -27,7 +28,13 @@ from .utils import ConfigManager, TerminalRestorer, get_platform_type
 
 class GTachApplication:
     """Main application controller"""
-    
+
+    # Upper bound on the orderly-exit path once the watchdog has asked
+    # for termination. If run()'s finally block has not finished
+    # tearing components down within this window, the process exits
+    # anyway so systemd (Restart=always) can relaunch it.
+    _EXIT_BACKSTOP_SEC: float = 20.0
+
     def __init__(self, config_path: str = None, debug: bool = False, args=None):
         """Initialize application components"""
         self._config_manager = ConfigManager(config_path)
@@ -35,38 +42,84 @@ class GTachApplication:
         self._args = args or argparse.Namespace()
         self._debug = debug
 
-        # Diagnostic: when debugging, dump all thread stacks to stderr every
-        # 15s. The watchdog warns at 17s, so a dump lands mid-freeze and shows
-        # exactly where the display/setup threads are parked. stderr is already
-        # captured by the run command's tee into the debug log.
-        if debug:
-            import faulthandler
-            import sys
-            faulthandler.dump_traceback_later(15, repeat=True, file=sys.stderr)
-        
         # Initialize terminal restorer as early as possible
         self._terminal_restorer = TerminalRestorer()
-        
+
+        # Created before the watchdog: _watchdog_shutdown is bound as
+        # the watchdog's shutdown callback and sets this event, so the
+        # attribute must already exist at construction time.
+        self._stop_event = threading.Event()
+
         self._thread_manager = ThreadManager()
         self._watchdog = WatchdogMonitor(
-            self._thread_manager, 
+            self._thread_manager,
             check_interval=5.0,
             warning_timeout=15.0,
             recovery_timeout=30.0,
             critical_timeout=45.0,
-            shutdown_callback=self.shutdown
+            shutdown_callback=self._watchdog_shutdown
         )
-        
+
         # Initialize device store for setup detection
         self._device_store = DeviceStore()
         self._setup_mode = False
-        
+
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
-        self._stop_event = threading.Event()
-        
+
         # Ensure cleanup on exit
         atexit.register(self.shutdown)
+
+    def _watchdog_shutdown(self) -> None:
+        """Terminate the process in response to a critical-thread timeout.
+
+        Signals the main loop to exit and arms a daemon backstop timer;
+        it does not tear anything down itself.
+
+        Teardown is deliberately left to :meth:`run`'s finally block,
+        which is idempotent via ``_shutdown_called``. Two consequences
+        follow, and both are the point of this split:
+
+        * :meth:`shutdown` is never invoked from the watchdog thread,
+          so component stop calls run on the main thread as they do on
+          every other exit path.
+        * The recovery path does not depend on
+          :meth:`WatchdogMonitor.stop`'s self-join guard. Previously the
+          callback was ``shutdown`` itself, so the watchdog thread
+          called ``WatchdogMonitor.stop()`` on itself; the guard made
+          that survivable but left the process alive with its
+          components torn down and its screen dead.
+
+        The backstop timer is a daemon thread, so a normal exit that
+        beats it is not delayed by its remaining lifetime.
+        """
+        self.logger.critical(
+            "Watchdog requested process termination — signalling main loop "
+            f"(force exit in {self._EXIT_BACKSTOP_SEC:.1f}s if not complete)"
+        )
+        self._stop_event.set()
+
+        timer = threading.Timer(self._EXIT_BACKSTOP_SEC, self._force_exit)
+        timer.daemon = True
+        timer.start()
+
+    def _force_exit(self) -> None:
+        """Force process termination when orderly exit has overrun.
+
+        Called only from the backstop timer armed by
+        :meth:`_watchdog_shutdown`. Flushes logging on a best-effort
+        basis, then leaves via ``os._exit`` so that no atexit handler,
+        finaliser or non-daemon thread can hold the process open.
+        """
+        self.logger.critical(
+            f"Orderly exit did not complete within {self._EXIT_BACKSTOP_SEC:.1f}s "
+            "— forcing process termination"
+        )
+        try:
+            logging.shutdown()
+        except Exception:
+            pass
+        os._exit(1)
 
     def start(self) -> None:
         """Start application components"""
@@ -298,9 +351,16 @@ class GTachApplication:
         transport_arg = getattr(self._args, 'transport', None)
         _poll_interval = 0.02 if transport_arg in TRANSPORT_FAST else 0.05
         self._obd = OBDProtocol(self._transport, self._thread_manager, poll_interval_s=_poll_interval, adapter_pre_initialised=True)
+        # Registration is what makes the thread visible to
+        # WatchdogMonitor, which iterates thread_manager.threads only:
+        # a bare Thread(name='transport') is not monitored however it
+        # is named (issue-2ac1c602).
         transport_thread = threading.Thread(
-            target=self._transport.reconnect_indefinitely, name='transport', daemon=True
+            target=self._transport.reconnect_indefinitely,
+            kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport')},
+            name='transport', daemon=True
         )
+        self._thread_manager.register_thread('transport', transport_thread)
         transport_thread.start()
         self._obd.start()
         self.logger.info("OBD protocol started after setup")
@@ -334,8 +394,17 @@ class GTachApplication:
         # Start background components during splash screen
         self._watchdog.start()
         
-        # Start reconnect_indefinitely in a daemon thread
-        transport_thread = threading.Thread(target=self._transport.reconnect_indefinitely, name='transport', daemon=True)
+        # Start reconnect_indefinitely in a daemon thread.
+        # Registration is what makes the thread visible to
+        # WatchdogMonitor, which iterates thread_manager.threads only:
+        # a bare Thread(name='transport') is not monitored however it
+        # is named (issue-2ac1c602).
+        transport_thread = threading.Thread(
+            target=self._transport.reconnect_indefinitely,
+            kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport')},
+            name='transport', daemon=True
+        )
+        self._thread_manager.register_thread('transport', transport_thread)
         transport_thread.start()
         
         self._obd.start()

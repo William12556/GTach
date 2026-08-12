@@ -87,8 +87,20 @@ class WatchdogMonitor:
         self.recovery_stats = RecoveryStats()
         self._recovery_lock = threading.Lock()
         
-        # Critical threads that trigger shutdown if recovery fails
-        self.critical_threads = {'display', 'transport', 'main'}
+        # Critical threads that trigger shutdown if recovery fails.
+        #
+        # 'main' was never registered with ThreadManager, so naming it
+        # here monitored nothing. 'transport' IS now registered
+        # (issue-2ac1c602), but it is advisory rather than critical: a
+        # blocking connect() lasting tens of seconds is expected
+        # transport behaviour on a Bluetooth link, not a fault, and
+        # must not be able to trigger an application restart.
+        self.critical_threads = {'display'}
+
+        # Advisory threads are observed and may produce warnings, but
+        # their timeouts are clamped below the recovery tier and can
+        # never initiate recovery or shutdown.
+        self.advisory_threads = {'transport'}
         
         # Control events
         self._stop_event = threading.Event()
@@ -171,6 +183,16 @@ class WatchdogMonitor:
                     level = 'warning'
                 else:
                     level = 'reset'
+
+                # Advisory clamp: an advisory thread can be reported,
+                # never recovered or shut down. Performed here, inside
+                # the existing traversal, because it is a pure dict
+                # lookup and a comparison — it introduces no blocking
+                # call under the lock, so the discipline established by
+                # change-5a9dc15e is preserved and phase 2 dispatch is
+                # unchanged.
+                if name in self.advisory_threads and level in ('critical', 'recovery'):
+                    level = 'warning'
 
                 pending.append((level, name, health, time_since_heartbeat))
 

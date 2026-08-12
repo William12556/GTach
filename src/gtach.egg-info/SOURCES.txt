@@ -69,3 +69,5 @@ src/gtach/utils/home.py
 src/gtach/utils/platform.py
 src/gtach/utils/terminal.py
 src/gtach/utils/updater.py
+tests/test_transport_heartbeat.py
+tests/test_watchdog_process_termination.py

@@ -13,7 +13,7 @@ from enum import Enum, auto
 import argparse
 import logging
 import threading
-from typing import Optional
+from typing import Callable, Optional
 
 from ..utils.platform import PlatformType
 from .device_store import DeviceStore
@@ -315,16 +315,36 @@ class OBDTransport(ABC):
         with self._lock:
             return self._state
 
-    def reconnect_indefinitely(self, retry_delay: float = 5.0) -> None:
+    def reconnect_indefinitely(self, retry_delay: float = 5.0,
+                               heartbeat: Optional[Callable[[], None]] = None) -> None:
         """Attempt to reconnect indefinitely until successful or shutdown is requested.
-        
+
         Args:
             retry_delay: Delay in seconds between retry attempts.
+            heartbeat: Optional zero-argument callable invoked at each
+                point in the loop where liveness can be asserted — on
+                entry to every iteration and on either side of the
+                connect() outcome. Supplied by the caller to report
+                thread liveness to a monitor; failures are logged and
+                swallowed so that reconnection is never stopped by a
+                faulty observer.
         """
         logger = logging.getLogger(self.__class__.__name__)
-        while not self._shutdown.is_set():
-            if self.connect():
+
+        def _beat() -> None:
+            if heartbeat is None:
                 return
+            try:
+                heartbeat()
+            except Exception as e:
+                logger.debug("Heartbeat callback failed: %s", e, exc_info=True)
+
+        while not self._shutdown.is_set():
+            _beat()
+            if self.connect():
+                _beat()
+                return
+            _beat()
             logger.warning("Failed to connect, retrying in %.1f seconds...", retry_delay)
             self._shutdown.wait(retry_delay)
 
