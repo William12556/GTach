@@ -105,6 +105,14 @@ class OBDTransport(ABC):
     # returns b'' on timeout with the port still open.
     _EMPTY_READ_IS_EOF: bool = True
 
+    # Consecutive read timeouts that constitute a dead peer. A command
+    # timeout is 1.0 s and the observed failure cycled at ~1.07 s, so
+    # five trips the threshold at ~5.4 s: above any single slow adapter
+    # response, and below WatchdogMonitor's 15 s warning threshold, so
+    # the link is dropped and reconnection is under way before the
+    # watchdog has anything to say about it (issue-9c2f41d8).
+    _MAX_CONSECUTIVE_TIMEOUTS: int = 5
+
     def __init__(self):
         # OBDTransport is abstract. The four handle primitives below are
         # deliberately NOT @abstractmethod: SimTransport overrides the
@@ -120,6 +128,7 @@ class OBDTransport(ABC):
         self._lock = threading.RLock()
         self._handle = None
         self._state = TransportState.DISCONNECTED
+        self._consecutive_timeouts = 0
 
     def _open(self):
         """Open and return a connected handle.
@@ -231,6 +240,32 @@ class OBDTransport(ABC):
             self._state = TransportState.DISCONNECTED
         logger.info("Disconnected from %s", self._describe())
 
+    def drop_link(self) -> None:
+        """Close the current link while leaving reconnection possible.
+
+        The distinction from :meth:`disconnect` is the whole point of
+        this method and must not be collapsed. ``disconnect()`` ends the
+        transport's life: it sets ``_shutdown``, which is the event
+        :meth:`reconnect_indefinitely` loops on and waits on, and which
+        nothing ever clears. ``drop_link()`` closes only the CURRENT
+        link, so the supervising loop observes ``is_connected()`` go
+        False and re-establishes it.
+
+        Tearing a dead link down via ``disconnect()`` would permanently
+        disable reconnection for the life of the process, while still
+        satisfying any check that merely asserts the transport went
+        not-connected (issue-9c2f41d8).
+
+        Safe to call when nothing is connected: ``_discard_handle_locked``
+        tolerates a None handle.
+        """
+        logger = logging.getLogger(self.__class__.__name__)
+        with self._lock:
+            self._discard_handle_locked()
+            self._state = TransportState.DISCONNECTED
+        logger.info("Link to %s dropped - will attempt to reconnect",
+                    self._describe())
+
     def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]:
         """Send a command to the OBD device and receive the response.
 
@@ -281,10 +316,32 @@ class OBDTransport(ABC):
             # Remove the trailing '>' prompt
             response = response.rstrip('>').strip()
             logger.debug("RX: %r", response)
+            # Any answer at all means the peer is alive. The threshold
+            # counts CONSECUTIVE silences, so an occasional slow
+            # response never accumulates towards a drop.
+            with self._lock:
+                self._consecutive_timeouts = 0
             return response
         except self._TIMEOUT_ERRORS:
             logger.warning("Timeout waiting for response from device "
                            "(cmd=%r, timeout=%.1fs)", command, timeout)
+            with self._lock:
+                self._consecutive_timeouts += 1
+                _dead = self._consecutive_timeouts >= self._MAX_CONSECUTIVE_TIMEOUTS
+                if _dead:
+                    # Reset here, under the same lock that observed the
+                    # trip, so the next silence starts a fresh count and
+                    # a sixth timeout cannot drop the link a second time.
+                    _count = self._consecutive_timeouts
+                    self._consecutive_timeouts = 0
+            if _dead:
+                logger.error(
+                    "No response from %s after %d consecutive timeouts "
+                    "- dropping link", self._describe(), _count
+                )
+                # OUTSIDE the lock: drop_link takes _lock itself. The
+                # decision is captured above and acted on here.
+                self.drop_link()
             return None
         except self._IO_ERRORS as e:
             logger.error("Error communicating with device: %s", e)
@@ -317,15 +374,31 @@ class OBDTransport(ABC):
 
     def reconnect_indefinitely(self, retry_delay: float = 5.0,
                                heartbeat: Optional[Callable[[], None]] = None) -> None:
-        """Attempt to reconnect indefinitely until successful or shutdown is requested.
+        """Supervise the link for the life of the process.
+
+        Connects, then watches the established link and reconnects
+        whenever it drops. This method does NOT return on a successful
+        connect; its only exit is ``_shutdown`` being set. Both call
+        sites run it on a daemon thread registered with ThreadManager
+        as 'transport', so that thread simply never returns
+        (change-2ac1c602).
+
+        Previously it returned on first success, which left nothing to
+        re-enter it: a mid-session link loss was unrecoverable for the
+        life of the process (issue-9c2f41d8).
+
+        Every wait is on ``_shutdown`` rather than ``time.sleep``, so a
+        shutdown while connected or mid-retry is observed immediately
+        rather than after the remaining delay.
 
         Args:
             retry_delay: Delay in seconds between retry attempts.
             heartbeat: Optional zero-argument callable invoked at each
                 point in the loop where liveness can be asserted — on
-                entry to every iteration and on either side of the
-                connect() outcome. Supplied by the caller to report
-                thread liveness to a monitor; failures are logged and
+                entry to every iteration, on either side of the
+                connect() outcome, and on every supervising poll while
+                connected. Supplied by the caller to report thread
+                liveness to a monitor; failures are logged and
                 swallowed so that reconnection is never stopped by a
                 faulty observer.
         """
@@ -343,7 +416,27 @@ class OBDTransport(ABC):
             _beat()
             if self.connect():
                 _beat()
-                return
+                # Supervise the established link. The 1.0 s poll bounds
+                # how long after a drop_link the loop notices, and it
+                # keeps the 'transport' heartbeat flowing while
+                # connected, which the ThreadManager registration
+                # requires — without it the thread would look stalled
+                # for as long as the link stayed healthy.
+                while self.is_connected() and not self._shutdown.is_set():
+                    _beat()
+                    self._shutdown.wait(1.0)
+                if self._shutdown.is_set():
+                    return
+                # The link dropped. Fall through to the next outer
+                # iteration, which retries from connect() — but only
+                # after retry_delay. A link that drops immediately on
+                # every connect would otherwise spin this loop at full
+                # speed; the wait is on _shutdown, so it costs nothing
+                # at shutdown.
+                logger.info("Link lost - resuming reconnection attempts "
+                            "in %.1f seconds", retry_delay)
+                self._shutdown.wait(retry_delay)
+                continue
             _beat()
             logger.warning("Failed to connect, retrying in %.1f seconds...", retry_delay)
             self._shutdown.wait(retry_delay)

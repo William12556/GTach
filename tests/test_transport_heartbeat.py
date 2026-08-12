@@ -23,6 +23,14 @@ class _StubTransport(OBDTransport):
 
     Only the reconnect skeleton is under test, so the four handle
     primitives are never reached and are not supplied.
+
+    Every script here ends in exhaustion, which sets _shutdown and so
+    terminates the loop. change-9c2f41d8 made reconnect_indefinitely
+    long-lived — it no longer returns on a successful connect, and
+    _shutdown is now its only exit — so a script ending in success
+    would supervise the link forever. The heartbeat's behaviour around
+    a SUCCESSFUL connect is covered under the new contract by
+    tests/test_link_loss_recovery.py::TestSupervisingLoopHeartbeat.
     """
 
     def __init__(self, results):
@@ -49,8 +57,8 @@ class TestHeartbeatHook:
         assert parameter.default is None
 
     def test_invoked_on_both_iterations(self):
-        """One failed connect then a successful one."""
-        transport = _StubTransport([False, True])
+        """Two loop iterations: one failed connect, then exhaustion."""
+        transport = _StubTransport([False])
         beats = []
 
         transport.reconnect_indefinitely(
@@ -65,7 +73,7 @@ class TestHeartbeatHook:
 
     def test_raising_heartbeat_does_not_break_the_loop(self):
         """A faulty observer degrades diagnostics, not reconnection."""
-        transport = _StubTransport([False, True])
+        transport = _StubTransport([False])
         calls = []
 
         def _boom():
@@ -78,7 +86,7 @@ class TestHeartbeatHook:
         assert len(calls) >= 2
 
     def test_no_heartbeat_argument_behaves_as_before(self):
-        transport = _StubTransport([False, True])
+        transport = _StubTransport([False])
 
         transport.reconnect_indefinitely(retry_delay=0.01)
 
