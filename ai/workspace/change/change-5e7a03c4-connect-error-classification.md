@@ -19,12 +19,12 @@ change_info:
   title: "Close the socket on every failure path in RFCOMMTransport._open; classify connect failures by errno and record the cause on the transport; distinguish an absent Bluetooth controller from an absent peer and surface the cause on the DISCONNECTED screen"
   date: "2026-08-12"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "high"
-  iteration: 1
+  iteration: 2
   coupled_docs:
     issue_ref: "issue-5e7a03c4"
-    issue_iteration: 1
+    issue_iteration: 2
 
 source:
   type: "issue"
@@ -36,6 +36,35 @@ source:
     identical on the display.
 
 scope:
+  iteration_2_addendum: >
+    Iteration 1 is implemented and deployed; its classified cause is
+    confirmed in the 13:43 and 13:44 logs on gtach.local. Iteration 2
+    adds three edits closing gaps found on review of that delivery.
+    All remain reporting-only; nothing added here acts on the host.
+
+    EDIT R — set a cause in drop_link(). _last_failure_cause is written
+    only by connect() failing, so a link torn down for sustained
+    silence leaves the DISCONNECTED screen with no explanation. That is
+    the failure mode change-9c2f41d8 exists to handle, and the screen
+    that most needs a reason has none. drop_link already takes _lock
+    and already sets DISCONNECTED; recording a cause is one assignment
+    beside them.
+
+    EDIT S — escalate to a wedge diagnosis on consecutive failures.
+    _bluetooth_adapter_present detects an ABSENT controller, not a
+    WEDGED one: a controller listed under /sys/class/bluetooth but
+    unable to initialise still satisfies the probe. Confirmed from the
+    logs — 'no bluetooth controller' has never been reported across 44
+    EBUSY, 42 host-down and 13 timed-out failures, including while the
+    controller could not be brought up. Count consecutive connect
+    failures and, past a small threshold with the adapter present,
+    escalate the cause to name a probable wedge needing a reset.
+
+    EDIT T — suppress the duplicated suffix. socket.timeout carries
+    errno None, so _classify_connect_error falls through to str(exc),
+    which for that exception is the text already in the log message.
+    Observed 4 times as "channel 1: timed out (timed out)".
+
   summary: >
     Reporting only, in three parts. Close the socket on the failure
     path in rfcomm.py. Classify connect failures by errno in
@@ -189,6 +218,46 @@ technical_details:
         - "last_failure_cause"
       classes_affected:
         - "OBDTransport"
+    - component: "EDIT R (iteration 2) — OBDTransport.drop_link"
+      file: "src/gtach/comm/transport.py"
+      change_summary: >
+        Set _last_failure_cause under the existing _lock, alongside the
+        existing DISCONNECTED assignment, naming sustained silence from
+        the adapter rather than a failed connect. Accept an optional
+        cause argument defaulting to a module-level constant, so a
+        future caller with better information can supply its own
+        without changing existing call sites.
+      functions_affected:
+        - "drop_link"
+      classes_affected:
+        - "OBDTransport"
+    - component: "EDIT S (iteration 2) — consecutive connect-failure escalation"
+      file: "src/gtach/comm/transport.py"
+      change_summary: >
+        Add _MAX_CONSECUTIVE_CONNECT_FAILURES = 6 and a
+        _consecutive_connect_failures counter reset on any successful
+        connect. In connect()'s failure handler, increment it and, on
+        reaching the threshold with the adapter present, override the
+        resolved cause with a wedge diagnosis naming a reset. Six at
+        the 5.0 s retry interval is ~30 s of sustained failure, above
+        any transient and below the point an operator would reasonably
+        wait.
+      functions_affected:
+        - "__init__"
+        - "connect"
+        - "_classify_connect_error"
+      classes_affected:
+        - "OBDTransport"
+    - component: "EDIT T (iteration 2) — duplicate-suffix suppression"
+      file: "src/gtach/comm/transport.py"
+      change_summary: >
+        In connect()'s failure logging, append the cause only when it
+        differs from str(exc), which is already interpolated into the
+        message.
+      functions_affected:
+        - "connect"
+      classes_affected:
+        - "OBDTransport"
     - component: "DisplayManager"
       file: "src/gtach/display/manager.py"
       change_summary: >
@@ -316,6 +385,16 @@ version_history:
       - "Initial change document resolving issue-5e7a03c4 iteration 1."
       - "Three edits: close failed sockets in _open, classify connect failures by errno and record the cause, distinguish an absent controller from an absent peer and show the cause on the DISCONNECTED screen."
       - "Records the deliberate exclusion of automated recovery, with the on-target evidence that a manual adapter down/up left the controller unable to come back."
+  - version: "2.0"
+    date: "2026-08-12"
+    author: "William Watson"
+    changes:
+      - "Iteration 1 -> 2. Status proposed -> implemented; coupled issue_iteration raised 1 -> 2."
+      - "EDIT R: set a cause in drop_link, so the DISCONNECTED screen has an explanation in the mid-session link-loss case change-9c2f41d8 addresses."
+      - "EDIT S: consecutive connect-failure escalation at 6 failures (~30 s), overriding the resolved cause with a wedge diagnosis. Closes the gap that the sysfs probe sees an absent controller but not a wedged one."
+      - "EDIT T: suppress the cause suffix when it duplicates str(exc), which produced 'timed out (timed out)'."
+      - "Rejected for EDIT S: reading the real HCI_UP flag via HCIGETDEVINFO ioctl on an AF_BLUETOOTH/BTPROTO_HCI socket. More truthful, but adds struct packing and an ioctl untestable on the development platform."
+      - "An operator-initiated Bluetooth reset button remains out of scope and will be raised separately once the working recovery command is established on target."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -332,6 +411,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-12 | Initial change document. Close failed sockets, classify connect failures by errno, distinguish adapter fault from unreachable peer and surface it on the DISCONNECTED screen. Automated recovery excluded with recorded evidence. |
+| 2.0 | 2026-08-12 | Iteration 1 -> 2. Adds EDIT R (cause set in drop_link), EDIT S (consecutive connect-failure escalation to a wedge diagnosis) and EDIT T (suppress the duplicated cause suffix). Still reporting-only. |
 
 ---
 

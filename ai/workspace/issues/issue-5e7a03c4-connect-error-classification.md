@@ -19,13 +19,13 @@ issue_info:
   title: "RFCOMMTransport._open abandons its socket when connect() raises, and every connect failure — absent peer, wedged link, absent controller — is logged and displayed identically, so an adapter fault is indistinguishable from a missing OBD dongle"
   date: "2026-08-12"
   reporter: "William Watson"
-  status: "open"
+  status: "investigating"
   severity: "high"
   type: "defect"
-  iteration: 1
+  iteration: 2
   coupled_docs:
-    change_ref: ""
-    change_iteration: null
+    change_ref: "change-5e7a03c4"
+    change_iteration: 2
 
 source:
   origin: "user_report"
@@ -155,7 +155,38 @@ environment:
 
 analysis:
   root_cause: >
-    The transport treats every OSError as one condition. errno is the
+    ITERATION 2 PREAMBLE. Iteration 1 is implemented and deployed;
+    "[Errno 16] Device or resource busy (bluetooth link busy - may need
+    reset)" is confirmed in the 13:43 and 13:44 logs. Three gaps in
+    that delivery were found on review and in the logs. The iteration 1
+    analysis below is retained unaltered.
+
+    GAP 1, CONFIRMED — the cause goes blank in the failure mode
+    change-9c2f41d8 exists to handle. _last_failure_cause is written
+    only by connect() failing. A link that connects cleanly and then
+    dies of silence is torn down by drop_link(), which sets no cause,
+    so the operator is shown DISCONNECTED with nothing to explain it.
+    The one screen that most needs a reason has none in precisely the
+    case the reconnection work was built for.
+
+    GAP 2, CONFIRMED — the adapter probe detects an ABSENT controller,
+    not a WEDGED one. _bluetooth_adapter_present tests for an entry
+    under /sys/class/bluetooth. A controller that is listed but will
+    not initialise — gtach.local's state when hciconfig hci0 up
+    returned ETIMEDOUT — still satisfies that test, so the cause falls
+    through to the errno mapping and no controller fault is reported.
+    Confirmed from the logs: 'no bluetooth controller' has never been
+    reported in any run, across 44 EBUSY, 42 host-down and 13
+    timed-out failures.
+
+    GAP 3, CONFIRMED, COSMETIC — a duplicated suffix. socket.timeout
+    carries errno None, so _classify_connect_error falls through to
+    str(exc), which for that exception is the text already present in
+    the log message. The result is
+    "channel 1: timed out (timed out)", observed 4 times.
+
+    ITERATION 1 ANALYSIS, RETAINED. The transport treats every OSError
+    as one condition. errno is the
     information that distinguishes them and it is discarded at the
     point it arrives. Nothing downstream can recover it, so neither the
     log nor the display can say more than "failed".
@@ -207,7 +238,30 @@ resolution:
   assigned_to: ""
   target_date: ""
   approach: >
-    Three corrections, reporting only.
+    ITERATION 2. Three further corrections, still reporting only.
+
+    4. Set a cause in drop_link(). It already takes _lock and already
+    sets DISCONNECTED; recording a cause alongside is one assignment.
+    The cause names sustained silence from the adapter rather than a
+    failed connect, since that is what happened.
+
+    5. Detect a wedged controller by consecutive-failure escalation
+    rather than by probing for one. After a small number of
+    consecutive connect failures with the adapter present, escalate the
+    cause to name a probable controller wedge needing a reset. This
+    reuses evidence already held and mirrors the consecutive-timeout
+    pattern change-9c2f41d8 established in the same module. The
+    alternative — reading the real HCI_UP flag by ioctl on an
+    AF_BLUETOOTH/BTPROTO_HCI socket — is more truthful but adds struct
+    packing and an ioctl that cannot be exercised on the development
+    platform, and was rejected on the project's stated preference for
+    technical simplicity.
+
+    6. Suppress the duplicated suffix. When the resolved cause is
+    identical to the exception text already in the message, do not
+    append it.
+
+    ITERATION 1 APPROACH, RETAINED. Three corrections, reporting only.
 
     1. Close the socket on every failure path in
     RFCOMMTransport._open. Wrap the connect in try/except, close the
@@ -286,6 +340,17 @@ version_history:
       - "Confirmed defect 2: no code in src/gtach/comm/ inspects OSError.errno, so all connect failures are reported identically."
       - "Recorded the host diagnosis: single gtach process, ACL in state 9 (BT_CLOSED) unreaped, hciconfig up timing out — a wedged controller, not an application fault."
       - "Records that automated recovery is deliberately excluded pending a separate decision, on the evidence that a manual down/up left the controller worse than before."
+  - version: "2.0"
+    date: "2026-08-12"
+    author: "William Watson"
+    changes:
+      - "Iteration 1 -> 2. Status open -> investigating. Coupled to change-5e7a03c4 iteration 2."
+      - "Iteration 1 confirmed working on target: the classified cause appears in the 13:43 and 13:44 logs."
+      - "GAP 1: _last_failure_cause is written only by connect() failing, so a link torn down by drop_link() leaves the DISCONNECTED screen with no explanation — in exactly the failure mode change-9c2f41d8 addresses."
+      - "GAP 2: the sysfs probe detects an absent controller, not a wedged one. 'no bluetooth controller' has never been reported across 44 EBUSY, 42 host-down and 13 timed-out failures, despite the controller having been unable to initialise."
+      - "GAP 3: socket.timeout carries errno None, so the fallback appends text already present in the message, producing 'timed out (timed out)' 4 times."
+      - "Resolution extended with items 4-6. Wedge detection by consecutive-failure escalation, the HCI ioctl alternative recorded as rejected on simplicity grounds."
+      - "Operator-initiated Bluetooth reset from the DISCONNECTED screen is NOT part of this iteration. It requires privileged host access and an action not yet established to work on this hardware; it will be raised separately once the working command is known."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -302,6 +367,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-12 | Initial issue document. Failed sockets are not closed in RFCOMMTransport._open, and all connect failures are reported identically because errno is discarded. Automated recovery deliberately excluded from the proposed scope. |
+| 2.0 | 2026-08-12 | Iteration 1 -> 2. Iteration 1 confirmed working on target. Three gaps recorded: no cause is set by drop_link, the probe detects an absent rather than a wedged controller, and a duplicated suffix appears for errno-less timeouts. Resolution extended with consecutive-failure wedge escalation. |
 
 ---
 
