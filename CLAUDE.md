@@ -20,8 +20,14 @@ unless explicitly requested by the T04 prompt task.
 - Active issues: `ai/workspace/issues/`
 - Active changes: `ai/workspace/change/`
 - Active prompts: `ai/workspace/prompt/`
-- Task invocation: `implement ai/workspace/prompt/prompt-<uuid>-<name>.md`
-- Claude Code Task invocation: implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc when finished. Leave the issue and change T-Docs active pending test results.
+
+## Claude Code Task invocation
+
+```text
+Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc when finished. Leave the issue and change T-Docs active pending test results. Then, once you are finished, write a report of what you have done in ai/workspace/report-<uuid>-<name>.md.
+```
+
+
 
 ## Technology Stack
 
