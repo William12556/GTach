@@ -11,6 +11,7 @@ import os
 import sys
 import logging
 import argparse
+import datetime
 import faulthandler
 from pathlib import Path
 from typing import Optional
@@ -22,12 +23,25 @@ _debug_handler: logging.Handler = None
 # Kept referenced so faulthandler's fd stays open for the process
 # lifetime; faulthandler writes to the file descriptor directly.
 _stacks_file = None
+# Rotation is once per PROCESS, not once per arm. Arming occurs on
+# every OPTIONS toggle-on, and rotating each time would push a
+# just-captured reproduction off the end of the backup chain — the
+# operator toggling debug off and on three times would discard the
+# very dumps they had just gone to the trouble of provoking
+# (issue-3b8c50f2).
+_stacks_rotated = False
 
 _LOG_FORMAT = '%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s'
 _LOG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
 _START_LOG = '/opt/gtach/start.log'
 _DEBUG_LOG = '/opt/gtach/debug.log'
 _STACKS_LOG = '/opt/gtach/stacks.log'
+# A dump of four threads measures ~604 bytes and the interval is 15 s,
+# so an armed run produces ~145 KB per hour. Three backups plus the
+# live file bound cross-run accumulation at four files — enough to
+# span a watchdog restart and the run before it, which is the span
+# issue-2ac1c602's verification needs.
+_STACKS_BACKUPS = 3
 # 10 MB is about ninety minutes of debug output at 30 Hz.
 # Ten backups gives roughly sixteen hours of history for
 # 110 MB of card. bin/gtach.service caps a restart loop at
@@ -100,6 +114,53 @@ def setup_logging(debug: bool = False) -> None:
         enable_stack_dumps()
 
 
+def _rotate_stacks_log() -> None:
+    """Shift stacks.log outward by one generation.
+
+    Keeps _STACKS_BACKUPS generations; what was the oldest is
+    discarded. A no-op when the live file is absent or empty, so a run
+    that armed and produced nothing does not consume a generation.
+
+    Generations shift from the highest downwards. Ascending order would
+    overwrite each generation with the one below it before it had
+    itself been moved, collapsing the whole chain to one run's content.
+
+    os.replace rather than os.rename: an existing destination must be
+    overwritten rather than raising, which os.rename does on some
+    platforms.
+
+    Raises:
+        OSError: If a rename or the size check fails. The caller arms
+            regardless — a failure here costs history, not evidence.
+    """
+    if not os.path.exists(_STACKS_LOG) or os.path.getsize(_STACKS_LOG) == 0:
+        return
+
+    for i in range(_STACKS_BACKUPS - 1, 0, -1):
+        source = f'{_STACKS_LOG}.{i}'
+        if os.path.exists(source):
+            os.replace(source, f'{_STACKS_LOG}.{i + 1}')
+
+    os.replace(_STACKS_LOG, f'{_STACKS_LOG}.1')
+
+
+def _stacks_header() -> str:
+    """Build the line identifying one contiguous block of dumps.
+
+    Returns:
+        A single newline-terminated line carrying the gtach version,
+        the process PID and an ISO-8601 local timestamp.
+    """
+    try:
+        from importlib.metadata import version as _pkg_version
+        _ver = _pkg_version('gtach')
+    except Exception:
+        _ver = 'unknown'
+
+    _now = datetime.datetime.now().isoformat(timespec='seconds')
+    return f'=== gtach {_ver} pid {os.getpid()} armed {_now} ===\n'
+
+
 def enable_stack_dumps() -> bool:
     """Arm periodic all-thread stack dumps to stacks.log.
 
@@ -127,17 +188,59 @@ def enable_stack_dumps() -> bool:
     thread-safe, and _stacks_file, the only shared state, transitions
     by single assignment.
 
+    Two things happen around the arming itself. On the FIRST arm of a
+    process lifetime the existing stacks.log is rotated, bounding
+    cross-run accumulation without discarding the previous run — mode
+    is 'a', so a relaunch appends rather than truncating. And on EVERY
+    arm an identifying header is written before faulthandler is armed,
+    because the dumps themselves carry no timestamp, PID or run
+    identifier and would otherwise concatenate indistinguishably across
+    process lifetimes (issue-3b8c50f2).
+
+    The PID in that header is not incidental. Two headers with
+    different PIDs in one stacks.log is direct evidence that systemd
+    restarted the process, which is what issue-2ac1c602's verification
+    requires — captured automatically, rather than needing an operator
+    watching systemctl at the moment it happens.
+
+    Both additions run at arming time, when the process is by
+    definition healthy: the operator has just enabled the toggle, or
+    the process has just started. Nothing here runs during a stall,
+    which is why the anchor it writes survives one. Deliberately no
+    Python-side periodic timer or per-dump timestamp: such a timer
+    would stall in exactly the window this file exists to capture.
+
     Returns:
         True if stack dumps are armed on return — including when they
         were already armed. False if the log file could not be opened.
+        Rotation and header failures are reported to stderr but do not
+        change the result; the dumps matter more than their label.
     """
-    global _stacks_file
+    global _stacks_file, _stacks_rotated
 
     if _stacks_file is not None:
         return True
 
+    if not _stacks_rotated:
+        try:
+            _rotate_stacks_log()
+        except OSError as e:
+            print(f'[gtach] WARNING: could not rotate {_STACKS_LOG}: {e}',
+                  file=sys.stderr)
+        finally:
+            # Set whether or not rotation succeeded, so a persistent
+            # failure is not retried on every subsequent arm.
+            _stacks_rotated = True
+
     try:
         _stacks_file = open(_STACKS_LOG, mode='a', buffering=1, encoding='utf-8')
+        # Before arming, so that no dump can be written above the
+        # header identifying it.
+        try:
+            _stacks_file.write(_stacks_header())
+        except Exception as e:
+            print(f'[gtach] WARNING: could not write {_STACKS_LOG} header: {e}',
+                  file=sys.stderr)
         faulthandler.enable(file=_stacks_file)
         faulthandler.dump_traceback_later(15, repeat=True, file=_stacks_file)
         return True
