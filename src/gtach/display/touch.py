@@ -152,22 +152,14 @@ class TouchHandler:
     def _handle_long_press(self, x: int, y: int) -> None:
         """Handle long press events"""
         try:
-            # Check if in DISCONNECTED state (transport not running and not in sim mode)
-            from ..core import ThreadStatus
-            thread_status = self.display_manager.thread_manager.get_thread_status('obd_protocol')
-            is_disconnected = (thread_status != ThreadStatus.RUNNING and
-                             not getattr(self.display_manager, '_sim_mode', False))
-
-            if is_disconnected:
-                # Long press from DISCONNECTED transitions to SETUP
-                self.logger.info("Long press from DISCONNECTED - entering SETUP")
-                # Setup mode requires setup manager - for now just log
-                # Actual SETUP entry requires app controller coordination
-                return
-
             # OPTIONS is reached by swiping, not by long press
-            # (change-3e8b1d72). Retained without a mode change so
-            # the disconnected early return above still runs.
+            # (change-3e8b1d72). A long press now delegates on every
+            # screen, DISCONNECTED included, where it toggles the
+            # day/night palette as it does elsewhere (issue-7d4e91a3,
+            # change-2b6f4d91). The branch removed from here claimed to
+            # enter SETUP but only logged saying so; Setup is reached by
+            # tapping the DISCONNECTED screen's button, which the same
+            # issue made reachable.
             #
             # Delegate to the DisplayManager, which owns the mode
             # gating and the palette state. Called directly rather
@@ -193,10 +185,10 @@ class TouchHandler:
             # Vertical swipes move between the gauge and OPTIONS
             # (change-3e8b1d72); horizontal swipes page within the
             # options menu (change-8c5a1e73). Both are tested before
-            # the OPTIONS early return below, or neither would reach a
-            # handler from inside OPTIONS: that return sends every
-            # short press there to _handle_options_touch, which would
-            # leave the screen with one exit and no way to page.
+            # the region dispatch below, and must stay that way: a
+            # swipe that ends over a registered region would otherwise
+            # be consumed as a tap on it, and the dispatch returns
+            # nothing to distinguish the two.
             #
             # The entry, exit and paging rules are the DisplayManager's;
             # this path delegates rather than duplicating them, so the
@@ -236,34 +228,24 @@ class TouchHandler:
                         )
                 return
 
-            if self.display_manager.config.mode == DisplayMode.OPTIONS:
-                self._handle_options_touch(x, y)
-                return
-
-        except Exception as e:
-            self.logger.error(f"Short press handling error: {e}")
-
-    def _handle_options_touch(self, x: int, y: int) -> None:
-        """Handle touch events in options mode.
-
-        Processes touch interactions with the options interface elements,
-        updates configuration values, and saves changes when requested.
-
-        Args:
-            x: Touch x-coordinate
-            y: Touch y-coordinate
-        """
-        try:
-            self.logger.debug(f"Options touch at ({x}, {y})")
-
-            # Touch handling is now managed by touch_coordinator in DisplayManager
-            # This method is kept for compatibility but delegates to touch_coordinator
+            # The coordinator is consulted on EVERY screen, with no mode
+            # test. This handler must not enumerate screens: the
+            # coordinator already knows which regions exist, because
+            # DisplayManager._register_touch_regions rebuilds that set
+            # on every render pass (manager.py:1454). Screens with no
+            # regions are therefore a no-op by construction — it
+            # returns early for SPLASH (manager.py:1456) and registers
+            # nothing for connected RADIAL (manager.py:1484).
+            #
+            # Gating this on DisplayMode.OPTIONS left the DISCONNECTED
+            # screen's Setup and Simulate buttons and the
+            # ACKNOWLEDGEMENT screen's dismiss region registered,
+            # drawn, and never hit-tested (issue-7d4e91a3).
             action = self.display_manager.handle_touch_event((x, y))
-
-            self.logger.debug(f"Options touch action: {action}")
+            self.logger.debug(f"Touch dispatch at ({x}, {y}) -> {action}")
 
         except Exception as e:
-            self.logger.error(f"Options touch handling error: {e}", exc_info=True)
+            self.logger.error(f"Short press handling error: {e}", exc_info=True)
 
     def _process_settings_touch(self, setting_id: str) -> None:
         """Process a touch event for a specific settings control.
