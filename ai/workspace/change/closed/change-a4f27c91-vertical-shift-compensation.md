@@ -19,7 +19,7 @@ change_info:
   title: "Compensate the measured 8 px vertical panel offset in DisplayRenderingEngine.write_to_framebuffer"
   date: "2026-08-07"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -212,11 +212,21 @@ implementation:
     before this change is considered verified, per issue-a4f27c91.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-07"
+  implemented_by: "Claude Code, per prompt-a4f27c91"
+  verification_date: "2026-08-07"
+  verified_by: "William Watson"
+  test_results: >
+    pytest tests/ — 19 passed (baseline 11, +8 new cases in the new file
+    tests/display/rendering/test_engine.py), 0 failed. python -m
+    py_compile src/gtach/display/rendering/engine.py passes. Source
+    cross-checked directly: VERTICAL_OFFSET_PX = 8 at engine.py:73,
+    one-time logging flags at 109-110, shift block at 670-782, both
+    write branches confirmed consuming the same payload variable. Full
+    detail: ai/workspace/report/v0.4.0-a4f27c91-vertical-shift-compensation.md.
+
+    On-target: GTach deployed to gtach.local; William Watson confirmed
+    the display now appears centred.
   issues_found: []
 
 traceability:
@@ -233,12 +243,25 @@ notes: >
   the panel model — a different physical unit could in principle measure
   differently, though no such variation is currently in evidence.
 
+  Two follow-up items surfaced during implementation, neither blocking
+  this closure: possible touch-calibration offset (the digitiser's own
+  mapping was not shifted along with the image) and unmeasured per-frame
+  cost of the row-shift copy (now unconditional on every frame rather
+  than only on the pre-existing size-mismatch fallback path). Both
+  recorded as ai/task.md §4.4 and §4.5.
+
 version_history:
   - version: "1.0"
     date: "2026-08-07"
     author: "William Watson"
     changes:
       - "Initial change document, coupled to issue-a4f27c91."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status proposed -> closed. Implementation and verification recorded following prompt-a4f27c91 and William Watson's on-target confirmation. Source cross-checked against the implementation report before closure. Two follow-up items recorded in ai/task.md §4.4-4.5."
+      - "Moved to ai/workspace/change/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -255,6 +278,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-07 | Initial change document, coupled to issue-a4f27c91. |
+| 1.1 | 2026-08-07 | Status proposed → closed. Implemented and verified per prompt-a4f27c91 and William Watson's on-target confirmation. Follow-up items recorded in ai/task.md §4.4-4.5. |
 
 ---
 

@@ -62,7 +62,17 @@ class DisplayRenderingEngine(RenderingEngineInterface):
     Provides thread-safe rendering operations, framebuffer management,
     and hardware-specific optimizations for HyperPixel 2" Round display.
     """
-    
+
+    # Rows of padding prepended to every frame written to the
+    # framebuffer, compensating a measured 8 px upward displacement of
+    # the composed frame relative to the panel's active area
+    # (issue-a4f27c91). This is a measured physical offset for this
+    # deployment target's panel and overlay, not a general constant for
+    # the HyperPixel 2.1 Round model; another unit or a changed display
+    # timing may need a different value or none at all.
+    VERTICAL_OFFSET_PX = 8
+
+
     def __init__(self):
         self.logger = logging.getLogger('DisplayRenderingEngine')
         self._lock = threading.RLock()
@@ -94,7 +104,11 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         self.fb_bits_per_pixel = 0
         self._size_mismatch_logged = False
         self._size_mismatch_count = 0
-        
+
+        # Vertical offset compensation (issue-a4f27c91)
+        self._vertical_shift_logged = False
+        self._vertical_shift_failed_logged = False
+
         # Display constants for HyperPixel 2" Round
         self.display_center = (240, 240)
         self.display_safe_radius = 200
@@ -651,7 +665,15 @@ class DisplayRenderingEngine(RenderingEngineInterface):
 
         On macOS uses pygame.display.flip() to update the window.
         On Linux/Pi writes to the hardware framebuffer device.
-        
+
+        Before the write, the payload is shifted down by
+        VERTICAL_OFFSET_PX rows to compensate the measured vertical
+        displacement of the composed frame relative to the panel's
+        active area (issue-a4f27c91). The shift preserves total payload
+        length and is applied identically in both the page-flip and
+        single-buffer branches; it degrades to writing the original
+        payload if it cannot be computed.
+
         Returns:
             bool: True if write successful
         """
@@ -721,6 +743,47 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                         payload = payload[:self.fb_size]
                     else:
                         payload = payload + b'\x00' * (self.fb_size - actual_size)
+
+                # Vertical offset compensation (issue-a4f27c91). Push
+                # the image down VERTICAL_OFFSET_PX rows by prepending
+                # that many zeroed rows and dropping the same number
+                # from the tail. Total length is unchanged, so both
+                # write branches below still hand the device exactly
+                # fb_size bytes. Computed once here, above the branch
+                # dispatch, so both branches present the same frame.
+                try:
+                    row_bytes = (self.fb_line_length if self.fb_line_length > 0
+                                 else self.surface_size[0] * 4)
+                    shift_bytes = row_bytes * self.VERTICAL_OFFSET_PX
+                    payload_size = getattr(payload, 'length', None)
+                    if payload_size is None:
+                        payload_size = len(payload)
+
+                    if 0 < shift_bytes < payload_size:
+                        # get_view('0') yields a BufferProxy, which does
+                        # not slice. The size-reconciliation block above
+                        # materialises only on a mismatch, so the fast
+                        # path arrives here unmaterialised.
+                        if not isinstance(payload, (bytes, bytearray)):
+                            payload = bytes(payload)
+                        payload = bytes(shift_bytes) + payload[:-shift_bytes]
+                        if not self._vertical_shift_logged:
+                            self._vertical_shift_logged = True
+                            self.logger.info(
+                                f"Vertical offset compensation active: "
+                                f"{self.VERTICAL_OFFSET_PX} px "
+                                f"({shift_bytes} bytes, row {row_bytes})"
+                            )
+                except Exception as e:
+                    # Not an error: the unshifted write below is the
+                    # pre-change behaviour and remains correct, only
+                    # uncompensated.
+                    if not self._vertical_shift_failed_logged:
+                        self._vertical_shift_failed_logged = True
+                        self.logger.info(
+                            f"Vertical offset compensation unavailable, "
+                            f"writing the frame unshifted: {e}"
+                        )
 
                 # Single write, no synchronisation. flush/sync/fsync give
                 # no correctness benefit on a framebuffer device and

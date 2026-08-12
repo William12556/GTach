@@ -19,7 +19,7 @@ issue_info:
   title: "The composed 480x480 frame is displayed approximately 8 px higher than the panel's active area, clipping the top of circular UI elements and leaving a blank band at the bottom edge"
   date: "2026-08-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -145,15 +145,45 @@ resolution:
     change to the composition surface, draw calls, touch coordinate
     mapping, or any component outside this method. See change-a4f27c91.
   change_ref: "change-a4f27c91"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-07"
+  resolved_by: "Claude Code, per prompt-a4f27c91"
+  fix_description: >
+    VERTICAL_OFFSET_PX = 8 added as a class-level constant on
+    DisplayRenderingEngine (engine.py:73), citing this issue. A row-shift
+    step added to write_to_framebuffer between the existing
+    size-reconciliation block and the write-branch dispatch: computes
+    row_bytes from self.fb_line_length (falling back to
+    self.surface_size[0] * 4), then shift_bytes = row_bytes *
+    VERTICAL_OFFSET_PX; when 0 < shift_bytes < payload length, replaces
+    payload with bytes(shift_bytes) + payload[:-shift_bytes], preserving
+    total length. Both the page-flip and single-buffer write branches
+    consume the same payload variable. Falls through to the original
+    unshifted payload on any exception or out-of-range shift_bytes, so
+    the compensation can never turn a successful write into a failed one.
+    Confirmed present in source at engine.py:73, 109-110, 670-782.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-07"
+  verified_by: "William Watson"
+  test_results: >
+    pytest tests/ — 19 passed (baseline 11, +8 new test cases in
+    tests/display/rendering/test_engine.py), 0 failed. python -m
+    py_compile src/gtach/display/rendering/engine.py passes. Full detail
+    in ai/workspace/report/v0.4.0-a4f27c91-vertical-shift-compensation.md.
+
+    On-target: GTach deployed to gtach.local; William confirmed the
+    display now appears centred. This satisfies the primary symmetry
+    check in verification_enhanced below; the itemised crosshair
+    re-measurement and explicit bottom-margin check were not run
+    separately, superseded by direct visual confirmation on the actual
+    UI (the RADIAL shift-cue border) rather than the diagnostic pattern.
+  closure_notes: >
+    Closed on William Watson's on-target confirmation. Two follow-up
+    items raised in the implementation report — possible touch-
+    calibration offset from the shifted display, and the unmeasured
+    per-frame cost of the row-shift copy — are not defects in this fix
+    and do not block closure; recorded as ai/task.md §4.4 and §4.5 for
+    separate investigation.
 
 prevention:
   preventive_measures: >
@@ -202,6 +232,12 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document. Root cause isolated by direct /dev/fb0 diagnostic scripts, independent of GTach application code. Offset measured at 8 px via 2 px-resolution edge crosshair."
+  - version: "1.1"
+    date: "2026-08-07"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. Resolution, verification and closure_notes recorded following implementation (prompt-a4f27c91) and William Watson's on-target confirmation that the display appears centred on gtach.local. Source cross-checked against the implementation report before closure. Two follow-up items (touch calibration, per-frame cost) recorded in ai/task.md §4.4-4.5 rather than blocking closure."
+      - "Moved to ai/workspace/issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -218,6 +254,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-07 | Initial issue document. Root cause isolated to below GTach's framebuffer-write boundary via direct /dev/fb0 diagnostics; offset measured at 8 px. |
+| 1.1 | 2026-08-07 | Status open → closed. Closed on William Watson's on-target confirmation the display appears centred; source cross-checked against the implementation report. Follow-up items recorded in ai/task.md §4.4-4.5. |
 
 ---
 
