@@ -19,13 +19,13 @@ issue_info:
   title: "stacks.log is opened in append mode with no run boundary and no rotation, so dumps from successive process lifetimes concatenate indistinguishably and the file grows without bound while the debug toggle is left on"
   date: "2026-08-12"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
   coupled_docs:
-    change_ref: ""
-    change_iteration: null
+    change_ref: "change-3b8c50f2"
+    change_iteration: 1
 
 source:
   origin: "code_review"
@@ -218,16 +218,63 @@ resolution:
     Append mode is retained. mode='w' is rejected: it would discard the
     previous run's dumps at relaunch, which is the opposite of what is
     wanted.
-  change_ref: ""
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  change_ref: "change-3b8c50f2"
+  resolved_date: "2026-08-12"
+  resolved_by: "prompt-3b8c50f2 iteration 1"
+  fix_description: >
+    Three additions to src/gtach/main.py. Module-level
+    _STACKS_BACKUPS = 3 and _stacks_rotated = False. A
+    _rotate_stacks_log helper shifting generations in descending order
+    with os.replace, called from enable_stack_dumps on the first arm of
+    a process only. A _stacks_header helper returning an identifying
+    line, written after the file is opened and before faulthandler is
+    armed, on every arm. Both additions individually guarded so neither
+    can prevent arming. 18 unit tests added in
+    tests/test_stacks_log_rotation.py. See
+    ai/workspace/report/report-3b8c50f2-stacks-log-run-header-and-rotation.md.
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-08-12"
+  verified_by: "William Watson"
+  test_results: >
+    Unit: 18 tests in tests/test_stacks_log_rotation.py; full suite 92
+    passed, 0 failed. tests/test_stack_dump_toggle.py passes
+    unmodified.
+
+    Source conformance: _rotate_stacks_log iterates
+    range(_STACKS_BACKUPS - 1, 0, -1) — descending, as required to
+    avoid overwriting a generation before it is moved — and uses
+    os.replace. mode='a' retained. _stacks_rotated set in a finally
+    clause. disable_stack_dumps unchanged.
+
+    On target (gtach.local), step 4 — header present.
+    /opt/gtach/stacks.log line 1:
+      "=== gtach 0.4.1 pid 725 armed 2026-08-12T12:06:54 ==="
+
+    On target, step 6 — rotation on first arm. stacks.log.1 exists at
+    37287 bytes carrying 18 dumps and no header, correctly, that
+    content having been written before this change.
+
+    On target, step 5 — re-arm without rotation. Three headers in
+    stacks.log at lines 1, 33 and 65, timestamped 12:06:54, 12:10:55
+    and 12:11:31, all carrying pid 725. stacks.log.1 unchanged and no
+    stacks.log.2 created. Re-arming within one process lifetime appends
+    a header and does not rotate, as designed.
+  closure_notes: >
+    Closed on unit test plus on-target observation of steps 4, 5 and 6.
+
+    Step 7 — that stacks.log.4 is never created — was NOT observed on
+    target and remains covered by unit test alone. Observing it
+    requires four process lifetimes each performing a first arm; only
+    one rotation occurred during this test round. Recorded rather than
+    claimed, in keeping with this issue's own prevention note.
+
+    The header's PID field has not yet served its secondary purpose.
+    Two headers carrying DIFFERENT pids in one stacks.log would be
+    direct evidence of a systemd restart, which issue-2ac1c602's
+    verification step 3 requires. All three headers observed carry pid
+    725, the same process, because no watchdog-triggered restart has
+    occurred since the capability was delivered.
 
 prevention:
   preventive_measures: >
@@ -256,8 +303,10 @@ verification_enhanced:
 
 traceability:
   design_refs: []
-  change_refs: []
-  test_refs: []
+  change_refs:
+    - "change-3b8c50f2"
+  test_refs:
+    - "tests/test_stacks_log_rotation.py"
 
 notes: >
   A per-dump timestamp was considered and deliberately rejected. The
@@ -281,6 +330,15 @@ version_history:
       - "Two defects recorded: no run boundary in an append-mode file whose dumps carry no identifying information, and no rotation or size cap."
       - "Growth rate measured from the 2026-08-12 file: 604 bytes per dump, ~145 KB per hour armed."
       - "Records the deliberate rejection of a per-dump timestamp, and the hazard that rotation must be once per process rather than once per arm."
+  - version: "2.0"
+    date: "2026-08-12"
+    author: "William Watson"
+    changes:
+      - "Status open -> closed. Coupled to change-3b8c50f2 iteration 1."
+      - "Resolution and verification blocks completed from prompt-3b8c50f2 iteration 1 and its report."
+      - "On-target verification steps 4, 5 and 6 confirmed from logs/stacks.log: three headers at lines 1, 33 and 65 all carrying pid 725, with stacks.log.1 unchanged and no stacks.log.2, demonstrating a header on every arm and rotation on the first arm only."
+      - "Step 7 recorded as unit-tested but not observed: only one rotation occurred, so the three-generation cap was never reached on target."
+      - "Recorded that the header's pid field has not yet demonstrated its secondary purpose as restart evidence for issue-2ac1c602, all observed headers carrying the same pid."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -297,6 +355,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-12 | Initial issue document. stacks.log concatenates process lifetimes without a boundary and has no size bound. Confirmed from source and from the file's first real output. |
+| 2.0 | 2026-08-12 | Status open -> closed. Resolved by change-3b8c50f2 iteration 1 via prompt-3b8c50f2 iteration 1. Verified by 18 unit tests and by on-target observation of the run header and of rotation on first arm only. Step 7, the three-generation cap, recorded as unit-tested but unobserved. |
 
 ---
 

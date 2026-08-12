@@ -19,7 +19,7 @@ change_info:
   title: "Write an identifying run header on every arming of stack dumps, and rotate stacks.log once per process lifetime with three backups"
   date: "2026-08-12"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -323,11 +323,28 @@ implementation:
     packaging or configuration change.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-12"
+  implemented_by: "prompt-3b8c50f2 iteration 1 (claude_code)"
+  verification_date: "2026-08-12"
+  verified_by: "William Watson"
+  test_results: >
+    Unit: 18 tests in tests/test_stacks_log_rotation.py; full suite 92
+    passed, 0 failed; tests/test_stack_dump_toggle.py passes
+    unmodified.
+
+    Source conformance confirmed: descending generation shift with
+    os.replace, mode='a' retained, _stacks_rotated set in a finally
+    clause, disable_stack_dumps unchanged, no Python-side periodic
+    timer introduced.
+
+    On target: three headers in /opt/gtach/stacks.log at lines 1, 33
+    and 65, timestamped 12:06:54, 12:10:55 and 12:11:31, all carrying
+    pid 725; stacks.log.1 present at 37287 bytes with no header, being
+    pre-change content; no stacks.log.2 created. Header on every arm
+    and rotation on first arm only, both as designed.
+
+    Not observed on target: the three-generation cap. Only one rotation
+    occurred, so stacks.log.4's non-creation rests on unit test alone.
   issues_found: []
 
 traceability:
@@ -371,6 +388,12 @@ version_history:
       - "Initial change document resolving issue-3b8c50f2 iteration 1."
       - "Run header on every arm; rotation once per process lifetime with three backups."
       - "Records the rejection of per-dump timestamps, of mode='w', of rotate-per-arm, of a RotatingFileHandler, of a runtime size check, and of a disarm footer, each with its reason."
+  - version: "1.1"
+    date: "2026-08-12"
+    author: "William Watson"
+    changes:
+      - "Status proposed -> closed. Implemented by prompt-3b8c50f2 iteration 1; verification block completed."
+      - "On-target observation confirmed a header on every arm and rotation on the first arm only; the three-generation cap remains unit-tested but unobserved."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -387,6 +410,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-12 | Initial change document. Run header written on every arming of stack dumps; stacks.log rotated once per process lifetime with three backups. |
+| 1.1 | 2026-08-12 | Status proposed -> closed. Implemented by prompt-3b8c50f2 iteration 1; verified by 18 unit tests and on-target observation of three headers with rotation on first arm only. |
 
 ---
 
