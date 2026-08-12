@@ -358,7 +358,7 @@ class TestDisconnectedStatusLine:
         host.logger = __import__('logging').getLogger('test.render')
         host._link_cause_callback = cause_callback
         host._disconnected_btn_setup = None
-        host._disconnected_btn_sim = None
+        host._draw_retry_arc = lambda: None
         host._get_cached_font = lambda size: f'font-{size}'
         host._draw_shift_border = lambda colour: None
         host.rendering_engine = types.SimpleNamespace(

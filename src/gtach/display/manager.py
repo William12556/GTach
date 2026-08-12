@@ -111,6 +111,10 @@ class DisplayManager:
         # so the display keeps no hard dependency on comm, matching
         # _link_connected_callback above (issue-5e7a03c4).
         self._link_cause_callback = None
+        # Same pattern again; supplies the retry-countdown arc's
+        # PERIOD only. The arc's phase never comes from here — see
+        # _draw_retry_arc (issue-4f1e82b7).
+        self._retry_interval_callback = None
         self._link_ok = False                # latch: data is confirmed flowing
         self._recovery_count = 0             # consecutive samples close enough together
 
@@ -140,7 +144,6 @@ class DisplayManager:
         self._update_btn_install = None
         self._update_btn_cancel = None
         self._disconnected_btn_setup = None
-        self._disconnected_btn_sim = None
         self._ack_btn_dismiss = None
         self._confirm_btn_yes = None
         self._confirm_btn_no = None
@@ -1709,20 +1712,30 @@ class DisplayManager:
         )
 
     def _register_disconnected_regions(self) -> None:
-        """Compute and register the DISCONNECTED screen's two regions.
+        """Compute and register the DISCONNECTED screen's one region.
+
+        One control, Setup. Simulate was removed from here because it
+        duplicates OPTIONS page 0's simulation_mode control, which is
+        one downward swipe away and remains its home (issue-4f1e82b7).
 
         Height rises from 70 to the 72 px minimum and separation from
         20 to the 16 px floor, so the column now spans y 240 to 400
         rather than 240 to 400 — the same band, because a 240 px wide
         control has a wider usable band inside the r=238 viewport than
         the 300 px options column does.
+
+        width and top are unchanged, and _button_column stacks
+        downward from an explicit top, so the Setup button occupies
+        exactly the rect it did when it was first of two.
+
+        The freed slot is deliberately left empty. A Bluetooth reset
+        button is wanted there and is blocked on establishing which
+        recovery command works on this hardware.
         """
-        self._disconnected_btn_setup, self._disconnected_btn_sim = self._button_column(
+        self._disconnected_btn_setup, = self._button_column(
             (
                 ("disconnected_setup", TouchAction.NAVIGATION,
                  lambda pos: self._enter_setup_from_disconnected()),
-                ("disconnected_simulate", TouchAction.NAVIGATION,
-                 lambda pos: self._on_simulation_mode()),
             ),
             width=240,
             top=240,
@@ -2328,18 +2341,123 @@ class DisplayManager:
             # drawn affordance and the registered region cannot diverge.
             button_font = self._get_cached_font(28)
 
-            for _btn, _label in (
-                (self._disconnected_btn_setup, "Setup"),
-                (self._disconnected_btn_sim, "Simulate"),
-            ):
-                if _btn is None:
-                    continue
-                self._draw_button(_btn, _label, (60, 60, 80), button_font)
+            if self._disconnected_btn_setup is not None:
+                self._draw_button(
+                    self._disconnected_btn_setup, "Setup",
+                    (60, 60, 80), button_font
+                )
+
+            self._draw_retry_arc()
 
             self.logger.debug("DISCONNECTED screen rendered")
 
         except Exception as e:
             self.logger.error(f"Disconnected screen render error: {e}", exc_info=True)
+
+    # Fallback period, matching reconnect_indefinitely's retry_delay
+    # default. Used whenever the interval callback cannot give a usable
+    # positive number.
+    _RETRY_ARC_DEFAULT_PERIOD = 5.0
+
+    def _draw_retry_arc(self) -> None:
+        """Draw the retry-countdown arc on the DISCONNECTED screen.
+
+        The phase comes from the display frame clock —
+        ``time.monotonic()`` — and from NO transport attribute or
+        transport-derived state. That is the whole point of the
+        indicator. Fed from the transport it would freeze whenever the
+        transport thread blocks in ``connect()``, which is precisely
+        the moment the operator needs to know the application is alive;
+        an indicator that stops when its subject stops implies a fault
+        that may not exist (issue-4f1e82b7).
+
+        Only the PERIOD is asked of the transport, through
+        ``_retry_interval_callback``, and a failure to obtain it falls
+        back to 5.0 s rather than propagating.
+
+        The arc is full at phase 0 and empties as the next attempt
+        approaches. It indicates approximately when that attempt falls;
+        it is not synchronised with the transport's own timer and does
+        not claim to be.
+
+        Drawn with the same polygon approximation and the same palette
+        the RPM gauge's donut arcs use; no new drawing primitive is
+        introduced.
+        """
+        try:
+            period = self._RETRY_ARC_DEFAULT_PERIOD
+            if self._retry_interval_callback:
+                try:
+                    candidate = self._retry_interval_callback()
+                    if (isinstance(candidate, (int, float))
+                            and not isinstance(candidate, bool)
+                            and candidate > 0):
+                        period = float(candidate)
+                except Exception as e:
+                    self.logger.debug(
+                        f"Retry interval callback failed: {e}", exc_info=True
+                    )
+
+            # 0.0 at the start of each sweep, approaching 1.0 at its
+            # end. Modulo keeps this valid for any clock value and any
+            # period shorter than one frame interval.
+            phase = (time.monotonic() % period) / period
+            remaining = 1.0 - phase
+
+            surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
+            if surface is None:
+                return
+
+            palette = self._palette
+            centre = (240, 240)
+            outer_radius = 200
+            inner_radius = 186
+
+            # The button column starts at top=240 with height >= 72, so
+            # the band below y=330 is clear. A 120 deg sweep centred on
+            # 6 o'clock spans that band and stays inside the r=238
+            # viewport.
+            start_clock_deg = 120.0
+            sweep_deg = 120.0
+
+            def _canvas_rad(clock_deg):
+                return math.radians(clock_deg - 90)
+
+            def _donut_arc(colour, start_rad, end_rad):
+                """Polygon approximation, as _draw_radial_display uses."""
+                segments = 60
+                step = (end_rad - start_rad) / segments
+
+                points = []
+                for i in range(segments + 1):
+                    angle = start_rad + i * step
+                    points.append((
+                        centre[0] + outer_radius * math.cos(angle),
+                        centre[1] + outer_radius * math.sin(angle),
+                    ))
+                for i in range(segments, -1, -1):
+                    angle = start_rad + i * step
+                    points.append((
+                        centre[0] + inner_radius * math.cos(angle),
+                        centre[1] + inner_radius * math.sin(angle),
+                    ))
+
+                if len(points) > 2:
+                    pygame.draw.polygon(surface, colour, points)
+
+            track_start = _canvas_rad(start_clock_deg)
+            track_end = _canvas_rad(start_clock_deg + sweep_deg)
+            _donut_arc(palette.track, track_start, track_end)
+
+            if remaining > 0.0:
+                _donut_arc(
+                    palette.label,
+                    track_start,
+                    _canvas_rad(start_clock_deg + sweep_deg * remaining),
+                )
+
+        except Exception as e:
+            self.logger.debug(f"Retry arc render error: {e}", exc_info=True)
 
     def _enter_setup_from_disconnected(self) -> None:
         """Enter SETUP mode from DISCONNECTED screen"""

@@ -304,6 +304,18 @@ class GTachApplication:
                     getattr(self, '_transport', None), 'last_failure_cause', None
                 )
             )
+            # Period for the DISCONNECTED screen's retry arc, guarded
+            # the same way and for the same reason. Yields None today —
+            # reconnect_indefinitely is started without a retry_delay,
+            # so its 5.0 s default applies and the arc's own fallback
+            # is that same 5.0. Reading the attribute rather than
+            # hard-coding it means the arc follows any future
+            # configured value without further wiring (issue-4f1e82b7).
+            self._display._retry_interval_callback = (
+                lambda: getattr(
+                    getattr(self, '_transport', None), 'retry_delay', None
+                )
+            )
             self._display.start()
             self.logger.info("Splash screen activated for setup mode")
         else:
@@ -427,6 +439,18 @@ class GTachApplication:
         self._display._link_cause_callback = (
             lambda: getattr(
                 getattr(self, '_transport', None), 'last_failure_cause', None
+            )
+        )
+        # Period for the DISCONNECTED screen's retry arc, guarded the
+        # same way and for the same reason. Yields None today —
+        # reconnect_indefinitely is started without a retry_delay, so
+        # its 5.0 s default applies and the arc's own fallback is that
+        # same 5.0. Reading the attribute rather than hard-coding it
+        # means the arc follows any future configured value without
+        # further wiring (issue-4f1e82b7).
+        self._display._retry_interval_callback = (
+            lambda: getattr(
+                getattr(self, '_transport', None), 'retry_delay', None
             )
         )
         self._display.start()  # This automatically starts the splash screen
