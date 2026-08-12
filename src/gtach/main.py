@@ -38,7 +38,7 @@ _DEBUG_BACKUPS = 10
 
 
 def setup_logging(debug: bool = False) -> None:
-    global _start_handler, _debug_handler, _stacks_file
+    global _start_handler, _debug_handler
 
     formatter = logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FMT)
     root = logging.getLogger()
@@ -96,24 +96,80 @@ def setup_logging(debug: bool = False) -> None:
     if debug and _debug_handler is not None:
         _debug_handler.setLevel(logging.DEBUG)
 
-    # stacks.log — periodic all-thread stack dumps, debug only.
-    #
-    # faulthandler's repeat timer runs in a C thread and never takes
-    # the GIL to schedule itself, so its dumps still land while every
-    # Python thread is stalled — which is exactly the window that
-    # needs observing (issue-2ac1c602). This was previously armed in
-    # GTachApplication.__init__ against sys.stderr; under systemd
-    # stderr is the journal, not the app-owned log set beside
-    # start.log and debug.log, so the dumps were not recoverable
-    # alongside the run they belonged to.
     if debug:
-        try:
-            _stacks_file = open(_STACKS_LOG, mode='a', buffering=1, encoding='utf-8')
-            faulthandler.enable(file=_stacks_file)
-            faulthandler.dump_traceback_later(15, repeat=True, file=_stacks_file)
-        except OSError as e:
-            print(f'[gtach] WARNING: could not open {_STACKS_LOG}: {e}', file=sys.stderr)
-            _stacks_file = None
+        enable_stack_dumps()
+
+
+def enable_stack_dumps() -> bool:
+    """Arm periodic all-thread stack dumps to stacks.log.
+
+    faulthandler's repeat timer runs in a C thread and never takes the
+    GIL to schedule itself, so its dumps still land while every Python
+    thread is stalled — which is exactly the window that needs
+    observing (issue-2ac1c602). The dumps were originally written to
+    sys.stderr, which under systemd is the journal rather than the
+    app-owned log set beside start.log and debug.log, so they were not
+    recoverable alongside the run they belonged to.
+
+    Arming lives here, with the other log-file handles, but is
+    deliberately callable at any point in the process lifetime rather
+    than from setup_logging alone. bin/gtach.service's ExecStart passes
+    no --debug, so args.debug is False on every service-launched run
+    and the startup path is not the path that matters in production
+    (issue-2ac1c602 iteration 3). Debug is enabled in the field at
+    runtime, through the OPTIONS screen toggle, and
+    GTachApplication.toggle_debug_logging calls this function on that
+    signal.
+
+    Idempotent: a second call while already armed opens no second file
+    handle and stacks no second timer. Safe to call from a thread other
+    than the one that ran setup_logging — faulthandler's own calls are
+    thread-safe, and _stacks_file, the only shared state, transitions
+    by single assignment.
+
+    Returns:
+        True if stack dumps are armed on return — including when they
+        were already armed. False if the log file could not be opened.
+    """
+    global _stacks_file
+
+    if _stacks_file is not None:
+        return True
+
+    try:
+        _stacks_file = open(_STACKS_LOG, mode='a', buffering=1, encoding='utf-8')
+        faulthandler.enable(file=_stacks_file)
+        faulthandler.dump_traceback_later(15, repeat=True, file=_stacks_file)
+        return True
+    except OSError as e:
+        print(f'[gtach] WARNING: could not open {_STACKS_LOG}: {e}', file=sys.stderr)
+        _stacks_file = None
+        return False
+
+
+def disable_stack_dumps() -> None:
+    """Cancel periodic stack dumps and close stacks.log.
+
+    A no-op when nothing is armed. The teardown order is load-bearing:
+    the repeat timer is cancelled and faulthandler disabled BEFORE the
+    file is closed, because a dump firing against a closed descriptor
+    would fault inside the C timer thread.
+
+    Errors closing the file are swallowed, but _stacks_file is set to
+    None regardless so that a subsequent enable_stack_dumps can re-arm.
+    """
+    global _stacks_file
+
+    if _stacks_file is None:
+        return
+
+    faulthandler.cancel_dump_traceback_later()
+    faulthandler.disable()
+    try:
+        _stacks_file.close()
+    except Exception as e:
+        print(f'[gtach] WARNING: could not close {_STACKS_LOG}: {e}', file=sys.stderr)
+    _stacks_file = None
 
 
 def parse_arguments() -> argparse.Namespace:

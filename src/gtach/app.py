@@ -206,10 +206,21 @@ class GTachApplication:
             self.logger.debug(f"Could not finish startup logging: {e}")
 
     def toggle_debug_logging(self, enable: bool) -> None:
-        """Activate or suppress debug.log at runtime.
+        """Activate or suppress runtime diagnostics.
+
+        Toggles debug.log's handler level and, on the same signal, arms
+        or disarms the periodic all-thread stack dumps written to
+        stacks.log. This is the signal that turns debug on in the field
+        — bin/gtach.service passes no --debug, so the startup flag
+        never fires in production (issue-2ac1c602 iteration 3).
+
+        The two diagnostics degrade independently: a failure in the
+        stack-dump path cannot prevent the debug log handler from being
+        toggled, which is the operator's primary diagnostic control.
 
         Args:
-            enable: True to start writing to debug.log; False to suppress.
+            enable: True to start writing to debug.log and dumping
+                stacks; False to suppress both.
         """
         try:
             import logging
@@ -231,9 +242,28 @@ class GTachApplication:
             if enable:
                 _main._debug_handler.setLevel(logging.DEBUG)
                 self.logger.info("Debug logging enabled")
+                # Own guard, and getattr rather than attribute access:
+                # a partially loaded or older gtach.main must not raise
+                # out of the debug-handler toggle.
+                try:
+                    _arm = getattr(_main, 'enable_stack_dumps', None)
+                    if _arm is not None:
+                        _arm()
+                except Exception as e:
+                    self.logger.debug(
+                        f"Could not arm stack dumps: {e}", exc_info=True
+                    )
             else:
                 _main._debug_handler.setLevel(logging.CRITICAL + 1)
                 self.logger.info("Debug logging disabled")
+                try:
+                    _disarm = getattr(_main, 'disable_stack_dumps', None)
+                    if _disarm is not None:
+                        _disarm()
+                except Exception as e:
+                    self.logger.debug(
+                        f"Could not disarm stack dumps: {e}", exc_info=True
+                    )
         except Exception as e:
             self.logger.debug(f"Could not toggle debug logging: {e}")
 
