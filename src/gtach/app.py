@@ -296,6 +296,14 @@ class GTachApplication:
                     and self._transport.is_connected()
                 )
             )
+            # Same guard, same reason: before select_transport has run
+            # there is no transport, and 'no transport' has no failure
+            # cause to report (issue-5e7a03c4).
+            self._display._link_cause_callback = (
+                lambda: getattr(
+                    getattr(self, '_transport', None), 'last_failure_cause', None
+                )
+            )
             self._display.start()
             self.logger.info("Splash screen activated for setup mode")
         else:
@@ -411,6 +419,14 @@ class GTachApplication:
             lambda: bool(
                 getattr(self, '_transport', None)
                 and self._transport.is_connected()
+            )
+        )
+        # Same guard, same reason: before select_transport has run
+        # there is no transport, and 'no transport' has no failure
+        # cause to report (issue-5e7a03c4).
+        self._display._link_cause_callback = (
+            lambda: getattr(
+                getattr(self, '_transport', None), 'last_failure_cause', None
             )
         )
         self._display.start()  # This automatically starts the splash screen

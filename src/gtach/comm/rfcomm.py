@@ -44,8 +44,27 @@ class RFCOMMTransport(OBDTransport):
 
         sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
         sock.settimeout(10)
-        sock.connect((self._mac_address, self._channel))
-        sock.settimeout(None)
+        # Nothing else closes this socket if connect raises. It is a
+        # local, and OBDTransport.connect's _IO_ERRORS handler calls
+        # _discard_handle() against self._handle, which is only
+        # assigned on the success path — so on failure it discards
+        # None while this socket leaks. An unclosed RFCOMM socket
+        # holds its ACL reference, which is a candidate mechanism for
+        # the EBUSY seen on every subsequent retry (issue-5e7a03c4).
+        #
+        # BaseException rather than Exception: a KeyboardInterrupt or a
+        # timeout delivered as a BaseException must still close it.
+        try:
+            sock.connect((self._mac_address, self._channel))
+            sock.settimeout(None)
+        except BaseException:
+            try:
+                sock.close()
+            except Exception:
+                pass
+            # Bare raise, so the traceback and errno are preserved and
+            # OBDTransport.connect's existing handling is unaffected.
+            raise
         return sock
 
     def _close(self, handle) -> None:

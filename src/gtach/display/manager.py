@@ -106,6 +106,11 @@ class DisplayManager:
         # These are what answers it instead.
         self._last_sample_ts = None          # monotonic time of the last real sample
         self._link_connected_callback = None  # injected by app.py; asks the transport
+        # Also injected by app.py; asks the transport why the last
+        # connect failed. A callback rather than a transport reference
+        # so the display keeps no hard dependency on comm, matching
+        # _link_connected_callback above (issue-5e7a03c4).
+        self._link_cause_callback = None
         self._link_ok = False                # latch: data is confirmed flowing
         self._recovery_count = 0             # consecutive samples close enough together
 
@@ -2297,6 +2302,27 @@ class DisplayManager:
                     (240, 180),
                     center=True
                 )
+
+            # Cause line — why the last connect failed, when known.
+            # Drawn between the message at y=180 and the button column,
+            # whose top is 240 (_register_disconnected_regions); the
+            # buttons are not moved. Nothing is drawn when no connect
+            # has failed, so the screen is unchanged from before
+            # issue-5e7a03c4 until there is something to say.
+            _cause = None
+            if self._link_cause_callback:
+                _cause = self._link_cause_callback()
+            if _cause:
+                cause_font = self._get_cached_font(18)
+                if cause_font:
+                    self.rendering_engine.render_text(
+                        RenderTarget.BACK_BUFFER,
+                        str(_cause),
+                        cause_font,
+                        (200, 160, 100),
+                        (240, 210),
+                        center=True
+                    )
 
             # Geometry is owned by _register_disconnected_regions, so the
             # drawn affordance and the registered region cannot diverge.

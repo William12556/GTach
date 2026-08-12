@@ -11,7 +11,9 @@ Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 import argparse
+import errno as _errno
 import logging
+import os
 import threading
 from typing import Callable, Optional
 
@@ -35,6 +37,53 @@ TRANSPORT_FORCED = ('tcp', 'serial', 'simtcp')
 
 # Fast transports poll at 0.02 s rather than 0.05 s.
 TRANSPORT_FAST = ('simbt', 'simtcp', 'tcp')
+
+
+# errno arrives at connect()'s first except handler and was discarded
+# there, so an adapter fault and a missing OBD dongle produced
+# identical logs and an identical DISCONNECTED screen. Establishing
+# which it was took a full session of manual hcitool work to recover
+# information errno already carried (issue-5e7a03c4).
+#
+# Every value is 40 characters or fewer so it renders on the 480x480
+# display without truncation. A test asserts that bound over the whole
+# mapping; keep any addition within it.
+_CONNECT_FAULT_CAUSES = {
+    _errno.EBUSY: 'bluetooth link busy - may need reset',
+    _errno.ETIMEDOUT: 'connection timed out',
+    _errno.EHOSTDOWN: 'adapter not reachable',
+    _errno.EHOSTUNREACH: 'adapter not reachable',
+    _errno.ENODEV: 'no bluetooth controller',
+    _errno.ENETDOWN: 'bluetooth controller down',
+    _errno.ECONNREFUSED: 'connection refused by adapter',
+}
+
+# Sysfs path listing Bluetooth controllers. PlatformDetector already
+# probes this same path (platform.py:706), so reading it here is a
+# precedented pattern rather than a new dependency.
+_BLUETOOTH_SYSFS = '/sys/class/bluetooth'
+
+
+def _bluetooth_adapter_present() -> bool:
+    """Report whether a Bluetooth controller is present.
+
+    Reads sysfs only. This change REPORTS and must never ACT on the
+    host: no adapter reset, rfkill cycle, hciuart restart or module
+    reload, and no shell invocation of any kind (issue-5e7a03c4).
+
+    Returns:
+        True if any controller is listed, False if the directory
+        exists and is empty, and True if the check cannot be performed
+        at all. The unknown case is deliberately optimistic: an
+        unreadable sysfs must never be reported to the operator as a
+        hardware fault.
+    """
+    try:
+        if not os.path.isdir(_BLUETOOTH_SYSFS):
+            return True
+        return bool(os.listdir(_BLUETOOTH_SYSFS))
+    except Exception:
+        return True
 
 
 class TransportState(Enum):
@@ -129,6 +178,7 @@ class OBDTransport(ABC):
         self._handle = None
         self._state = TransportState.DISCONNECTED
         self._consecutive_timeouts = 0
+        self._last_failure_cause: Optional[str] = None
 
     def _open(self):
         """Open and return a connected handle.
@@ -195,6 +245,55 @@ class OBDTransport(ABC):
             except self._IO_ERRORS:
                 pass
 
+    @property
+    def last_failure_cause(self) -> Optional[str]:
+        """Why the most recent connect attempt failed.
+
+        Read from the display thread while :meth:`connect` writes it
+        from the transport thread, so both go through ``_lock``.
+
+        Returns:
+            A short cause string, or None when no connect has failed
+            since the last success.
+        """
+        with self._lock:
+            return self._last_failure_cause
+
+    def _classify_connect_error(self, exc: OSError) -> str:
+        """Resolve a connect failure to a named cause.
+
+        A missing controller overrides whatever errno reported: it is
+        the more specific and more actionable fact, and errno alone
+        cannot discriminate a controller that is absent from a peer
+        that is merely unreachable.
+
+        Never raises, for any input including an exception carrying no
+        errno at all — a diagnostic must not become a new failure
+        source.
+
+        Args:
+            exc: The exception raised by the connect attempt.
+
+        Returns:
+            A short cause string, never empty.
+        """
+        try:
+            if not _bluetooth_adapter_present():
+                return 'no bluetooth controller'
+
+            code = getattr(exc, 'errno', None)
+            if code in _CONNECT_FAULT_CAUSES:
+                return _CONNECT_FAULT_CAUSES[code]
+            if code is not None:
+                # Unmapped: the errno NAME is still far more use than
+                # discarding it, which is what happened before.
+                named = _errno.errorcode.get(code)
+                if named:
+                    return named
+            return str(exc) or 'unknown connection failure'
+        except Exception:
+            return 'unknown connection failure'
+
     def connect(self) -> bool:
         """Establish a connection to the OBD device.
 
@@ -215,13 +314,17 @@ class OBDTransport(ABC):
             with self._lock:
                 self._handle = handle
                 self._state = TransportState.CONNECTED
+                self._last_failure_cause = None
             logger.info("Connected to %s", self._describe())
             return True
         except self._IO_ERRORS as e:
-            logger.error("Failed to connect to %s: %s", self._describe(), e)
+            cause = self._classify_connect_error(e)
+            logger.error("Failed to connect to %s: %s (%s)",
+                         self._describe(), e, cause)
             self._discard_handle()
             with self._lock:
                 self._state = TransportState.DISCONNECTED
+                self._last_failure_cause = cause
             return False
         except Exception as e:
             logger.error("Unexpected error during connection to %s: %s",
