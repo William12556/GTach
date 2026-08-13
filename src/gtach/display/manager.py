@@ -2399,10 +2399,13 @@ class DisplayManager:
     # positive number.
     _RETRY_ARC_DEFAULT_PERIOD = 5.0
 
-    # Rotating-dot reconnect spinner geometry. Centred in the band
-    # between the status dot (y=60) and the title (y=155), clear of
-    # both the DISCONNECTED buttons and the text above it.
-    _SPINNER_CENTRE = (240, 105)
+    # Rotating-dot reconnect spinner geometry. Centred ON the status
+    # dot's position (240, 60) — see _draw_status_indicator — so the
+    # dot sits in the middle of the ring rather than beside it. Ring
+    # radius 26 keeps the dots well clear of the title at y=155 and of
+    # the viewport edge (206 px from the display centre at most, inside
+    # the ~238 px viewport radius).
+    _SPINNER_CENTRE = (240, 60)
     _SPINNER_RING_RADIUS = 26
     _SPINNER_DOT_RADIUS = 4
     _SPINNER_DOT_COUNT = 8
@@ -2417,7 +2420,8 @@ class DisplayManager:
         Reset (issue-8a63d5f1) filled the band the arc assumed was
         free, and the arc clipped the button. Rather than re-fit an
         arc into the remaining space, the indicator was moved to the
-        upper half of the screen and reduced to a small ring of dots.
+        upper half of the screen and reduced to a small ring of dots
+        surrounding the connection status dot.
 
         The phase comes from the display frame clock —
         ``time.monotonic()`` — and from NO transport attribute or
