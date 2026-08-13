@@ -75,6 +75,7 @@ class _Recorder:
         host._link_cause_callback = None
         host._retry_interval_callback = None
         host._disconnected_btn_setup = None
+        host._disconnected_btn_bt_reset = None
         host._get_cached_font = lambda size: f'font-{size}'
         host._draw_shift_border = lambda colour: None
         host._draw_button = lambda rect, label, fill, font: \
@@ -100,6 +101,10 @@ class TestOneButton:
 
         host = types.SimpleNamespace()
         host.logger = logging.getLogger('test.disconnected')
+        # Unset, so change-8a63d5f1's Bluetooth Reset button is not
+        # registered and the single-button form these tests describe
+        # still holds.
+        host._bluetooth_reset_callback = None
 
         def _column(specs, width, top, **kwargs):
             calls.append(types.SimpleNamespace(

@@ -64,6 +64,19 @@ class GTachApplication:
         self._device_store = DeviceStore()
         self._setup_mode = False
 
+        # Debounce for the DISCONNECTED screen's Bluetooth Reset
+        # button. A press while a reset is in flight is ignored, not
+        # queued (issue-8a63d5f1).
+        self._bt_reset_in_flight = threading.Event()
+        # Progress and outcome of the most recent reset, shown on the
+        # cause line. Held on the application rather than written into
+        # the transport: the transport's cause is guarded by its own
+        # lock and has no public setter, and reaching past that from
+        # here would put app.py inside comm's invariants for the sake
+        # of one string. _disconnected_cause below merges the two.
+        self._bt_reset_status = None
+        self._bt_reset_lock = threading.Lock()
+
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
 
@@ -267,6 +280,82 @@ class GTachApplication:
         except Exception as e:
             self.logger.debug(f"Could not toggle debug logging: {e}")
 
+    def _disconnected_cause(self):
+        """Resolve the string the DISCONNECTED screen's cause line shows.
+
+        A Bluetooth reset outcome supersedes the transport's own cause
+        while it stands: the operator just asked for that operation and
+        its result is the more immediately relevant fact. It is
+        discarded once the link comes back, so a stale outcome cannot
+        mask a later transport failure.
+
+        Called on the display thread on every frame the DISCONNECTED
+        screen is drawn.
+
+        Returns:
+            The cause string, or None when there is nothing to show.
+        """
+        transport = getattr(self, '_transport', None)
+
+        if transport is not None and transport.is_connected():
+            with self._bt_reset_lock:
+                self._bt_reset_status = None
+
+        with self._bt_reset_lock:
+            status = self._bt_reset_status
+        if status:
+            return status
+
+        return getattr(transport, 'last_failure_cause', None)
+
+    def _set_bt_reset_status(self, status) -> None:
+        """Record reset progress or outcome for the cause line."""
+        with self._bt_reset_lock:
+            self._bt_reset_status = status
+
+    def _on_bluetooth_reset(self) -> None:
+        """Dispatch an operator-requested Bluetooth controller reset.
+
+        Returns immediately, performing no blocking call itself. The
+        reset runs on a daemon worker because 'display' is a watchdog
+        critical thread at a 45 s timeout, and since change-2ac1c602 a
+        critical timeout terminates the process — so a synchronous
+        subprocess in this touch callback would turn the button into an
+        application restart (issue-8a63d5f1).
+
+        A press while a reset is in flight is ignored rather than
+        queued: repeated resets are not useful and a queue would let an
+        impatient operator stack them.
+
+        The worker is deliberately NOT registered with ThreadManager.
+        It is short-lived, and registering it would put it under
+        WatchdogMonitor for the seconds it exists.
+        """
+        if self._bt_reset_in_flight.is_set():
+            self.logger.info("Bluetooth reset already in flight - press ignored")
+            return
+        self._bt_reset_in_flight.set()
+
+        self.logger.info("Operator requested Bluetooth adapter reset")
+        self._set_bt_reset_status('resetting bluetooth...')
+
+        def _worker() -> None:
+            try:
+                from .utils import bluetooth_reset
+                outcome = bluetooth_reset.reset_adapter()
+                self.logger.info(f"Bluetooth reset outcome: {outcome}")
+                self._set_bt_reset_status(outcome)
+            except Exception as e:
+                self.logger.error(f"Bluetooth reset worker failed: {e}",
+                                  exc_info=True)
+                self._set_bt_reset_status('bluetooth reset failed')
+            finally:
+                # In a finally so a raising worker cannot wedge the
+                # button for the life of the process.
+                self._bt_reset_in_flight.clear()
+
+        threading.Thread(target=_worker, name='bt_reset', daemon=True).start()
+
     def _request_restart(self) -> None:
         """Request a clean restart; systemd (Restart=always) relaunches,
         and gtach-preflight.sh installs any staged wheel."""
@@ -299,11 +388,16 @@ class GTachApplication:
             # Same guard, same reason: before select_transport has run
             # there is no transport, and 'no transport' has no failure
             # cause to report (issue-5e7a03c4).
-            self._display._link_cause_callback = (
-                lambda: getattr(
-                    getattr(self, '_transport', None), 'last_failure_cause', None
-                )
-            )
+            # Merges the transport's cause with any Bluetooth reset
+            # outcome; see _disconnected_cause (issue-8a63d5f1).
+            self._display._link_cause_callback = self._disconnected_cause
+            # Wired here as well as in _start_normal_mode: _start_obd
+            # runs against THIS display instance after setup completes
+            # (app.py:485), so the DISCONNECTED screen reached by that
+            # route is drawn by it. Wiring only normal mode would leave
+            # the button absent for every operator who passed through
+            # setup.
+            self._display._bluetooth_reset_callback = self._on_bluetooth_reset
             # Period for the DISCONNECTED screen's retry arc, guarded
             # the same way and for the same reason. Yields None today —
             # reconnect_indefinitely is started without a retry_delay,
@@ -436,11 +530,10 @@ class GTachApplication:
         # Same guard, same reason: before select_transport has run
         # there is no transport, and 'no transport' has no failure
         # cause to report (issue-5e7a03c4).
-        self._display._link_cause_callback = (
-            lambda: getattr(
-                getattr(self, '_transport', None), 'last_failure_cause', None
-            )
-        )
+        # Merges the transport's cause with any Bluetooth reset
+        # outcome; see _disconnected_cause (issue-8a63d5f1).
+        self._display._link_cause_callback = self._disconnected_cause
+        self._display._bluetooth_reset_callback = self._on_bluetooth_reset
         # Period for the DISCONNECTED screen's retry arc, guarded the
         # same way and for the same reason. Yields None today —
         # reconnect_indefinitely is started without a retry_delay, so

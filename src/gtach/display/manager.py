@@ -115,6 +115,11 @@ class DisplayManager:
         # PERIOD only. The arc's phase never comes from here — see
         # _draw_retry_arc (issue-4f1e82b7).
         self._retry_interval_callback = None
+        # Also injected by app.py. When left unset the Bluetooth Reset
+        # button is neither registered nor drawn, so the screen
+        # degrades to its previous single-button form
+        # (issue-8a63d5f1).
+        self._bluetooth_reset_callback = None
         self._link_ok = False                # latch: data is confirmed flowing
         self._recovery_count = 0             # consecutive samples close enough together
 
@@ -144,6 +149,7 @@ class DisplayManager:
         self._update_btn_install = None
         self._update_btn_cancel = None
         self._disconnected_btn_setup = None
+        self._disconnected_btn_bt_reset = None
         self._ack_btn_dismiss = None
         self._confirm_btn_yes = None
         self._confirm_btn_no = None
@@ -1728,18 +1734,28 @@ class DisplayManager:
         downward from an explicit top, so the Setup button occupies
         exactly the rect it did when it was first of two.
 
-        The freed slot is deliberately left empty. A Bluetooth reset
-        button is wanted there and is blocked on establishing which
-        recovery command works on this hardware.
+        The slot change-4f1e82b7 left free now holds Bluetooth Reset,
+        registered only when its callback is set so the screen degrades
+        to the single-button form without it (issue-8a63d5f1).
+
+        _button_column stacks downward from an explicit top, so the
+        Setup rect is identical whether one or two controls are
+        registered.
         """
-        self._disconnected_btn_setup, = self._button_column(
-            (
-                ("disconnected_setup", TouchAction.NAVIGATION,
-                 lambda pos: self._enter_setup_from_disconnected()),
-            ),
-            width=240,
-            top=240,
-        )
+        specs = [
+            ("disconnected_setup", TouchAction.NAVIGATION,
+             lambda pos: self._enter_setup_from_disconnected()),
+        ]
+        if self._bluetooth_reset_callback is not None:
+            specs.append(
+                ("disconnected_bt_reset", TouchAction.NAVIGATION,
+                 lambda pos: self._bluetooth_reset_callback())
+            )
+
+        rects = self._button_column(specs, width=240, top=240)
+
+        self._disconnected_btn_setup = rects[0]
+        self._disconnected_btn_bt_reset = rects[1] if len(rects) > 1 else None
 
     def _draw_button(
         self,
@@ -2344,6 +2360,16 @@ class DisplayManager:
             if self._disconnected_btn_setup is not None:
                 self._draw_button(
                     self._disconnected_btn_setup, "Setup",
+                    (60, 60, 80), button_font
+                )
+
+            # 'BT Reset' rather than 'Bluetooth Reset': measured at the
+            # existing button font, the full label is 300 px against a
+            # 240 px button, and the abbreviation is 174 px. The button
+            # width and the other buttons' font are unchanged.
+            if self._disconnected_btn_bt_reset is not None:
+                self._draw_button(
+                    self._disconnected_btn_bt_reset, "BT Reset",
                     (60, 60, 80), button_font
                 )
 
