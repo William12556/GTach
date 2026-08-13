@@ -24,7 +24,7 @@ unless explicitly requested by the T04 prompt task.
 ## Claude Code Task invocation
 
 ```text
-Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc when finished. Leave the issue and change T-Docs active pending test results. Then, once you are finished, write a report of what you have done in ai/workspace/report-<uuid>-<name>.md.
+Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc when finished. Leave the issue and change T-Docs active pending test results. Then, once you are finished, write a report of what you have done in ai/workspace/report/report-<uuid>-<name>.md.
 ```
 
 
