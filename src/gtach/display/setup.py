@@ -83,15 +83,18 @@ class SetupDisplayManager:
         self._render_cache_lock = threading.Lock()
         
         # Colors for UI rendering
+        # Background and text match the DISCONNECTED screen
+        # (issue-ba2d5de2). The accents below are semantic and are
+        # deliberately unchanged.
         self.colors = {
-            'background': (20, 20, 30),
+            'background': (216, 200, 146),
             'surface': (40, 40, 50),
             'primary': (100, 150, 250),
             'success': (50, 200, 50),
             'warning': (255, 165, 0),
             'danger': (255, 50, 50),
-            'text': (255, 255, 255),
-            'text_dim': (180, 180, 180),
+            'text': (0, 0, 0),
+            'text_dim': (0, 0, 0),
             'border': (80, 80, 90)
         }
         
@@ -245,9 +248,13 @@ class SetupDisplayManager:
             self._render_welcome_screen(surface)  # Fallback
     
     def _draw_circular_border(self, surface) -> None:
-        """Draw red circular border on the given surface"""
+        """Draw the circular border on the given surface.
+
+        Matches the background, as the DISCONNECTED screen's does
+        (issue-ba2d5de2).
+        """
         try:
-            pygame.draw.circle(surface, (200, 0, 0), (240, 240), 238, 4)
+            pygame.draw.circle(surface, self.colors['background'], (240, 240), 238, 4)
         except Exception as e:
             self.logger.error(f'Circular border error: {e}')
 

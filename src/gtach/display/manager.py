@@ -1814,14 +1814,16 @@ class DisplayManager:
         discoverability answer display review §7.6 asked for, at no
         ergonomic cost.
         """
-        self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
-        self._draw_shift_border((200, 0, 0))
+        self.rendering_engine.clear_surface(
+            RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
+        )
+        self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
 
         font = get_title_display_font()
         if font:
             self.rendering_engine.render_text(
                 RenderTarget.BACK_BUFFER, "Options", font,
-                (255, 255, 255), (240, 55), center=True
+                self._DISCONNECTED_TEXT_COLOUR, (240, 55), center=True
             )
 
         # Geometry is owned by _register_options_menu_regions, so the
@@ -1864,7 +1866,10 @@ class DisplayManager:
 
         small_font = get_label_small_font()
         if small_font:
-            self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Swipe up to return", small_font, (150, 150, 150), (240, 400), center=True)
+            self.rendering_engine.render_text(
+                RenderTarget.BACK_BUFFER, "Swipe up to return", small_font,
+                self._DISCONNECTED_TEXT_COLOUR, (240, 400), center=True
+            )
 
     def _draw_confirm_view(self) -> None:
         """Draw the clear-settings confirmation.
@@ -1875,14 +1880,16 @@ class DisplayManager:
         naming in plain words before it happens
         (display review §7.3, recommendation 24).
         """
-        self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
-        self._draw_shift_border((200, 0, 0))
+        self.rendering_engine.clear_surface(
+            RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
+        )
+        self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
 
         title_font = get_title_display_font()
         if title_font:
             self.rendering_engine.render_text(
                 RenderTarget.BACK_BUFFER, "Clear settings?", title_font,
-                (255, 255, 255), (240, 100), center=True
+                self._DISCONNECTED_TEXT_COLOUR, (240, 100), center=True
             )
 
         body_font = self._get_cached_font(22)
@@ -1893,7 +1900,7 @@ class DisplayManager:
             ):
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER, _text, body_font,
-                    (200, 200, 200), (240, _y), center=True
+                    self._DISCONNECTED_TEXT_COLOUR, (240, _y), center=True
                 )
 
         button_font = self._get_cached_font(26)
@@ -1960,12 +1967,17 @@ class DisplayManager:
 
     def _draw_update_view(self) -> None:
         """Draw the update check / install sub-view."""
-        self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (40, 40, 50))
-        self._draw_shift_border((200, 0, 0))
+        self.rendering_engine.clear_surface(
+            RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
+        )
+        self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
 
         font = get_title_display_font()
         if font:
-            self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Update", font, (255, 255, 255), (240, 80), center=True)
+            self.rendering_engine.render_text(
+                RenderTarget.BACK_BUFFER, "Update", font,
+                self._DISCONNECTED_TEXT_COLOUR, (240, 80), center=True
+            )
 
         if self._update_status == 'checking':
             msg = "Checking\u2026"
@@ -1980,7 +1992,10 @@ class DisplayManager:
 
         status_font = self._get_cached_font(26)
         if status_font:
-            self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, msg, status_font, (255, 255, 255), (240, 180), center=True)
+            self.rendering_engine.render_text(
+                RenderTarget.BACK_BUFFER, msg, status_font,
+                self._DISCONNECTED_TEXT_COLOUR, (240, 180), center=True
+            )
 
         # A check has no reportable progress — find_available_update
         # publishes no intermediate state — so the indicator is
@@ -2012,7 +2027,10 @@ class DisplayManager:
 
         small_font = get_label_small_font()
         if small_font:
-            self.rendering_engine.render_text(RenderTarget.BACK_BUFFER, "Swipe up to return", small_font, (150, 150, 150), (240, 410), center=True)
+            self.rendering_engine.render_text(
+                RenderTarget.BACK_BUFFER, "Swipe up to return", small_font,
+                self._DISCONNECTED_TEXT_COLOUR, (240, 410), center=True
+            )
 
     def _on_clear_settings_requested(self) -> None:
         """Enter the clear-settings confirmation rather than acting.
@@ -2220,16 +2238,18 @@ class DisplayManager:
     def _draw_acknowledgement_mode(self) -> None:
         """Draw acknowledgement screen with blocking tap-to-dismiss interaction.
 
-        Renders a safety acknowledgement screen with red border, title, warning text,
+        Renders a safety acknowledgement screen with title, warning text,
         and instruction. Registers a full-screen tap region that triggers dismissal
         and saves acknowledgement state before transitioning to post-splash mode.
         """
         try:
-            # Fill background black
-            self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (0, 0, 0))
+            # Background and border share the DISCONNECTED screen's
+            # treatment (issue-ba2d5de2).
+            self.rendering_engine.clear_surface(
+                RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
+            )
 
-            # Draw red circular border
-            self._draw_shift_border((200, 0, 0))
+            self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
 
             # Render title text 'GTach' centered near top of circle
             title_font = self._get_cached_font(72)
@@ -2238,7 +2258,7 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER,
                     "GTach",
                     title_font,
-                    (255, 255, 255),
+                    self._DISCONNECTED_TEXT_COLOUR,
                     (240, 120),
                     center=True
                 )
@@ -2250,7 +2270,7 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER,
                     "OBD tachometer — experimental software",
                     body_font,
-                    (200, 200, 200),
+                    self._DISCONNECTED_TEXT_COLOUR,
                     (240, 240),
                     center=True
                 )
@@ -2262,7 +2282,7 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER,
                     "Tap to acknowledge and continue",
                     instruction_font,
-                    (150, 150, 150),
+                    self._DISCONNECTED_TEXT_COLOUR,
                     (240, 360),
                     center=True
                 )
