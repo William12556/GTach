@@ -2299,14 +2299,28 @@ class DisplayManager:
             # Fallback: transition anyway to prevent being stuck
             self.config.mode = self._post_splash_mode
     
+    # Background and text colours for the DISCONNECTED screen. Changed
+    # from red-on-black (issue-<pending>) — a saturated red field with
+    # light-grey/red text scored poorly for readability. Pale dusty
+    # yellow with black text raises the contrast while keeping the
+    # screen visually distinct as an alert state.
+    _DISCONNECTED_BG_COLOUR = (216, 200, 146)
+    _DISCONNECTED_TEXT_COLOUR = (0, 0, 0)
+
     def _render_disconnected(self) -> None:
         """Render DISCONNECTED screen with Setup and Simulate button affordances"""
         try:
             # Fill background
             self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (0, 0, 0))
 
-            # Draw red circular border
-            self._draw_shift_border((200, 0, 0))
+            # Draw circular border/background
+            self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
+
+            # Connection status dot. Previously drawn only in
+            # _render_normal_modes, after the early return this screen
+            # takes — the dot was never reached for DISCONNECTED and so
+            # was never visible here (issue-<pending>).
+            self._draw_status_indicator()
 
             # Title — font 36 at y=155 keeps text within circular viewport
             title_font = self._get_cached_font(36)
@@ -2315,7 +2329,7 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER,
                     "Disconnected",
                     title_font,
-                    (255, 100, 100),
+                    self._DISCONNECTED_TEXT_COLOUR,
                     (240, 155),
                     center=True
                 )
@@ -2327,7 +2341,7 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER,
                     "OBD connection not available",
                     msg_font,
-                    (200, 200, 200),
+                    self._DISCONNECTED_TEXT_COLOUR,
                     (240, 180),
                     center=True
                 )
@@ -2348,7 +2362,7 @@ class DisplayManager:
                         RenderTarget.BACK_BUFFER,
                         str(_cause),
                         cause_font,
-                        (200, 160, 100),
+                        self._DISCONNECTED_TEXT_COLOUR,
                         (240, 210),
                         center=True
                     )
@@ -2373,7 +2387,7 @@ class DisplayManager:
                     (60, 60, 80), button_font
                 )
 
-            self._draw_retry_arc()
+            self._draw_reconnect_spinner()
 
             self.logger.debug("DISCONNECTED screen rendered")
 
@@ -2385,30 +2399,38 @@ class DisplayManager:
     # positive number.
     _RETRY_ARC_DEFAULT_PERIOD = 5.0
 
-    def _draw_retry_arc(self) -> None:
-        """Draw the retry-countdown arc on the DISCONNECTED screen.
+    # Rotating-dot reconnect spinner geometry. Centred in the band
+    # between the status dot (y=60) and the title (y=155), clear of
+    # both the DISCONNECTED buttons and the text above it.
+    _SPINNER_CENTRE = (240, 105)
+    _SPINNER_RING_RADIUS = 26
+    _SPINNER_DOT_RADIUS = 4
+    _SPINNER_DOT_COUNT = 8
+
+    def _draw_reconnect_spinner(self) -> None:
+        """Draw a rotating ring of dots on the DISCONNECTED screen.
+
+        Replaces the retry-countdown arc formerly drawn here
+        (issue-<pending>). The arc's geometry — a ring centred on the
+        screen with a 200 px outer radius, swept across the bottom —
+        was sized for a DISCONNECTED screen with one button; adding BT
+        Reset (issue-8a63d5f1) filled the band the arc assumed was
+        free, and the arc clipped the button. Rather than re-fit an
+        arc into the remaining space, the indicator was moved to the
+        upper half of the screen and reduced to a small ring of dots.
 
         The phase comes from the display frame clock —
         ``time.monotonic()`` — and from NO transport attribute or
-        transport-derived state. That is the whole point of the
-        indicator. Fed from the transport it would freeze whenever the
-        transport thread blocks in ``connect()``, which is precisely
-        the moment the operator needs to know the application is alive;
-        an indicator that stops when its subject stops implies a fault
-        that may not exist (issue-4f1e82b7).
+        transport-derived state, for the reason the arc's docstring
+        gave: an indicator fed from the transport would freeze exactly
+        when the transport thread blocks in ``connect()``, which is
+        when the operator most needs to see the app is still alive.
 
-        Only the PERIOD is asked of the transport, through
-        ``_retry_interval_callback``, and a failure to obtain it falls
-        back to 5.0 s rather than propagating.
-
-        The arc is full at phase 0 and empties as the next attempt
-        approaches. It indicates approximately when that attempt falls;
-        it is not synchronised with the transport's own timer and does
-        not claim to be.
-
-        Drawn with the same polygon approximation and the same palette
-        the RPM gauge's donut arcs use; no new drawing primitive is
-        introduced.
+        Only the rotation PERIOD is asked of the transport, through
+        ``_retry_interval_callback``; a failure to obtain it falls
+        back to ``_RETRY_ARC_DEFAULT_PERIOD``. One full rotation
+        corresponds to one retry period, preserving the timing cue the
+        arc gave without keeping its shape.
         """
         try:
             period = self._RETRY_ARC_DEFAULT_PERIOD
@@ -2424,66 +2446,42 @@ class DisplayManager:
                         f"Retry interval callback failed: {e}", exc_info=True
                     )
 
-            # 0.0 at the start of each sweep, approaching 1.0 at its
-            # end. Modulo keeps this valid for any clock value and any
-            # period shorter than one frame interval.
-            phase = (time.monotonic() % period) / period
-            remaining = 1.0 - phase
-
             surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
             if surface is None:
                 return
 
-            palette = self._palette
-            centre = (240, 240)
-            outer_radius = 200
-            inner_radius = 186
+            # 0.0 at the start of each rotation, approaching
+            # _SPINNER_DOT_COUNT at its end — one dot-position of travel
+            # per iteration of the loop below.
+            phase = (time.monotonic() % period) / period
+            lead = phase * self._SPINNER_DOT_COUNT
 
-            # The button column starts at top=240 with height >= 72, so
-            # the band below y=330 is clear. A 120 deg sweep centred on
-            # 6 o'clock spans that band and stays inside the r=238
-            # viewport.
-            start_clock_deg = 120.0
-            sweep_deg = 120.0
+            dim_colour = self._DISCONNECTED_BG_COLOUR
+            bright_colour = self._DISCONNECTED_TEXT_COLOUR
 
-            def _canvas_rad(clock_deg):
-                return math.radians(clock_deg - 90)
-
-            def _donut_arc(colour, start_rad, end_rad):
-                """Polygon approximation, as _draw_radial_display uses."""
-                segments = 60
-                step = (end_rad - start_rad) / segments
-
-                points = []
-                for i in range(segments + 1):
-                    angle = start_rad + i * step
-                    points.append((
-                        centre[0] + outer_radius * math.cos(angle),
-                        centre[1] + outer_radius * math.sin(angle),
-                    ))
-                for i in range(segments, -1, -1):
-                    angle = start_rad + i * step
-                    points.append((
-                        centre[0] + inner_radius * math.cos(angle),
-                        centre[1] + inner_radius * math.sin(angle),
-                    ))
-
-                if len(points) > 2:
-                    pygame.draw.polygon(surface, colour, points)
-
-            track_start = _canvas_rad(start_clock_deg)
-            track_end = _canvas_rad(start_clock_deg + sweep_deg)
-            _donut_arc(palette.track, track_start, track_end)
-
-            if remaining > 0.0:
-                _donut_arc(
-                    palette.label,
-                    track_start,
-                    _canvas_rad(start_clock_deg + sweep_deg * remaining),
+            for i in range(self._SPINNER_DOT_COUNT):
+                # Positions behind the lead fade toward the background
+                # colour so the ring reads as a single moving point
+                # rather than a static ring of dots.
+                offset = (i - lead) % self._SPINNER_DOT_COUNT
+                weight = 1.0 - (offset / self._SPINNER_DOT_COUNT)
+                colour = tuple(
+                    int(dim_colour[c] + (bright_colour[c] - dim_colour[c]) * weight)
+                    for c in range(3)
+                )
+                angle = math.radians(
+                    i * (360.0 / self._SPINNER_DOT_COUNT) - 90.0
+                )
+                x = (self._SPINNER_CENTRE[0]
+                     + self._SPINNER_RING_RADIUS * math.cos(angle))
+                y = (self._SPINNER_CENTRE[1]
+                     + self._SPINNER_RING_RADIUS * math.sin(angle))
+                pygame.draw.circle(
+                    surface, colour, (int(x), int(y)), self._SPINNER_DOT_RADIUS
                 )
 
         except Exception as e:
-            self.logger.debug(f"Retry arc render error: {e}", exc_info=True)
+            self.logger.debug(f"Reconnect spinner render error: {e}", exc_info=True)
 
     def _enter_setup_from_disconnected(self) -> None:
         """Enter SETUP mode from DISCONNECTED screen"""

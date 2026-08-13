@@ -611,9 +611,12 @@ class TestButtonRendering:
         host._disconnected_btn_bt_reset = bt_rect
         host._get_cached_font = lambda size: f'font-{size}'
         host._draw_shift_border = lambda colour: None
+        host._DISCONNECTED_BG_COLOUR = DisplayManager._DISCONNECTED_BG_COLOUR
+        host._DISCONNECTED_TEXT_COLOUR = DisplayManager._DISCONNECTED_TEXT_COLOUR
+        host._draw_status_indicator = lambda: None
         host._draw_button = lambda rect, label, fill, font: \
             drawn.append((rect, label))
-        host._draw_retry_arc = lambda: None
+        host._draw_reconnect_spinner = lambda: None
         host.rendering_engine = types.SimpleNamespace(
             clear_surface=lambda *a, **k: None,
             get_surface=lambda target: object(),
