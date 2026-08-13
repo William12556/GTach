@@ -98,20 +98,14 @@ class Palette:
     label: Tuple[int, int, int]
     bands: Tuple[Tuple[int, int, int], ...]
     band_centres: Tuple[Tuple[int, int, int], ...]
-    band_centres_lit: Tuple[Tuple[int, int, int], ...]
-    shift_border_caution: Tuple[int, int, int]
-    shift_centre_dark: Tuple[int, int, int]
-    shift_border_normal: Tuple[int, int, int]
-    shift_border_down: Tuple[int, int, int]
 
 
 # Values copied verbatim from the constants in use before
 # change-5012004e — the six FACE_ constants and BAND_COLOURS added by
-# change-5014040c, and the colours returned by _get_shift_cue — so day
-# rendering is provably unchanged. _get_shift_cue now draws its centre
-# from band_centres and band_centres_lit, so what it returns is the
-# three shift_border_* constants plus shift_centre_dark and one entry
-# from each of the two band-indexed tuples (change-64d8d8fc).
+# change-5014040c — so day rendering is provably unchanged. The
+# shift-cue fields that once sat alongside band_centres were removed
+# with the rim border they coloured (issue-950128c0); band_centres is
+# now the centre disc's unconditional source.
 DAY_PALETTE = Palette(
     name='day',
     ground=(16, 16, 16),
@@ -164,23 +158,6 @@ DAY_PALETTE = Palette(
         (89, 45, 0),        # 4 warning
         (89, 0, 0),         # 5 danger
     ),
-    # The lit phase of the upshift flash. Bright, and displayed only
-    # while rpm >= caution_start and only on half the cycle. A single
-    # dim tuple flashed against shift_centre_dark measures 1.34:1 to
-    # 2.69:1 for bands 3 to 5 — the only bands that flash — which would
-    # make the upshift cue weakest in the danger band.
-    band_centres_lit=(
-        (0, 0, 200),        # 0 idle — never displayed
-        (0, 0, 200),        # 1 torque approach — never displayed
-        (0, 130, 0),        # 2 torque — never displayed
-        (115, 115, 0),      # 3 caution
-        (180, 90, 0),       # 4 warning
-        (220, 0, 0),        # 5 danger
-    ),
-    shift_border_caution=(0, 180, 0),
-    shift_centre_dark=(10, 10, 10),
-    shift_border_normal=(200, 0, 0),
-    shift_border_down=(0, 100, 255),
 )
 
 # Authored, not derived. Scaling the day palette would compress the band
@@ -213,24 +190,6 @@ NIGHT_PALETTE = Palette(
         (61, 26, 0),
         (70, 0, 0),
     ),
-    # Equal to NIGHT_PALETTE.bands at present. The night band colours
-    # are already dim enough that no separate lit variant is needed to
-    # satisfy the flash contrast, and dimming them further drops bands
-    # 4 and 5 to 2.98:1 and 2.66:1 against shift_centre_dark. Kept as
-    # its own tuple for structural symmetry with DAY_PALETTE and so the
-    # two can diverge without a signature change.
-    band_centres_lit=(
-        (0, 0, 170),
-        (0, 0, 170),
-        (0, 140, 0),
-        (150, 140, 0),
-        (175, 75, 0),
-        (200, 0, 0),
-    ),
-    shift_border_caution=(0, 110, 0),
-    shift_centre_dark=(3, 3, 3),
-    shift_border_normal=(120, 0, 0),
-    shift_border_down=(0, 60, 150),
 )
 
 @dataclass

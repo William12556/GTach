@@ -89,7 +89,6 @@ class _Recorder:
         host._disconnected_btn_setup = None
         host._disconnected_btn_bt_reset = None
         host._get_cached_font = lambda size: f'font-{size}'
-        host._draw_shift_border = lambda colour: None
         host._draw_status_indicator = lambda: None
         host._draw_button = lambda rect, label, fill, font: \
             self.buttons.append((rect, label))

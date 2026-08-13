@@ -971,25 +971,6 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Normal mode render error: {e}")
 
-    def _draw_shift_border(self, colour: Tuple[int, int, int], width: int = 12) -> None:
-        """Draw circular border using two filled circles to avoid anti-aliasing fringe.
-
-        Draws border colour solid to outer_r, then overwrites interior with
-        background colour solid to inner_r, producing a clean hard edge.
-
-        Args:
-            colour: RGB border colour tuple
-            width: Border width in pixels (default 12, ignored — fixed geometry)
-        """
-        try:
-            surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
-            if surface:
-                # Outer filled circle only — no inner cutout.
-                # Arcs are drawn on top in _draw_radial_mode.
-                pygame.draw.circle(surface, colour, (240, 240), 244)
-        except Exception as e:
-            self.logger.error(f'Shift border error: {e}', exc_info=True)
-
     def _condition_rpm(self, raw: float) -> float:
         """Smooth the raw RPM sample for display.
 
@@ -1092,61 +1073,6 @@ class DisplayManager:
             # Fallback to band 0, black
             return (0, (0, 0, 0))
 
-    def _get_shift_cue(self, rpm: float, active_band: int) -> Tuple[Tuple[int, int, int], int, bool, Tuple[int, int, int]]:
-        """Determine shift cue state from RPM.
-
-        Two shift states: upshift (green) and safe downshift (blue).
-        RPM alone is insufficient to determine unsafe downshift.
-
-        The border comes from the shift state and the centre from the
-        band, so the border carries what the driver should do and the
-        centre carries what the engine is doing (change-64d8d8fc).
-
-        Args:
-            rpm: Current RPM value
-            active_band: Active band index from _get_band_colour,
-                hysteresised. Selects the centre disc fill.
-
-        Returns:
-            Tuple of (border_colour, border_width, flash_centre, centre_colour)
-        """
-        try:
-            bands = self.config.rpm_bands
-            # Flash phase from the frame counter, not wall-clock time, so
-            # the duty cycle is equal by construction at any frame rate
-            # (display review §4.4, recommendation 5).
-            half_period = max(1, int(round(self.config.fps_limit / 4.0)))
-            flash = (self._frame_counter // half_period) % 2 == 0
-
-            palette = self._palette
-
-            if rpm >= bands.caution_start:
-                # Upshift cue. The border stays green — it says what the
-                # driver should DO. The centre takes the band's colour,
-                # which says what the engine IS DOING, and flashes
-                # against the dark phase to carry the shift imperative
-                # on the temporal channel (change-64d8d8fc).
-                centre = (
-                    palette.band_centres_lit[active_band] if flash
-                    else palette.shift_centre_dark
-                )
-                return palette.shift_border_caution, 12, True, centre
-            elif rpm <= bands.torque_start:
-                # Safe downshift — blue border 12 px, band centre, no flash
-                return (palette.shift_border_down, 12, False,
-                        palette.band_centres[active_band])
-            else:
-                # Normal operation — red border 12 px, band centre, no flash
-                return (palette.shift_border_normal, 12, False,
-                        palette.band_centres[active_band])
-
-        except Exception as e:
-            self.logger.error(f'Shift cue calculation error: {e}', exc_info=True)
-            # Index 0, not active_band — the fallback runs precisely
-            # when the band cannot be trusted (change-64d8d8fc).
-            return (DAY_PALETTE.shift_border_normal, 12, False,
-                    DAY_PALETTE.band_centres[0])
-
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
         try:
@@ -1179,15 +1105,21 @@ class DisplayManager:
             # governs the whole sweep and the centre disc, not one
             # segment (change-64d8d8fc).
             active_band, band_colour = self._get_band_colour(rpm)
-            border_colour, _, _, centre_colour = self._get_shift_cue(
-                rpm, active_band
-            )
+            # The centre disc carries what the engine IS DOING. The
+            # shift cue that used to colour the rim, and flash this disc
+            # against it, went with the rim (issue-950128c0), so the
+            # band colour is now read directly and unconditionally.
+            centre_colour = palette.band_centres[active_band]
 
-            # Arc geometry constants
+            # Arc geometry constants. The arcs stop at r=232, where
+            # they used to butt against the inner edge of the 12 px
+            # rim; the rim is gone (issue-950128c0) but the arc
+            # geometry is deliberately unchanged, so the sweep is
+            # exactly as before. border_radius was read only by the
+            # removed border and is gone with it.
             center = (240, 240)
-            outer_radius = 232  # Butts against inner edge of 12px border at r=238
+            outer_radius = 232
             inner_radius = 100
-            border_radius = 236
             max_rpm = 7000
 
             # Angle conversion: clock degrees to canvas radians
@@ -1228,11 +1160,13 @@ class DisplayManager:
                 if len(points) > 2:
                     pygame.draw.polygon(surface, color, points)
 
-            # 1. Fill corners black (outside circular viewport), draw border
-            #    ring as solid filled circle at r=244, then background at r=232.
+            # 1. Fill corners black (outside circular viewport), then
+            #    fill the whole circular face at r=244. The face stopped
+            #    at r=232 while a 12 px rim occupied the space out to
+            #    r=244; with the rim removed it extends to fill that
+            #    space, so no unpainted ring is left (issue-950128c0).
             surface.fill((0, 0, 0))
-            self._draw_shift_border(border_colour)
-            pygame.draw.circle(surface, palette.ground, center, 232)
+            pygame.draw.circle(surface, palette.ground, center, 244)
 
             # 2. Draw headroom arc (full active zone, unfilled track)
             start_angle_rad = clock_to_canvas_rad(start_clock_deg)
@@ -1271,12 +1205,10 @@ class DisplayManager:
                 outer_y = center[1] + outer_radius * math.sin(angle_rad)
                 pygame.draw.line(surface, palette.line, (inner_x, inner_y), (outer_x, outer_y), 2)
 
-            # 6. (Border already drawn at step 1)
-
-            # 7. Draw inner arc edge ring (subtle dark stroke)
+            # 6. Draw inner arc edge ring (subtle dark stroke)
             pygame.draw.circle(surface, palette.edge, center, inner_radius, 2)
 
-            # 8. Draw major tick marks and numerals (1000-7000 RPM)
+            # 7. Draw major tick marks and numerals (1000-7000 RPM)
             tick_font = self._get_cached_font(52)
             for rpm_tick in range(1000, 8000, 1000):
                 if rpm_tick <= max_rpm:
@@ -1299,7 +1231,7 @@ class DisplayManager:
                             (int(num_x), int(num_y)), center=True
                         )
 
-            # 9. Draw band boundary marks at thresholds.
+            # 8. Draw band boundary marks at thresholds.
             #    7 px, matching the major ticks: with the sweep drawn in
             #    one colour these marks carry the whole of the
             #    anticipatory cue — where the next zone begins — and are
@@ -1327,7 +1259,7 @@ class DisplayManager:
                     pygame.draw.line(surface, color,
                                    (mark_start_x, mark_start_y), (mark_end_x, mark_end_y), 7)
 
-            # 10. Draw white indicator line at current RPM
+            # 9. Draw white indicator line at current RPM
             if rpm > 0:
                 current_angle_rad = rpm_to_angle_rad(rpm)
                 ind_inner_x = center[0] + inner_radius * math.cos(current_angle_rad)
@@ -1337,7 +1269,7 @@ class DisplayManager:
                 pygame.draw.line(surface, (255, 255, 255),
                                (ind_inner_x, ind_inner_y), (ind_outer_x, ind_outer_y), 3)
 
-            # 11. Draw 'RPM x 1000' label in inert arc
+            # 10. Draw 'RPM x 1000' label in inert arc
             label_font = self._get_cached_font(16)
             if label_font:
                 self.rendering_engine.render_text(
@@ -1345,9 +1277,10 @@ class DisplayManager:
                     (240, 420), center=True
                 )
 
-            # 12-14. Draw centre circle with shift cue colour.
-            #    centre_colour is in scope from the single _get_shift_cue
-            #    call at the top of the method (change-64d8d8fc).
+            # 11-13. Draw centre circle in the active band's colour.
+            #    centre_colour is resolved once at the top of the method
+            #    from palette.band_centres (change-64d8d8fc,
+            #    issue-950128c0).
             center_radius = 99
             pygame.draw.circle(surface, centre_colour, center, center_radius)
 
@@ -1356,8 +1289,8 @@ class DisplayManager:
             # visual acuity for a centred gaze; it previously carried a
             # fixed brand string while the number the instrument exists
             # to show appeared only in DIGITAL (display review §7.5,
-            # recommendation 25). White on every fill _get_shift_cue
-            # returns, including the flashing dark phase.
+            # recommendation 25). White reads on every band centre
+            # fill.
             #
             # 72 px, not FONT_RPM_LARGE's 180: the disc is r=99, which
             # admits a 198 px chord, and three glyphs at 72 px measure
@@ -1817,7 +1750,6 @@ class DisplayManager:
         self.rendering_engine.clear_surface(
             RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
         )
-        self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
 
         font = get_title_display_font()
         if font:
@@ -1883,7 +1815,6 @@ class DisplayManager:
         self.rendering_engine.clear_surface(
             RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
         )
-        self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
 
         title_font = get_title_display_font()
         if title_font:
@@ -1970,7 +1901,6 @@ class DisplayManager:
         self.rendering_engine.clear_surface(
             RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
         )
-        self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
 
         font = get_title_display_font()
         if font:
@@ -2243,13 +2173,11 @@ class DisplayManager:
         and saves acknowledgement state before transitioning to post-splash mode.
         """
         try:
-            # Background and border share the DISCONNECTED screen's
-            # treatment (issue-ba2d5de2).
+            # Background matches the DISCONNECTED screen's treatment
+            # (issue-ba2d5de2).
             self.rendering_engine.clear_surface(
                 RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
             )
-
-            self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
 
             # Render title text 'GTach' centered near top of circle
             title_font = self._get_cached_font(72)
@@ -2330,11 +2258,15 @@ class DisplayManager:
     def _render_disconnected(self) -> None:
         """Render DISCONNECTED screen with Setup and Simulate button affordances"""
         try:
-            # Fill background
-            self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER, (0, 0, 0))
-
-            # Draw circular border/background
-            self._draw_shift_border(self._DISCONNECTED_BG_COLOUR)
+            # Background fill. Previously cleared to black, with the
+            # circular face painted over it by the rim helper; with the
+            # rim removed the clear carries the colour directly, so the
+            # screen looks exactly as it did (issue-950128c0). The
+            # corners this now paints lie outside the round panel's
+            # r=238 viewport and cannot be seen.
+            self.rendering_engine.clear_surface(
+                RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
+            )
 
             # Connection status dot. Previously drawn only in
             # _render_normal_modes, after the early return this screen
@@ -2563,9 +2495,6 @@ class DisplayManager:
                     (240, 240),
                     center=True
                 )
-
-            # Draw border
-            self._draw_shift_border((200, 0, 0), 5)
 
         except Exception as e:
             self.logger.error(f"Setup mode fallback error: {e}")

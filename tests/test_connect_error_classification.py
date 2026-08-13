@@ -365,7 +365,6 @@ class TestDisconnectedStatusLine:
         host._draw_status_indicator = lambda: None
         host._draw_reconnect_spinner = lambda: None
         host._get_cached_font = lambda size: f'font-{size}'
-        host._draw_shift_border = lambda colour: None
         host.rendering_engine = types.SimpleNamespace(
             clear_surface=lambda *a, **k: None,
             render_text=lambda target, text, font, colour, pos, center=False:
