@@ -19,12 +19,12 @@ change_info:
   title: "Watchdog critical-thread recovery terminates the process so systemd Restart=always engages; transport thread registered and monitored advisory-only; faulthandler stack dumps written to an app-owned log"
   date: "2026-08-12"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "critical"
-  iteration: 1
+  iteration: 2
   coupled_docs:
     issue_ref: "issue-2ac1c602"
-    issue_iteration: 2
+    issue_iteration: 3
 
 source:
   type: "issue"
@@ -44,6 +44,28 @@ source:
     advanced to iteration 3 to absorb them.
 
 scope:
+  iteration_2_addendum: >
+    Iteration 1 is implemented, committed and deployed to gtach.local.
+    Iteration 2 adds one further edit, EDIT F, correcting a defect in
+    iteration 1's own delivery: the faulthandler arming added by EDIT A
+    is gated on setup_logging's debug argument, which derives from the
+    --debug command-line flag. bin/gtach.service's ExecStart is
+    `/opt/gtach/venv/bin/gtach` with no such flag, so args.debug is
+    False on every service-launched run and faulthandler is never
+    armed. /opt/gtach/stacks.log was consequently never created on the
+    2026-08-12 09:11 verification run.
+
+    Debug logging in the field is enabled at RUNTIME through the
+    OPTIONS screen toggle, which calls
+    GTachApplication.toggle_debug_logging (app.py:208-238). That method
+    raises _debug_handler's level and does nothing else. The arming
+    must follow the same signal.
+
+    EDIT F: expose arm and disarm helpers in main.py, where log-file
+    ownership already lives, and call them from toggle_debug_logging in
+    addition to the existing startup path. No other part of iteration 1
+    is altered.
+
   summary: >
     Three edits across four files. (1) Give WatchdogMonitor a shutdown
     callback that ends the process rather than one that only tears down
@@ -348,6 +370,37 @@ technical_details:
       functions_affected:
         - "setup_logging"
       classes_affected: []
+    - component: "EDIT F (iteration 2) — enable_stack_dumps / disable_stack_dumps"
+      file: "src/gtach/main.py"
+      change_summary: >
+        Extract the faulthandler arming from setup_logging into a
+        module-level enable_stack_dumps() and add a matching
+        disable_stack_dumps() that cancels the repeat timer via
+        faulthandler.cancel_dump_traceback_later() and closes
+        _stacks_file. setup_logging calls enable_stack_dumps() when its
+        debug argument is true, preserving the --debug startup path.
+        Both helpers must be idempotent: arming twice must not open a
+        second file handle or stack a second timer, and disarming when
+        not armed must be a no-op.
+      functions_affected:
+        - "setup_logging"
+        - "enable_stack_dumps"
+        - "disable_stack_dumps"
+      classes_affected: []
+    - component: "EDIT F (iteration 2) — GTachApplication.toggle_debug_logging"
+      file: "src/gtach/app.py"
+      change_summary: >
+        Alongside the existing _debug_handler level change, call
+        _main.enable_stack_dumps() when enable is true and
+        _main.disable_stack_dumps() when it is false. Retrieve the
+        module through the existing sys.modules.get('gtach.main')
+        route, which issue-c1d4b8e6 established and which the method
+        already uses. Guard the calls so a failure to arm cannot
+        prevent the debug handler from being toggled.
+      functions_affected:
+        - "toggle_debug_logging"
+      classes_affected:
+        - "GTachApplication"
   data_changes: []
   interface_changes:
     - interface: "OBDTransport.reconnect_indefinitely"
@@ -529,6 +582,15 @@ version_history:
     changes:
       - "Initial change document resolving issue-2ac1c602 iteration 2."
       - "Records three corrections to the issue's analysis arising from independent re-verification against source and the 2026-08-12 logs."
+  - version: "2.0"
+    date: "2026-08-12"
+    author: "William Watson"
+    changes:
+      - "Iteration 1 -> 2. Status proposed -> implemented; coupled issue_iteration raised 2 -> 3."
+      - "Added EDIT F: extract faulthandler arming into enable_stack_dumps/disable_stack_dumps in main.py and call them from GTachApplication.toggle_debug_logging, so the runtime OPTIONS debug toggle arms stack dumps as well as the debug handler."
+      - "Rationale: iteration 1's EDIT A gated arming on setup_logging's debug argument, which derives from --debug. bin/gtach.service passes no --debug, so /opt/gtach/stacks.log was never created on the 2026-08-12 09:11 verification run. The delivered edit could not achieve its stated purpose under the deployed configuration."
+      - "Recorded that iteration 1 is deployed but unverified: the 51.7s stall did not recur on the 09:11 run, so the process-termination path was never exercised."
+      - "Rejected adding --debug to bin/gtach.service: it would make debug logging permanent in production and write a full all-thread stack dump every 15s for the life of every run. The out_of_scope entry excluding service-unit changes stands."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -545,6 +607,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-12 | Initial change document. Watchdog critical-thread recovery terminates the process; transport thread registered and monitored advisory-only; faulthandler stack dumps redirected to an app-owned log. Records three corrections to issue-2ac1c602 iteration 2. |
+| 2.0 | 2026-08-12 | Iteration 1 -> 2. Status implemented. Adds EDIT F: faulthandler arming extracted into enable_stack_dumps/disable_stack_dumps and driven from the runtime OPTIONS debug toggle, because iteration 1 gated it on the startup --debug flag that bin/gtach.service never passes, so stacks.log was never created. |
 
 ---
 

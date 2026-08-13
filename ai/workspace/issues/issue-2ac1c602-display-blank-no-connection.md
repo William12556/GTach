@@ -22,10 +22,10 @@ issue_info:
   status: "investigating"
   severity: "critical"
   type: "defect"
-  iteration: 2
+  iteration: 3
   coupled_docs:
-    change_ref: ""
-    change_iteration: null
+    change_ref: "change-2ac1c602"
+    change_iteration: 2
 
 source:
   origin: "user_report"
@@ -164,8 +164,70 @@ environment:
 
 analysis:
   root_cause: >
-    Two findings, one confirmed directly from source, one a
-    well-supported but not yet independently verified hypothesis:
+    ITERATION 3 PREAMBLE. Three corrections to the iteration 2 analysis
+    below, and one new defect found in the iteration 2 remedy. The
+    original iteration 2 text is retained unaltered beneath this
+    preamble so the reasoning that was superseded remains legible.
+
+    CORRECTION 1 — the stall is process-wide, and this is CONFIRMED,
+    not hypothesised. WatchdogMonitor ran with warning_timeout=15.0,
+    recovery_timeout=30.0, critical_timeout=45.0, check_interval=5.0.
+    A 51.7 s stall of the display thread should have produced warnings
+    from ~07:39:26 and a soft-recovery attempt from ~07:39:41, both
+    before the critical timeout. The watchdog's own closing statistics
+    in debug.log read "warnings=0, soft_recovery=0/0, hard_recovery=0/0,
+    shutdowns=1". No intermediate escalation occurred at all. The
+    WatchdogMonitor thread was therefore itself stalled across the same
+    window and resumed with a single check reading 51.7 s. Three
+    independent Python threads — display, obd_protocol and
+    WatchdogMonitor — stopped and resumed together.
+
+    CORRECTION 2 — the stall is NOT accounted for by
+    RFCOMMTransport._open()'s connect(), and the GIL mechanism proposed
+    in iteration 2 is withdrawn. The stall window is 07:39:11.412 to
+    07:40:03.090 (51.68 s). The second connect() began at approximately
+    07:39:12.29 (07:39:07.294 plus the 5.0 s retry delay) and returned
+    at 07:40:08.224, a duration of 55.9 s. The stall started ~0.9 s
+    BEFORE connect() was entered and ended ~5.1 s BEFORE it returned.
+    The two windows fail to coincide at both ends. A GIL-holding
+    connect() would produce coincident windows. CPython's socket
+    connect releases the GIL for the duration of the syscall, which is
+    consistent with this observation. The cause of the stall is
+    therefore NOT established.
+
+    CORRECTION 3 — faulthandler dumps were produced during the stall
+    and were not lost to timing. app.py armed
+    faulthandler.dump_traceback_later(15, repeat=True, file=sys.stderr)
+    under --debug. faulthandler's repeat timer runs in a C thread and
+    does not take the GIL to schedule itself, so roughly three dumps
+    fell inside the 51.7 s window. They were written to stderr. The
+    source comment asserted that "stderr is already captured by the run
+    command's tee into the debug log", which does not hold for a
+    systemd-launched run, where bin/gtach.service directs stderr to the
+    journal. The dumps existed; they were simply not co-located with
+    the logs under review. This is what motivated the stacks.log
+    redirect in change-2ac1c602.
+
+    NEW DEFECT, CONFIRMED — the stacks.log redirect is gated on the
+    wrong signal and produced no file. Reported 2026-08-12 following
+    the 09:11 verification run: /opt/gtach/stacks.log was never
+    created. main.py:161 calls setup_logging(args.debug), and the
+    faulthandler arming block added by change-2ac1c602 is guarded by
+    `if debug:`. bin/gtach.service's ExecStart is
+    `/opt/gtach/venv/bin/gtach` with NO --debug argument, so args.debug
+    is False on every service-launched run and faulthandler is never
+    armed. Debug logging in the field is enabled at RUNTIME through the
+    OPTIONS screen toggle, which calls
+    GTachApplication.toggle_debug_logging; that method raises
+    _debug_handler's level and does nothing else. Confirmed by the
+    09:11 logs: debug.log exists and begins at 09:11:28.240 with
+    "Debug logging enabled" — the runtime toggle — while stacks.log
+    does not exist. The delivered edit therefore cannot achieve its
+    stated purpose under the deployed configuration.
+
+    ITERATION 2 ANALYSIS, RETAINED. Two findings, one confirmed
+    directly from source, one a well-supported but not yet
+    independently verified hypothesis:
 
     CONFIRMED — the recovery path does not terminate the process.
     WatchdogMonitor is constructed in GTachApplication.__init__ with
@@ -243,7 +305,31 @@ resolution:
   assigned_to: ""
   target_date: ""
   approach: >
-    Two corrections, in priority order:
+    ITERATION 3. Item 1 below is IMPLEMENTED under change-2ac1c602
+    iteration 1 and prompt-2ac1c602 iteration 1, and is deployed to
+    gtach.local. It is NOT yet verified: the 51.7 s stall did not
+    recur on the 2026-08-12 09:11 run, so the termination path was
+    never exercised. On that run connect() failures returned in ~5.1 s
+    each on a steady ~10.1 s cycle, the display held 30.0 FPS, and no
+    WatchdogMonitor line was emitted at all. The transport thread is
+    now registered, confirmed by start.log 09:11:22 "Registered thread:
+    transport".
+
+    Item 3, new in this iteration, is required before the stall can be
+    observed at all: gate the faulthandler arming on the signal that
+    actually turns debug on in the field, not on the startup --debug
+    flag that bin/gtach.service never passes. Expose arm and disarm
+    helpers in main.py alongside the existing log-file ownership, and
+    call them from GTachApplication.toggle_debug_logging in addition to
+    the startup path. Adding --debug to the service unit is rejected:
+    it would make debug logging permanent in production and write a
+    full all-thread stack dump every 15 s for the life of every run.
+
+    Item 2 remains open and its stated mechanism is withdrawn per
+    CORRECTION 2. It cannot be progressed until item 3 produces stack
+    evidence from inside a stall window.
+
+    ITERATION 2 APPROACH, RETAINED. Two corrections, in priority order:
 
     1. (Primary, confirmed defect) Wire WatchdogMonitor's
     shutdown_callback so a critical-thread timeout actually ends the
@@ -346,6 +432,17 @@ version_history:
       - "Noted a related but distinct defect: the 'transport' thread is never registered with ThreadManager, so WatchdogMonitor's own critical_threads listing of 'transport' is not actually monitored."
       - "Severity raised high -> critical: the confirmed behaviour is a permanent, non-recovering hang, not an intermittent freeze that self-clears."
       - "Status open -> investigating. Resolution approach revised: primary fix is correcting WatchdogMonitor's shutdown wiring so the process actually exits; RFCOMM connect-timeout investigation is secondary and not required to address the reported symptom."
+  - version: "3.0"
+    date: "2026-08-12"
+    author: "William Watson"
+    changes:
+      - "Iteration 2 -> 3. Coupled to change-2ac1c602 iteration 2."
+      - "CORRECTION 1: the process-wide nature of the stall is upgraded from hypothesis to confirmed. The watchdog's own closing statistics record warnings=0 and soft_recovery=0/0 against a 51.7s stall and a 15s warning threshold, which is only possible if the WatchdogMonitor thread was itself stalled across the same window."
+      - "CORRECTION 2: the 'connect() does not release the GIL' mechanism is withdrawn. The stall window (07:39:11.412-07:40:03.090) fails to coincide with the connect() call (07:39:12.29-07:40:08.224) at both ends. The cause of the stall is not established."
+      - "CORRECTION 3: faulthandler dumps were produced inside the stall window, its repeat timer being a C thread unaffected by Python-level stalls, but were written to stderr, which under systemd is the journal rather than the app-owned log set."
+      - "NEW DEFECT: the stacks.log redirect delivered by change-2ac1c602 iteration 1 produced no file. It is gated on setup_logging's debug argument, which derives from --debug; bin/gtach.service passes no such flag, and field debug is enabled at runtime through the OPTIONS toggle, which does not arm faulthandler."
+      - "Recorded that item 1 of the resolution approach is implemented and deployed but NOT verified: the stall did not recur on the 2026-08-12 09:11 run, so the termination path was never exercised."
+      - "Recorded the 09:11 run's healthy characteristics: connect() failures returning in ~5.1s on a ~10.1s cycle, 30.0 FPS sustained, no WatchdogMonitor output, transport thread registered."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -363,6 +460,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-08-12 | Initial issue document from user report. Root cause not yet determined; no log evidence available since the run was not started with --debug. |
 | 2.0 | 2026-08-12 | Iteration 1 -> 2. Reproduced with --debug; confirmed root cause is WatchdogMonitor's shutdown_callback not terminating the process (verified via source review and systemctl status showing no restart). RFCOMM connect-timeout stall recorded as a related, unconfirmed hypothesis. Severity raised to critical; status changed to investigating. |
+| 3.0 | 2026-08-12 | Iteration 2 -> 3. Three corrections to the iteration 2 analysis: the process-wide stall is confirmed rather than hypothesised; the connect()-holds-GIL mechanism is withdrawn as contradicted by the timeline; faulthandler dumps were produced but written to the journal. New defect recorded: the stacks.log redirect delivered under change-2ac1c602 iteration 1 is gated on the startup --debug flag, which bin/gtach.service never passes, so no file was created. Primary fix implemented and deployed but not verified — the stall did not recur. |
 
 ---
 
