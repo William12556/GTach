@@ -121,7 +121,11 @@ cp -f "$WHEEL_PATH" "$INSTALL_DIR/installed.whl"
 
 echo "==> Registering boot splash"
 install -m 0644 "$SCRIPT_DIR/gtach-boot-splash.service" /etc/systemd/system/gtach-boot-splash.service
-install -m 0644 "$SCRIPT_DIR/boot-splash.raw" "$INSTALL_DIR/boot-splash.raw"
+if [ "$SCRIPT_DIR/boot-splash.raw" != "$INSTALL_DIR/boot-splash.raw" ]; then
+    install -m 0644 "$SCRIPT_DIR/boot-splash.raw" "$INSTALL_DIR/boot-splash.raw"
+else
+    chmod 0644 "$INSTALL_DIR/boot-splash.raw"
+fi
 
 systemctl daemon-reload
 systemctl enable gtach
