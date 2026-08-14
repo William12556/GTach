@@ -1575,10 +1575,12 @@ class DisplayManager:
                  lambda pos: self._on_check_updates()),
             )
 
-        # Two 72 px targets separated by 16 px span y 140 to 300,
+        # Two 72 px targets separated by 16 px span y 185 to 345,
         # inside the 55-425 band a 300 px width leaves on the r=238
-        # viewport, and clear of the indicator at y 350.
-        rects = self._button_column(specs, width=300, top=140)
+        # viewport, and clear of the indicator at y 395. The column sits
+        # 45 px lower than it did so the title clears the status
+        # indicator (change-61c7ba7f).
+        rects = self._button_column(specs, width=300, top=185)
 
         if self._options_page == 0:
             self._options_btn_sim, self._options_btn_debug = rects
@@ -1755,7 +1757,7 @@ class DisplayManager:
         if font:
             self.rendering_engine.render_text(
                 RenderTarget.BACK_BUFFER, "Options", font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 55), center=True
+                self._DISCONNECTED_TEXT_COLOUR, (240, 100), center=True
             )
 
         # Geometry is owned by _register_options_menu_regions, so the
@@ -1792,15 +1794,15 @@ class DisplayManager:
             for i in range(self.OPTIONS_PAGE_COUNT):
                 cx = 230 + i * 20
                 if i == self._options_page:
-                    pygame.draw.circle(surface, palette.tick, (cx, 350), 4)
+                    pygame.draw.circle(surface, palette.tick, (cx, 395), 4)
                 else:
-                    pygame.draw.circle(surface, palette.tick, (cx, 350), 4, 1)
+                    pygame.draw.circle(surface, palette.tick, (cx, 395), 4, 1)
 
         small_font = get_label_small_font()
         if small_font:
             self.rendering_engine.render_text(
                 RenderTarget.BACK_BUFFER, "Swipe up to return", small_font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 400), center=True
+                self._DISCONNECTED_TEXT_COLOUR, (240, 445), center=True
             )
 
     def _draw_confirm_view(self) -> None:
