@@ -18,6 +18,7 @@ Created: 2026 August 13
 - [10.0 Commit Record](<#10.0 commit record>)
 - [11.0 Work Remaining](<#11.0 work remaining>)
 - [12.0 Correction — EDIT C Withdrawn, 2026-08-13 (Same Day)](<#12.0 correction — edit c withdrawn, 2026-08-13 (same day)>)
+- [13.0 Further Correction — Red Border Removed, 2026-08-13 (Same Day)](<#13.0 further correction — red border removed, 2026-08-13 (same day)>)
 - [Version History](<#version history>)
 
 ---
@@ -413,12 +414,44 @@ colours.
 
 ---
 
+## 13.0 Further Correction — Red Border Removed, 2026-08-13 (Same Day)
+
+Separately from §12, William requested the splash screen's circular red
+border be removed outright — not reverted to a prior colour, removed
+entirely. This is unrelated to change-ba2d5de2 (the border predates it
+and was never part of that change's scope even before §12's revert); it
+is recorded here because it touches the same file in the same session.
+
+`_draw_border` had exactly one call site, in `_render_graphics`'s
+`automotive` branch, and no other reference anywhere in `splash.py`. The
+call was removed and the now-dead method deleted outright rather than
+left as unreachable code, since nothing else in the file's history
+depends on it existing (unlike, for instance, `_get_band_colour` in
+`manager.py`, retained deliberately for a named future consumer).
+
+Qualifies as a P03 §1.4.12 trivial exemption on the same basis as §12:
+single function/call site, small delta, no interface change,
+human-approved. `width` and `height` in `_render_graphics` remain in use
+for `center_x`/`center_y` and are otherwise unaffected. `pytest tests/`
+was not re-run for this edit specifically — no test in the suite
+exercises `_draw_border`, confirmed by its absence from `tests/` prior
+to removal, and the change is deletion-only with no new code path to
+cover.
+
+The splash screen now renders with no border of any kind, on its
+restored black background.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
 ## Version History
 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-13 | Initial report. Implements prompt-ba2d5de2 iteration 1: the DISCONNECTED background/text/border treatment extended to OPTIONS's three sub-views, ACKNOWLEDGEMENT, SPLASH and SETUP across manager.py, splash.py and setup.py. All eleven success criteria verified by AST comparison of every function against HEAD. progress_bg chosen by measurement as the best value in the permitted range; its residual weakness against the blue fill is recorded. A pre-existing uncommitted _render_disconnected edit was found and deliberately excluded from the commit. Prompt T-Doc closed, committed and pushed; issue and change T-Docs left active. |
 | 1.1 | 2026-08-13 | Correction, same day. §12 added: EDIT C (SPLASH) withdrawn after William reviewed the deployed result and specified black background/white text. Reverted directly in splash.py under the P03 §1.4.12 trivial exemption. §3.3, §4, criterion 6 and work-remaining item 8 are superseded by §12 but left intact as the historical record. |
+| 1.2 | 2026-08-13 | Further correction, same day. §13 added: the splash screen's circular red border removed outright at William's request — _draw_border and its one call site deleted, under the same P03 §1.4.12 trivial exemption. Unrelated to change-ba2d5de2's scope. |
 
 ---
 

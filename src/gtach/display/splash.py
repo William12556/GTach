@@ -398,7 +398,9 @@ class SplashScreen:
                 # self._draw_obdii_icon(surface, center_x, center_y)
                 self._draw_progress_indicator(surface, center_x, center_y + 20)
                 self._draw_version_text(surface, center_x, center_y + 110)
-                self._draw_border(surface, width, height)
+                # Circular red border removed 2026-08-13 (William's request,
+                # trivial exemption P03 §1.4.12) — the splash screen is now
+                # borderless, matching its restored black/white scheme.
             
             return True
             
@@ -544,15 +546,6 @@ class SplashScreen:
             
         except Exception as e:
             self.logger.error(f"Version text rendering failed: {e}")
-    
-    def _draw_border(self, surface, width: int, height: int) -> None:
-        """Draw decorative border around the splash screen."""
-        try:
-            # Draw red circular border matching manager.py _draw_circular_border
-            pygame.draw.circle(surface, (200, 0, 0), (width // 2, height // 2), min(width, height) // 2 - 2, 4)
-
-        except Exception as e:
-            self.logger.error(f"Border rendering failed: {e}")
     
     def _render_text_fallback(self) -> bool:
         """
