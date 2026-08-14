@@ -77,5 +77,8 @@ ssh "$PI" "$INSTALL_DIR/install.sh /tmp/$WHEEL_NAME"
 echo "==> Starting GTach service..."
 ssh "$PI" "systemctl start gtach"
 
+echo "==> Rebooting Pi..."
+ssh "$PI" "reboot" || true
+
 echo ""
-echo "✓ Deployed v$VERSION to Pi."
+echo "✓ Deployed v$VERSION to Pi. Pi is rebooting."
