@@ -140,6 +140,11 @@ class DisplayManager:
         # recommendation 20).
         self._registered_view = None
 
+        # Plain (SDL default) fonts keyed by size, used only by the
+        # acknowledgement screen. Kept separate from FontManager, which
+        # resolves Michroma for every size (change-bdac4f18).
+        self._plain_font_cache = {}
+
         # Populated by _register_view_regions; read by the render
         # methods. None until the first registration pass.
         self._options_btn_clear = None
@@ -2230,27 +2235,45 @@ class DisplayManager:
                     center=True
                 )
 
-            # Render body warning text
-            body_font = self._get_cached_font(24)
+            # Render body disclaimer text. Line breaks and coordinates
+            # are pinned to on-device measurements (change-bdac4f18
+            # §technical_details); render_text() does not wrap.
+            body_font = self._get_plain_font(18)
             if body_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    "OBD tachometer — experimental software",
+                    'THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY',
                     body_font,
                     self._DISCONNECTED_TEXT_COLOUR,
-                    (240, 240),
+                    (240, 266),
+                    center=True
+                )
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "OF ANY KIND. THE AUTHOR IS NOT LIABLE FOR ANY CLAIM,",
+                    body_font,
+                    self._DISCONNECTED_TEXT_COLOUR,
+                    (240, 290),
+                    center=True
+                )
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "DAMAGES, OR OTHER LIABILITY ARISING FROM ITS USE.",
+                    body_font,
+                    self._DISCONNECTED_TEXT_COLOUR,
+                    (240, 314),
                     center=True
                 )
 
             # Render instruction text
-            instruction_font = self._get_cached_font(20)
+            instruction_font = self._get_plain_font(20)
             if instruction_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
                     "Tap to acknowledge and continue",
                     instruction_font,
                     self._DISCONNECTED_TEXT_COLOUR,
-                    (240, 360),
+                    (240, 400),
                     center=True
                 )
 
@@ -2546,7 +2569,38 @@ class DisplayManager:
                 return pygame.font.Font(font_path, size) if font_path else pygame.font.Font(None, size)
             except:
                 return None
-    
+
+    def _get_plain_font(self, size: int) -> Optional[pygame.font.Font]:
+        """Get a cached plain (SDL default) font for the given size.
+
+        Bypasses FontManager, which resolves Michroma-Regular.ttf at
+        every size — too wide for multi-word body text on the 480px
+        circular panel. Used only by the acknowledgement screen
+        (change-bdac4f18).
+
+        Args:
+            size: Font size in pixels.
+
+        Returns:
+            Cached font object, or None if font creation failed.
+        """
+        cache = getattr(self, '_plain_font_cache', None)
+        if cache is None:
+            cache = {}
+            self._plain_font_cache = cache
+
+        if size in cache:
+            return cache[size]
+
+        try:
+            font = pygame.font.Font(None, size)
+        except Exception as e:
+            self.logger.error(f"Plain font creation failed for size {size}: {e}")
+            return None
+
+        cache[size] = font
+        return font
+
     # Legacy compatibility methods
     def change_mode(self, mode: DisplayMode) -> None:
         """Change display mode"""
