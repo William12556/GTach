@@ -657,10 +657,10 @@ class DisplayManager:
                 self.logger.info("Splash screen started")
             else:
                 self.logger.warning("No splash screen available - skipping to normal mode")
-                self.config.mode = self._post_splash_mode
+                self._enter_post_splash_mode()
         except Exception as e:
             self.logger.error(f"Failed to start splash screen: {e}")
-            self.config.mode = self._post_splash_mode
+            self._enter_post_splash_mode()
     
     def stop(self) -> None:
         """Stop display manager"""
@@ -768,7 +768,7 @@ class DisplayManager:
         """Draw splash screen"""
         try:
             if not self._splash_screen:
-                self.config.mode = self._post_splash_mode
+                self._enter_post_splash_mode()
                 return
             
             # Get back buffer surface for splash rendering
@@ -777,8 +777,8 @@ class DisplayManager:
                 splash_success = self._splash_screen.render(back_surface)
                 
                 if self._splash_screen.is_complete():
-                    self.config.mode = self._post_splash_mode
-                    self.logger.info(f"Splash completed - transitioning to {self._post_splash_mode.name}")
+                    self._enter_post_splash_mode()
+                    self.logger.info(f"Splash completed - transitioning to {self.config.mode.name}")
 
                     self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER)
                     self.rendering_engine.swap_buffers()
@@ -790,8 +790,44 @@ class DisplayManager:
                         
         except Exception as e:
             self.logger.error(f"Splash mode error: {e}", exc_info=True)
-            self.config.mode = self._post_splash_mode
-    
+            self._enter_post_splash_mode()
+
+    def _enter_post_splash_mode(self) -> None:
+        """Enter normal operation, gated on acknowledgement state.
+
+        Called from start_splash(), _draw_splash_mode(), and
+        exit_setup_mode() — every route out of a transient state
+        (SPLASH or SETUP) into normal operation. When the current RPM
+        bands and engine profile have not been acknowledged, sets
+        DisplayMode.ACKNOWLEDGEMENT instead of self._post_splash_mode.
+
+        Any failure of the acknowledgement check resolves toward showing
+        the notice rather than skipping it. The sole exception is a
+        missing state manager, which resolves to self._post_splash_mode
+        because a dismissal could not be persisted without one.
+
+        _on_acknowledgement_dismissed() is the only path back out of
+        ACKNOWLEDGEMENT and is intentionally not gated.
+        """
+        try:
+            ack_manager = getattr(self, '_ack_state_manager', None)
+            if ack_manager is None:
+                self.config.mode = self._post_splash_mode
+                return
+
+            if not ack_manager.is_acknowledged(
+                self.config.rpm_bands,
+                self.config.engine_profile
+            ):
+                self.config.mode = DisplayMode.ACKNOWLEDGEMENT
+                return
+        except Exception as e:
+            self.logger.error(f"Acknowledgement state check failed: {e}", exc_info=True)
+            self.config.mode = DisplayMode.ACKNOWLEDGEMENT
+            return
+
+        self.config.mode = self._post_splash_mode
+
     def _render_setup_mode(self) -> None:
         """Render setup mode using setup manager"""
         try:
@@ -2527,7 +2563,7 @@ class DisplayManager:
         """Exit setup mode"""
         self._in_setup_mode = False
         self._setup_manager = None
-        self.config.mode = self._post_splash_mode
+        self._enter_post_splash_mode()
         self.logger.info(f"Exited setup mode")
     
     def is_in_setup_mode(self) -> bool:
