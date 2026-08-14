@@ -115,11 +115,11 @@ class DisplayManager:
         # PERIOD only. The arc's phase never comes from here — see
         # _draw_retry_arc (issue-4f1e82b7).
         self._retry_interval_callback = None
-        # Also injected by app.py. When left unset the Bluetooth Reset
-        # button is neither registered nor drawn, so the screen
+        # Also injected by app.py. Reboots the Pi. When left unset the
+        # Reset button is neither registered nor drawn, so the screen
         # degrades to its previous single-button form
-        # (issue-8a63d5f1).
-        self._bluetooth_reset_callback = None
+        # (issue-4ab5ff88).
+        self._reset_callback = None
         self._link_ok = False                # latch: data is confirmed flowing
         self._recovery_count = 0             # consecutive samples close enough together
 
@@ -149,7 +149,7 @@ class DisplayManager:
         self._update_btn_install = None
         self._update_btn_cancel = None
         self._disconnected_btn_setup = None
-        self._disconnected_btn_bt_reset = None
+        self._disconnected_btn_reset = None
         self._ack_btn_dismiss = None
         self._confirm_btn_yes = None
         self._confirm_btn_no = None
@@ -1669,9 +1669,10 @@ class DisplayManager:
         downward from an explicit top, so the Setup button occupies
         exactly the rect it did when it was first of two.
 
-        The slot change-4f1e82b7 left free now holds Bluetooth Reset,
-        registered only when its callback is set so the screen degrades
-        to the single-button form without it (issue-8a63d5f1).
+        The slot change-4f1e82b7 left free now holds Reset, which
+        reboots the Pi, registered only when its callback is set so the
+        screen degrades to the single-button form without it
+        (issue-4ab5ff88).
 
         _button_column stacks downward from an explicit top, so the
         Setup rect is identical whether one or two controls are
@@ -1681,16 +1682,16 @@ class DisplayManager:
             ("disconnected_setup", TouchAction.NAVIGATION,
              lambda pos: self._enter_setup_from_disconnected()),
         ]
-        if self._bluetooth_reset_callback is not None:
+        if self._reset_callback is not None:
             specs.append(
-                ("disconnected_bt_reset", TouchAction.NAVIGATION,
-                 lambda pos: self._bluetooth_reset_callback())
+                ("disconnected_reset", TouchAction.NAVIGATION,
+                 lambda pos: self._reset_callback())
             )
 
         rects = self._button_column(specs, width=240, top=240)
 
         self._disconnected_btn_setup = rects[0]
-        self._disconnected_btn_bt_reset = rects[1] if len(rects) > 1 else None
+        self._disconnected_btn_reset = rects[1] if len(rects) > 1 else None
 
     def _draw_button(
         self,
@@ -2276,7 +2277,9 @@ class DisplayManager:
             # was never visible here (issue-<pending>).
             self._draw_status_indicator()
 
-            # Title — font 36 at y=155 keeps text within circular viewport
+            # Title — font 36 at y=145 keeps text within circular viewport.
+            # Raised from y=155 to open more space above the message at
+            # y=180, which sat close enough to read as crowded.
             title_font = self._get_cached_font(36)
             if title_font:
                 self.rendering_engine.render_text(
@@ -2284,7 +2287,7 @@ class DisplayManager:
                     "Disconnected",
                     title_font,
                     self._DISCONNECTED_TEXT_COLOUR,
-                    (240, 155),
+                    (240, 145),
                     center=True
                 )
 
@@ -2331,13 +2334,9 @@ class DisplayManager:
                     (60, 60, 80), button_font
                 )
 
-            # 'BT Reset' rather than 'Bluetooth Reset': measured at the
-            # existing button font, the full label is 300 px against a
-            # 240 px button, and the abbreviation is 174 px. The button
-            # width and the other buttons' font are unchanged.
-            if self._disconnected_btn_bt_reset is not None:
+            if self._disconnected_btn_reset is not None:
                 self._draw_button(
-                    self._disconnected_btn_bt_reset, "BT Reset",
+                    self._disconnected_btn_reset, "Reset",
                     (60, 60, 80), button_font
                 )
 

@@ -460,6 +460,16 @@ class TestNoHostActions:
 
         assert offenders == [], offenders
 
+    # The one sanctioned host action, and the only exemption from the
+    # scan below. change-4ab5ff88 replaced the DISCONNECTED screen's
+    # Bluetooth Reset button with a Reset button that reboots the Pi;
+    # the dispatch lives in app.py and reaches the host only through
+    # utils.pi_reset, on an operator press. It is not automatic, and no
+    # comm-layer diagnosis can reach it — which is the property
+    # change-5e7a03c4 exists to protect. Matched as a whole line so
+    # that any OTHER reboot reference in these files still fails.
+    SANCTIONED = ('outcome = pi_reset.reboot_device()',)
+
     def test_no_recovery_action_introduced(self):
         """Reset, cycle, restart and reload must appear nowhere."""
         import pathlib
@@ -475,6 +485,8 @@ class TestNoHostActions:
             for number, line in enumerate(
                 _code_only(root / relative).splitlines(), 1
             ):
+                if line.strip() in self.SANCTIONED:
+                    continue
                 if forbidden.search(line):
                     offenders.append(f'{relative}:{number}: {line.strip()}')
 

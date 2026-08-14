@@ -87,7 +87,7 @@ class _Recorder:
         host._link_cause_callback = None
         host._retry_interval_callback = None
         host._disconnected_btn_setup = None
-        host._disconnected_btn_bt_reset = None
+        host._disconnected_btn_reset = None
         host._get_cached_font = lambda size: f'font-{size}'
         host._draw_status_indicator = lambda: None
         host._draw_button = lambda rect, label, fill, font: \
@@ -113,10 +113,9 @@ class TestOneButton:
 
         host = types.SimpleNamespace()
         host.logger = logging.getLogger('test.disconnected')
-        # Unset, so change-8a63d5f1's Bluetooth Reset button is not
-        # registered and the single-button form these tests describe
-        # still holds.
-        host._bluetooth_reset_callback = None
+        # Unset, so change-4ab5ff88's Reset button is not registered
+        # and the single-button form these tests describe still holds.
+        host._reset_callback = None
 
         def _column(specs, width, top, **kwargs):
             calls.append(types.SimpleNamespace(
@@ -384,3 +383,123 @@ class TestRenderIntegration:
         DisplayManager._render_disconnected(host)
 
         assert 'status' in order
+
+
+class TestResetButtonRegistration:
+    """change-4ab5ff88: registered only when wired; Setup must not move."""
+
+    def _registered(self, callback):
+        calls = []
+
+        host = types.SimpleNamespace()
+        host.logger = logging.getLogger('test.disconnected')
+        host._reset_callback = callback
+        host._enter_setup_from_disconnected = lambda: None
+
+        def _column(specs, width, top, **kwargs):
+            specs = list(specs)
+            calls.append(types.SimpleNamespace(
+                specs=specs, width=width, top=top
+            ))
+            return ['rect-%d' % i for i in range(len(specs))]
+
+        host._button_column = _column
+        DisplayManager._register_disconnected_regions(host)
+        return host, calls[0]
+
+    def test_callback_unset_registers_only_setup(self):
+        host, call = self._registered(None)
+
+        assert [s[0] for s in call.specs] == ['disconnected_setup']
+        assert host._disconnected_btn_reset is None
+
+    def test_callback_set_registers_both(self):
+        host, call = self._registered(lambda: None)
+
+        assert [s[0] for s in call.specs] == [
+            'disconnected_setup', 'disconnected_reset'
+        ]
+        assert host._disconnected_btn_reset == 'rect-1'
+
+    def test_setup_rect_identical_either_way(self):
+        without, call_without = self._registered(None)
+        with_button, call_with = self._registered(lambda: None)
+
+        assert without._disconnected_btn_setup == with_button._disconnected_btn_setup
+        assert call_without.width == call_with.width == 240
+        assert call_without.top == call_with.top == 240
+
+    def test_reset_spec_invokes_the_callback(self):
+        pressed = []
+        _host, call = self._registered(lambda: pressed.append(1))
+
+        call.specs[1][2]((0, 0))
+
+        assert pressed == [1]
+
+
+class TestResetButtonRendering:
+    """Drawn only when its rect exists; the label is the full word."""
+
+    def _render(self, reset_rect):
+        recorder = _Recorder()
+        host = recorder.as_host(
+            _disconnected_btn_setup='rect-0',
+            _disconnected_btn_reset=reset_rect,
+        )
+
+        DisplayManager._render_disconnected(host)
+        return recorder.buttons
+
+    def test_not_drawn_when_rect_is_none(self):
+        assert self._render(None) == [('rect-0', 'Setup')]
+
+    def test_drawn_when_rect_exists(self):
+        assert self._render('rect-1') == [
+            ('rect-0', 'Setup'), ('rect-1', 'Reset')
+        ]
+
+    def test_label_fits_the_button_width(self):
+        """Measured, not assumed: no abbreviation is needed."""
+        import pygame
+
+        pygame.init()
+        pygame.font.init()
+        try:
+            from gtach.display.typography import get_font_manager
+            font = get_font_manager().get_font(28)
+        except Exception:
+            font = pygame.font.Font(None, 28)
+
+        assert font.size('Reset')[0] <= 240
+
+
+class TestDisconnectedCause:
+    """change-4ab5ff88: the cause line reads the transport, nothing else."""
+
+    def _cause(self, host):
+        from gtach.app import GTachApplication
+
+        return GTachApplication._disconnected_cause(host)
+
+    def test_no_transport(self):
+        """Edge case: pressed before select_transport has run."""
+        assert self._cause(types.SimpleNamespace()) is None
+
+    def test_transport_cause_is_returned(self):
+        transport = types.SimpleNamespace(
+            is_connected=lambda: False,
+            last_failure_cause='adapter stopped responding',
+        )
+        host = types.SimpleNamespace(_transport=transport)
+
+        assert self._cause(host) == 'adapter stopped responding'
+
+    def test_no_reset_status_merge_remains(self):
+        import inspect
+
+        from gtach.app import GTachApplication
+
+        source = _code_only(GTachApplication._disconnected_cause)
+        assert 'reset_status' not in source
+        assert 'reset_lock' not in source
