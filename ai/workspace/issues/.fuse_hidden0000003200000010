@@ -1,0 +1,153 @@
+Created: 2026 August 13
+
+# Issue: Remove Shift Rim Borders
+
+---
+
+## Table of Contents
+
+- [1.0 Document Information](<#1.0 document information>)
+- [Version History](<#version history>)
+
+---
+
+## 1.0 Document Information
+
+```yaml
+issue_info:
+  id: "issue-950128c0"
+  title: "Remove screen rim border and shift-state cue from all screens"
+  date: "2026-08-13"
+  reporter: "William Watson"
+  status: "open"
+  severity: "low"
+  type: "requirement_change"
+  iteration: 1
+  coupled_docs:
+    change_ref: "change-950128c0"
+    change_iteration: 1
+
+source:
+  origin: "requirement_change"
+  description: >
+    Operator testing found the coloured rim border (green upshift / blue
+    safe downshift / red normal, drawn 12 px inside the panel edge) to be
+    distracting and not useful as a shift indicator. Requirement is to
+    remove the rim border from every screen, including RADIAL, and to
+    remove the shift-state cue logic entirely rather than relocate it to
+    another visual channel.
+
+affected_scope:
+  components:
+    - name: "DisplayManager._draw_shift_border"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._get_shift_cue"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._draw_radial_mode"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._draw_options_menu"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._draw_confirm_view"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._draw_update_view"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._draw_acknowledgement_mode"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._render_disconnected"
+      file_path: "src/gtach/display/manager.py"
+    - name: "DisplayManager._draw_setup_mode_fallback"
+      file_path: "src/gtach/display/manager.py"
+    - name: "Palette"
+      file_path: "src/gtach/display/models.py"
+  version: "~0.4.0"
+
+behavior:
+  expected: >
+    No screen draws a coloured rim border. RADIAL's centre disc shows the
+    active RPM band's colour unconditionally (no shift-state colour, no
+    flash). The seven call sites of _draw_shift_border() are removed, the
+    method and _get_shift_cue() are removed, and the Palette fields that
+    existed only to supply them (shift_border_caution, shift_border_normal,
+    shift_border_down, shift_centre_dark, band_centres_lit) are removed
+    from DAY_PALETTE and NIGHT_PALETTE and from the Palette dataclass.
+    band_centres is retained — it is still the centre disc's source
+    unconditionally.
+  actual: >
+    _draw_shift_border() draws a 12 px (or 5 px, on the setup fallback)
+    ring at the outer edge of the circular viewport on every screen.
+    On RADIAL, the ring's colour and the centre disc's flash both come
+    from _get_shift_cue(), keyed to RPM against the caution and torque
+    thresholds. On every other screen the ring is drawn in the screen's
+    own background colour, so it currently produces no visible effect
+    there — the call is present but cosmetically inert.
+  impact: >
+    Operator-facing: removes a rim indicator found distracting on RADIAL
+    (the only screen where it was visible) and drops the upshift flash
+    and the downshift/normal border-colour distinction, which have no
+    replacement (confirmed with reporter — the distinction is not to be
+    preserved on another channel). Six other screens lose an inert draw
+    call with no visible change. Three test files stub
+    _draw_shift_border directly and will need updating once the method
+    no longer exists: tests/test_connect_error_classification.py,
+    tests/test_bluetooth_reset.py, tests/test_disconnected_screen.py.
+  workaround: "None required — cosmetic/UX change, not a defect."
+
+environment:
+  python_version: "3.11"
+  os: "Debian GNU/Linux 11 (Bullseye) 64-bit"
+  domain: "domain_1"
+
+analysis:
+  root_cause: >
+    Not applicable — requirement change, not a defect.
+  technical_notes: >
+    _get_shift_cue()'s return tuple (border_colour, border_width,
+    flash_centre, centre_colour) is only ever destructured for
+    border_colour and centre_colour by its one caller in
+    _draw_radial_mode(); border_width and the flash_centre flag are
+    already discarded there. Once border_colour's only consumer
+    (_draw_shift_border) is removed, and the flash is not being
+    relocated, _get_shift_cue() has no remaining reason to exist:
+    _draw_radial_mode() can read palette.band_centres[active_band]
+    directly, exactly as _get_shift_cue() did for its own non-flashing
+    branches.
+  related_issues:
+    - issue_ref: "issue-e4b7c3a1"
+      relationship: "related"
+    - issue_ref: "issue-64d8d8fc"
+      relationship: "related"
+
+resolution:
+  assigned_to: "Claude Code"
+  approach: "Per change-950128c0."
+
+verification:
+  test_results: ""
+  closure_notes: ""
+
+version_history:
+  - version: "1.0"
+    date: "2026-08-13"
+    author: "William Watson"
+    changes:
+      - "Initial issue creation."
+
+metadata:
+  copyright: "Copyright (c) 2026 William Watson. MIT License."
+  template_version: "1.0"
+  schema_type: "t03_issue"
+```
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## Version History
+
+| Version | Date       | Changes           |
+|---------|------------|--------------------|
+| 1.0     | 2026-08-13 | Initial creation   |
+
+---
+
+Copyright (c) 2026 William Watson. MIT License.
