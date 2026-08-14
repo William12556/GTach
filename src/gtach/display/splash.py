@@ -122,20 +122,19 @@ class SplashScreen:
         self._font_render_times = []  # Track font rendering performance
         self._total_render_time = 0.0
         
-        # Color scheme - matches the DISCONNECTED screen (issue-ba2d5de2)
+        # Color scheme - professional dark theme. Deliberately excluded
+        # from change-ba2d5de2's DISCONNECTED-matching scheme; the
+        # splash screen remains black background / white text
+        # (correction recorded 2026-08-13, trivial exemption P03
+        # §1.4.12 — see change-ba2d5de2 version history).
         self._colors = {
-            'background': (216, 200, 146),   # Pale dusty yellow
-            'primary_text': (0, 0, 0),       # Black for main text
-            'secondary_text': (0, 0, 0),     # Black for secondary text
+            'background': (15, 20, 25),      # Dark blue-gray background
+            'primary_text': (255, 255, 255), # Pure white for main text
+            'secondary_text': (180, 190, 200), # Light gray for secondary text
             'accent': (64, 150, 255),        # Bright blue accent color
-            # Muted olive, darkened from the background. Chosen as the
-            # darkest end of the range change-ba2d5de2 permits, which
-            # maximises the worst-case separation: 2.13:1 against the
-            # background and 1.19:1 against the blue fill. The latter
-            # is carried by hue rather than luminance — see the report.
-            'progress_bg': (150, 135, 90),   # Progress track
+            'progress_bg': (40, 45, 50),     # Dark gray for progress background
             'progress_fill': (64, 150, 255), # Blue progress fill
-            'border': (80, 90, 100)          # Unread; _draw_border has its own
+            'border': (80, 90, 100)          # Medium gray for borders
         }
         
         # Application branding and version info
@@ -549,9 +548,8 @@ class SplashScreen:
     def _draw_border(self, surface, width: int, height: int) -> None:
         """Draw decorative border around the splash screen."""
         try:
-            # Border matches the background, as the DISCONNECTED
-            # screen's does (issue-ba2d5de2).
-            pygame.draw.circle(surface, self._colors['background'], (width // 2, height // 2), min(width, height) // 2 - 2, 4)
+            # Draw red circular border matching manager.py _draw_circular_border
+            pygame.draw.circle(surface, (200, 0, 0), (width // 2, height // 2), min(width, height) // 2 - 2, 4)
 
         except Exception as e:
             self.logger.error(f"Border rendering failed: {e}")

@@ -17,6 +17,7 @@ Created: 2026 August 13
 - [9.0 Findings Requiring Decision](<#9.0 findings requiring decision>)
 - [10.0 Commit Record](<#10.0 commit record>)
 - [11.0 Work Remaining](<#11.0 work remaining>)
+- [12.0 Correction — EDIT C Withdrawn, 2026-08-13 (Same Day)](<#12.0 correction — edit c withdrawn, 2026-08-13 (same day)>)
 - [Version History](<#version history>)
 
 ---
@@ -380,11 +381,44 @@ a pale background.
 
 ---
 
+## 12.0 Correction — EDIT C Withdrawn, 2026-08-13 (Same Day)
+
+Item 8 in §11 above did not wait for a formal on-target check: William
+reviewed the deployed SPLASH screen directly and specified it must
+remain black background with white text — the pre-existing appearance
+— rather than the pale-yellow/black treatment EDIT C applied. This is
+not a rejection of §4's measurement (the hue/luminance analysis of
+`progress_bg` stands as a correct answer to the question the prompt
+asked); it is a scope decision made after seeing the result on the
+panel, which finding 2 and 3 in §9 above already flagged as the kind of
+interaction worth an eye on target.
+
+`splash.py` was reverted directly to its pre-change state — the exact
+inverse of §3.3 — under the P03 §1.4.12 trivial exemption: single
+class, small delta (the `_colors` dict and one `_draw_border` argument),
+no interface change, human-approved. No new prompt was issued for the
+revert. `issue-ba2d5de2` and `change-ba2d5de2` were both amended in
+place (version 2.0 on each) to remove SPLASH and EDIT C from scope,
+rather than left describing a state no longer on target.
+
+Consequence for this report: §3.3, §4, and success criterion 6 in §7.0
+describe EDIT C as implemented, which was true at the time of writing
+and is preserved as the historical record of what the prompt produced.
+They no longer describe the current state of `splash.py`. Work-remaining
+item 8 in §11 is superseded — there is no SPLASH progress-track contrast
+to verify on target, because SPLASH carries none of this change's
+colours.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
 ## Version History
 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-13 | Initial report. Implements prompt-ba2d5de2 iteration 1: the DISCONNECTED background/text/border treatment extended to OPTIONS's three sub-views, ACKNOWLEDGEMENT, SPLASH and SETUP across manager.py, splash.py and setup.py. All eleven success criteria verified by AST comparison of every function against HEAD. progress_bg chosen by measurement as the best value in the permitted range; its residual weakness against the blue fill is recorded. A pre-existing uncommitted _render_disconnected edit was found and deliberately excluded from the commit. Prompt T-Doc closed, committed and pushed; issue and change T-Docs left active. |
+| 1.1 | 2026-08-13 | Correction, same day. §12 added: EDIT C (SPLASH) withdrawn after William reviewed the deployed result and specified black background/white text. Reverted directly in splash.py under the P03 §1.4.12 trivial exemption. §3.3, §4, criterion 6 and work-remaining item 8 are superseded by §12 but left intact as the historical record. |
 
 ---
 

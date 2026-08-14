@@ -1,6 +1,6 @@
 Created: 2026 August 13
 
-# Change: Extend the DISCONNECTED Colour Scheme to OPTIONS, ACKNOWLEDGEMENT, SETUP and SPLASH
+# Change: Extend the DISCONNECTED Colour Scheme to OPTIONS, ACKNOWLEDGEMENT and SETUP
 
 ---
 
@@ -16,36 +16,43 @@ Created: 2026 August 13
 ```yaml
 change_info:
   id: "change-ba2d5de2"
-  title: "Apply the DISCONNECTED screen's pale dusty-yellow background (216, 200, 146) and black text (0, 0, 0) to OPTIONS, ACKNOWLEDGEMENT, SETUP and SPLASH, matching its background-coloured border and unchanged button/semantic colours; RADIAL and DISCONNECTED itself are unaffected"
+  title: "Apply the DISCONNECTED screen's pale dusty-yellow background (216, 200, 146) and black text (0, 0, 0) to OPTIONS, ACKNOWLEDGEMENT and SETUP, matching its background-coloured border and unchanged button/semantic colours; RADIAL, DISCONNECTED itself and SPLASH are unaffected"
   date: "2026-08-13"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "low"
-  iteration: 1
+  iteration: 2
   coupled_docs:
     issue_ref: "issue-ba2d5de2"
-    issue_iteration: 1
+    issue_iteration: 2
 
 source:
   type: "issue"
   reference: "issue-ba2d5de2"
   description: >
     Resolves issue-ba2d5de2. DISCONNECTED alone carries the pale
-    yellow/black readability scheme; OPTIONS, ACKNOWLEDGEMENT, SETUP
-    and SPLASH still use the earlier dark-background/light-text
-    treatment.
+    yellow/black readability scheme; OPTIONS, ACKNOWLEDGEMENT and
+    SETUP still use the earlier dark-background/light-text treatment.
+    SPLASH was originally included and was withdrawn 2026-08-13,
+    same day, post-deployment — see scope.summary and EDIT C below.
 
 scope:
   summary: >
-    Four background/text colour swaps, one per file, following the
-    exact pattern DISCONNECTED's own _render_disconnected already
+    Background/text colour swaps in manager.py and setup.py, following
+    the exact pattern DISCONNECTED's own _render_disconnected already
     establishes: background and border both become (216, 200, 146);
     every text colour drawn on that background becomes (0, 0, 0),
     with any existing dimmed/secondary tone collapsed to the same
     value; button fills, their white labels, and every semantic or
     status colour (success/warning/danger/primary accents, the
-    ConnectionStatus dot, SPLASH's automotive-gauge palette) are left
-    exactly as they are.
+    ConnectionStatus dot) are left exactly as they are. SPLASH was
+    originally included as a fourth file (splash.py) and was removed
+    from scope 2026-08-13, same day, after this change had already
+    been implemented and deployed: William specified the splash
+    screen must remain black background with white text. The SPLASH
+    edit was reverted directly in splash.py under the P03 §1.4.12
+    trivial exemption, and this document is amended to withdraw EDIT
+    C rather than leave it describing a state no longer on target.
   affected_components:
     - name: "DisplayManager._draw_options_menu"
       file_path: "src/gtach/display/manager.py"
@@ -59,9 +66,6 @@ scope:
     - name: "DisplayManager._draw_acknowledgement_mode"
       file_path: "src/gtach/display/manager.py"
       change_type: "modify"
-    - name: "SplashScreen._colors, SplashScreen._draw_border"
-      file_path: "src/gtach/display/splash.py"
-      change_type: "modify"
     - name: "SetupDisplayManager.colors, SetupDisplayManager._draw_circular_border"
       file_path: "src/gtach/display/setup.py"
       change_type: "modify"
@@ -69,6 +73,7 @@ scope:
   out_of_scope:
     - "RADIAL and everything _draw_radial_mode touches: the shift-cue border/centre colours (change-64d8d8fc) and DAY_PALETTE / NIGHT_PALETTE (models.py). Excluded by explicit instruction."
     - "DISCONNECTED / _render_disconnected. It is the reference this change brings the others into line with, not a target of it."
+    - "SPLASH / SplashScreen (src/gtach/display/splash.py) in full, including ._colors and ._draw_border. Originally EDIT C of this change; removed from scope 2026-08-13 (correction, same day, post-deployment) — William specified the splash screen must remain black background with white text, and it was reverted to that state directly under the P03 §1.4.12 trivial exemption."
     - "Button fill colours everywhere (OPTIONS's (80, 80, 100), the confirm view's (140, 40, 40) / (80, 80, 100), the update view's (0, 120, 0) / (80, 80, 100)) and their white labels. DISCONNECTED's own buttons keep a dark neutral fill unrelated to its background swap; these already follow the same convention and are not part of the inconsistency the issue names."
     - "SETUP's semantic accent colours: 'primary', 'success', 'warning', 'danger', 'border' entries in SetupDisplayManager.colors. Functional colour-coding, not the background/text pair in question."
     - "graphics/splash_graphics.py SPLASH_COLORS and the automotive-gauge progress indicator it feeds. Self-contained decorative sub-component with its own palette."
@@ -109,22 +114,19 @@ rational:
     (200, 200, 200) and (150, 150, 150), all become
     _DISCONNECTED_TEXT_COLOUR.
 
-    EDIT C — splash.py, SplashScreen. In self._colors:
-    'background' (15, 20, 25) becomes (216, 200, 146); 'primary_text'
-    (255, 255, 255) and 'secondary_text' (180, 190, 200) both become
-    (0, 0, 0). 'accent' (64, 150, 255) and 'progress_fill'
-    (64, 150, 255) are left unchanged — they colour the animated
-    connection icon and the automotive-gauge progress fill, both
-    functional indicators. 'progress_bg' (40, 45, 50) is adjusted to
-    a mid-tone that keeps the progress fill visible against the new
-    background — a judgement call flagged in risks below, not a
-    literal DISCONNECTED value, since DISCONNECTED has no progress
-    track to draw from. 'border' (80, 90, 100) is unused by
-    _draw_border (which hard-codes (200, 0, 0) directly) and is left
-    as dead configuration, matching its current state. In
-    _draw_border: the hard-coded (200, 0, 0) circle becomes
-    self._colors['background'], i.e. (216, 200, 146), matching
-    _draw_shift_border(self._DISCONNECTED_BG_COLOUR)'s pattern.
+    EDIT C — WITHDRAWN 2026-08-13, same day, post-deployment. Originally
+    specified splash.py's SplashScreen._colors and _draw_border to
+    match DISCONNECTED, as EDIT A/B/D do for their files. William
+    specified the splash screen must remain black background with
+    white text — distinct from every other screen this change touches
+    — so splash.py is excluded from this change in full. It had
+    already been implemented and deployed per the original EDIT C
+    text; that deployment was reverted directly in splash.py under the
+    P03 §1.4.12 trivial exemption (single class, small delta, no
+    interface change, human-approved) rather than through a further
+    T-Doc cycle, per governance §7.0's direct-edit allowance. splash.py
+    is now byte-identical to its state before this change was ever
+    implemented.
 
     EDIT D — setup.py, SetupDisplayManager. In self.colors:
     'background' (20, 20, 30) becomes (216, 200, 146); 'surface'
@@ -157,26 +159,18 @@ rational:
         of — pairing confirmation, discovery progress, error state.
         DISCONNECTED itself does not attempt to express this kind of
         state in its two-colour scheme; SETUP should not either.
-    - option: "Leave SPLASH's progress_bg unchanged."
+    - option: "Also apply the scheme to SPLASH."
       reason_rejected: >
-        (40, 45, 50) against a (216, 200, 146) background would read
-        as a near-invisible dark smear rather than a track. Some
-        adjustment is required for the progress indicator to remain
-        legible; DISCONNECTED offers no directly reusable value here.
+        Originally attempted as EDIT C and deployed, then withdrawn
+        2026-08-13 (correction, same day): William specified the
+        splash screen must remain black background with white text.
+        The startup screen is treated as a distinct visual moment from
+        the operational screens this change otherwise unifies.
   benefits:
-    - "One consistent colour language across every non-gauge screen."
+    - "One consistent colour language across OPTIONS, ACKNOWLEDGEMENT, SETUP and DISCONNECTED, the operational non-gauge screens."
     - "Zero new colours introduced for the primary background/text pair; both are DISCONNECTED's own existing constants."
     - "Each edit is a small, reviewable literal substitution with no logic change, keeping regression risk low."
   risks:
-    - risk: >
-        splash.py's progress_bg has no DISCONNECTED-derived value to
-        copy, so its replacement is a judgement call rather than a
-        literal match.
-      mitigation: >
-        Constrain the choice explicitly in the coupled prompt: a
-        neutral tone visibly distinct from both the new (216, 200, 146)
-        background and the (64, 150, 255) progress fill, verified
-        on-target rather than asserted from the RGB values alone.
     - risk: >
         Collapsing text_dim / secondary_text into the same colour as
         primary text removes the visual hierarchy those screens
@@ -195,17 +189,19 @@ rational:
 
 technical_details:
   current_behavior: >
-    OPTIONS (three sub-views), ACKNOWLEDGEMENT, SETUP and SPLASH each
-    render a dark background with light text and, in three of the
-    four files, a static red circular border. DISCONNECTED renders a
-    pale dusty-yellow background with black text and a
-    background-coloured border.
+    OPTIONS (three sub-views), ACKNOWLEDGEMENT and SETUP each render a
+    dark background with light text and a static red circular border.
+    DISCONNECTED renders a pale dusty-yellow background with black
+    text and a background-coloured border. SPLASH also rendered a
+    dark background with light text and a red border, and continues
+    to do so — explicitly excluded, see scope.summary.
   proposed_behavior: >
-    All five screens (OPTIONS's three sub-views counted individually,
-    plus ACKNOWLEDGEMENT, SETUP and SPLASH) render the same pale
-    dusty-yellow background, black text, and background-coloured
-    border as DISCONNECTED. Button fills, labels, and every semantic
-    or status colour are unchanged.
+    All four screens (OPTIONS's three sub-views counted individually,
+    plus ACKNOWLEDGEMENT and SETUP) render the same pale dusty-yellow
+    background, black text, and background-coloured border as
+    DISCONNECTED. Button fills, labels, and every semantic or status
+    colour are unchanged. SPLASH is unchanged from its original dark
+    background/light text/red border.
   implementation_approach: >
     Literal RGB substitution at each existing draw call and colour
     dictionary entry. No new methods, no new state, no change to
@@ -227,18 +223,6 @@ technical_details:
         - "_draw_acknowledgement_mode"
       classes_affected:
         - "DisplayManager"
-    - component: "SplashScreen"
-      file: "src/gtach/display/splash.py"
-      change_summary: >
-        EDIT C: self._colors['background'], ['primary_text'],
-        ['secondary_text'] and ['progress_bg'] updated;
-        _draw_border's hard-coded circle colour updated to read
-        self._colors['background'].
-      functions_affected:
-        - "__init__"
-        - "_draw_border"
-      classes_affected:
-        - "SplashScreen"
     - component: "SetupDisplayManager"
       file: "src/gtach/display/setup.py"
       change_summary: >
@@ -257,8 +241,6 @@ dependencies:
   internal:
     - component: "DisplayManager._DISCONNECTED_BG_COLOUR / _DISCONNECTED_TEXT_COLOUR"
       impact: "Read from three additional methods on the same class (OPTIONS's three sub-views already share _draw_options_menu/_draw_confirm_view/_draw_update_view) and one more (_draw_acknowledgement_mode); no change to the constants themselves."
-    - component: "graphics/splash_graphics.py (draw_automotive_gauge, draw_obdii_connector)"
-      impact: "None. These consume SPLASH_COLORS, a separate palette, unaffected by SplashScreen._colors."
   external: []
   required_changes: []
 
@@ -273,10 +255,12 @@ testing_requirements:
   test_cases: []
   regression_scope:
     - "pytest tests/ passes (no functional code touched, but run in full per project convention)."
-    - "Touch regions and button behaviour on OPTIONS, ACKNOWLEDGEMENT, SETUP and SPLASH — none of this change's edits touch _register_* methods or touch_coordinator calls, but a visual pass should confirm nothing shifted."
+    - "Touch regions and button behaviour on OPTIONS, ACKNOWLEDGEMENT and SETUP — none of this change's edits touch _register_* methods or touch_coordinator calls, but a visual pass should confirm nothing shifted."
+    - "SPLASH renders unchanged (black background, white/light-grey text, red border) — confirms the revert left no residue."
   validation_criteria:
     - "grep -n '(40, 40, 50)' src/gtach/display/manager.py returns no match inside _draw_options_menu, _draw_confirm_view or _draw_update_view."
-    - "grep -n '(200, 0, 0)' src/gtach/display/manager.py, splash.py and setup.py returns no match at the border-drawing call sites this change touches."
+    - "grep -n '(200, 0, 0)' src/gtach/display/manager.py and setup.py returns no match at the border-drawing call sites this change touches."
+    - "grep -n '(216, 200, 146)' src/gtach/display/splash.py returns no match — SPLASH carries none of DISCONNECTED's colour values."
     - "pytest tests/ passes."
 
 implementation:
@@ -286,16 +270,18 @@ implementation:
       owner: "tactical"
     - step: "EDIT B — ACKNOWLEDGEMENT in manager.py."
       owner: "tactical"
-    - step: "EDIT C — SplashScreen in splash.py."
-      owner: "tactical"
+    - step: "EDIT C — WITHDRAWN. SplashScreen in splash.py was reverted to its pre-change state directly, under the P03 §1.4.12 trivial exemption, after having been implemented."
+      owner: "human"
     - step: "EDIT D — SetupDisplayManager in setup.py."
       owner: "tactical"
     - step: "Deploy to gtach.local; visual pass over every affected screen and sub-view per testing_requirements."
       owner: "human"
   rollback_procedure: >
-    Revert the commit. Every edit is a literal colour substitution in
-    four files with no structural change, so the revert is exact and
-    carries no residual state.
+    Revert the commit for EDIT A, B and D. Each is a literal colour
+    substitution in its file with no structural change, so the revert
+    is exact and carries no residual state. EDIT C's revert is
+    already captured directly in splash.py, outside this commit, per
+    the trivial exemption.
   deployment_notes: "No unit change; no new dependency."
 
 verification:
@@ -319,8 +305,21 @@ notes: >
   in manager.py rather than restated as new literals, so a future
   change to DISCONNECTED's scheme would need a deliberate follow-up
   decision about whether to propagate it here again — it will not
-  happen silently, since splash.py and setup.py hold their own literal
-  copies of the same RGB values, not a shared reference.
+  happen silently, since setup.py holds its own literal copy of the
+  same RGB values, not a shared reference.
+
+  CORRECTION, 2026-08-13, same day, post-deployment. EDIT A, B and D
+  were implemented and deployed as specified. EDIT C (SplashScreen)
+  was also implemented and deployed, then withdrawn the same day:
+  William specified the splash screen must remain black background
+  with white text. splash.py was reverted directly to its pre-change
+  state under the P03 §1.4.12 trivial exemption — single class, small
+  delta (the _colors dict and one draw-call argument), no interface
+  change, human-approved — rather than through a further T-Doc cycle.
+  This document, and its coupled issue-ba2d5de2, are amended in place
+  to withdraw EDIT C and remove SPLASH from every scope, rationale and
+  validation section, per governance §7.0's allowance for direct
+  editing of ai/workspace/ documents.
 
 version_history:
   - version: "1.0"
@@ -331,6 +330,13 @@ version_history:
       - "Four edits: OPTIONS's three sub-views and ACKNOWLEDGEMENT in manager.py (by direct reference to DISCONNECTED's own colour constants), SplashScreen in splash.py, SetupDisplayManager in setup.py (both by literal RGB match)."
       - "Records that button fills and every semantic/status colour (SETUP's primary/success/warning/danger, SPLASH's automotive-gauge palette, the ConnectionStatus dot) are explicitly out of scope."
       - "Records progress_bg in splash.py as the one value with no DISCONNECTED-derived literal to copy, constrained instead by a stated legibility requirement."
+  - version: "2.0"
+    date: "2026-08-13"
+    author: "William Watson"
+    changes:
+      - "CORRECTION, same day, post-deployment: EDIT C withdrawn. SplashScreen must remain black background with white text; reverted directly in splash.py under the P03 §1.4.12 trivial exemption."
+      - "status changed proposed -> implemented, reflecting that EDIT A, B and D were carried out on target as specified."
+      - "Every scope, out_of_scope, rational, technical_details, dependencies, testing_requirements and implementation section naming SPLASH or EDIT C is amended to reflect the withdrawal."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -347,6 +353,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-13 | Initial change document. Extends DISCONNECTED's background/text colours to OPTIONS, ACKNOWLEDGEMENT, SETUP and SPLASH via four literal colour substitutions; button fills and semantic/status colours unchanged. |
+| 2.0 | 2026-08-13 | Correction, same day, post-deployment. EDIT C (SPLASH) withdrawn and reverted directly under the P03 §1.4.12 trivial exemption; status advanced to implemented for EDIT A, B and D. |
 
 ---
 
