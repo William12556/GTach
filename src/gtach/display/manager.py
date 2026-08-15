@@ -2278,10 +2278,10 @@ class DisplayManager:
             if instruction_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    "Tap to acknowledge and continue",
+                    "TAP TO ACKNOWLEDGE AND CONTINUE",
                     instruction_font,
                     self._DISCONNECTED_TEXT_COLOUR,
-                    (240, 400),
+                    (240, 350),
                     center=True
                 )
 
