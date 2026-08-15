@@ -21,7 +21,7 @@ change_info:
   author: "William Watson"
   status: "proposed"
   priority: "medium"
-  iteration: 1
+  iteration: 2
   coupled_docs:
     issue_ref: "issue-bdac4f18"
     issue_iteration: 1
@@ -41,9 +41,9 @@ scope:
     pygame.font.Font(None, size) — bypassing FontManager's
     Michroma-first resolution — and rewrite
     _draw_acknowledgement_mode() to draw the title (unchanged: Michroma
-    72px "GTach") plus three fixed disclaimer lines and one instruction
-    line, all at coordinates measured against the real font metrics on
-    gtach.local.
+    72px "GTach") plus four fixed disclaimer lines at 24px and one
+    instruction line, all at coordinates measured against the real
+    font metrics on gtach.local.
   affected_components:
     - name: "DisplayManager"
       file_path: "src/gtach/display/manager.py"
@@ -89,29 +89,45 @@ rational:
 
 technical_details:
   current_behavior: >
-    _draw_acknowledgement_mode() calls self._get_cached_font(24) and
-    self._get_cached_font(20) for the body and instruction lines. Both
-    resolve through FontManager.get_font() to Michroma-Regular.ttf.
-    Each string is drawn with one render_text() call — no wrapping.
+    Iteration 1 (already implemented and deployed, closed prompt
+    prompt-bdac4f18): _draw_acknowledgement_mode() calls
+    self._get_plain_font(18) for three fixed body lines at
+    y=266/290/314, and self._get_plain_font(20) for one instruction
+    line at y=400. This is the baseline iteration 2 modifies — not the
+    original pre-issue-bdac4f18 Michroma single-line rendering, which
+    iteration 1 already replaced.
   proposed_behavior: >
-    Body: three fixed lines drawn with a new self._get_plain_font(18),
-    centred at x=240, y=266/290/314. Instruction: one line drawn with
-    self._get_plain_font(20), centred at (240, 400). Title: unchanged.
-    Exact text and coordinates below, measured on gtach.local
-    (/opt/gtach/venv/bin/python3, pygame 2.6.1, SDL 2.28.4,
-    Python 3.9.2):
+    Body: four fixed lines drawn with a new self._get_plain_font(24),
+    centred at x=240, y=208/240/272/304. Instruction: one line drawn
+    with self._get_plain_font(20), centred at (240, 400), unchanged
+    from iteration 1. Title: unchanged. Exact text and coordinates
+    below, measured on gtach.local (/opt/gtach/venv/bin/python3,
+    pygame 2.6.1, SDL 2.28.4, Python 3.9.2). The title's own rendered
+    bounding box was also measured directly (via
+    get_font_manager().get_font(72) centred at (240,120)), rather than
+    estimated: top=69, bottom=172, height=103 — the body block starts
+    20px below that measured bottom, not the iteration-1 estimate of
+    163.
 
     | y | text | measured width | chord margin (per side) |
     |---|---|---|---|
-    | 266 | THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY | 369px | 52.1px |
-    | 290 | OF ANY KIND. THE AUTHOR IS NOT LIABLE FOR ANY CLAIM, | 359px | 53.2px |
-    | 314 | DAMAGES, OR OTHER LIABILITY ARISING FROM ITS USE. | 341px | 55.7px |
+    | 208 | THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT | 396px | 37.8px |
+    | 240 | WARRANTY OF ANY KIND. THE AUTHOR IS NOT | 388px | 44.0px |
+    | 272 | LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER | 381px | 45.3px |
+    | 304 | LIABILITY ARISING FROM ITS USE. | 277px | 90.7px |
     | 400 | Tap to acknowledge and continue | 215px | 68.7px |
 
     Margin computed against the r=238 viewport at each line's vertical
     offset from the display centre (240,240): chord width
     2*sqrt(238^2 - offset^2), margin = (chord width - text width) / 2.
-    All four lines clear with positive margin; smallest is 52.1px.
+    All five lines clear with positive margin; smallest is 37.8px.
+
+    Sizes 18-28px were all measured and compared (18/20px: 3 lines;
+    22/24/26px: 4 lines; 28px: 5 lines). 24px was chosen: the largest
+    size whose minimum per-line margin (37.8px) still exceeds 22px's
+    minimum (28.0px), while remaining visibly larger than the
+    iteration-1 18px and leaving 96px of clear space between the body
+    block's bottom (y=304) and the instruction line (y=400).
   implementation_approach: >
     Single-file change confined to src/gtach/display/manager.py: one
     new small method (_get_plain_font) and one rewritten method
@@ -123,9 +139,9 @@ technical_details:
         Add _get_plain_font(size) returning a cached
         pygame.font.Font(None, size) — the SDL default font, not
         Michroma. Rewrite _draw_acknowledgement_mode() to draw the
-        unchanged Michroma title, then three fixed disclaimer lines and
-        one instruction line via _get_plain_font(), at the measured
-        coordinates in technical_details above.
+        unchanged Michroma title, then four fixed disclaimer lines at
+        24px and one instruction line at 20px via _get_plain_font(), at
+        the measured coordinates in technical_details above.
       functions_affected:
         - "_get_plain_font"
         - "_draw_acknowledgement_mode"
@@ -151,13 +167,13 @@ testing_requirements:
     the pinned text.
   test_cases:
     - scenario: "ACKNOWLEDGEMENT screen shown (unacknowledged state)"
-      expected_result: "Title, three disclaimer lines, and instruction line all fully visible within the circular bezel, matching the coordinates in technical_details."
+      expected_result: "Title, four disclaimer lines, and instruction line all fully visible within the circular bezel, matching the coordinates in technical_details."
     - scenario: "Tap to dismiss"
       expected_result: "Unchanged — _on_acknowledgement_dismissed() is not touched by this change."
   regression_scope:
     - "src/gtach/display/manager.py — _draw_acknowledgement_mode() only; no other screen calls _get_plain_font()."
   validation_criteria:
-    - "grep -n '_get_plain_font' src/gtach/display/manager.py shows one definition and four call sites (three body lines + one instruction) inside _draw_acknowledgement_mode()."
+    - "grep -n '_get_plain_font' src/gtach/display/manager.py shows one definition and five call sites (four body lines + one instruction) inside _draw_acknowledgement_mode()."
     - "grep -n 'OBD tachometer' src/gtach/display/manager.py returns no match — the old single-line body text is fully replaced."
 
 implementation:
@@ -181,9 +197,20 @@ traceability:
 notes: >
   The exact text, font, size, and coordinates in this document were
   measured against /opt/gtach/venv/bin/python3 on gtach.local before
-  authoring, not estimated. See conversation record for the two
-  on-device measurement scripts used (word-wrap width probe, then
-  circular-margin verification against all four lines).
+  authoring, not estimated. See conversation record for the on-device
+  measurement scripts used: word-wrap width probe, circular-margin
+  verification, then a size sweep (18-28px) against the measured
+  title bounding box that produced the final 24px/4-line layout.
+
+  ITERATION 2. Iteration 1's coupled prompt (prompt-bdac4f18, the
+  18px/3-line design) has already been executed by Claude Code and
+  moved to ai/workspace/prompt/closed/ — confirmed present in
+  src/gtach/display/manager.py before this revision was authored.
+  This document's iteration was bumped from 1 to 2 accordingly, per
+  the coupled-document convention (P00/P03): a new prompt-bdac4f18 at
+  iteration 2, coupled to this change's iteration 2, delivers the
+  24px/4-line design against the already-implemented iteration-1
+  baseline. The closed iteration-1 prompt is not edited.
 
 version_history:
   - version: "1.0"
@@ -191,6 +218,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change creation."
+  - version: "1.1"
+    date: "2026-08-14"
+    author: "William Watson"
+    changes:
+      - "Revised layout after a size sweep (18-28px) measured on gtach.local: body text enlarged from 18px/3 lines to 24px/4 lines and moved up to start immediately below the title's measured (not estimated) bounding box. Coordinates updated throughout technical_details; call-site count in validation_criteria updated from four to five."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."

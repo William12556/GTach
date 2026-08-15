@@ -2238,30 +2238,38 @@ class DisplayManager:
             # Render body disclaimer text. Line breaks and coordinates
             # are pinned to on-device measurements (change-bdac4f18
             # §technical_details); render_text() does not wrap.
-            body_font = self._get_plain_font(18)
+            body_font = self._get_plain_font(24)
             if body_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    'THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY',
+                    'THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT',
                     body_font,
                     self._DISCONNECTED_TEXT_COLOUR,
-                    (240, 266),
+                    (240, 208),
                     center=True
                 )
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    "OF ANY KIND. THE AUTHOR IS NOT LIABLE FOR ANY CLAIM,",
+                    "WARRANTY OF ANY KIND. THE AUTHOR IS NOT",
                     body_font,
                     self._DISCONNECTED_TEXT_COLOUR,
-                    (240, 290),
+                    (240, 240),
                     center=True
                 )
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
-                    "DAMAGES, OR OTHER LIABILITY ARISING FROM ITS USE.",
+                    "LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER",
                     body_font,
                     self._DISCONNECTED_TEXT_COLOUR,
-                    (240, 314),
+                    (240, 272),
+                    center=True
+                )
+                self.rendering_engine.render_text(
+                    RenderTarget.BACK_BUFFER,
+                    "LIABILITY ARISING FROM ITS USE.",
+                    body_font,
+                    self._DISCONNECTED_TEXT_COLOUR,
+                    (240, 304),
                     center=True
                 )
 
