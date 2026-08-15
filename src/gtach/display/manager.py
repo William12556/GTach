@@ -2274,7 +2274,7 @@ class DisplayManager:
                 )
 
             # Render instruction text
-            instruction_font = self._get_plain_font(20)
+            instruction_font = self._get_plain_font(24)
             if instruction_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
