@@ -21,7 +21,7 @@ change_info:
   author: "William Watson"
   status: "proposed"
   priority: "medium"
-  iteration: 2
+  iteration: 3
   coupled_docs:
     issue_ref: "issue-bdac4f18"
     issue_iteration: 1
@@ -89,25 +89,19 @@ rational:
 
 technical_details:
   current_behavior: >
-    Iteration 1 (already implemented and deployed, closed prompt
-    prompt-bdac4f18): _draw_acknowledgement_mode() calls
-    self._get_plain_font(18) for three fixed body lines at
-    y=266/290/314, and self._get_plain_font(20) for one instruction
-    line at y=400. This is the baseline iteration 2 modifies — not the
-    original pre-issue-bdac4f18 Michroma single-line rendering, which
-    iteration 1 already replaced.
+    Iteration 2 (already implemented and deployed, closed prompt
+    prompt-bdac4f18-2): _draw_acknowledgement_mode() calls
+    self._get_plain_font(24) for four fixed body lines at
+    y=208/240/272/304, and self._get_plain_font(20) for one
+    instruction line at y=400. This is the baseline iteration 3
+    modifies.
   proposed_behavior: >
-    Body: four fixed lines drawn with a new self._get_plain_font(24),
-    centred at x=240, y=208/240/272/304. Instruction: one line drawn
-    with self._get_plain_font(20), centred at (240, 400), unchanged
-    from iteration 1. Title: unchanged. Exact text and coordinates
-    below, measured on gtach.local (/opt/gtach/venv/bin/python3,
-    pygame 2.6.1, SDL 2.28.4, Python 3.9.2). The title's own rendered
-    bounding box was also measured directly (via
-    get_font_manager().get_font(72) centred at (240,120)), rather than
-    estimated: top=69, bottom=172, height=103 — the body block starts
-    20px below that measured bottom, not the iteration-1 estimate of
-    163.
+    Body: unchanged from iteration 2 — four fixed lines at
+    self._get_plain_font(24), y=208/240/272/304. Instruction: enlarged
+    from self._get_plain_font(20) to self._get_plain_font(24), position
+    unchanged at (240, 400). Title: unchanged. Exact measurements below,
+    from gtach.local (/opt/gtach/venv/bin/python3, pygame 2.6.1,
+    SDL 2.28.4, Python 3.9.2).
 
     | y | text | measured width | chord margin (per side) |
     |---|---|---|---|
@@ -115,19 +109,21 @@ technical_details:
     | 240 | WARRANTY OF ANY KIND. THE AUTHOR IS NOT | 388px | 44.0px |
     | 272 | LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER | 381px | 45.3px |
     | 304 | LIABILITY ARISING FROM ITS USE. | 277px | 90.7px |
-    | 400 | Tap to acknowledge and continue | 215px | 68.7px |
+    | 400 | Tap to acknowledge and continue | 264px | 44.2px |
 
     Margin computed against the r=238 viewport at each line's vertical
     offset from the display centre (240,240): chord width
     2*sqrt(238^2 - offset^2), margin = (chord width - text width) / 2.
-    All five lines clear with positive margin; smallest is 37.8px.
+    All five lines clear with positive margin; smallest is 37.8px
+    (unchanged from iteration 2, on a body line, not the instruction).
 
-    Sizes 18-28px were all measured and compared (18/20px: 3 lines;
-    22/24/26px: 4 lines; 28px: 5 lines). 24px was chosen: the largest
-    size whose minimum per-line margin (37.8px) still exceeds 22px's
-    minimum (28.0px), while remaining visibly larger than the
-    iteration-1 18px and leaving 96px of clear space between the body
-    block's bottom (y=304) and the instruction line (y=400).
+    Sizes 20-40px were measured for the instruction line at its fixed
+    y=400: 20px (215px, 68.7px margin), 24px (264px, 44.2px margin),
+    28px (321px, 15.7px margin), 32px+ clips (negative margin). 24px
+    was chosen to match the body text size exactly (one fewer distinct
+    size in the design) with a comfortable margin; 28px was available
+    but its 15.7px margin was judged too thin to rely on if the
+    instruction wording ever changes.
   implementation_approach: >
     Single-file change confined to src/gtach/display/manager.py: one
     new small method (_get_plain_font) and one rewritten method
@@ -136,22 +132,15 @@ technical_details:
     - component: "DisplayManager"
       file: "src/gtach/display/manager.py"
       change_summary: >
-        Add _get_plain_font(size) returning a cached
-        pygame.font.Font(None, size) — the SDL default font, not
-        Michroma. Rewrite _draw_acknowledgement_mode() to draw the
-        unchanged Michroma title, then four fixed disclaimer lines at
-        24px and one instruction line at 20px via _get_plain_font(), at
-        the measured coordinates in technical_details above.
+        Enlarge the instruction line's font from _get_plain_font(20)
+        to _get_plain_font(24) inside _draw_acknowledgement_mode();
+        position (240, 400) and text unchanged. Body block and title
+        block unchanged from iteration 2.
       functions_affected:
-        - "_get_plain_font"
         - "_draw_acknowledgement_mode"
       classes_affected:
         - "DisplayManager"
-  interface_changes:
-    - interface: "DisplayManager._get_plain_font"
-      change_type: "signature"
-      details: "New private method; no existing interface altered."
-      backward_compatible: "yes"
+  interface_changes: []
 
 dependencies:
   internal: []
@@ -167,14 +156,14 @@ testing_requirements:
     the pinned text.
   test_cases:
     - scenario: "ACKNOWLEDGEMENT screen shown (unacknowledged state)"
-      expected_result: "Title, four disclaimer lines, and instruction line all fully visible within the circular bezel, matching the coordinates in technical_details."
+      expected_result: "Title, four disclaimer lines, and instruction line all fully visible within the circular bezel; instruction line rendered at 24px, matching body text size."
     - scenario: "Tap to dismiss"
       expected_result: "Unchanged — _on_acknowledgement_dismissed() is not touched by this change."
   regression_scope:
     - "src/gtach/display/manager.py — _draw_acknowledgement_mode() only; no other screen calls _get_plain_font()."
   validation_criteria:
-    - "grep -n '_get_plain_font' src/gtach/display/manager.py shows one definition and five call sites (four body lines + one instruction) inside _draw_acknowledgement_mode()."
-    - "grep -n 'OBD tachometer' src/gtach/display/manager.py returns no match — the old single-line body text is fully replaced."
+    - "grep -n '_get_plain_font' src/gtach/display/manager.py shows one definition and five call sites, all at size 24, all inside _draw_acknowledgement_mode()."
+    - "grep -n '_get_plain_font(20)' src/gtach/display/manager.py returns no match — the iteration-1/2 instruction size is fully replaced."
 
 implementation:
   rollback_procedure: "git revert the commit; no data migration involved."
@@ -197,20 +186,17 @@ traceability:
 notes: >
   The exact text, font, size, and coordinates in this document were
   measured against /opt/gtach/venv/bin/python3 on gtach.local before
-  authoring, not estimated. See conversation record for the on-device
-  measurement scripts used: word-wrap width probe, circular-margin
-  verification, then a size sweep (18-28px) against the measured
-  title bounding box that produced the final 24px/4-line layout.
+  authoring, not estimated.
 
-  ITERATION 2. Iteration 1's coupled prompt (prompt-bdac4f18, the
-  18px/3-line design) has already been executed by Claude Code and
-  moved to ai/workspace/prompt/closed/ — confirmed present in
-  src/gtach/display/manager.py before this revision was authored.
-  This document's iteration was bumped from 1 to 2 accordingly, per
-  the coupled-document convention (P00/P03): a new prompt-bdac4f18 at
-  iteration 2, coupled to this change's iteration 2, delivers the
-  24px/4-line design against the already-implemented iteration-1
-  baseline. The closed iteration-1 prompt is not edited.
+  ITERATION 3. Iterations 1 (18px/3-line body) and 2 (24px/4-line body)
+  have both already been executed by Claude Code and moved to
+  ai/workspace/prompt/closed/ — confirmed present in
+  src/gtach/display/manager.py before this revision was authored. This
+  iteration enlarges only the instruction line, from 20px to 24px,
+  matching the body text size. A new prompt-bdac4f18 at iteration 3,
+  coupled to this change's iteration 3, delivers that single change
+  against the already-implemented iteration-2 baseline. The closed
+  iteration-1 and iteration-2 prompts are not edited.
 
 version_history:
   - version: "1.0"
@@ -223,6 +209,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Revised layout after a size sweep (18-28px) measured on gtach.local: body text enlarged from 18px/3 lines to 24px/4 lines and moved up to start immediately below the title's measured (not estimated) bounding box. Coordinates updated throughout technical_details; call-site count in validation_criteria updated from four to five."
+  - version: "1.2"
+    date: "2026-08-14"
+    author: "William Watson"
+    changes:
+      - "Iteration 3: instruction line enlarged from 20px to 24px (matching body text size) at its existing y=400 position, per a size sweep measured on gtach.local (20-40px; 24px chosen, 44.2px margin; 28px available at 15.7px margin but judged too thin). _get_plain_font() itself no longer a net-new interface as of this iteration — interface_changes cleared."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
