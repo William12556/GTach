@@ -19,7 +19,7 @@ change_info:
   title: "Add entry gate for DisplayMode.ACKNOWLEDGEMENT at the six normal-operation entry points"
   date: "2026-08-14"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -183,11 +183,11 @@ implementation:
     unchanged.
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-14"
+  implemented_by: "Claude Code"
+  verification_date: "2026-08-19"
+  verified_by: "William Watson"
+  test_results: "Source review confirms validation_criteria met: no unconditional 'self.config.mode = self._post_splash_mode' assignments remain outside _on_acknowledgement_dismissed(); _enter_post_splash_mode() has one definition and six call sites."
 
 traceability:
   related_issues:
@@ -207,6 +207,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change creation."
+  - version: "1.1"
+    date: "2026-08-19"
+    author: "William Watson"
+    changes:
+      - "Closed. Implementation confirmed against validation_criteria by source review."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -223,6 +228,7 @@ metadata:
 | Version | Date       | Changes           |
 |---------|------------|--------------------|
 | 1.0     | 2026-08-14 | Initial creation   |
+| 1.1     | 2026-08-19 | Closed; verified against source |
 
 ---
 

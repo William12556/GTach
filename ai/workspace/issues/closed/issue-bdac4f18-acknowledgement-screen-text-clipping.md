@@ -19,7 +19,7 @@ issue_info:
   title: "ACKNOWLEDGEMENT screen body and instruction text clip the circular viewport edge"
   date: "2026-08-14"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -98,8 +98,8 @@ resolution:
   approach: "Per change-bdac4f18."
 
 verification:
-  test_results: ""
-  closure_notes: ""
+  test_results: "Confirmed in source: _get_plain_font(24) present at body and instruction call sites in src/gtach/display/manager.py; instruction text 'TAP TO ACKNOWLEDGE AND CONTINUE' positioned at (240, 350), matching change-bdac4f18 iteration 4 pinned coordinates."
+  closure_notes: "Resolved by change-bdac4f18 (iteration 4). Verified against validation_criteria by source review 2026-08-19."
 
 traceability:
   related_issues:
@@ -111,6 +111,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue creation."
+  - version: "1.1"
+    date: "2026-08-19"
+    author: "William Watson"
+    changes:
+      - "Closed. Verified against source that change-bdac4f18 iteration 4 is implemented."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -127,6 +132,7 @@ metadata:
 | Version | Date       | Changes           |
 |---------|------------|--------------------|
 | 1.0     | 2026-08-14 | Initial creation   |
+| 1.1     | 2026-08-19 | Closed; verified against source |
 
 ---
 

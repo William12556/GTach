@@ -19,7 +19,7 @@ change_info:
   title: "Rewrite _draw_acknowledgement_mode() with a plain-font, verified-fit disclaimer"
   date: "2026-08-14"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "medium"
   iteration: 4
   coupled_docs:
@@ -192,11 +192,11 @@ implementation:
   deployment_notes: "Deploy via existing bin/deploy.sh; no config.yaml schema change."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-14"
+  implemented_by: "Claude Code"
+  verification_date: "2026-08-19"
+  verified_by: "William Watson"
+  test_results: "Source review confirms all validation_criteria met: _get_plain_font single definition, five call sites at size 24 within _draw_acknowledgement_mode(); mixed-case wording absent; 'TAP TO ACKNOWLEDGE AND CONTINUE' present exactly once at (240, 350)."
 
 traceability:
   related_issues:
@@ -247,6 +247,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Iteration 4: diagnosed the reported iteration-3 size mismatch as a cap-height/x-height optical effect, not a code defect, via font.metrics() measured on gtach.local. Fix: instruction text changed to ALL CAPS at the unchanged 24px size, position moved from y=400 to y=350 (chosen from a y=320-400 sweep) to keep margin in line with the rest of the design after the wider ALL CAPS string reduced it to 12.2px at the original position. technical_details.proposed_behavior and validation_criteria rewritten accordingly."
+  - version: "1.4"
+    date: "2026-08-19"
+    author: "William Watson"
+    changes:
+      - "Closed. Implementation confirmed against validation_criteria by source review."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -263,6 +268,7 @@ metadata:
 | Version | Date       | Changes           |
 |---------|------------|--------------------|
 | 1.0     | 2026-08-14 | Initial creation   |
+| 1.4     | 2026-08-19 | Closed; verified against source |
 
 ---
 

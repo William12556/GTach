@@ -19,7 +19,7 @@ issue_info:
   title: "DisplayMode.ACKNOWLEDGEMENT is fully built but no code path ever enters it"
   date: "2026-08-14"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -125,8 +125,8 @@ resolution:
   approach: "Per change-e22142da."
 
 verification:
-  test_results: ""
-  closure_notes: ""
+  test_results: "Confirmed in source: _enter_post_splash_mode() defined in src/gtach/display/manager.py with six call sites (start_splash x2, _draw_splash_mode x3, exit_setup_mode x1). Only remaining unconditional 'self.config.mode = self._post_splash_mode' assignments are the two inside _on_acknowledgement_dismissed(), the intended exit path."
+  closure_notes: "Resolved by change-e22142da. Verified against validation_criteria by source review 2026-08-19."
 
 traceability:
   related_issues:
@@ -138,6 +138,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue creation."
+  - version: "1.1"
+    date: "2026-08-19"
+    author: "William Watson"
+    changes:
+      - "Closed. Verified against source that change-e22142da is implemented."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -154,6 +159,7 @@ metadata:
 | Version | Date       | Changes           |
 |---------|------------|--------------------|
 | 1.0     | 2026-08-14 | Initial creation   |
+| 1.1     | 2026-08-19 | Closed; verified against source |
 
 ---
 
