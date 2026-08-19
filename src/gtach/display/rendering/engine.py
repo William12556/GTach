@@ -64,13 +64,18 @@ class DisplayRenderingEngine(RenderingEngineInterface):
     """
 
     # Rows of padding prepended to every frame written to the
-    # framebuffer, compensating a measured 8 px upward displacement of
-    # the composed frame relative to the panel's active area
-    # (issue-a4f27c91). This is a measured physical offset for this
-    # deployment target's panel and overlay, not a general constant for
-    # the HyperPixel 2.1 Round model; another unit or a changed display
-    # timing may need a different value or none at all.
-    VERTICAL_OFFSET_PX = 8
+    # framebuffer, compensating a measured vertical displacement of the
+    # composed frame relative to the panel's active area (issue-a4f27c91).
+    # Set to 8 in August 2026 and confirmed necessary at that time by a
+    # direct /dev/fb0 edge-ruler diagnostic, independent of GTach's own
+    # render path. Reset to 0 after re-measurement (same method, both
+    # direct-to-/dev/fb0 and through write_to_framebuffer) found the
+    # panel's active area already aligned with the buffer, with no
+    # software change to this deployment target having occurred in the
+    # interim — the underlying physical condition (panel/cable/driver)
+    # is not stable and may recur. Retained rather than removed so it
+    # can be re-activated without re-deriving the mechanism.
+    VERTICAL_OFFSET_PX = 0
 
 
     def __init__(self):
