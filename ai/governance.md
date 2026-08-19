@@ -1018,7 +1018,7 @@ pip install dist/*.whl
     - Strategic Domain: If context file absent, generates initial context file with project context
     - Strategic Domain: Generated context file requires human approval before proceeding
     - Context file name: Defined in implementation profile (ai/profiles/)
-    - Strategic Domain: After human approval of T04 prompt, presents AEL execution options; human selects preferred option:
+    - Strategic Domain: After human approval of T04 prompt, presents Tactical Domain execution options; human selects preferred option:
 
     - **Option A — Human executes (all profiles):**
       - Strategic Domain: Provides ready-to-execute AEL command in conversation
@@ -1211,6 +1211,7 @@ See [workflow.md](workflow.md).
 | 9.11    | 2026-07-08 | P01 §1.2.8 and P09 §1.10.2: replaced retired `budget.py` file-existence precondition with orchestrator.py's own tiered context-window resolver (config.yaml override → live omlx_model_status query → per-model config.yaml override → unknown); context-budget.md now written automatically at AEL startup; Strategic Domain gate is a direct omlx_model_status call rather than a file-existence check (change-d42e64a9, Stream B) |
 | 9.12    | 2026-07-17 | P06 §1.7.15 Validation Hooks made mandatory for claude_code/claude_omlx profiles; P00 §1.1.18 adds canonical skill source ai/skills/ and mandatory skill entry (ai/skills/validation/run-tests.md); P01 §1.2.6 corrected .claude/ git-tracking comment (was incorrectly marked wholly excluded) and expanded tree; P01 §1.2.8 adds mandatory skill provisioning step to both Claude Code profiles; P01 §1.2.2 .gitignore corrected .claude/settings.json → .claude/settings.local.json to match Claude Code's team-shared-settings convention |
 | 9.13    | 2026-08-19 | P09 §1.10.3 added Option C — Claude Code manual invocation (claude_code/claude_omlx profiles), documenting the human-issued task instruction cross-referenced to ai/profiles/claude-code.md §5.0 |
+| 9.14    | 2026-08-19 | P09 §1.10.3: corrected heading “presents AEL execution options” → “presents Tactical Domain execution options”, since Option C is not an AEL path (issue raised via GTach ai/task.md) |
 
 ---
 [Return to Table of Contents](<#table of contents>)

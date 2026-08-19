@@ -52,12 +52,18 @@ direct conversational access to the other.
   in `ai/state/ralph/`. Requires oMLX inference endpoint and `config.yaml`.
   Context file: `ai/context.md`.
 - **Claude Code** — alternative profile. Manual invocation; no automated loop.
-  Uses `CLAUDE.md` at project root as tactical context file. See `ai/profiles/claude.md`.
+  Uses `CLAUDE.md` at project root as tactical context file. See `ai/profiles/claude-code.md`.
 
-**ael-mcp** (Claude Desktop profile, optional) — standalone MCP server exposing
-`start_ael`, `ael_status`, and `reset_ael` tools to Claude Desktop. Allows the
-Strategic Domain to launch AEL and query outcome without human terminal relay.
-See P09 §1.10.3 Option B and P01 §1.2.8.
+**Tactical Domain execution options** (P09 §1.10.3) — after T04 prompt approval, human
+selects one of three options:
+
+- **Option A** — human executes AEL command directly (all profiles).
+- **Option B** — Strategic Domain launches AEL via `ael-mcp` (Claude Desktop profile
+  only). Standalone MCP server exposing `start_ael`, `ael_status`, and `reset_ael`.
+  Allows the Strategic Domain to launch AEL and query outcome without human terminal
+  relay. See P01 §1.2.8.
+- **Option C** — Claude Code manual invocation (`claude_code`/`claude_omlx` profiles).
+  Human issues the task instruction directly in Claude Code. See `ai/profiles/claude-code.md` §5.0.
 
 Implementation profiles are defined in `ai/profiles/`. The active profile
 determines the tactical context file name, skills directory, and AEL configuration.
@@ -74,7 +80,7 @@ determines the tactical context file name, skills directory, and AEL configurati
 | Inference    | oMLX → Devstral (local)             | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
 | Loop control | `orchestrator.py`                   | Human operator                | Human operator                      |
 | Context file | `ai/context.md`                     | `CLAUDE.md` (project root)    | `CLAUDE.md` (project root)          |
-| Profile      | `mlx_devstral_small_2_2512_6bit.md` | `claude.md`                   | `claude-omlx.md`                    |
+| Profile      | `mlx_devstral_small_2_2512_6bit.md` | `claude-code.md`              | `claude-omlx.md`                    |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -147,11 +153,13 @@ P01  Project Initialization  →  configure config.yaml
 P10  Requirements            →  human approval → baseline
 P02  Design (Tier 1–3)       →  human approval per tier → git tag baseline
 P09  T04 Prompt              →  query omlx_model_status → human approval
-     AEL  →  SHIP or BLOCKED
-            Option A: human runs terminal command (all profiles)
-            Option B: Strategic Domain calls start_ael / polls ael_status
-                      (Claude Desktop + ael-mcp only)
-     Claude Code  →  human-directed execution (no loop)
+     Human selects execution option:
+       Option A: human runs AEL terminal command (all profiles)
+       Option B: Strategic Domain calls start_ael / polls ael_status
+                 (Claude Desktop + ael-mcp only)
+       Option C: Claude Code manual invocation (claude_code/claude_omlx profiles)
+     Options A/B (AEL)  →  SHIP or BLOCKED
+     Option C (Claude Code)  →  human-directed execution (no loop)
        SHIP / complete  →  P08 code review → P06 test → progressive validation
        BLOCKED          →  P04 issue → P03 change → P09 new prompt
 P06  Tests pass              →  human acceptance
@@ -312,6 +320,7 @@ any document.
 | 0.10 | 2026-06-28 | Added §4.1 Audit Modes (strategic / tactical triggers); noted automatic audit-recipe selection; updated §5.0 P08 row; added T08 Audit to §8.0 template table |
 | 0.11 | 2026-07-02 | Rescoped §3.0 and §7.0 context-budget directives to AEL-targeted T04 prompts only (prompt_info.target_profile field; issue-713437bc) |
 | 0.12 | 2026-07-08 | §4.0/§5.0/§7.0: replaced retired `budget.py` file-existence gate with direct `omlx_model_status` (mcp_omlx) query before authoring AEL-targeted T04 prompts; `context-budget.md` now written automatically by the orchestrator at AEL runtime (change-d42e64a9) |
+| 0.13 | 2026-08-19 | Synced with governance v9.13: added Option C (Claude Code manual invocation) to §2.0 alongside Options A/B; corrected stale `ai/profiles/claude.md` → `ai/profiles/claude-code.md` reference in §2.0 and §2.1; flattened §4.0 workflow block to present Options A/B/C as one selection set, matching governance §1.10.3 structure |
 
 ---
 
