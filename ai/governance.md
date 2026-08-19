@@ -235,7 +235,7 @@ python ai/ael/src/orchestrator.py --mode loop \
     - Forked contexts: Validation skills execute in isolated sub-agent contexts
     - Lifecycle hooks: PreToolUse (schema validation), PostToolUse (compliance verification), Stop (cleanup)
     - Skills repository: Project-specific skills checked into git for team sharing (.claude/settings.json tracked; .claude/settings.local.json gitignored)
-    - Implementation: See ai/profiles/claude.md or ai/profiles/claude-omlx.md
+    - Implementation: See ai/profiles/claude-code.md or ai/profiles/claude-omlx.md
     - Mandatory skill:
       - ai/skills/validation/run-tests.md: PostToolUse pytest execution (P06 §1.7.15); required for claude_code and claude_omlx target profiles
     - Illustrative skill examples (not yet defined as canonical templates):
@@ -1212,6 +1212,7 @@ See [workflow.md](workflow.md).
 | 9.12    | 2026-07-17 | P06 §1.7.15 Validation Hooks made mandatory for claude_code/claude_omlx profiles; P00 §1.1.18 adds canonical skill source ai/skills/ and mandatory skill entry (ai/skills/validation/run-tests.md); P01 §1.2.6 corrected .claude/ git-tracking comment (was incorrectly marked wholly excluded) and expanded tree; P01 §1.2.8 adds mandatory skill provisioning step to both Claude Code profiles; P01 §1.2.2 .gitignore corrected .claude/settings.json → .claude/settings.local.json to match Claude Code's team-shared-settings convention |
 | 9.13    | 2026-08-19 | P09 §1.10.3 added Option C — Claude Code manual invocation (claude_code/claude_omlx profiles), documenting the human-issued task instruction cross-referenced to ai/profiles/claude-code.md §5.0 |
 | 9.14    | 2026-08-19 | P09 §1.10.3: corrected heading “presents AEL execution options” → “presents Tactical Domain execution options”, since Option C is not an AEL path (issue raised via GTach ai/task.md) |
+| 9.15    | 2026-08-19 | P06 §1.7.15: corrected stale reference ai/profiles/claude.md → ai/profiles/claude-code.md (claude.md was an obsolete duplicate, identified via GTach ai/profiles/ audit) |
 
 ---
 [Return to Table of Contents](<#table of contents>)
