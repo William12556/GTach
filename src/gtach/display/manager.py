@@ -1842,11 +1842,16 @@ class DisplayManager:
                 else:
                     pygame.draw.circle(surface, indicator_colour, (cx, 395), 6, 1)
 
+        # y raised from 445 to 435 when FONT_SMALL_TEXT grew from 18
+        # to 20 (change-ba672e81 follow-up): at 445 the glyph's lower
+        # edge sat close to the viewport boundary (y=478 at x=240,
+        # VIEWPORT_RADIUS=238), and the larger font narrowed that
+        # margin further.
         small_font = get_label_small_font()
         if small_font:
             self.rendering_engine.render_text(
                 RenderTarget.BACK_BUFFER, "Swipe up to return", small_font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 445), center=True
+                self._DISCONNECTED_TEXT_COLOUR, (240, 435), center=True
             )
 
     def _draw_confirm_view(self) -> None:

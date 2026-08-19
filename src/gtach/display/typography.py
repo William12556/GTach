@@ -84,8 +84,10 @@ class TypographyConstants:
     # The single small-text tier: hints, labels, status messages and
     # metadata across every screen. Replaces FONT_LABEL_SMALL (16) and
     # FONT_MINIMAL (14), which were used interchangeably with no rule
-    # distinguishing them (change-ba672e81).
-    FONT_SMALL_TEXT = 18
+    # distinguishing them (change-ba672e81). Raised from 18 to 20 after
+    # on-device testing showed 18 too close to the prior 16px baseline
+    # to read as a change.
+    FONT_SMALL_TEXT = 20
 
     # Additional constants for SetupDisplayManager
     FONT_BODY = 24           # Body text and descriptions
