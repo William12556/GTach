@@ -1826,19 +1826,21 @@ class DisplayManager:
                 continue
             self._draw_button(_btn, _label, (80, 80, 100), button_font)
 
-        # The page indicator. Read the palette once, as
-        # _draw_radial_mode does, so a toggle mid-frame cannot draw one
-        # dot in each palette. The active page is filled; the others
-        # are outlined.
+        # The page indicator. Drawn black rather than from the
+        # palette: palette.tick is near-white (day) and read poorly
+        # against the pale dusty-yellow options background, which
+        # palette.tick was never chosen against. Radius raised from 4
+        # to 6 (50%) for the same legibility reason. The active page
+        # is filled; the others are outlined.
         surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
         if surface is not None:
-            palette = self._palette
+            indicator_colour = (0, 0, 0)
             for i in range(self.OPTIONS_PAGE_COUNT):
                 cx = 230 + i * 20
                 if i == self._options_page:
-                    pygame.draw.circle(surface, palette.tick, (cx, 395), 4)
+                    pygame.draw.circle(surface, indicator_colour, (cx, 395), 6)
                 else:
-                    pygame.draw.circle(surface, palette.tick, (cx, 395), 4, 1)
+                    pygame.draw.circle(surface, indicator_colour, (cx, 395), 6, 1)
 
         small_font = get_label_small_font()
         if small_font:
