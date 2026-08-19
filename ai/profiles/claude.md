@@ -83,8 +83,8 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 2. Open Claude Code in the project root.
 3. Issue the following instruction, substituting the actual T04 file path:
 
-```
-implement ai/workspace/prompt/prompt-<uuid>-<n>.md
+```text
+Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc when finished. Leave the issue and change T-Docs active pending test results. Then, once you are finished, write a report of what you have done in ai/workspace/report/report-<uuid>-<name>.md.
 ```
 
 4. Claude Code reads the T04 prompt from disk and implements the task.
