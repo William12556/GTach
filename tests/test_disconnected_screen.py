@@ -36,6 +36,26 @@ from gtach.display.manager import DisplayManager
 from gtach.display.models import DAY_PALETTE
 
 
+@pytest.fixture(autouse=True)
+def stub_fonts(monkeypatch):
+    """Stub the font accessors the renders call.
+
+    The renders obtain fonts from FontManager directly since
+    change-ba672e81 removed DisplayManager._get_cached_font(), so the
+    stub lives on the module rather than on the host object.
+    """
+    import gtach.display.manager as manager_module
+
+    monkeypatch.setattr(
+        manager_module, 'get_font_manager',
+        lambda: types.SimpleNamespace(get_font=lambda size: f'font-{size}')
+    )
+    monkeypatch.setattr(manager_module, 'get_title_display_font',
+                        lambda: 'font-36')
+    monkeypatch.setattr(manager_module, 'get_label_small_font',
+                        lambda: 'font-18')
+
+
 def _code_only(func):
     """Source of func with the docstring and comments removed.
 
@@ -88,7 +108,6 @@ class _Recorder:
         host._retry_interval_callback = None
         host._disconnected_btn_setup = None
         host._disconnected_btn_reset = None
-        host._get_cached_font = lambda size: f'font-{size}'
         host._draw_status_indicator = lambda: None
         host._draw_button = lambda rect, label, fill, font: \
             self.buttons.append((rect, label))

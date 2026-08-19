@@ -78,14 +78,18 @@ class TypographyConstants:
     # Specific named constants for DisplayManager
     FONT_RPM_LARGE = 180     # Digital mode main RPM display
     FONT_RPM_MEDIUM = 28     # Gauge mode center readout
-    FONT_LABEL_SMALL = 16    # Labels and small text
     FONT_TITLE = 36          # Settings title
     FONT_HEADING = 28        # Settings section headers
-    
+
+    # The single small-text tier: hints, labels, status messages and
+    # metadata across every screen. Replaces FONT_LABEL_SMALL (16) and
+    # FONT_MINIMAL (14), which were used interchangeably with no rule
+    # distinguishing them (change-ba672e81).
+    FONT_SMALL_TEXT = 18
+
     # Additional constants for SetupDisplayManager
     FONT_BODY = 24           # Body text and descriptions
     FONT_BUTTON = 24         # Button text
-    FONT_MINIMAL = 14        # Very small text for compact layouts
     
     # Display constraints
     DISPLAY_WIDTH = 480
@@ -146,6 +150,7 @@ class FontManager:
     def __init__(self):
         self.logger = logging.getLogger('FontManager')
         self._font_cache: Dict[int, pygame.font.Font] = {}
+        self._plain_font_cache: Dict[int, pygame.font.Font] = {}
         self._cache_lock = threading.RLock()
         self._initialized = False
 
@@ -180,55 +185,134 @@ class FontManager:
             self.logger.error(f"Font system initialization failed: {e}")
             self._initialized = False
     
-    def get_font(self, size: int) -> Optional[pygame.font.Font]:
+    def get_font(self, size: int) -> pygame.font.Font:
         """
         Get a cached font object for the specified size.
-        
+
+        This is the sole font-creation path in the application. It never
+        returns None: callers therefore need no fallback branch of their
+        own (change-ba672e81). A missing or unloadable custom font file
+        falls back to the SDL default font here, inside FontManager,
+        which is FontManager's own responsibility rather than a caller
+        bypassing it.
+
         Args:
-            size: Font size in pixels
-            
+            size: Font size in pixels, clamped to
+                MIN_FONT_SIZE..MAX_FONT_SIZE
+
         Returns:
-            pygame.font.Font object or None if unavailable
+            A valid pygame.font.Font object
+
+        Raises:
+            RuntimeError: If the pygame font system is unavailable or a
+                font cannot be created even from the SDL default. Both
+                are unrecoverable environment failures, not conditions a
+                caller can paper over.
         """
-        if not PYGAME_AVAILABLE or not self._initialized:
-            self.logger.warning("Font system not available")
-            return None
-        
+        if not PYGAME_AVAILABLE:
+            self.logger.error("Font requested but pygame is not available")
+            raise RuntimeError("Font system unavailable: pygame is not installed")
+
+        if not self._initialized:
+            # One re-initialisation attempt: pygame.font may have been
+            # initialised by another component since construction.
+            self._initialize_pygame_fonts()
+            if not self._initialized:
+                self.logger.error("Font requested but font system failed to initialize")
+                raise RuntimeError("Font system unavailable: pygame.font failed to initialize")
+
         # Validate font size
         validated_size = self._validate_font_size(size)
         if validated_size != size:
             self.logger.debug(f"Font size adjusted from {size} to {validated_size}")
-        
+
         with self._cache_lock:
             if validated_size not in self._font_cache:
-                try:
-                    if self._michroma_path:
-                        try:
-                            font = pygame.font.Font(self._michroma_path, validated_size)
-                        except Exception:
-                            font = pygame.font.Font(None, validated_size)
-                    else:
+                font = None
+                if self._michroma_path:
+                    try:
+                        font = pygame.font.Font(self._michroma_path, validated_size)
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Michroma font load failed at size {validated_size}, "
+                            f"using system default: {e}", exc_info=True
+                        )
+
+                if font is None:
+                    try:
                         font = pygame.font.Font(None, validated_size)
-                    if TypographyConstants.FONT_BOLD:
-                        font.set_bold(True)
-                    self._font_cache[validated_size] = font
-                    self.logger.debug(f"Created and cached font size {validated_size}")
-                except Exception as e:
-                    self.logger.error(f"Failed to create font size {validated_size}: {e}")
-                    return None
+                    except Exception as e:
+                        self.logger.error(
+                            f"Failed to create font size {validated_size}: {e}",
+                            exc_info=True
+                        )
+                        raise RuntimeError(
+                            f"Font creation failed for size {validated_size}"
+                        ) from e
+
+                if TypographyConstants.FONT_BOLD:
+                    font.set_bold(True)
+                self._font_cache[validated_size] = font
+                self.logger.debug(f"Created and cached font size {validated_size}")
 
             return self._font_cache[validated_size]
-    
-    def get_font_for_category(self, category: FontCategory, scale: float = 1.0) -> Optional[pygame.font.Font]:
+
+    def get_plain_font(self, size: int) -> pygame.font.Font:
+        """
+        Get a cached plain (SDL default) font for the given size.
+
+        Deliberately does not use Michroma, which is too wide for
+        multi-word body text on the 480px circular panel
+        (change-bdac4f18). Kept inside FontManager so that font creation
+        has one owner (change-ba672e81).
+
+        Args:
+            size: Font size in pixels, clamped as for get_font()
+
+        Returns:
+            A valid pygame.font.Font object using the SDL default face
+
+        Raises:
+            RuntimeError: If the font system is unavailable or the font
+                cannot be created
+        """
+        if not PYGAME_AVAILABLE:
+            self.logger.error("Plain font requested but pygame is not available")
+            raise RuntimeError("Font system unavailable: pygame is not installed")
+
+        validated_size = self._validate_font_size(size)
+
+        with self._cache_lock:
+            if validated_size not in self._plain_font_cache:
+                try:
+                    font = pygame.font.Font(None, validated_size)
+                except Exception as e:
+                    self.logger.error(
+                        f"Plain font creation failed for size {validated_size}: {e}",
+                        exc_info=True
+                    )
+                    raise RuntimeError(
+                        f"Plain font creation failed for size {validated_size}"
+                    ) from e
+
+                self._plain_font_cache[validated_size] = font
+                self.logger.debug(f"Created and cached plain font size {validated_size}")
+
+            return self._plain_font_cache[validated_size]
+
+    def get_font_for_category(self, category: FontCategory, scale: float = 1.0) -> pygame.font.Font:
         """
         Get a font for a specific category with optional scaling.
-        
+
         Args:
             category: Font category (TITLE, MEDIUM, SMALL, MINIMAL)
             scale: Scale factor (default 1.0)
-            
+
         Returns:
-            pygame.font.Font object or None if unavailable
+            A valid pygame.font.Font object
+
+        Raises:
+            RuntimeError: If the font system is unavailable (see get_font)
         """
         base_sizes = {
             FontCategory.TITLE: TypographyConstants.TITLE_SIZE,
@@ -272,19 +356,16 @@ class FontManager:
         Returns:
             Tuple of (width, height) in pixels
         """
-        font = self.get_font(font_size)
-        if not font:
-            # Fallback estimation based on typical font metrics
-            char_width = font_size * 0.6  # Rough approximation
-            return (int(len(text) * char_width), font_size)
-        
         try:
+            font = self.get_font(font_size)
             text_surface = font.render(text, True, (255, 255, 255))
             return text_surface.get_size()
         except Exception as e:
-            self.logger.error(f"Error calculating text bounds: {e}")
-            # Fallback estimation
-            char_width = font_size * 0.6
+            # Measurement is advisory (layout planning), so an
+            # unavailable font system degrades to an estimate here
+            # rather than propagating.
+            self.logger.error(f"Error calculating text bounds: {e}", exc_info=True)
+            char_width = font_size * 0.6  # Rough approximation
             return (int(len(text) * char_width), font_size)
     
     def validate_text_fits_circular_display(self, text: str, font_size: int, 
@@ -321,9 +402,10 @@ class FontManager:
         return fits
     
     def clear_cache(self) -> None:
-        """Clear the font cache to free memory."""
+        """Clear the font caches to free memory."""
         with self._cache_lock:
             self._font_cache.clear()
+            self._plain_font_cache.clear()
             self.logger.debug("Font cache cleared")
     
     def get_cache_info(self) -> Dict[str, int]:
@@ -628,15 +710,19 @@ def get_font_manager() -> FontManager:
     return _font_manager
 
 
-def get_font(size: int) -> Optional[pygame.font.Font]:
+def get_font(size: int) -> pygame.font.Font:
     """
     Convenience function to get a font of specified size.
-    
+
     Args:
         size: Font size in pixels
-        
+
     Returns:
-        pygame.font.Font object or None if unavailable
+        A valid pygame.font.Font object
+
+    Raises:
+        RuntimeError: If the font system is unavailable (see
+            FontManager.get_font)
     """
     return get_font_manager().get_font(size)
 
@@ -656,11 +742,6 @@ def get_small_font(scale: float = 1.0) -> Optional[pygame.font.Font]:
     return get_font_manager().get_font_for_category(FontCategory.SMALL, scale)
 
 
-def get_minimal_font(scale: float = 1.0) -> Optional[pygame.font.Font]:
-    """Get font for minimal/status elements."""
-    return get_font_manager().get_font_for_category(FontCategory.MINIMAL, scale)
-
-
 def get_rpm_large_font() -> Optional[pygame.font.Font]:
     """Get font for large RPM display (digital mode). Bold for readability."""
     font = get_font_manager().get_font(TypographyConstants.FONT_RPM_LARGE)
@@ -674,9 +755,14 @@ def get_rpm_medium_font() -> Optional[pygame.font.Font]:
     return get_font_manager().get_font(TypographyConstants.FONT_RPM_MEDIUM)
 
 
-def get_label_small_font() -> Optional[pygame.font.Font]:
-    """Get font for small labels and text."""
-    return get_font_manager().get_font(TypographyConstants.FONT_LABEL_SMALL)
+def get_label_small_font() -> pygame.font.Font:
+    """Get the single small-text font (FONT_SMALL_TEXT).
+
+    Covers hints, labels, status messages and metadata on every screen.
+    Consolidates the former get_label_small_font() (16px) and
+    get_minimal_font() (14px) accessors (change-ba672e81).
+    """
+    return get_font_manager().get_font(TypographyConstants.FONT_SMALL_TEXT)
 
 
 def get_title_display_font() -> Optional[pygame.font.Font]:
@@ -697,11 +783,6 @@ def get_body_font() -> Optional[pygame.font.Font]:
 def get_button_font() -> Optional[pygame.font.Font]:
     """Get font for button text."""
     return get_font_manager().get_font(TypographyConstants.FONT_BUTTON)
-
-
-def get_minimal_font() -> Optional[pygame.font.Font]:
-    """Get font for minimal/compact text elements."""
-    return get_font_manager().get_font(TypographyConstants.FONT_MINIMAL)
 
 
 def validate_font_system() -> Dict[str, bool]:

@@ -350,6 +350,25 @@ class TestLastFailureCause:
 class TestDisconnectedStatusLine:
     """The cause reaches the screen without moving the buttons."""
 
+    @pytest.fixture(autouse=True)
+    def _stub_fonts(self, monkeypatch):
+        """Stub the font accessors _render_disconnected calls.
+
+        The render obtains fonts from FontManager directly since
+        change-ba672e81 removed DisplayManager._get_cached_font(), so
+        the stub lives on the module rather than on the host object.
+        """
+        import gtach.display.manager as manager_module
+
+        monkeypatch.setattr(
+            manager_module, 'get_font_manager',
+            lambda: types.SimpleNamespace(get_font=lambda size: f'font-{size}')
+        )
+        monkeypatch.setattr(manager_module, 'get_title_display_font',
+                            lambda: 'font-36')
+        monkeypatch.setattr(manager_module, 'get_label_small_font',
+                            lambda: 'font-18')
+
     def _manager(self, cause_callback):
         """A DisplayManager stand-in exposing only what the render uses."""
         from gtach.display.manager import DisplayManager
@@ -364,7 +383,6 @@ class TestDisconnectedStatusLine:
         host._DISCONNECTED_TEXT_COLOUR = DisplayManager._DISCONNECTED_TEXT_COLOUR
         host._draw_status_indicator = lambda: None
         host._draw_reconnect_spinner = lambda: None
-        host._get_cached_font = lambda size: f'font-{size}'
         host.rendering_engine = types.SimpleNamespace(
             clear_surface=lambda *a, **k: None,
             render_text=lambda target, text, font, colour, pos, center=False:

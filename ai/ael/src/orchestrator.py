@@ -119,23 +119,150 @@ def _validate_write_scope(tool_name: str, arguments: dict, project_root: str) ->
     if tool_name not in _WRITE_TOOLS:
         return None
 
-    # Extract path from common argument names
-    target_path = arguments.get("path") or arguments.get("file_path") or arguments.get("destination")
-    if not target_path:
+    # change-d1f4a83b (N2): every path argument a write tool carries is checked,
+    # not merely the first one present. The prior `path or file_path or
+    # destination` chain stopped at the first match, so a move or rename that
+    # supplied its source as `path` was validated on the source alone and its
+    # destination was never examined — a call relocating a file out of the
+    # project root passed the gate. Each path a call touches is a distinct
+    # containment obligation, so each is tested.
+    targets = [
+        arguments.get(key) for key in ("path", "file_path", "destination", "new_path")
+    ]
+    targets = [t for t in targets if isinstance(t, str) and t]
+    if not targets:
         return None  # Let MCP validate missing required args
 
     # Resolve to absolute and check containment
-    try:
-        resolved = os.path.abspath(target_path)
-        if not resolved.startswith(project_root + os.sep) and resolved != project_root:
-            return (
-                f"Scope violation: path '{target_path}' is outside the project root "
-                f"'{project_root}'. All writes must target paths within the project."
-            )
-    except Exception:
-        pass  # Let MCP handle malformed paths
+    for target_path in targets:
+        try:
+            resolved = os.path.abspath(target_path)
+            if not resolved.startswith(project_root + os.sep) and resolved != project_root:
+                return (
+                    f"Scope violation: path '{target_path}' is outside the project root "
+                    f"'{project_root}'. All writes must target paths within the project."
+                )
+        except Exception:
+            continue  # Let MCP handle malformed paths
 
     return None
+
+
+def _synthesize_work_summary(
+    state_dir: str,
+    written_paths: set[str],
+    reason: str,
+    log: logging.Logger,
+) -> bool:
+    """
+    change-a2f9c4d1: reconstruct work-summary.txt from observed write operations
+    when a worker phase terminated without producing one.
+
+    ralph-work.yaml PROCEDURE step 6 instructs the worker to write this file, but
+    only the final-response exit (F13) persists it as a fallback. A phase that
+    exits on the wall-clock cap, the work-complete signal, or iteration
+    exhaustion leaves deliverables on disk with no manifest — and since
+    _extract_deliverables reads this file, the read-evidence, syntax and pytest
+    gates then pass vacuously.
+
+    Synthesis is deliberately conservative:
+      - never overwrites an existing work-summary.txt
+      - writes nothing when no successful write landed outside state_dir, so a
+        phase that genuinely produced nothing still presents no manifest
+      - labels itself plainly, so the reviewer does not mistake it for the
+        worker's own account of its reasoning
+
+    Returns True if a summary was written.
+    """
+    summary_path = os.path.join(state_dir, "work-summary.txt")
+    if os.path.exists(summary_path):
+        return False
+    if not written_paths:
+        log.debug("work-summary synthesis: no observed writes — skipping")
+        return False
+
+    state_dir_abs = os.path.abspath(state_dir)
+    deliverables = sorted(
+        p for p in written_paths
+        if not p.startswith(state_dir_abs + os.sep) and os.path.isfile(p)
+    )
+    if not deliverables:
+        log.debug("work-summary synthesis: no deliverables outside state_dir — skipping")
+        return False
+
+    body = (
+        "ORCHESTRATOR-GENERATED SUMMARY\n\n"
+        f"The worker phase ended ({reason}) without writing work-summary.txt.\n"
+        "This manifest was reconstructed from write operations observed during\n"
+        "the phase. It records what was written, not why.\n\n"
+        "Files written:\n"
+        + "".join(f"  {p}\n" for p in deliverables)
+    )
+    write_state(state_dir, "work-summary.txt", body)
+    log.warning(
+        "work-summary synthesized from %d observed write(s) (%s)",
+        len(deliverables), reason,
+    )
+    return True
+
+
+def _append_observed_manifest(
+    state_dir: str,
+    written_paths: set[str],
+    content: str,
+    log: logging.Logger,
+) -> bool:
+    """
+    change-d1f4a83b (N1): append an observed-write manifest to work-summary.txt
+    when the worker's own final response names none of the files it wrote.
+
+    F13 persists the worker's final message verbatim as work-summary.txt on the
+    normal-completion path, on the assumption that a worker which finishes
+    deliberately has written the manifest ralph-work.yaml PROCEDURE step 6 asks
+    for. That assumption does not hold: a final message may be a single
+    narrating sentence. _extract_deliverables then returns the empty set and the
+    syntax, pytest and read-evidence gates all no-op — the vacuous-pass
+    condition change-a2f9c4d1 set out to close, reached by the one exit that
+    change did not touch. Live-confirmed, run 8c2040d3 cycle 1.
+
+    The worker's own account is never overwritten, only extended, and only when
+    it names none of the observed deliverables. A worker that did write a proper
+    manifest is left untouched.
+
+    Returns True if a manifest section was appended.
+    """
+    state_dir_abs = os.path.abspath(state_dir)
+    deliverables = sorted(
+        p for p in written_paths
+        if not p.startswith(state_dir_abs + os.sep) and os.path.isfile(p)
+    )
+    if not deliverables:
+        return False
+    if any(os.path.basename(p) in content for p in deliverables):
+        log.debug("work-summary: final response already names a deliverable — no append")
+        return False
+
+    summary_path = os.path.join(state_dir, "work-summary.txt")
+    try:
+        with open(summary_path, "a") as fh:
+            fh.write(
+                "\n\nORCHESTRATOR-APPENDED MANIFEST\n\n"
+                "The worker's final response named none of the files it wrote\n"
+                "during this phase. This list was recorded from observed write\n"
+                "operations so that the review gates adjudicate this cycle's\n"
+                "actual output. It records what was written, not why.\n\n"
+                "Files written:\n"
+                + "".join(f"  {p}\n" for p in deliverables)
+            )
+    except OSError as exc:
+        log.warning("work-summary manifest append failed: %s", exc)
+        return False
+
+    log.warning(
+        "work-summary manifest appended from %d observed write(s) "
+        "(worker final response named none)", len(deliverables),
+    )
+    return True
 
 
 def _validate_audit_report_write(tool_name: str, arguments: dict, state_dir: str) -> str | None:
@@ -179,36 +306,94 @@ def _is_mcp_error(result: str) -> bool:
     return any(result.startswith(p) for p in _MCP_ERROR_PREFIXES)
 
 
+def _is_verdict_line(line: str) -> str | None:
+    """
+    Return 'SHIP' or 'REVISE' if a line consists solely of that verdict token,
+    otherwise None.
+
+    A line qualifies when stripping every non-alphabetic character leaves
+    exactly the token. This admits the decorations models actually emit —
+    '**SHIP**', 'SHIP.', '### REVISE', '- REVISE:' — while rejecting any line
+    that also carries prose, so a verdict word occurring inside a sentence is
+    never mistaken for a declaration.
+    """
+    token = re.sub(r"[^A-Za-z]", "", line).upper()
+    return token if token in ("SHIP", "REVISE") else None
+
+
 def _normalize_verdict(text: str) -> str:
     """
     Normalize a review verdict string to SHIP or REVISE.
 
-    Handles various formats:
-      - 'SHIP', 'ship', 'SHIP.', '**SHIP**', 'SHIP!' -> 'SHIP'
-      - 'REVISE', 'revise', 'REVISE:', '**REVISE**' -> 'REVISE'
-      - 'SHIP: The code looks good...' -> 'SHIP' (leading token)
+    change-3b9e6d72: two passes, applied in order:
 
-    Returns 'SHIP' if the leading token (uppercased, non-alphanumerics stripped)
-    matches 'SHIP', otherwise returns 'REVISE'.
+      1. Isolated-line scan. Any line that is nothing but a verdict token is a
+         verdict declaration; the LAST such line wins. This is the pass that
+         matters in practice — a reviewer which explains its reasoning before
+         concluding places its verdict at the end, and under the previous
+         leading-token-only rule such a review could never ship.
+      2. Leading-token fallback. Preserves the original contract for the
+         'SHIP: the code looks good...' single-line form, where the verdict
+         opens the message and prose follows on the same line.
+
+    Handles decorated forms in both passes: 'SHIP', 'ship', 'SHIP.',
+    '**SHIP**', 'SHIP!' -> 'SHIP'.
+
+    Returns 'REVISE' unless a pass positively identifies SHIP — an
+    unparseable verdict must never ship.
     """
     if not text:
         return "REVISE"
 
-    # Extract first token: split on whitespace, take first word
+    # Pass 1: isolated verdict token on its own line; last occurrence wins.
+    trailing: str | None = None
+    for line in text.splitlines():
+        found = _is_verdict_line(line)
+        if found:
+            trailing = found
+    if trailing:
+        return trailing
+
+    # Pass 2: leading token of the message.
     tokens = text.strip().split()
     if not tokens:
         return "REVISE"
 
-    leading = tokens[0]
-
-    # Normalize: uppercase, strip non-alphanumerics
-    normalized = re.sub(r'[^A-Za-z]', '', leading).upper()
+    # Normalize: uppercase, strip non-alphabetics
+    normalized = re.sub(r'[^A-Za-z]', '', tokens[0]).upper()
 
     # SHIP set: exact match only
     if normalized == "SHIP":
         return "SHIP"
 
     return "REVISE"
+
+
+def _strip_verdict(text: str) -> str:
+    """
+    Return the reviewer's message with its verdict declaration removed, for use
+    as REVISE feedback body.
+
+    Removes every isolated verdict line (the form _normalize_verdict pass 1
+    reads). If none is present, falls back to dropping the leading token, which
+    is the form pass 2 reads.
+    """
+    lines = text.splitlines()
+    kept = [ln for ln in lines if not _is_verdict_line(ln)]
+    if len(kept) != len(lines):
+        return "\n".join(kept).strip()
+
+    tokens = text.strip().split(None, 1)
+    if not tokens:
+        return ""
+    # change-d1f4a83b (N3): drop the leading token only when it is itself a
+    # verdict. A reviewer message carrying no verdict anywhere still reaches
+    # this path, because _normalize_verdict defaults to REVISE; dropping its
+    # first word then removes an ordinary word of prose from the feedback the
+    # next worker reads.
+    if _is_verdict_line(tokens[0]) is None:
+        return text.strip()
+    return tokens[1].strip() if len(tokens) > 1 else ""
 
 
 # State files cleared by reset (logs and context report excluded)
@@ -444,11 +629,17 @@ def reset_state(state_dir: str) -> int:
     """
     Remove all Ralph Loop state files from state_dir.
     Log files (ael_*.LOG) and context-budget.md are preserved.
-    Returns 0 on success, 1 if state_dir does not exist.
+    Returns 0 in all cases; reset is idempotent.
+
+    change-f5c28a04 (2.3): an absent state directory previously returned 1.
+    Reset is idempotent by intent — resetting nothing is the requested outcome
+    already obtaining, not a failure. The non-zero code surfaced through
+    ael-mcp's reset_ael as a spurious error on any project that had not yet run.
     """
     if not os.path.isdir(state_dir):
-        console.print(f"[yellow][ael] reset: state directory not found: {state_dir}[/yellow]")
-        return 1
+        console.print(f"[yellow][ael] reset: state directory not present: {state_dir}[/yellow]")
+        console.print("[green][ael] reset: nothing to clear[/green]")
+        return 0
     removed = []
     for name in _RESET_FILES:
         path = os.path.join(state_dir, name)
@@ -727,6 +918,48 @@ def clear_state(state_dir: str, *filenames: str) -> None:
             os.remove(path)
 
 
+def archive_prior_logs(state_dir: str, archive_dir: str | None) -> int:
+    """
+    change-f5c28a04 (3.1): copy run logs out of state_dir before a new run.
+
+    Run logs are written into state_dir, which is transient by design: it is
+    gitignored downstream, cleared by the smoke harness, and re-propagated over.
+    Logs cited as evidence in one session were therefore no longer present in
+    the next. The .gitignore '*.log' pattern additionally matches 'ael_*.LOG' on
+    a case-insensitive filesystem, so nothing recovers them from version
+    control either.
+
+    Opt-in: when archive_dir is null (the default) this is a no-op and behaviour
+    is unchanged, so downstream projects are unaffected until they configure it.
+    Existing archived files are never overwritten — the timestamped filenames
+    are already unique, and a collision would indicate a name reused rather than
+    a log superseded.
+
+    Returns the number of files copied.
+    """
+    if not archive_dir or not os.path.isdir(state_dir):
+        return 0
+
+    os.makedirs(archive_dir, exist_ok=True)
+    copied = 0
+    for name in sorted(os.listdir(state_dir)):
+        if not name.lower().endswith(".log"):
+            continue
+        src = os.path.join(state_dir, name)
+        dst = os.path.join(archive_dir, name)
+        if not os.path.isfile(src) or os.path.exists(dst):
+            continue
+        try:
+            shutil.copy2(src, dst)
+            copied += 1
+        except Exception as exc:
+            console.print(f"[yellow][ael] log archive: could not copy {escape(name)}: {escape(str(exc))}[/yellow]")
+
+    if copied:
+        console.print(f"[dim][ael] log archive: {copied} prior log(s) -> {escape(archive_dir)}[/dim]")
+    return copied
+
+
 def setup_logging(state_dir: str) -> logging.Logger:
     os.makedirs(state_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -926,6 +1159,11 @@ async def run_phase(
 
     mcp_error_count = 0
     _read_counts: dict[str, int] = {}  # P3: duplicate read tracking
+    _written_paths: set[str] = set()  # change-a2f9c4d1: successful write targets
+    # change-f5c28a04 (F1): whether THIS phase produced work-summary.txt, by the
+    # worker's own hand. Tracked explicitly because file existence cannot
+    # distinguish a manifest written this cycle from one left by a prior cycle.
+    _manifest_written: bool = False
     _failed_call_sigs: dict[str, int] = {}  # F27: repeated identical failed call tracking
 
     label = f"{phase_label} " if phase_label else ""
@@ -949,6 +1187,9 @@ async def run_phase(
         if phase_duration_seconds is not None and (time.monotonic() - _phase_start) > phase_duration_seconds:
             console.print(f"\n[yellow][ael] phase wall-clock cap ({phase_duration_seconds/60:.0f} min) reached[/yellow]")
             log.warning("phase wall-clock cap (%.0fs) reached at iteration %d", phase_duration_seconds, iteration)
+            # change-a2f9c4d1: persist a deliverable manifest before returning
+            if is_worker_phase:
+                _synthesize_work_summary(state_dir, _written_paths, "wall-clock cap reached", log)
             return 0, "", set(_read_counts.keys()) if not is_worker_phase else set()
 
         # Context budget check before API call
@@ -1068,6 +1309,11 @@ async def run_phase(
             # F13: only worker phase writes work-summary.txt; review phase preserves it
             if is_worker_phase:
                 write_state(state_dir, "work-summary.txt", content)
+                _manifest_written = True
+                # change-d1f4a83b (N1): a final response is not necessarily a
+                # manifest. Append the observed deliverables when it names none,
+                # so the gates receive this cycle's actual output.
+                _append_observed_manifest(state_dir, _written_paths, content, log)
             # Return normalized read paths for review phase (empty for worker)
             _read_paths = {os.path.abspath(p) for p in _read_counts.keys()} if not is_worker_phase else set()
             return 0, content, _read_paths
@@ -1109,6 +1355,36 @@ async def run_phase(
                     if _read_counts[_path] > 1:
                         log.warning("duplicate read (count=%d): %s",
                                     _read_counts[_path], _path)
+
+            # change-a2f9c4d1: record successful write targets for work-summary
+            # synthesis. Only calls that raised no scope error, no audit-report
+            # error and no MCP error are treated as writes that actually landed.
+            if (tc["name"] in _WRITE_TOOLS
+                    and not _scope_err and not _report_err
+                    and not _is_mcp_error(result)):
+                # change-f5c28a04 (F3): for move/rename the deliverable ends up
+                # at the destination, so that is what the manifest must record.
+                # The source-first ordering below was inherited from
+                # _validate_write_scope, where the source is the correct subject
+                # for scope enforcement but the wrong one for manifest
+                # construction: a file created by move_file was recorded at its
+                # pre-move path, failed the isfile filter at synthesis, and was
+                # dropped from the manifest entirely.
+                if tc["name"] in ("move", "rename", "move_file", "rename_file"):
+                    _wpath = (tc["arguments"].get("destination")
+                              or tc["arguments"].get("new_path")
+                              or tc["arguments"].get("path")
+                              or tc["arguments"].get("file_path"))
+                else:
+                    _wpath = (tc["arguments"].get("path")
+                              or tc["arguments"].get("file_path")
+                              or tc["arguments"].get("destination"))
+                if _wpath:
+                    _wabs = os.path.abspath(_wpath)
+                    _written_paths.add(_wabs)
+                    # F1: record that the worker supplied its own manifest.
+                    if _wabs == os.path.abspath(os.path.join(state_dir, "work-summary.txt")):
+                        _manifest_written = True
 
             # F27: repeated identical failed call tracking. Diagnostic calls
             # (stat/grep/read) commonly intervene between retries, defeating a
@@ -1263,12 +1539,34 @@ async def run_phase(
             log.info("work-complete.txt detected — phase complete")
             console.print()
             console.print("[green][ael] work-complete detected[/green]")
+            # change-a2f9c4d1: persist a deliverable manifest before returning
+            if is_worker_phase:
+                _synthesize_work_summary(state_dir, _written_paths, "work-complete signal", log)
             _read_paths = {os.path.abspath(p) for p in _read_counts.keys()} if not is_worker_phase else set()
             return 0, "", _read_paths
 
     console.print(f"\n[red][ael] max iterations ({max_iterations}) reached[/red]")
     log.warning("max iterations %d reached", max_iterations)
     _read_paths = {os.path.abspath(p) for p in _read_counts.keys()} if not is_worker_phase else set()
+    # change-a2f9c4d1: iteration exhaustion is a budget boundary, not a failure.
+    # Synthesise a manifest and let the reviewer adjudicate when the phase
+    # produced deliverables; retain rc=1 only when it produced nothing.
+    #
+    # change-f5c28a04 (F1): the decision is made on THIS phase's own outcome —
+    # whether synthesis wrote a manifest now, or the worker wrote one during
+    # this phase — not on whether work-summary.txt exists on disk. The former
+    # test cannot distinguish a manifest produced this cycle from one left
+    # behind by a prior cycle, so a worker that wrote nothing in cycle 2+ still
+    # returned rc=0 and presented the previous cycle's deliverables to the
+    # gates.
+    if is_worker_phase:
+        _synthesized = _synthesize_work_summary(
+            state_dir, _written_paths, "iteration budget exhausted", log
+        )
+        if _synthesized or _manifest_written:
+            log.info("exhausted phase has a deliverable manifest — proceeding to review")
+            return 0, "", _read_paths
+        log.warning("exhausted phase produced no deliverable manifest — rc=1")
     return 1, "", _read_paths
 
 
@@ -1458,6 +1756,111 @@ def _run_syntax_gate(state_dir: str, log: logging.Logger) -> str:
     return gate_block
 
 
+def _run_pytest_gate(state_dir: str, log: logging.Logger, project_root: str) -> str:
+    """
+    F6b: Run pytest on deliverable-derived test targets and return a summary for the reviewer.
+
+    Extracts deliverables from work-summary.txt via _extract_deliverables, maps them to
+    test targets (tests/ paths direct; src/<component>/ -> tests/<component>/ if exists),
+    runs pytest, and returns a [TEST GATE] block to inject into the reviewer task.
+    Returns empty string if no test-relevant targets resolve.
+
+    Status interpretation:
+      - PASS: pytest ran successfully with exit code 0
+      - FAIL: pytest ran but reported test failures (exit code != 0)
+      - UNCHECKED: pytest could not be run (missing, timeout, exception)
+
+    Only FAIL triggers the SHIP override in run_loop; UNCHECKED and empty-result do not.
+    """
+    deliverables = _extract_deliverables(state_dir, log)
+    if not deliverables:
+        log.debug("pytest gate: no deliverables — gate is no-op")
+        return ""
+
+    # Resolve test targets from deliverables
+    targets: set[str] = set()
+    for path in deliverables:
+        # Normalize to relative path for pattern matching
+        if project_root and path.startswith(project_root):
+            rel_path = path[len(project_root):].lstrip(os.sep)
+        else:
+            rel_path = path
+
+        # Direct include for tests/ paths
+        if rel_path.startswith("tests" + os.sep) or rel_path.startswith("tests/"):
+            if os.path.exists(path):
+                targets.add(path)
+        # Map src/<component>/ to tests/<component>/ if that directory exists
+        elif rel_path.startswith("src" + os.sep) or rel_path.startswith("src/"):
+            parts = rel_path.split(os.sep)
+            if len(parts) >= 2:
+                component = parts[1]
+                test_dir = os.path.join(project_root, "tests", component) if project_root else os.path.join("tests", component)
+                if os.path.isdir(test_dir):
+                    targets.add(test_dir)
+                else:
+                    # change-b7e3d5a9: flat-layout fallback. For src/<name>.py the
+                    # component-directory mapping above tests isdir("tests/<name>.py"),
+                    # which can never hold, so the gate resolved nothing and silently
+                    # enforced nothing. Fall back to the flat module convention.
+                    _stem = os.path.splitext(os.path.basename(rel_path))[0]
+                    for _candidate in (f"test_{_stem}.py", f"{_stem}_test.py"):
+                        _test_file = (os.path.join(project_root, "tests", _candidate)
+                                      if project_root else os.path.join("tests", _candidate))
+                        if os.path.isfile(_test_file):
+                            targets.add(_test_file)
+                            break
+
+    if not targets:
+        log.debug("pytest gate: no test-relevant targets resolved — gate is no-op")
+        return ""
+
+    # Run pytest
+    target_list = sorted(targets)
+    log.info("pytest gate: running pytest on %d target(s): %s", len(target_list), target_list)
+
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-m", "pytest"] + target_list + ["-q"],
+            capture_output=True,
+            text=True,
+            cwd=project_root if project_root else None,
+            timeout=300,  # 5 minute timeout
+        )
+        if proc.returncode == 0:
+            status = "PASS"
+        else:
+            status = "FAIL"
+        output = proc.stdout + proc.stderr
+    except Exception as exc:
+        status = "UNCHECKED"
+        output = f"pytest execution failed: {exc}"
+        log.warning("pytest gate: execution failed — %s", exc)
+        log.debug("pytest gate exception traceback:\n%s", traceback.format_exc())
+
+    # Truncate output to last 1000 chars for readability
+    if len(output) > 1000:
+        output = "...(truncated)...\n" + output[-1000:]
+
+    target_list_str = "\n".join(f"  - {t}" for t in target_list)
+    gate_block = (
+        f"[TEST GATE: {status}]\n"
+        f"The orchestrator ran pytest on {len(target_list)} test target(s):\n"
+        f"{target_list_str}\n\n"
+        f"Output:\n{output.strip()}\n"
+        f"[END TEST GATE]\n"
+    )
+
+    if status == "PASS":
+        log.info("pytest gate: %d target(s), status=%s", len(target_list), status)
+        console.print(f"[dim][ael] pytest gate: {status} ({len(target_list)} targets)[/dim]")
+    else:
+        log.warning("pytest gate: %d target(s), status=%s", len(target_list), status)
+        console.print(f"[yellow][ael] pytest gate: {status} ({len(target_list)} targets)[/yellow]")
+
+    return gate_block
+
+
 def _parse_audit_items(index_path: str) -> list[tuple[bool, str]]:
     """
     F17: Shared parser for audit-index.md items.
@@ -1638,11 +2041,26 @@ async def run_loop(
         if i > max_iterations + _extra:
             console.print(f"\n[red]✗ max iterations ({max_iterations + _extra}) reached without SHIP[/red]")
             log.warning("max iterations %d reached without SHIP", max_iterations + _extra)
-            try:
-                console.print(f"[yellow][ael] Continue for another {max_iterations} iteration(s)? [y/N]: [/yellow]", end="")
-                answer = input().strip().lower()
-            except (EOFError, KeyboardInterrupt):
+            # change-d1f4a83b (N4): only prompt when there is a human at the
+            # other end. Launched through ael-mcp the orchestrator is detached
+            # and its stdin is neither a terminal nor closed, so input() blocks
+            # indefinitely: the run never reaches "AEL end", the process stays
+            # alive holding its MCP servers, and ael_status reports pid_alive
+            # forever. Live-observed, run 8c2040d3. Non-interactive runs take
+            # the documented default, which is to decline.
+            if not sys.stdin.isatty():
+                log.info("max iterations reached, stdin is not a terminal — declining to continue")
+                console.print(
+                    f"[yellow][ael] Continue for another {max_iterations} iteration(s)? "
+                    f"[y/N]: N (non-interactive)[/yellow]"
+                )
                 answer = "n"
+            else:
+                try:
+                    console.print(f"[yellow][ael] Continue for another {max_iterations} iteration(s)? [y/N]: [/yellow]", end="")
+                    answer = input().strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    answer = "n"
             if answer != "y":
                 return 1
             _extra += max_iterations
@@ -1653,6 +2071,20 @@ async def run_loop(
 
         write_state(state_dir, "iteration.txt", str(i))
         log.info("loop iteration %d/%d", i, max_iterations + _extra)
+
+        # change-f5c28a04 (F2): clear work-summary.txt per cycle, not only at
+        # loop start. Carried over, a prior cycle's manifest is read by
+        # _extract_deliverables and therefore by the read-evidence, syntax and
+        # pytest gates, which then adjudicate the previous cycle's deliverables
+        # as though they were this cycle's. It also suppresses synthesis at the
+        # wall-clock and work-complete exits, both of which decline to overwrite
+        # an existing manifest.
+        #
+        # Cleared here, before the work phase, rather than alongside
+        # review-feedback.txt before the review phase: the reviewer and all
+        # three gates consume this file, so clearing it at that point would
+        # remove the very manifest they exist to check.
+        clear_state(state_dir, "work-summary.txt")
 
         # Work phase
         console.print("\n[bold blue]▶ WORK PHASE[/bold blue]")
@@ -1693,11 +2125,19 @@ async def run_loop(
             continue
 
         # Review phase — clear worker signal before reviewer starts
-        clear_state(state_dir, "work-complete.txt")
+        # change-b7e3d5a9: review-feedback.txt is cleared here, per cycle, not only
+        # at loop start. The worker has already consumed the prior cycle's feedback
+        # during its phase; without this clear the `if not existing_feedback:` guard
+        # freezes cycle 1's feedback for the whole run, so later reviewers are
+        # discarded and F12 stall detection compares the file to itself.
+        clear_state(state_dir, "work-complete.txt", "review-feedback.txt")
         console.print("\n[bold blue]▶ REVIEW PHASE[/bold blue]")
 
         # F6: Run syntax gate and inject result into reviewer task
         _syntax_result = _run_syntax_gate(state_dir, log)
+
+        # F6b: Run pytest gate and inject result into reviewer task
+        _pytest_result = _run_pytest_gate(state_dir, log, project_root)
 
         # F16: Prepend [AEL RUNTIME CONTEXT] to review_task for consistent framing
         _review_header = (
@@ -1707,6 +2147,9 @@ async def run_loop(
             f"[END RUNTIME CONTEXT]\n\n"
         )
         review_task = _review_header + f"Review the work in state directory '{state_dir}'."
+        # Prepend gate results to review_task
+        if _pytest_result:
+            review_task = _pytest_result + "\n" + review_task
         if _syntax_result:
             review_task = _syntax_result + "\n" + review_task
         rc, reviewer_final_msg, _reviewer_read_paths = await run_phase(
@@ -1747,9 +2190,11 @@ async def run_loop(
         if verdict == "REVISE" and not result_raw and reviewer_final_msg:
             existing_feedback = read_state(state_dir, "review-feedback.txt")
             if not existing_feedback:
-                # Strip leading verdict token: first whitespace-delimited token
-                tokens = reviewer_final_msg.strip().split(None, 1)
-                feedback_body = tokens[1].strip() if len(tokens) > 1 else ""
+                # Strip the verdict declaration, whichever form it took. Using
+                # _strip_verdict rather than an unconditional leading-token drop
+                # keeps the body intact when the verdict was stated on its own
+                # line at the end, which is the common case.
+                feedback_body = _strip_verdict(reviewer_final_msg)
                 if feedback_body:
                     write_state(state_dir, "review-feedback.txt", feedback_body)
                     log.debug("persisted fallback REVISE feedback (%d chars)", len(feedback_body))
@@ -1808,6 +2253,20 @@ async def run_loop(
                                 )
                         else:
                             log.debug("read-evidence SHIP gate: no deliverables — gate is no-op")
+
+                        # Pytest SHIP gate: non-audit (ralph) path only.
+                        # Override SHIP to REVISE if pytest gate reported FAIL.
+                        if _read_gate_pass and "[TEST GATE: FAIL]" in _pytest_result:
+                            _read_gate_pass = False
+                            log.warning("pytest SHIP gate: test failures detected — overriding SHIP")
+                            console.print(
+                                "[yellow][ael] pytest SHIP gate: test failures detected "
+                                "— overriding SHIP to REVISE[/yellow]"
+                            )
+                            write_state(
+                                state_dir, "review-feedback.txt",
+                                f"Pytest gate failed: tests did not pass.\n\n{_pytest_result}"
+                            )
 
                     if _read_gate_pass:
                         console.print(Panel(
@@ -1886,8 +2345,15 @@ async def main_async(args: argparse.Namespace) -> int:
     budget_warn    = ctx_cfg.get("budget_warn_pct", 0.80)
     budget_abort   = ctx_cfg.get("budget_abort_pct", 0.95)
 
+    # 3.1: preserve prior run logs before this run begins. Null (default) = no-op.
+    _log_archive_rel = config["loop"].get("log_archive_dir")
+    _log_archive_dir = os.path.abspath(_log_archive_rel) if _log_archive_rel else None
+    archive_prior_logs(state_dir, _log_archive_dir)
+
     log = setup_logging(state_dir)
     log.info("AEL start mode=%s model=%s state_dir=%s", args.mode, model, state_dir)
+    if _log_archive_dir:
+        log.info("log archive dir: %s", _log_archive_dir)
 
     recipe_dir  = os.path.join(os.path.dirname(__file__), "..", "recipes")
     # Recipe selection: audit-index.md in the state directory selects the audit

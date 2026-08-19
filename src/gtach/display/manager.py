@@ -47,8 +47,8 @@ from .performance import PerformanceMonitor
 from .models import (DisplayMode, DisplayConfig, ConnectionStatus,
                      Palette, DAY_PALETTE, NIGHT_PALETTE)
 from .splash import SplashScreen
-from .typography import (get_font_manager, get_title_font, get_medium_font, get_small_font, get_minimal_font,
-                         get_rpm_large_font, get_rpm_medium_font, get_label_small_font, 
+from .typography import (get_font_manager, get_title_font, get_medium_font, get_small_font,
+                         get_rpm_large_font, get_rpm_medium_font, get_label_small_font,
                          get_title_display_font, get_heading_font, TypographyConstants,
                          get_button_renderer, ButtonSize, ButtonState)
 from ..core import ThreadManager
@@ -1250,7 +1250,7 @@ class DisplayManager:
             pygame.draw.circle(surface, palette.edge, center, inner_radius, 2)
 
             # 7. Draw major tick marks and numerals (1000-7000 RPM)
-            tick_font = self._get_cached_font(52)
+            tick_font = get_font_manager().get_font(52)
             for rpm_tick in range(1000, 8000, 1000):
                 if rpm_tick <= max_rpm:
                     angle_rad = rpm_to_angle_rad(rpm_tick)
@@ -1311,7 +1311,7 @@ class DisplayManager:
                                (ind_inner_x, ind_inner_y), (ind_outer_x, ind_outer_y), 3)
 
             # 10. Draw 'RPM x 1000' label in inert arc
-            label_font = self._get_cached_font(16)
+            label_font = get_label_small_font()
             if label_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER, "RPM \u00d7 1000", label_font, palette.label,
@@ -1337,7 +1337,7 @@ class DisplayManager:
             # admits a 198 px chord, and three glyphs at 72 px measure
             # roughly 120 x 72. The RPM is clamped to 7000 above, so the
             # string is never wider than three glyphs.
-            readout_font = self._get_cached_font(72)
+            readout_font = get_font_manager().get_font(72)
             if readout_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER, f"{rpm/1000:.1f}",
@@ -1348,7 +1348,7 @@ class DisplayManager:
             # seconds is long enough to read and short enough not to
             # become part of the instrument (change-5012004e).
             if time.monotonic() < self._palette_notice_until:
-                notice_font = self._get_cached_font(24)
+                notice_font = get_font_manager().get_font(24)
                 if notice_font:
                     self.rendering_engine.render_text(
                         RenderTarget.BACK_BUFFER,
@@ -1806,7 +1806,7 @@ class DisplayManager:
         # drawn control and the registered region cannot diverge. Labels
         # are positioned from the rect rather than from a repeated
         # constant, for the same reason.
-        button_font = self._get_cached_font(26)
+        button_font = get_font_manager().get_font(26)
         sim_label = "Simulation mode" if self._sim_mode else "Bluetooth"
         debug_label = "Debug: On" if self._debug_logging_on else "Debug: Off"
 
@@ -1869,7 +1869,7 @@ class DisplayManager:
                 self._DISCONNECTED_TEXT_COLOUR, (240, 100), center=True
             )
 
-        body_font = self._get_cached_font(22)
+        body_font = get_font_manager().get_font(22)
         if body_font:
             for _text, _y in (
                 ("This erases the paired device.", 170),
@@ -1880,7 +1880,7 @@ class DisplayManager:
                     self._DISCONNECTED_TEXT_COLOUR, (240, _y), center=True
                 )
 
-        button_font = self._get_cached_font(26)
+        button_font = get_font_manager().get_font(26)
 
         # Geometry is owned by _register_confirm_view_regions. The
         # confirming control is filled red so the destructive choice is
@@ -1966,7 +1966,7 @@ class DisplayManager:
         else:
             msg = "Check failed"
 
-        status_font = self._get_cached_font(26)
+        status_font = get_font_manager().get_font(26)
         if status_font:
             self.rendering_engine.render_text(
                 RenderTarget.BACK_BUFFER, msg, status_font,
@@ -1981,7 +1981,7 @@ class DisplayManager:
         if self._update_status == 'checking':
             self._draw_update_spinner()
 
-        button_font = self._get_cached_font(26)
+        button_font = get_font_manager().get_font(26)
 
         # Geometry is owned by _register_update_view_regions, which also
         # clears the rects a given status does not present, so nothing is
@@ -2159,7 +2159,7 @@ class DisplayManager:
         """Render slider visual elements"""
         try:
             # Label
-            font = self._get_cached_font(16)
+            font = get_label_small_font()
             if font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER, label, font, (200, 200, 200),
@@ -2201,7 +2201,7 @@ class DisplayManager:
                                             (372, 322), 22)
 
             # Checkmark (simplified)
-            font = self._get_cached_font(20)
+            font = get_font_manager().get_font(20)
             if font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER, "\u2713", font, (255, 255, 255),
@@ -2226,7 +2226,7 @@ class DisplayManager:
             )
 
             # Render title text 'GTach' centered near top of circle
-            title_font = self._get_cached_font(72)
+            title_font = get_font_manager().get_font(72)
             if title_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
@@ -2349,7 +2349,7 @@ class DisplayManager:
             # Title — font 36 at y=145 keeps text within circular viewport.
             # Raised from y=155 to open more space above the message at
             # y=180, which sat close enough to read as crowded.
-            title_font = self._get_cached_font(36)
+            title_font = get_title_display_font()
             if title_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
@@ -2361,7 +2361,7 @@ class DisplayManager:
                 )
 
             # Message
-            msg_font = self._get_cached_font(20)
+            msg_font = get_font_manager().get_font(20)
             if msg_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
@@ -2382,7 +2382,7 @@ class DisplayManager:
             if self._link_cause_callback:
                 _cause = self._link_cause_callback()
             if _cause:
-                cause_font = self._get_cached_font(18)
+                cause_font = get_font_manager().get_font(18)
                 if cause_font:
                     self.rendering_engine.render_text(
                         RenderTarget.BACK_BUFFER,
@@ -2395,7 +2395,7 @@ class DisplayManager:
 
             # Geometry is owned by _register_disconnected_regions, so the
             # drawn affordance and the registered region cannot diverge.
-            button_font = self._get_cached_font(28)
+            button_font = get_font_manager().get_font(28)
 
             if self._disconnected_btn_setup is not None:
                 self._draw_button(
@@ -2569,24 +2569,15 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Setup mode fallback error: {e}")
     
-    def _get_cached_font(self, size: int, font_path: Optional[str] = None) -> Optional[pygame.font.Font]:
-        """Get cached font (simplified version)"""
-        try:
-            font_manager = get_font_manager()
-            return font_manager.get_font(size)
-        except:
-            try:
-                return pygame.font.Font(font_path, size) if font_path else pygame.font.Font(None, size)
-            except:
-                return None
-
     def _get_plain_font(self, size: int) -> Optional[pygame.font.Font]:
         """Get a cached plain (SDL default) font for the given size.
 
-        Bypasses FontManager, which resolves Michroma-Regular.ttf at
-        every size — too wide for multi-word body text on the 480px
+        Uses the SDL default face rather than Michroma-Regular.ttf,
+        which is too wide for multi-word body text on the 480px
         circular panel. Used only by the acknowledgement screen
-        (change-bdac4f18).
+        (change-bdac4f18). Creation and caching live in FontManager, so
+        this method is a thin, semantically named delegate
+        (change-ba672e81).
 
         Args:
             size: Font size in pixels.
@@ -2594,22 +2585,12 @@ class DisplayManager:
         Returns:
             Cached font object, or None if font creation failed.
         """
-        cache = getattr(self, '_plain_font_cache', None)
-        if cache is None:
-            cache = {}
-            self._plain_font_cache = cache
-
-        if size in cache:
-            return cache[size]
-
         try:
-            font = pygame.font.Font(None, size)
+            return get_font_manager().get_plain_font(size)
         except Exception as e:
-            self.logger.error(f"Plain font creation failed for size {size}: {e}")
+            self.logger.error(f"Plain font creation failed for size {size}: {e}",
+                              exc_info=True)
             return None
-
-        cache[size] = font
-        return font
 
     # Legacy compatibility methods
     def change_mode(self, mode: DisplayMode) -> None:

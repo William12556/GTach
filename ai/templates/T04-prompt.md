@@ -15,7 +15,7 @@ Created: 2025-12-12
 ## Template
 
 ```yaml
-# T04 Prompt Template v1.10 - YAML Format
+# T04 Prompt Template v1.11 - YAML Format
 # Optimized for Strategic Domain → Tactical Domain filesystem communication
 # Designed for minimal token usage while maintaining completeness
 
@@ -113,36 +113,11 @@ testing:
 deliverable:
   format_requirements:
     - "Save generated code directly to specified paths"
+    - "Execute pytest suite for affected test paths on completion; report pass/fail summary"
   files:
     - path: "src/<component>/<file>.py"
       content: ""
 
-# Each criterion must be satisfiable by a correct execution of THIS
-# prompt. Before finalising, check each one against the prompt's own
-# file constraints and against its own deliverable text.
-#
-# A criterion phrased as a search — "grep X returns no match", "X
-# appears nowhere" — MUST state its scope. Name the paths searched and
-# say whether it covers executable occurrences only. An unscoped search
-# criterion is unsatisfiable in practice, because the string it forbids
-# occurs in the T-Docs that describe it, in ai/task.md, and often in
-# explanatory comments the prompt's own deliverable text mandates
-# verbatim.
-#
-#   Unsatisfiable:  "grep -rn 'DisplayMode.DIGITAL' returns no match"
-#                   (prompt-378703da: also excluded the files holding
-#                   the remaining references, and its own EDIT 6(a)
-#                   mandated the string)
-#   Unsatisfiable:  "No 'from . import main' remains in the repository"
-#                   (prompt-c1d4b8e6: the string is in its own T-Docs
-#                   and in the comments its EDIT A specifies)
-#   Satisfiable:    "No executable occurrence of 'from . import main'
-#                   remains in src/"
-#
-# Where a change alters a package-wide interface — removing an enum
-# member, renaming a public attribute — its scope is every reference,
-# not a file list. Write the file constraint by grepping for the
-# references, not by naming the files expected to be involved.
 success_criteria:
   - ""
 
@@ -184,7 +159,7 @@ notes: ""
 ## Schema
 
 ```yaml
-# T04 Prompt Schema v1.10
+# T04 Prompt Schema v1.11
 $schema: http://json-schema.org/draft-07/schema#
 type: object
 required:
@@ -567,8 +542,8 @@ properties:
 | 1.7     | 2026-03-25 | Added FORMAT comment to tactical_brief field: orchestrator detects tactical_brief only in ```yaml blocks with tactical_brief as root key; per-section prompts must author §8.0 as a dedicated ```yaml block (not ```text) |
 | 1.8     | 2026-06-14 | Relocated example paths under ai/: knowledge_references comment and element_registry source example use ai/workspace/ |
 | 1.9     | 2026-06-16 | Standardised copyright footer format |
-| 1.11    | 2026-08-05 | Added authoring guidance above `success_criteria`: each criterion must be satisfiable by a correct execution of the prompt it belongs to, checked against that prompt's own file constraints and deliverable text. Search-based criteria must state their scope — paths searched, and whether executable occurrences only — an unscoped one being unsatisfiable because the forbidden string occurs in the T-Docs describing it and often in comments the prompt itself mandates. Records `prompt-378703da` and `prompt-c1d4b8e6` as the two occurrences, and the rule that a package-wide interface change is scoped by grepping for references rather than by naming expected files. Prevention notes in change documents did not bind subsequent authoring; this is the durable form. |
 | 1.10    | 2026-07-02 | Added prompt_info.target_profile (enum: ael, claude_code, claude_omlx); coupled_docs required only when source_ref is change-sourced (allOf/if-then); tactical_brief required only when target_profile is ael (allOf/if-then); reworded tactical_brief comment and schema description (plain-text → prose value, F5); corrected stale embedded version labels v1.0 → v1.10 (F8); resolves issue-713437bc |
+| 1.11    | 2026-07-17 | Added deliverable.format_requirements default entry instructing pytest suite execution on completion, applicable to claude_code/claude_omlx/ael target profiles |
 
 ---
 

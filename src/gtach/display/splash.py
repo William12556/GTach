@@ -251,7 +251,9 @@ class SplashScreen:
         
         Args:
             font_type: Type of font ('title', 'body', 'label')
-            fallback_size: Fallback size if typography system unavailable
+            fallback_size: Retained for call-site compatibility; unused
+                since the raw pygame fallback was removed
+                (change-ba672e81)
             
         Returns:
             pygame.font.Font object or None if unavailable
@@ -276,21 +278,17 @@ class SplashScreen:
                             self.logger.debug(f"Using typography body font ({TypographyConstants.FONT_BODY}px)")
                         elif font_type == 'label':
                             font = get_label_small_font()
-                            self.logger.debug(f"Using typography label font ({TypographyConstants.FONT_LABEL_SMALL}px)")
+                            self.logger.debug(f"Using typography small-text font ({TypographyConstants.FONT_SMALL_TEXT}px)")
                     except Exception as e:
                         self.logger.warning(f"Typography system error for {font_type}: {e}")
                 
-                # Fallback to pygame font if typography unavailable
+                # No raw pygame fallback: FontManager is the single
+                # font-creation path and handles its own system-default
+                # fallback internally (change-ba672e81).
                 if font is None:
-                    try:
-                        if not pygame.font.get_init():
-                            pygame.font.init()
-                        font = pygame.font.Font(None, fallback_size)
-                        self.logger.debug(f"Using fallback font {fallback_size}px for {font_type}")
-                    except Exception as e:
-                        self.logger.error(f"Failed to create fallback font for {font_type}: {e}")
-                        return None
-                
+                    self.logger.error(f"No font available for {font_type}")
+                    return None
+
                 # Cache the font for future use
                 if font is not None:
                     self._cached_fonts[font_type] = font
@@ -411,14 +409,10 @@ class SplashScreen:
     def _draw_title_text(self, surface, center_x: int, center_y: int) -> None:
         """Draw the main application title with minimalist typography (FONT_TITLE = 36px, was 56px)."""
         try:
-            # Load Michroma font directly at 72px, bypassing typography cache
-            import os
-            _fp = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'fonts', 'Michroma-Regular.ttf'))
-            font_large = pygame.font.Font(_fp, 72) if os.path.exists(_fp) else pygame.font.Font(None, 72)
-
-            if font_large is None:
-                self.logger.error("Failed to get title font")
-                return
+            # 72px via FontManager, which resolves Michroma and owns
+            # the system-default fallback (change-ba672e81). Replaces a
+            # direct font-file load that bypassed the typography cache.
+            font_large = get_font_manager().get_font(72)
 
             title_surface = font_large.render(self._app_title, True, self._colors['primary_text'])
             title_rect = title_surface.get_rect(center=(center_x, center_y))
@@ -520,16 +514,12 @@ class SplashScreen:
     
     
     def _draw_version_text(self, surface, center_x: int, center_y: int) -> None:
-        """Draw version information with label typography (FONT_LABEL_SMALL = 16px, was 24px)."""
+        """Draw version information with small-text typography (FONT_SMALL_TEXT = 18px)."""
         try:
-            # Load Michroma font directly at 40px, bypassing typography cache
-            import os
-            _fp = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'assets', 'fonts', 'Michroma-Regular.ttf'))
-            font_ver = pygame.font.Font(_fp, 40) if os.path.exists(_fp) else pygame.font.Font(None, 40)
-
-            if font_ver is None:
-                self.logger.error("Failed to get label font for version")
-                return
+            # 40px via FontManager, which resolves Michroma and owns
+            # the system-default fallback (change-ba672e81). Replaces a
+            # direct font-file load that bypassed the typography cache.
+            font_ver = get_font_manager().get_font(40)
 
             version_surface = font_ver.render(self._version_text, True, self._colors['secondary_text'])
             version_rect = version_surface.get_rect(center=(center_x, center_y))
@@ -539,7 +529,7 @@ class SplashScreen:
             if self._typography_available:
                 try:
                     manager = get_font_manager()
-                    if not manager.validate_text_fits_circular_display(self._version_text, TypographyConstants.FONT_LABEL_SMALL):
+                    if not manager.validate_text_fits_circular_display(self._version_text, TypographyConstants.FONT_SMALL_TEXT):
                         self.logger.warning("Splash version text may not fit in circular display")
                 except Exception as e:
                     self.logger.debug(f"Circular validation failed for version: {e}")

@@ -27,7 +27,7 @@ except ImportError:
 
 from .setup_models import SetupScreen, SetupState, SetupAction, PairingStatus, BluetoothDevice, DeviceType
 from .typography import (get_font_manager, get_title_display_font, get_heading_font, get_body_font, 
-                         get_button_font, get_label_small_font, get_minimal_font, TypographyConstants,
+                         get_button_font, get_label_small_font, TypographyConstants,
                          get_button_renderer, render_standard_button, ButtonSize, ButtonState)
 from .performance import get_performance_manager
 from ..utils import ConfigManager
@@ -321,7 +321,7 @@ class SetupDisplayManager:
         # Error message
         state = self.state_coordinator.get_state()
         if state.error_message:
-            font_small = get_minimal_font()
+            font_small = get_label_small_font()
             if font_small:
                 msg = font_small.render("No devices found", True, self.colors['warning'])
                 surface.blit(msg, msg.get_rect(center=(240, 440)))
@@ -354,7 +354,7 @@ class SetupDisplayManager:
         # Progress message
         progress_info = self.bluetooth_interface.get_active_operation_progress()
         if progress_info['has_active_operations']:
-            font_small = get_minimal_font()
+            font_small = get_label_small_font()
             if font_small and progress_info['message']:
                 msg_text = font_small.render(progress_info['message'], True, self.colors['text_dim'])
                 msg_rect = msg_text.get_rect(center=(240, 260))
@@ -426,7 +426,7 @@ class SetupDisplayManager:
 
         # Error message rendering (e.g., from failed OBD verification)
         if state.error_message:
-            font_minimal = get_minimal_font()
+            font_minimal = get_label_small_font()
             if font_minimal:
                 error_text = font_minimal.render(state.error_message, True, self.colors['danger'])
                 error_rect = error_text.get_rect(center=(240, 310))
@@ -505,7 +505,7 @@ class SetupDisplayManager:
                            (center[0] - 15, center[1] + 15), (center[0] + 15, center[1] - 15), 4)
         
         # Status text
-        font_small = get_minimal_font()
+        font_small = get_label_small_font()
         if font_small:
             status_messages = {
                 PairingStatus.CONNECTING: "Connecting...",

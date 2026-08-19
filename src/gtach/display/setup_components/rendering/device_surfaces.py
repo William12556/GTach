@@ -24,7 +24,7 @@ except ImportError:
     PYGAME_AVAILABLE = False
 
 from ...setup_models import BluetoothDevice, DeviceType
-from ...typography import (get_font_manager, get_body_font, get_minimal_font, 
+from ...typography import (get_font_manager, get_body_font,
                           get_label_small_font, TypographyConstants)
 
 
@@ -164,13 +164,7 @@ class DeviceSurfaceRenderer:
             pygame.draw.circle(item_surface, indicator_color, indicator_center, 6)
             
             # Device name - body font
-            try:
-                name_font = get_body_font()
-                if not name_font:
-                    name_font = pygame.font.Font(None, 20)
-            except Exception as e:
-                self.logger.error(f"Error getting body font for device name: {e}")
-                name_font = pygame.font.Font(None, 20)
+            name_font = get_body_font()
             
             # Truncate device name if too long
             device_name = device.name
@@ -180,14 +174,8 @@ class DeviceSurfaceRenderer:
             name_surface = name_font.render(device_name, True, self.colors['text'])
             item_surface.blit(name_surface, (24, 8))
             
-            # Device type text - minimal font
-            try:
-                type_font = get_minimal_font()
-                if not type_font:
-                    type_font = pygame.font.Font(None, 14)
-            except Exception as e:
-                self.logger.error(f"Error getting minimal font for device type: {e}")
-                type_font = pygame.font.Font(None, 14)
+            # Device type text - small-text font
+            type_font = get_label_small_font()
             
             device_type_text = self.get_device_type_text(device)
             type_surface = type_font.render(device_type_text, True, self.colors['text_dim'])
@@ -206,12 +194,7 @@ class DeviceSurfaceRenderer:
                     pygame.draw.rect(item_surface, bar_color, bar_rect)
                 
                 # Signal strength text
-                try:
-                    signal_font = get_label_small_font()
-                    if not signal_font:
-                        signal_font = pygame.font.Font(None, 12)
-                except Exception:
-                    signal_font = pygame.font.Font(None, 12)
+                signal_font = get_label_small_font()
                 
                 rssi_text = f"{device.rssi}dBm"
                 rssi_surface = signal_font.render(rssi_text, True, self.colors['text_dim'])
@@ -300,17 +283,10 @@ class DeviceSurfaceRenderer:
             
             # Scale font sizes
             body_font_size = int(TypographyConstants.FONT_BODY * scale_factor)
-            minimal_font_size = int(TypographyConstants.FONT_MINIMAL * scale_factor)
-            signal_font_size = int(TypographyConstants.FONT_LABEL_SMALL * scale_factor)
+            small_text_font_size = int(TypographyConstants.FONT_SMALL_TEXT * scale_factor)
             
             # Device name with scaled font
-            try:
-                name_font = get_font_manager().get_font(body_font_size)
-                if not name_font:
-                    name_font = pygame.font.Font(None, body_font_size)
-            except Exception as e:
-                self.logger.error(f"Error getting scaled font for device name: {e}")
-                name_font = pygame.font.Font(None, body_font_size)
+            name_font = get_font_manager().get_font(body_font_size)
             
             # Truncate and render device name
             device_name = device.name
@@ -325,13 +301,7 @@ class DeviceSurfaceRenderer:
             item_surface.blit(name_surface_alpha, (int(24 * scale_factor), int(8 * scale_factor)))
             
             # Device type text with scaled font
-            try:
-                type_font = get_font_manager().get_font(minimal_font_size)
-                if not type_font:
-                    type_font = pygame.font.Font(None, minimal_font_size)
-            except Exception as e:
-                self.logger.error(f"Error getting scaled minimal font: {e}")
-                type_font = pygame.font.Font(None, minimal_font_size)
+            type_font = get_font_manager().get_font(small_text_font_size)
             
             device_type_text = self.get_device_type_text(device)
             type_surface = type_font.render(device_type_text, True, self.colors['text_dim'])
@@ -359,12 +329,7 @@ class DeviceSurfaceRenderer:
                     pygame.draw.rect(item_surface, bar_color, bar_rect)
                 
                 # Signal strength text (scaled)
-                try:
-                    signal_font = get_font_manager().get_font(signal_font_size)
-                    if not signal_font:
-                        signal_font = pygame.font.Font(None, signal_font_size)
-                except Exception:
-                    signal_font = pygame.font.Font(None, signal_font_size)
+                signal_font = get_font_manager().get_font(small_text_font_size)
                 
                 rssi_text = f"{device.rssi}dBm"
                 rssi_surface = signal_font.render(rssi_text, True, self.colors['text_dim'])
