@@ -1581,8 +1581,8 @@ class DisplayManager:
         three targets at the 72 px ergonomic minimum, so the controls
         are paged two at a time (change-8c5a1e73):
 
-          page 0 — simulation_mode, debug_toggle
-          page 1 — clear_settings, check_updates
+          page 0 — clear_settings, check_updates
+          page 1 — simulation_mode, debug_toggle
 
         clear_settings binds _on_clear_settings_requested, which enters
         the confirmation sub-view. It never binds _on_clear_settings:
@@ -1603,17 +1603,17 @@ class DisplayManager:
 
         if self._options_page == 0:
             specs = (
-                ("simulation_mode", TouchAction.SETTINGS_CHANGE,
-                 lambda pos: self._on_simulation_mode()),
-                ("debug_toggle", TouchAction.SETTINGS_CHANGE,
-                 lambda pos: self._on_debug_toggle()),
-            )
-        else:
-            specs = (
                 ("clear_settings", TouchAction.SETTINGS_CHANGE,
                  lambda pos: self._on_clear_settings_requested()),
                 ("check_updates", TouchAction.SETTINGS_CHANGE,
                  lambda pos: self._on_check_updates()),
+            )
+        else:
+            specs = (
+                ("simulation_mode", TouchAction.SETTINGS_CHANGE,
+                 lambda pos: self._on_simulation_mode()),
+                ("debug_toggle", TouchAction.SETTINGS_CHANGE,
+                 lambda pos: self._on_debug_toggle()),
             )
 
         # Two 72 px targets separated by 16 px span y 185 to 345,
@@ -1624,9 +1624,9 @@ class DisplayManager:
         rects = self._button_column(specs, width=300, top=185)
 
         if self._options_page == 0:
-            self._options_btn_sim, self._options_btn_debug = rects
-        else:
             self._options_btn_clear, self._options_btn_update = rects
+        else:
+            self._options_btn_sim, self._options_btn_debug = rects
 
     def _register_confirm_view_regions(self) -> None:
         """Compute and register the clear-settings confirmation's two regions.
@@ -1697,7 +1697,7 @@ class DisplayManager:
         """Compute and register the DISCONNECTED screen's one region.
 
         One control, Setup. Simulate was removed from here because it
-        duplicates OPTIONS page 0's simulation_mode control, which is
+        duplicates OPTIONS page 1's simulation_mode control, which is
         one downward swipe away and remains its home (issue-4f1e82b7).
 
         Height rises from 70 to the 72 px minimum and separation from
@@ -1783,7 +1783,7 @@ class DisplayManager:
         """Draw the current options page and the page indicator.
 
         Two tappable items per page, paged by horizontal swipe
-        (change-8c5a1e73). Clear settings is on page 1 and opens the
+        (change-8c5a1e73). Clear settings is on page 0 and opens the
         'confirm_clear' sub-view rather than acting (change-b02ed4ea).
 
         The indicator is drawn only. It is not registered, so it
@@ -1812,13 +1812,13 @@ class DisplayManager:
 
         if self._options_page == 0:
             page_items = (
-                (self._options_btn_sim, sim_label),
-                (self._options_btn_debug, debug_label),
+                (self._options_btn_clear, "Clear settings"),
+                (self._options_btn_update, "Check for updates"),
             )
         else:
             page_items = (
-                (self._options_btn_clear, "Clear settings"),
-                (self._options_btn_update, "Check for updates"),
+                (self._options_btn_sim, sim_label),
+                (self._options_btn_debug, debug_label),
             )
 
         for _btn, _label in page_items:
@@ -2020,7 +2020,7 @@ class DisplayManager:
         DeviceStore — that is _on_clear_settings, which this flow
         reaches only after the confirmation is accepted.
 
-        Bound by the options menu's page 1 (change-8c5a1e73). Clear
+        Bound by the options menu's page 0 (change-8c5a1e73). Clear
         settings had been removed from the menu altogether, because the
         72 px ergonomic minimum of recommendation 24 leaves room for
         three controls and the screen had four, and this method was
@@ -2029,7 +2029,7 @@ class DisplayManager:
         that change-b02ed4ea anticipated: two pages of two controls are
         inside the same geometric budget.
 
-        The budget still binds. Page 1 must keep offering this method
+        The budget still binds. Page 0 must keep offering this method
         rather than _on_clear_settings, and adding a fourth button to
         one page would fail the geometry requirement recommendation 24
         exists to satisfy.
