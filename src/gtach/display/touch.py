@@ -179,6 +179,13 @@ class TouchHandler:
             in_setup = self.display_manager.is_in_setup_mode()
             self.logger.debug(f"Short press at ({x}, {y}), in_setup_mode={in_setup}")
             if in_setup:
+                # A vertical drag on the device list moves the focus
+                # rather than selecting whatever it ended over
+                # (change-479b2e51). Every other setup screen, and
+                # every movement below the threshold, falls through to
+                # the tap dispatch unchanged.
+                if self._handle_setup_swipe(x, y, start_x, start_y):
+                    return
                 self._handle_setup_touch(x, y)
                 return
 
@@ -308,6 +315,55 @@ class TouchHandler:
         except Exception as e:
             self.logger.error(f"Touch feedback error: {e}")
     
+    def _handle_setup_swipe(self, x: int, y: int, start_x: int, start_y: int) -> bool:
+        """Consume a vertical swipe on the setup DEVICE_LIST screen.
+
+        Setup mode skips the gesture handler entirely (_process_touch),
+        so the drag distance is measured here, before the tap dispatch,
+        exactly as the non-setup path does in this method's caller. The
+        same swipe_threshold is used so both paths accept the same
+        movement (change-479b2e51).
+
+        Args:
+            x, y: Touch end position.
+            start_x, start_y: Touch start position.
+
+        Returns:
+            True if a swipe was consumed and no tap should be
+            dispatched; False to fall through to the tap dispatch.
+        """
+        try:
+            setup_manager = getattr(self.display_manager, '_setup_manager', None)
+            if setup_manager is None or not hasattr(setup_manager, 'handle_setup_swipe'):
+                return False
+
+            # Scoped to the device list: no other setup screen changes
+            # behaviour.
+            from .setup_models import SetupScreen
+            if setup_manager.state.current_screen != SetupScreen.DEVICE_LIST:
+                return False
+
+            swipe_threshold = getattr(
+                getattr(self.display_manager, 'touch_coordinator', None),
+                'swipe_threshold', 100
+            )
+            dx = x - start_x
+            dy = y - start_y
+
+            # Vertical must dominate; a horizontal drag keeps its
+            # existing behaviour of falling through to the dispatch.
+            if abs(dy) < swipe_threshold or abs(dy) < abs(dx):
+                return False
+
+            direction = 1 if dy > 0 else -1
+            setup_manager.handle_setup_swipe(direction)
+            self.logger.debug(f"Setup device-list swipe consumed: direction={direction:+d}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Setup swipe handling error: {e}", exc_info=True)
+            return False
+
     def _handle_setup_touch(self, x: int, y: int) -> None:
         """Handle touch events in setup mode"""
         try:

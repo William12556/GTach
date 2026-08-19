@@ -30,7 +30,11 @@ from ...typography import (get_font_manager, get_body_font,
 
 class DeviceSurfaceRenderer:
     """Device representation graphics with efficient caching and resource management"""
-    
+
+    # DEVICE_LIST slot indicators (change-479b2e51)
+    SELECTED_BORDER_WIDTH = 3
+    EMPTY_SLOT_BORDER_WIDTH = 2
+
     def __init__(self):
         self.logger = logging.getLogger('DeviceSurfaceRenderer')
         
@@ -51,7 +55,14 @@ class DeviceSurfaceRenderer:
             'border': (60, 60, 70),
             'elm327_likely': (50, 200, 50),
             'possibly_compatible': (255, 165, 0),
-            'unknown_device': (150, 150, 150)
+            'unknown_device': (150, 150, 150),
+            # DEVICE_LIST focused-slot indicators (change-479b2e51).
+            # The focused slot is the only selectable one, so it is
+            # tinted lighter than the unselected slots and outlined in
+            # the accent colour.
+            'selected_surface': (70, 70, 95),
+            'selected_border': (100, 150, 250),
+            'empty_slot_border': (110, 110, 125)
         }
         
         # Device surface cache with thread safety
@@ -227,9 +238,24 @@ class DeviceSurfaceRenderer:
             fallback_surface.fill(self.colors['surface'])
             return fallback_surface, pygame.Rect(0, 0, item_width, item_height)
     
-    def create_curved_device_surface(self, device: BluetoothDevice, layout_item: Dict[str, Any], 
-                                   item_index: int, use_alternating_bg: bool = True) -> Tuple[Optional[pygame.Surface], pygame.Rect]:
-        """Create a device item surface with curved layout optimizations"""
+    def create_curved_device_surface(self, device: BluetoothDevice, layout_item: Dict[str, Any],
+                                   item_index: int, use_alternating_bg: bool = True,
+                                   selected: bool = False) -> Tuple[Optional[pygame.Surface], pygame.Rect]:
+        """Create a device item surface with curved layout optimizations.
+
+        Args:
+            device: Device to draw.
+            layout_item: Slot geometry from CircularPositioningEngine.
+            item_index: Index used for the alternating background and
+                the cache key.
+            use_alternating_bg: Darken every second row.
+            selected: Draw the focused-slot indicator — a lighter
+                background tint plus an accent border marking this as
+                the only selectable slot (change-479b2e51).
+
+        Returns:
+            Tuple of the rendered surface and its touch rect.
+        """
         if not self.display_available:
             return None, pygame.Rect(0, 0, layout_item['width'], layout_item['height'])
         
@@ -244,7 +270,8 @@ class DeviceSurfaceRenderer:
             opacity_factor = layout_item['opacity']
             
             # Create cache key
-            cache_key = f"curved_{device.mac_address}_{item_index}_{item_width}_{scale_factor:.2f}_{opacity_factor:.2f}"
+            cache_key = (f"curved_{device.mac_address}_{item_index}_{item_width}_"
+                         f"{scale_factor:.2f}_{opacity_factor:.2f}_{selected}")
             
             # Check cache first
             with self._device_cache_lock:
@@ -266,14 +293,23 @@ class DeviceSurfaceRenderer:
             base_alpha = int(255 * opacity_factor)
             
             # Alternating background with opacity
-            if use_alternating_bg and item_index % 2 == 1:
+            if selected:
+                bg_color = (*self.colors['selected_surface'], base_alpha)
+            elif use_alternating_bg and item_index % 2 == 1:
                 bg_color = (25, 25, 35, base_alpha)
             else:
                 bg_color = (*self.colors['surface'][:3], base_alpha)
-            
+
             # Draw background with rounded corners
             bg_rect = pygame.Rect(0, 0, scaled_width, scaled_height - 2)
-            pygame.draw.rect(item_surface, bg_color[:3], bg_rect, border_radius=int(8 * scale_factor))
+            corner_radius = int(8 * scale_factor)
+            pygame.draw.rect(item_surface, bg_color[:3], bg_rect, border_radius=corner_radius)
+
+            # Focused-slot border, drawn before the content so no glyph
+            # is clipped by it.
+            if selected:
+                pygame.draw.rect(item_surface, self.colors['selected_border'], bg_rect,
+                                 self.SELECTED_BORDER_WIDTH, border_radius=corner_radius)
             
             # Device type indicator - scaled circle
             indicator_color = self.get_device_type_color(device)
@@ -370,6 +406,89 @@ class DeviceSurfaceRenderer:
             touch_rect = pygame.Rect(layout_item['x'], layout_item['y'], layout_item['width'], layout_item['height'])
             return fallback_surface, touch_rect
     
+    def create_empty_slot_surface(self, layout_item: Dict[str, Any],
+                                  selected: bool = False) -> Tuple[Optional[pygame.Surface], pygame.Rect]:
+        """Create an outlined empty frame occupying a slot's footprint.
+
+        Drawn when the focused index has no neighbour on that side, so
+        the three-slot geometry holds regardless of how many devices
+        were discovered (change-479b2e51).
+
+        Args:
+            layout_item: Slot geometry from CircularPositioningEngine.
+            selected: Draw the focused-slot indicator. The middle slot
+                keeps its border and tint even with no device in it.
+
+        Returns:
+            Tuple of the rendered surface and its rect on the display.
+        """
+        item_width = int(layout_item['width'])
+        item_height = int(layout_item['height'])
+        slot_rect = pygame.Rect(layout_item['x'], layout_item['y'], item_width, item_height)
+
+        if not self.display_available:
+            return None, slot_rect
+
+        try:
+            scale_factor = layout_item.get('scale', 1.0)
+            scaled_width = int(item_width * scale_factor)
+            scaled_height = int(item_height * scale_factor)
+
+            item_surface = pygame.Surface((scaled_width, scaled_height), pygame.SRCALPHA)
+            frame_rect = pygame.Rect(0, 0, scaled_width, scaled_height - 2)
+            corner_radius = int(8 * scale_factor)
+
+            if selected:
+                pygame.draw.rect(item_surface, self.colors['selected_surface'], frame_rect,
+                                 border_radius=corner_radius)
+                pygame.draw.rect(item_surface, self.colors['selected_border'], frame_rect,
+                                 self.SELECTED_BORDER_WIDTH, border_radius=corner_radius)
+            else:
+                pygame.draw.rect(item_surface, self.colors['empty_slot_border'], frame_rect,
+                                 self.EMPTY_SLOT_BORDER_WIDTH, border_radius=corner_radius)
+
+            return item_surface, slot_rect
+
+        except Exception as e:
+            self.logger.error(f"Error creating empty slot surface: {e}", exc_info=True)
+            fallback_surface = pygame.Surface((item_width, item_height), pygame.SRCALPHA)
+            return fallback_surface, slot_rect
+
+    def create_slot_surface(self, device: Optional[BluetoothDevice],
+                            layout_item: Dict[str, Any],
+                            selected: bool = False) -> Tuple[Optional[pygame.Surface], Optional[pygame.Rect]]:
+        """Create one DEVICE_LIST slot: a device, or an empty frame.
+
+        The single entry point the DEVICE_LIST render uses for all
+        three slots (change-479b2e51). A touch rect is returned only
+        for the focused slot when it holds a device, so an unselectable
+        slot cannot be registered as a touch region by accident.
+
+        Args:
+            device: Device for this slot, or None for an empty frame.
+            layout_item: Slot geometry from CircularPositioningEngine.
+            selected: True for the middle (focused) slot only.
+
+        Returns:
+            Tuple of the rendered surface and its touch rect, the rect
+            being None for every slot that is not selectable.
+        """
+        try:
+            if device is None:
+                slot_surface, _rect = self.create_empty_slot_surface(layout_item, selected=selected)
+                return slot_surface, None
+
+            slot_surface, touch_rect = self.create_curved_device_surface(
+                device, layout_item, layout_item.get('index', 0),
+                use_alternating_bg=False, selected=selected
+            )
+
+            return slot_surface, touch_rect if selected else None
+
+        except Exception as e:
+            self.logger.error(f"Error creating slot surface: {e}", exc_info=True)
+            return None, None
+
     def clear_device_cache(self) -> None:
         """Clear the device item rendering cache to free memory"""
         try:

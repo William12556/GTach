@@ -49,7 +49,17 @@ class SetupDisplayManager:
     - DeviceSurfaceRenderer: Device graphics
     - SetupStateCoordinator: State management
     """
-    
+
+    # DEVICE_LIST focus arrows (change-479b2e51). The slot column runs
+    # y=163..318 for the default 45px slots at 10px spacing, so the
+    # arrows sit in the bands between the title and the top slot, and
+    # between the bottom slot and the Back/Retry buttons at y=340.
+    _ARROW_HALF_WIDTH = 11
+    _ARROW_HEIGHT = 12
+    _ARROW_UP_BASE_Y = 154
+    _ARROW_DOWN_BASE_Y = 322
+
+
     def __init__(self, surface, thread_manager, touch_handler, pairing_factory=None, on_complete=None):
         self.logger = logging.getLogger('SetupDisplayManager')
         self.surface = surface
@@ -374,48 +384,69 @@ class SetupDisplayManager:
         self._update_touch_regions_safe(new_regions)
     
     def _render_device_list_screen(self, surface, state: SetupState) -> None:
-        """Render the device list screen using device renderer"""
+        """Render the device list screen using device renderer.
+
+        Three fixed slots, centred on the display: the focused device
+        in the middle, its neighbours above and below, and an outlined
+        empty frame wherever a neighbour does not exist. Only the
+        middle slot is selectable (change-479b2e51).
+        """
         new_regions = []
-        
+
         # Title
         font_heading = get_heading_font()
         if font_heading:
             title = font_heading.render("Select Device", True, self.colors['text'])
             title_rect = title.get_rect(center=(240, 50))
             surface.blit(title, title_rect)
-        
-        # Device list with curved layout
+
+        # Three fixed slots driven by the focused index
         if state.discovered_devices:
-            layout_data = self.positioning_engine.calculate_curved_list_layout(
-                len(state.discovered_devices), start_y=100
-            )
-            
-            for i, device in enumerate(state.discovered_devices):
-                if i < len(layout_data):
-                    layout_item = layout_data[i]
-                    
-                    # Render device using device renderer
-                    device_surface, touch_rect = self.device_renderer.create_curved_device_surface(
-                        device, layout_item, i
-                    )
-                    
-                    if device_surface:
-                        # Calculate position for scaled surface
-                        final_x = layout_item['x']
-                        final_y = layout_item['y']
-                        
-                        if layout_item['scale'] < 1.0:
-                            surface_width = device_surface.get_width()
-                            surface_height = device_surface.get_height()
-                            original_width = layout_item['width']
-                            original_height = layout_item['height']
-                            
-                            # Center the scaled surface
-                            final_x += (original_width - surface_width) // 2
-                            final_y += (original_height - surface_height) // 2
-                        
-                        surface.blit(device_surface, (final_x, final_y))
-                        new_regions.append(("device", touch_rect, device))
+            devices = state.discovered_devices
+            focus_info = self.state_coordinator.get_focus_info()
+            focused_index = focus_info['focused_index']
+
+            layout_data = self.positioning_engine.calculate_focused_slot_layout()
+
+            # Slot order is top, middle, bottom: one device either side
+            # of the focused one.
+            for layout_item, relative in zip(layout_data, (-1, 0, 1)):
+                device_index = focused_index + relative
+                if 0 <= device_index < len(devices):
+                    device = devices[device_index]
+                else:
+                    device = None
+
+                selected = relative == 0
+
+                slot_surface, touch_rect = self.device_renderer.create_slot_surface(
+                    device, layout_item, selected=selected
+                )
+
+                if slot_surface:
+                    # Calculate position for scaled surface
+                    final_x = layout_item['x']
+                    final_y = layout_item['y']
+
+                    if layout_item['scale'] < 1.0:
+                        surface_width = slot_surface.get_width()
+                        surface_height = slot_surface.get_height()
+                        original_width = layout_item['width']
+                        original_height = layout_item['height']
+
+                        # Center the scaled surface
+                        final_x += (original_width - surface_width) // 2
+                        final_y += (original_height - surface_height) // 2
+
+                    surface.blit(slot_surface, (final_x, final_y))
+
+                # Only the focused slot is selectable, and only when it
+                # holds a device; create_slot_surface returns no touch
+                # rect for any other slot.
+                if touch_rect is not None and device is not None:
+                    new_regions.append(("device", touch_rect, device))
+
+            self._draw_focus_arrows(surface, focus_info)
         else:
             # No devices found message
             font_body = get_body_font()
@@ -424,12 +455,14 @@ class SetupDisplayManager:
                 no_devices_rect = no_devices.get_rect(center=(240, 200))
                 surface.blit(no_devices, no_devices_rect)
 
-        # Error message rendering (e.g., from failed OBD verification)
+        # Error message rendering (e.g., from failed OBD verification).
+        # Above the slot column: y=310 sat inside the bottom slot once
+        # the three-slot layout landed (change-479b2e51).
         if state.error_message:
             font_minimal = get_label_small_font()
             if font_minimal:
                 error_text = font_minimal.render(state.error_message, True, self.colors['danger'])
-                error_rect = error_text.get_rect(center=(240, 310))
+                error_rect = error_text.get_rect(center=(240, 118))
                 surface.blit(error_text, error_rect)
                 # Clear error message after rendering
                 self.state_coordinator.update_state(error_message=None)
@@ -454,6 +487,71 @@ class SetupDisplayManager:
         new_regions.extend([("back", back_btn), ("retry", retry_btn)])
         self._update_touch_regions_safe(new_regions)
     
+    def _draw_focus_arrows(self, surface, focus_info: Dict[str, Any]) -> None:
+        """Draw the up/down focus arrows for the DEVICE_LIST screen.
+
+        Each arrow states that a device exists on that side of the
+        focused one, so it appears from two discovered devices upwards
+        rather than at a fixed count threshold (change-479b2e51). The
+        arrows are indicators only — focus moves by swipe, and no
+        touch region is registered for them.
+
+        Args:
+            surface: Target render surface.
+            focus_info: SetupStateCoordinator.get_focus_info() result.
+        """
+        try:
+            half_width = self._ARROW_HALF_WIDTH
+
+            if focus_info.get('has_previous'):
+                base_y = self._ARROW_UP_BASE_Y
+                pygame.draw.polygon(surface, self.colors['text'], [
+                    (240, base_y - self._ARROW_HEIGHT),
+                    (240 - half_width, base_y),
+                    (240 + half_width, base_y)
+                ])
+
+            if focus_info.get('has_next'):
+                base_y = self._ARROW_DOWN_BASE_Y
+                pygame.draw.polygon(surface, self.colors['text'], [
+                    (240, base_y + self._ARROW_HEIGHT),
+                    (240 - half_width, base_y),
+                    (240 + half_width, base_y)
+                ])
+
+        except Exception as e:
+            self.logger.error(f"Error drawing focus arrows: {e}", exc_info=True)
+
+    def handle_setup_swipe(self, direction: int) -> bool:
+        """Shift the focused device by one in response to a swipe.
+
+        The DEVICE_LIST screen's only focus control: a swipe down
+        advances to the next device, a swipe up retreats to the
+        previous one, both clamped to the discovered-device range
+        (change-479b2e51). A no-op on every other setup screen.
+
+        Args:
+            direction: +1 for a downward swipe, -1 for an upward one.
+
+        Returns:
+            True if the focused index changed, False otherwise.
+        """
+        try:
+            state = self.state_coordinator.get_state()
+            if state.current_screen != SetupScreen.DEVICE_LIST:
+                return False
+
+            if not self.state_coordinator.shift_focused_index(direction):
+                return False
+
+            self._invalidate_render_cache(SetupScreen.DEVICE_LIST)
+            self.logger.debug(f"Device list focus shifted by {direction:+d}")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error handling setup swipe: {e}", exc_info=True)
+            return False
+
     def _render_pairing_screen(self, surface, state: SetupState) -> None:
         """Render the pairing screen"""
         new_regions = []

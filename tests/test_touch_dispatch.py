@@ -90,6 +90,12 @@ def _host(manager):
     host.display_manager = manager
     host.setup_touches = []
     host._handle_setup_touch = lambda x, y: host.setup_touches.append((x, y))
+    # The real swipe check (change-479b2e51), so the setup branch is
+    # exercised as it runs: with no _setup_manager on the fake manager
+    # it declines and the tap dispatch below it stays reachable.
+    host._handle_setup_swipe = lambda x, y, start_x, start_y: (
+        TouchHandler._handle_setup_swipe(host, x, y, start_x, start_y)
+    )
     return host
 
 

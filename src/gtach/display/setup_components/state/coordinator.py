@@ -37,8 +37,13 @@ class SetupStateCoordinator:
             )
         
         # UI state management
-        self.scroll_offset = 0
-        self.max_scroll = 0
+        #
+        # focused_index is the 0-based index into
+        # state.discovered_devices of the device occupying the middle
+        # (and only selectable) slot of the DEVICE_LIST screen. It
+        # replaces the former scroll_offset/max_scroll pair, which no
+        # render or touch path ever read (change-479b2e51).
+        self.focused_index = 0
         self.animation_time = 0.0
         self.show_all_devices = False
         self.manual_entry_mode = False
@@ -96,7 +101,9 @@ class SetupStateCoordinator:
                 if screen == SetupScreen.DISCOVERY:
                     self.state.pairing_status = PairingStatus.IDLE
                 elif screen == SetupScreen.DEVICE_LIST:
-                    self.scroll_offset = 0
+                    # Focus starts on the first device every time the
+                    # screen is entered (change-479b2e51).
+                    self.focused_index = 0
                 elif screen == SetupScreen.PAIRING:
                     if not self.state.selected_device:
                         self.logger.warning("Transitioning to PAIRING screen without selected device")
@@ -118,7 +125,7 @@ class SetupStateCoordinator:
             self.state.discovered_devices = []
             self.state.discovery_progress = 0.0
             self.state.pairing_status = PairingStatus.IDLE
-            self.scroll_offset = 0
+            self.focused_index = 0
             self.logger.info("Discovery state reset")
     
     def complete_setup(self) -> None:
@@ -380,23 +387,99 @@ class SetupStateCoordinator:
             self.logger.error(f"Error creating manual device: {e}")
             return None
     
-    def get_scroll_info(self) -> Dict[str, Any]:
-        """Get current scroll information"""
+    def _clamp_focused_index_locked(self) -> int:
+        """Clamp focused_index to the discovered-device range.
+
+        Must be called with _state_lock held. The device list is
+        mutated by the discovery worker thread, so an index that was
+        valid when it was set can fall out of range before it is read;
+        clamping here means no caller has to guard its own indexing.
+
+        Returns:
+            The clamped focused index.
+        """
+        upper_bound = max(0, len(self.state.discovered_devices) - 1)
+        clamped = max(0, min(self.focused_index, upper_bound))
+
+        if clamped != self.focused_index:
+            self.logger.warning(
+                f"Focused index {self.focused_index} out of range for "
+                f"{len(self.state.discovered_devices)} devices; clamped to {clamped}"
+            )
+            self.focused_index = clamped
+
+        return clamped
+
+    def get_focus_info(self) -> Dict[str, Any]:
+        """Get the DEVICE_LIST focus state, clamped to the device list.
+
+        Returns:
+            Dictionary with the focused index, the device count and
+            whether a previous/next device exists — the latter two
+            drive the up/down arrow glyphs.
+        """
         with self._state_lock:
+            focused_index = self._clamp_focused_index_locked()
+            device_count = len(self.state.discovered_devices)
+
             return {
-                'scroll_offset': self.scroll_offset,
-                'max_scroll': self.max_scroll,
+                'focused_index': focused_index,
+                'device_count': device_count,
+                'has_previous': focused_index > 0,
+                'has_next': focused_index < device_count - 1,
                 'show_all_devices': self.show_all_devices,
                 'manual_entry_mode': self.manual_entry_mode,
                 'manual_mac_input': self.manual_mac_input
             }
-    
-    def update_scroll_offset(self, offset: int, max_scroll: int) -> None:
-        """Update scroll offset with bounds checking"""
+
+    def set_focused_index(self, index: int) -> bool:
+        """Set the focused device index, clamped to the device list.
+
+        Args:
+            index: Requested 0-based index into discovered_devices.
+
+        Returns:
+            True if the focused index changed, False otherwise.
+        """
         with self._state_lock:
-            self.scroll_offset = max(0, min(offset, max_scroll))
-            self.max_scroll = max_scroll
-    
+            upper_bound = max(0, len(self.state.discovered_devices) - 1)
+            new_index = max(0, min(index, upper_bound))
+
+            if new_index == self.focused_index:
+                return False
+
+            self.focused_index = new_index
+            self.logger.debug(f"Focused device index set to {new_index}")
+            return True
+
+    def shift_focused_index(self, delta: int) -> bool:
+        """Shift the focused device index by a signed delta.
+
+        Args:
+            delta: Signed shift, +1 to advance and -1 to retreat.
+
+        Returns:
+            True if the focused index changed, False if the shift was
+            clamped away at either bound.
+        """
+        with self._state_lock:
+            current = self._clamp_focused_index_locked()
+            upper_bound = max(0, len(self.state.discovered_devices) - 1)
+            new_index = max(0, min(current + delta, upper_bound))
+
+            if new_index == current:
+                self.logger.debug(
+                    f"Focus shift {delta:+d} clamped at index {current}"
+                )
+                return False
+
+            self.focused_index = new_index
+            self.logger.debug(
+                f"Focused device index shifted {delta:+d} to {new_index}"
+            )
+            return True
+
+
     def get_setup_progress(self) -> Dict[str, Any]:
         """Get overall setup progress information"""
         with self._state_lock:
