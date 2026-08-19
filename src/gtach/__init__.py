@@ -10,7 +10,7 @@
 from .app import GTachApplication
 from .main import main
 
-__version__ = '0.4.1'
+__version__ = '0.4.2'
 __author__ = "William Watson"
 
 __all__ = [
