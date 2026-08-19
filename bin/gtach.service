@@ -1,7 +1,6 @@
 [Unit]
 Description=GTach OBD-II Tachometer
-After=local-fs.target network-online.target bluetooth.service gtach-boot-splash.service hyperpixel2r-init.service
-Wants=network-online.target
+After=local-fs.target bluetooth.service gtach-boot-splash.service hyperpixel2r-init.service
 StartLimitIntervalSec=60
 StartLimitBurst=3
 
