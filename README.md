@@ -43,15 +43,9 @@ GTach is an experimental embedded application for Raspberry Pi with a Pimoroni H
 
 ## 2.0 Hardware Setup
 
-The Pi Zero 2W requires specific OS and boot configuration before GTach can be installed.
+The Pi Zero 2W requires Debian GNU/Linux 11 (Bullseye), 64-bit — the only manual provisioning step (OS flashing via Raspberry Pi Imager). Boot configuration (HyperPixel DPI settings, USB OTG, kernel boot text) and the HyperPixel driver are applied automatically by the installer in §3.0.
 
-| Component | Requirement |
-|---|---|
-| OS | Debian GNU/Linux 11 (Bullseye), 64-bit |
-| Boot config | `/boot/config.txt` — HyperPixel DPI settings |
-| Boot text | `/boot/cmdline.txt` — suppress kernel output |
-
-See [docs/pi-setup.md](docs/pi-setup.md) for full hardware setup instructions.
+See [docs/pi-setup.md](docs/pi-setup.md) for full hardware setup detail and reference material.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -67,7 +61,7 @@ Installs the latest GTach release directly from GitHub without cloning the repos
 curl -fsSL https://raw.githubusercontent.com/William12556/GTach/main/bin/pi-install.sh | sudo bash
 ```
 
-`pi-install.sh` resolves the latest release tag, creates `/opt/gtach/`, sets up a virtual environment, installs the package from GitHub, downloads service files, and registers the systemd service.
+`pi-install.sh` resolves the latest release tag, applies boot configuration for the HyperPixel display and USB OTG (idempotent — already-configured settings are left untouched), installs the HyperPixel driver, creates `/opt/gtach/`, sets up a virtual environment, installs the package from GitHub, downloads service files, and registers the systemd service. Prompts for confirmation before rebooting; a reboot is required for the boot configuration and driver changes to take effect. See [docs/pi-setup.md](docs/pi-setup.md) §3.0–§4.0 for detail.
 
 **Updates:**
 
@@ -124,11 +118,22 @@ If deploying without `deploy.sh`:
 
 # Transfer files — substitute actual wheel filename from dist/
 scp bin/install.sh root@gtach.local:/opt/gtach/
+scp bin/gtach.service root@gtach.local:/opt/gtach/
+scp bin/gtach-preflight.sh root@gtach.local:/opt/gtach/
+scp bin/gtach-boot-splash.service root@gtach.local:/opt/gtach/
+scp bin/boot-splash.raw root@gtach.local:/opt/gtach/
+scp bin/vendor/hyperpixel2r/hyperpixel2r.dtbo root@gtach.local:/opt/gtach/
+scp bin/vendor/hyperpixel2r/hyperpixel2r-init root@gtach.local:/opt/gtach/
+scp bin/vendor/hyperpixel2r/hyperpixel2r-rotate root@gtach.local:/opt/gtach/
+scp bin/vendor/hyperpixel2r/hyperpixel2r-init.service root@gtach.local:/opt/gtach/
 scp dist/gtach-<version>-py3-none-any.whl root@gtach.local:/tmp/
 
-# Install on Pi
+# Install on Pi — applies boot configuration and the HyperPixel driver,
+# then installs the package (see docs/pi-setup.md §3.0–§4.0)
 ssh root@gtach.local "/opt/gtach/install.sh /tmp/gtach-<version>-py3-none-any.whl"
 ```
+
+A reboot is required afterward for boot configuration and driver changes to take effect: `ssh root@gtach.local reboot`.
 
 ### 4.4 Retrieve Logs
 
@@ -211,11 +216,12 @@ gtach --validate-dependencies
 ## 7.0 Project Structure
 
 ```
-ai/      Governance framework and workspace
-bin/     Build, deploy, install, and release scripts
-src/     Source code
-tests/   Test suite
-docs/    Technical documentation
+ai/           Governance framework and workspace
+bin/          Build, deploy, install, and release scripts
+bin/vendor/   Vendored third-party artifacts (see NOTICE.md per directory)
+src/          Source code
+tests/        Test suite
+docs/         Technical documentation
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -226,6 +232,7 @@ docs/    Technical documentation
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.4 | 2026-08-20 | §2.0: boot configuration and HyperPixel driver now applied automatically, not manually; §3.1: documented pi-install.sh's boot-config/driver/reboot-prompt behaviour; §4.3: added previously-missing service-file and vendored driver-file transfers, and required post-install reboot; §7.0: added bin/vendor/ |
 | 2.3 | 2026-06-19 | Added §2.0 Hardware Setup; renumbered §3.0–§7.0 |
 | 2.2 | 2026-06-18 | §2.1: pi-install.sh always installs latest release; removed version-pinning example |
 | 2.1 | 2026-06-18 | §2.1 expanded: added pi-install.sh for first-time install; added curl to software requirements |
