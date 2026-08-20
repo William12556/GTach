@@ -71,6 +71,12 @@ scp "$SCRIPT_DIR/gtach-preflight.sh" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/gtach-boot-splash.service" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/boot-splash.raw" "${PI}:${INSTALL_DIR}/"
 
+echo "==> Transferring HyperPixel driver files..."
+scp "$SCRIPT_DIR/vendor/hyperpixel2r/hyperpixel2r.dtbo" "${PI}:${INSTALL_DIR}/"
+scp "$SCRIPT_DIR/vendor/hyperpixel2r/hyperpixel2r-init" "${PI}:${INSTALL_DIR}/"
+scp "$SCRIPT_DIR/vendor/hyperpixel2r/hyperpixel2r-rotate" "${PI}:${INSTALL_DIR}/"
+scp "$SCRIPT_DIR/vendor/hyperpixel2r/hyperpixel2r-init.service" "${PI}:${INSTALL_DIR}/"
+
 echo "==> Running install on Pi..."
 ssh "$PI" "$INSTALL_DIR/install.sh /tmp/$WHEEL_NAME"
 
