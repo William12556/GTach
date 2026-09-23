@@ -1,81 +1,202 @@
+Created: 2026 June 24
+
 # GTach — Claude Code Context
 
-## Project
+---
 
-Real-time automotive RPM tachometer. Python package (gtach), Raspberry Pi Zero 2W
-production target, macOS Apple Silicon development platform.
+## Table of Contents
 
+[1.0 Project](<#1.0 project>)
+[2.0 Governance](<#2.0 governance>)
+[3.0 Technology Stack](<#3.0 technology stack>)
+[4.0 Core Development Rules](<#4.0 core development rules>)
+[5.0 Development Philosophy](<#5.0 development philosophy>)
+[6.0 Coding Best Practices](<#6.0 coding best practices>)
+[7.0 Formatting and Type Checking](<#7.0 formatting and type checking>)
+[8.0 Common Commands](<#8.0 common commands>)
+[9.0 Key Paths](<#9.0 key paths>)
+[Version History](<#version history>)
+
+---
+
+## 1.0 Project
+
+Real-time automotive RPM tachometer. Python package (`gtach`).
+
+- Runtime target: Raspberry Pi Zero 2W, Linux only.
+- Build / development host: Mac Mini (Apple Silicon) — builds and deploys; not a runtime target.
 - Source: `src/gtach/` — subpackages: `comm`, `core`, `display`, `utils`
 - Tests: `tests/` (pytest)
-- Entry point: `gtach` → `src/gtach/main.py`
-- Python: 3.9+  |  venv: `venv/`  |  Install: `pip install -e .[dev]`
+- Entry point: `gtach` → `src/gtach/main.py` (argparse CLI)
+- Python: 3.9+  |  dev venv: `venv/`  |  Pi venv: `/opt/gtach/venv`
+- Install: `pip install -e .[dev]`  (Pi adds `.[pi]`)
+- Deploy: `bin/deploy.sh` (or `bin/build.sh` → `scp` → `bin/install.sh`); systemd service at `root@gtach.local`
 
-## Governance
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 2.0 Governance
 
 **Prime directive**: Do not create, add, remove, or change source code or documents
-unless explicitly requested by the T04 prompt task.
+unless explicitly requested by the T03 prompt task.
 
 - Governance: `ai/governance.md`
-- Design docs: `ai/workspace/design/`
-- Active issues: `ai/workspace/issues/`
-- Active changes: `ai/workspace/change/`
-- Active prompts: `ai/workspace/prompt/`
+- Workflow (`src/` changes only): T06 issue → T07 change → T03 prompt, sharing one 8-hex UUID
+- Trivial exemption (P04.12): single function, ≤20 line delta, no interface change,
+  unambiguous, human-approved → git commit is the sole audit record
+- Active docs: `ai/workspace/{issues,change,prompt}/`; completed move to `closed/` subdirs
+- Backup files (`src/gtach/display/manager_backup.py`, `setup_original_backup.py`) are excluded from all changes and audits
 
-## Claude Code Task invocation
+Task invocation:
 
 ```text
 Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc when finished. Leave the issue and change T-Docs active pending test results. Then, once you are finished, write a report of what you have done in ai/workspace/report/report-<uuid>-<name>.md.
 ```
 
+[Return to Table of Contents](<#table of contents>)
 
+---
 
-## Technology Stack
+## 3.0 Technology Stack
 
 | Concern | Implementation |
 |---|---|
-| Display / events | pygame (SDL2) |
+| Display / events | pygame (SDL2); framebuffer renderer (`SDL_VIDEODRIVER=dummy`, `/dev/fb0` mmap) on Pi |
 | Serial transport | pyserial |
 | Configuration | PyYAML |
+| CLI | argparse |
 | Threading | stdlib `threading` — all shared state behind `threading.Lock` |
-| Logging | `NullHandler` in production; `--debug` flag enables DEBUG level |
+| Logging | `start.log` (truncated at boot, always written) + `debug.log` (`RotatingFileHandler`, suppressed unless `--debug`) |
+| Hardware (Pi) | `RPi.GPIO`, `gpiozero` (`.[pi]` extra; conditional import) |
 
-## Code Standards
+[Return to Table of Contents](<#table of contents>)
 
-- PEP 8; type hints on all public interfaces
-- Google-style docstrings
-- Conditional imports for hardware dependencies (`try/except ImportError`)
-- Platform detection: `platform.system() == 'Darwin'` for macOS guards
-- Error handling: `logger.error(msg, exc_info=True)` on unexpected exceptions
+---
 
-## Common Commands
+## 4.0 Core Development Rules
+
+1. **Package management**: pip only. Editable install: `pip install -e .[dev]`. Do not introduce `uv` or `poetry`.
+2. **Code quality**: type hints on all public interfaces; `mypy` clean (strict settings in `pyproject.toml`);
+   Google-style docstrings on public APIs; small, focused functions; follow existing patterns.
+3. **Testing**: `pytest` (`pytest-cov` configured). New features require tests; bug fixes require regression
+   tests; cover edge cases and error paths.
+4. **Concurrency**: stdlib `threading` only; guard all shared state with `threading.Lock`. No async framework.
+5. **Hardware dependencies**: conditional import (`try/except ImportError`) for `RPi.GPIO` and `gpiozero`.
+6. **Error handling**: log unexpected exceptions with `logger.error(msg, exc_info=True)`.
+7. **Naming / style**: PEP 8 — `snake_case` functions/variables, `PascalCase` classes,
+   `UPPER_SNAKE_CASE` constants; f-strings for formatting.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 5.0 Development Philosophy
+
+- **Simplicity**: Write simple, straightforward code.
+- **Readability**: Make code easy to understand.
+- **Performance**: Consider performance without sacrificing readability.
+- **Maintainability**: Write code that is easy to update.
+- **Testability**: Ensure code is testable.
+- **Reusability**: Create reusable components, subordinate to minimal-change scope.
+- **Less code = less debt**: Minimize code footprint.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 6.0 Coding Best Practices
+
+- **Early returns**: Avoid nested conditions.
+- **Descriptive names**: Clear variable and function names.
+- **Constants over magic values**: Name fixed values.
+- **DRY**: Do not repeat yourself.
+- **Minimal changes**: Modify only code related to the task at hand.
+- **Function ordering**: Define composing functions before their components.
+- **TODO comments**: Mark issues in existing code with a `TODO:` prefix.
+- **Build iteratively**: Start minimal and verify before adding complexity.
+- **Test with realistic inputs**: Use `SimTransport` and the ELM327 emulator.
+- **Clean logic**: Keep core logic clean; push implementation details to the edges.
+- **Caveat**: Prefer functional or immutable style only where it improves clarity. GTach managers are
+  stateful and lock-guarded; correctness of shared-state access takes precedence over functional form.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 7.0 Formatting and Type Checking
+
+- Format: `black`, `isort` (profile `black`). Lint: `flake8`. Type: `mypy` (strict settings; see `pyproject.toml`).
+- Line length: PEP 8 (79). Note: `pyproject.toml` pins `black`/`isort` to 88, which diverges from PEP 8;
+  reconcile before relying on either limit.
+- Fix order on failures: formatting → type errors → linting.
+- Optional handling: explicit `None` checks; narrow types before use.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 8.0 Common Commands
 
 ```bash
-# Activate venv
+# Activate dev venv
 source venv/bin/activate
 
+# Install (Pi adds .[pi])
+pip install -e .[dev]
+
 # Run tests
-pytest tests/
+pytest
+
+# Format, lint, type-check
+black . && isort .
+flake8 .
+mypy src/
 
 # Syntax check a file
 python -c "import ast; ast.parse(open('src/gtach/path/to/file.py').read())"
 
-# Run on macOS (dev mode)
-python -m gtach --macos --debug
+# Run with simulation transport (choices: tcp, serial, rfcomm, simtcp, simbt)
+gtach --transport simbt --debug
+
+# Deploy to the Pi (full) or stage the wheel only
+./bin/deploy.sh
+./bin/deploy.sh --stage
 ```
 
-## Key Paths
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 9.0 Key Paths
 
 ```
 src/gtach/
-  main.py           entry point, CLI args
+  main.py           entry point, argparse CLI
   app.py            application controller
-  comm/             transport (RFCOMMTransport, SerialTransport, TCPTransport), OBD, DeviceStore
+  comm/             transports (tcp, serial, rfcomm, simtcp, simbt), OBD, DeviceStore
   core/             ThreadManager, WatchdogMonitor
   display/          DisplayManager, rendering, touch, setup
   utils/            ConfigManager, PlatformDetector
 ai/workspace/
-  design/           T1/T2/T3 design documents
+  design/           design documents
   change/           active change documents
-  prompt/           T04 task prompts
+  prompt/           T03 task prompts
   issues/           issue documents
+  report/           implementation reports
 ```
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## Version History
+
+| Version | Date | Description |
+|---|---|---|
+| 0.1 | 2026-06-24 | Initial draft. Adapted Core Development Rules, Development Philosophy, and Coding Best Practices from `ai/doc/python-CLAUDE.md`; aligned with GTach toolchain (pip, pytest, mypy, black/isort/flake8), governance, and Linux-only runtime target. |
+| 1.0 | 2026-09-23 | Merged the root `CLAUDE.md` and `ai/doc/CLAUDE.md` into this file. Kept the full task-invocation text, the error-handling rule and the deploy commands from the root version. Governance numbering updated to 10.5 (T06 issue, T07 change, T03 prompt, P04.12). Removed the non-existent `--macos` flag and the `obd` conditional import. |
+
+---
+
+Copyright (c) 2026 William Watson. MIT License.

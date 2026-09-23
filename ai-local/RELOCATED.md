@@ -31,3 +31,5 @@ Files moved or copied out of ai/ by LLM-G&O bin/propagate.sh (governance P10.6).
 | 2026-09-23 | ai/profiles/claude-desktop.md | ai-local/profiles/claude-desktop.md | retired framework file |  |
 
 Reviewed 2026-09-23: 18 files deleted — all 'retired framework file' rows, plus empty ael/tests/__init__.py and the stale ai/README.md stub where present. Remaining files await a decision. Deleted files remain in git history.
+
+Reviewed 2026-09-23: doc/CLAUDE.md merged into the root CLAUDE.md; doc/CLAUDE.md, doc/python-CLAUDE.md, doc/python2-CLAUDE.md and doc/claude-desktop-instructions.md deleted. Deleted files remain in git history.

@@ -10,7 +10,7 @@ Created: 2026 June 17
 **Description:** Retro-styled real-time RPM tachometer reading an ELM327 OBD-II Bluetooth adapter.
 
 **Technology stack:** Python 3.9+ | pygame (SDL2), pyserial, PyYAML, click; Pi extras: RPi.GPIO, gpiozero
-**Target platform:** Raspberry Pi Zero 2W with Pimoroni HyperPixel Round 480×480 (production); macOS Apple Silicon (development)
+**Target platform:** Raspberry Pi Zero 2W with Pimoroni HyperPixel Round 480×480 (runtime, Linux only); Mac (Apple Silicon) as build and deploy host, not a runtime target
 
 ---
 
@@ -21,7 +21,7 @@ Created: 2026 June 17
 | Install | `python3 -m venv venv && source venv/bin/activate && pip install -e .[dev]` |
 | Test | `pytest tests/` |
 | Lint | `flake8 src/`; format with `black src/ tests/` and `isort src/ tests/` |
-| Run (dev) | `python -m gtach --macos --debug` |
+| Run (simulation) | `gtach --transport simbt --debug` (choices: tcp, serial, rfcomm, simtcp, simbt) |
 | Build | `./bin/build.sh` |
 | Deploy | `./bin/deploy.sh` (full) or `./bin/deploy.sh --stage` (wheel only); Pi at `root@gtach.local` |
 
@@ -31,7 +31,7 @@ Created: 2026 June 17
 
 - PEP 8; black and isort (profile black), line length 88; type hints on all public interfaces
 - Google-style docstrings
-- Hardware dependencies imported conditionally (`try/except ImportError`); macOS guarded by `platform.system() == 'Darwin'`
+- Hardware dependencies (`RPi.GPIO`, `gpiozero`) imported conditionally (`try/except ImportError`); platform detection in `utils/platform.py`
 - Shared state behind `threading.Lock`; unexpected exceptions logged with `logger.error(msg, exc_info=True)`
 
 ---
@@ -62,6 +62,7 @@ Created: 2026 June 17
 |---|---|---|
 | 0.1 | 2026-06-17 | Initial template |
 | 1.0 | 2026-09-23 | Project context filled in (GTach) |
+| 1.1 | 2026-09-23 | §1.0–§3.0: runtime/host roles, simulation run command and platform detection corrected |
 
 ---
 
