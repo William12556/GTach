@@ -48,8 +48,8 @@ Select one profile per project. Copy the profile-specific `.gitignore` additions
 
 | Profile | Domain | File |
 |---|---|---|
-| Claude Desktop | Strategic Domain | [claude-desktop-instructions.md](../../../docs/claude/claude-desktop-instructions.md) |
-| Claude Code (optional) | Tactical Domain | [claude.md](claude.md) |
+| Claude Desktop | Strategic Domain | [project_information.md](../../docs/claude/project_information.md) |
+| Claude Code (optional) | Tactical Domain | [claude-code.md](claude-code.md) |
 | claude-omlx | Tactical Domain | [claude-omlx.md](claude-omlx.md) |
 | Apple Silicon + MLX (Devstral Small 2 2512) | Tactical Domain | [mlx_devstral_small_2_2512_6bit.md](mlx_devstral_small_2_2512_6bit.md) |
 | Apple Silicon + MLX (Heterogeneous: Devstral worker / Magistral reviewer) | Tactical Domain | [mlx_devstral_magistral_heterogeneous.md](mlx_devstral_magistral_heterogeneous.md) |
@@ -75,6 +75,7 @@ Strategic Domain is not prescribed. Any frontier model with sufficient reasoning
 | 1.8 | 2026-06-16 | Abstract Placeholders: added Applies to column; noted <tactical_config>/ and <skills_dir>/ apply to Claude Code profiles only |
 | 1.9 | 2026-06-16 | Updated §4.0 link: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md; added section numbering throughout |
 | 1.10 | 2026-07-16 | Added heterogeneous Devstral/Magistral profile to §4.0 Available Profiles |
+| 1.11 | 2026-09-23 | §4.0: Claude Desktop link retargeted from nonexistent claude-desktop-instructions.md to ../../docs/claude/project_information.md; claude.md link corrected to claude-code.md |
 
 ---
 

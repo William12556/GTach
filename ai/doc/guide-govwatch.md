@@ -122,10 +122,10 @@ the first matching condition wins.
 | Priority | Condition | Phase |
 |---|---|---|
 | 1 | AEL status is `running` | Tactical execution |
-| 2 | Open prompt (T04) present; AEL idle or ship | Awaiting prompt execution |
-| 3 | Open change (T02) and issue (T03) present; no open prompt | Change cycle |
-| 4 | Open issue (T03) present; no open change | Issue raised |
-| 5 | Open test (T05) or result (T06) present | Test phase |
+| 2 | Open prompt (T03) present; AEL idle or ship | Awaiting prompt execution |
+| 3 | Open change (T07) and issue (T06) present; no open prompt | Change cycle |
+| 4 | Open issue (T06) present; no open change | Issue raised |
+| 5 | Open test (T04) or result (T05) present | Test phase |
 | 6 | No open documents | Idle |
 
 Conditions 2–6 evaluate only over open (non-`closed/`) documents.
@@ -142,7 +142,7 @@ Conditions 2–6 evaluate only over open (non-`closed/`) documents.
 |---|---|---|
 | FR-02-01 | VIOLATION | Change document has no coupled issue sharing its UUID |
 | FR-02-02 | WARNING | Issue document has no coupled change sharing its UUID |
-| FR-02-03 | VIOLATION | Prompt document has no coupled change sharing its UUID (skipped for design-sourced prompts, §1.4.1) |
+| FR-02-03 | VIOLATION | Prompt document has no coupled change sharing its UUID (skipped for design-sourced prompts, P04.1) |
 | FR-02-04 | WARNING | Filename does not match governance naming convention |
 | FR-02-05 | WARNING | AEL reports SHIP but open documents remain |
 | FR-02-06 | WARNING | AEL `task.md` does not reference any open prompt document |

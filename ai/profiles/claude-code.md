@@ -79,9 +79,9 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 
 **Procedure:**
 
-1. Strategic Domain authors and approves the T04 prompt per the standard workflow.
+1. Strategic Domain authors and approves the T03 prompt per the standard workflow.
 2. Open Claude Code in the project root.
-3. Issue the following instruction, substituting the actual T04 file path:
+3. Issue the following instruction, substituting the actual T03 file path:
 
 ```
 Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
@@ -90,10 +90,10 @@ Then, once finished, write a report of what you have done in
 ai/workspace/report/report-<uuid>-<name>.md.
 ```
 
-4. Claude Code reads the T04 prompt from disk and implements the task.
+4. Claude Code reads the T03 prompt from disk and implements the task.
 5. The human operator reviews the result and accepts or requests changes.
 
-Reference: `ai/governance.md` §1.10.3 Option C.
+Reference: `ai/governance.md` P13.3 Option C.
 
 [Return to Table of Contents](<#table of contents>)
 

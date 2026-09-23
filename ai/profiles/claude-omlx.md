@@ -83,9 +83,9 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 **Procedure:**
 
 1. Ensure oMLX is running with Devstral loaded.
-2. Strategic Domain authors and approves the T04 prompt per the standard workflow.
+2. Strategic Domain authors and approves the T03 prompt per the standard workflow.
 3. Open a terminal in the project root.
-4. Issue the following command, substituting the actual T04 file path:
+4. Issue the following command, substituting the actual T03 file path:
 
 ```bash
 env -i HOME="$HOME" PATH="$PATH" \
@@ -94,7 +94,7 @@ env -i HOME="$HOME" PATH="$PATH" \
   claude "implement ai/workspace/prompt/prompt-<uuid>-<n>.md"
 ```
 
-5. Claude Code reads the T04 prompt from disk and implements the task via Devstral.
+5. Claude Code reads the T03 prompt from disk and implements the task via Devstral.
 6. The human operator reviews the result and accepts or requests changes.
 
 [Return to Table of Contents](<#table of contents>)

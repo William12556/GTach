@@ -817,7 +817,7 @@ def write_context_report(
     """
     Write context-budget.md to state_dir for Strategic Domain consumption.
     This file informs the Strategic Domain of available context headroom
-    before authoring the next tactical_brief or T04 prompt.
+    before authoring the next tactical_brief or T03 prompt.
     """
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -863,7 +863,7 @@ Iterations before warn threshold:  ~{iters_to_warn}
 Iterations before abort threshold: ~{iters_to_abort}
 
 ## Guidance for Strategic Domain
-When authoring the next tactical_brief or T04 prompt:
+When authoring the next tactical_brief or T03 prompt:
 
 - Current initial load is {initial_pct:.1f}% of context window
 - Each Ralph Loop phase iteration accumulates ~{est_per_iter} tokens
@@ -977,7 +977,7 @@ def setup_logging(state_dir: str) -> logging.Logger:
 
 def extract_target_profile(raw: str, log: logging.Logger) -> str | None:
     """
-    Extract target_profile from a T04 prompt document's YAML block.
+    Extract target_profile from a T03 prompt document's YAML block.
 
     Returns the target_profile value if found, or None if absent.
     Used by strict_tactical_brief mode to determine if brief enforcement applies.
@@ -1000,7 +1000,7 @@ def extract_target_profile(raw: str, log: logging.Logger) -> str | None:
 
 def extract_tactical_brief(raw: str, log: logging.Logger) -> str:
     """
-    Extract tactical_brief from a T04 prompt document.
+    Extract tactical_brief from a T03 prompt document.
 
     Pass 1: scan all fenced ```yaml blocks for a tactical_brief key.
     Pass 2: if Pass 1 fails, find the first '## N.N Tactical Brief' section

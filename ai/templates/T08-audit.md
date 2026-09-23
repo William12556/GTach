@@ -16,7 +16,7 @@ Created: 2026 June 28
 
 ```yaml
 # T08 Audit Template v1.0 - YAML Format
-# Audit report deliverable for P08. Used by both audit modes:
+# Audit report deliverable for P02. Used by both audit modes:
 #   strategic (Claude Desktop, authored directly) and
 #   tactical (AEL audit loop, archived from audit-report.md).
 
@@ -39,7 +39,7 @@ findings:
   critical:
     - location: ""  # file:line or file::symbol
       description: ""
-      issue_ref: ""  # issue-<uuid> when promoted via P04
+      issue_ref: ""  # issue-<uuid> when promoted via P03
   high:
     - location: ""
       description: ""

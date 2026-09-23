@@ -1,35 +1,42 @@
 #!/usr/bin/env python3
 """
-govwatch — read-only governance monitoring TUI for downstream projects.
+overwatch — read-only governance monitoring, rendered to a browser page.
 
-Infers workflow phase, runs a two-tier compliance scan, lists open
-documents by UUID, and emits an alert summary to the clipboard and to
-dashboard-alerts.md each scan cycle.
+Project Overwatch FR-01 (design-project-overwatch.md §7.1): the three
+govwatch panels (Workflow State, Compliance Alerts, Document Registry)
+ported from a Textual TUI to a single self-contained HTML file. The data
+layer (Scanner, PhaseInference, ComplianceEngine, AlertWriter and their
+supporting types) is carried over from ai/src/govwatch.py unmodified; only
+the presentation layer is new.
+
+Each scan cycle writes two files and reads everything else read-only:
+    <project>/overwatch.html          rendered dashboard (overwritten)
+    <project>/ai/dashboard-alerts.md  alert summary (overwritten)
 
 Usage:
-    python ai/src/govwatch.py [--project PATH] [--interval N]
+    python ai/src/overwatch.py [--project PATH] [--interval N]
 
-Key bindings: C=copy alerts  R=refresh  Q=quit
-Write target: <project>/dashboard-alerts.md (overwritten each scan)
+The rendered page carries a <meta http-equiv="refresh"> tag matching the
+scan interval, so an open browser tab re-reads the file as it is rewritten.
+No server process, no socket, no port (design §3.1).
 """
 
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import datetime
+import html
+import json
 import os
 import re
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
-from rich.markup import escape
-from textual.app import App, ComposeResult
-from textual.binding import Binding
-from textual.containers import Horizontal
-from textual.widgets import Footer, Header, Static
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -75,7 +82,7 @@ _REQUIRED_ISSUE: frozenset[str] = frozenset(
 
 @dataclass(frozen=True)
 class ProjectPaths:
-    """Resolved filesystem paths for a govwatch project."""
+    """Resolved filesystem paths for an overwatch project."""
 
     root: Path
     """Absolute project root directory."""
@@ -84,7 +91,7 @@ class ProjectPaths:
     ael_state: Path
     """ai/state/ralph/ state directory under root."""
     alerts_file: Path
-    """ai/dashboard-alerts.md (sole write target)."""
+    """ai/dashboard-alerts.md (alert-summary write target)."""
 
 
 @dataclass
@@ -355,7 +362,7 @@ def validate_project(paths: ProjectPaths) -> bool:
     """
     if not paths.workspace.is_dir():
         print(
-            f"govwatch: ai/workspace/ not found at {paths.workspace}\n"
+            f"overwatch: ai/workspace/ not found at {paths.workspace}\n"
             f"Is '{paths.root}' a project root? "
             f"(expected 'ai/workspace/' subdirectory)",
             file=sys.stderr,
@@ -818,8 +825,9 @@ class ComplianceEngine:
 class AlertWriter:
     """Render alert summaries and write to dashboard-alerts.md.
 
-    dashboard-alerts.md is the sole write target (CON-07 / NFR-01).
-    Each call to write() overwrites the file; no appending (FR-04-04).
+    dashboard-alerts.md is one of two permitted write targets (CON-07 /
+    NFR-01, design §3.1 clarification). Each call to write() overwrites the
+    file; no appending (FR-04-04).
     """
 
     def __init__(self, paths: ProjectPaths) -> None:
@@ -876,7 +884,6 @@ class AlertWriter:
         """Overwrite dashboard-alerts.md with the current payload.
 
         Returns an error-message string on failure, None on success.
-        The caller should surface failures as in-TUI WARNINGs (design §10).
         """
         content = self.payload(snapshot)
         try:
@@ -887,294 +894,342 @@ class AlertWriter:
 
 
 # ---------------------------------------------------------------------------
-# Panel renderers (Rich markup strings)
+# JSON serialisation helpers
 # ---------------------------------------------------------------------------
 
 
-def _render_workflow_state(snapshot: Snapshot) -> str:
-    """Build a Rich markup string for the Workflow State panel."""
-    ael = snapshot.ael_state
-    budget = snapshot.budget
+def to_jsonable(value: Any) -> Any:
+    """Convert *value* into a structure the stdlib json encoder accepts.
 
-    _phase_colours = {
-        "Tactical execution": "green",
-        "Awaiting prompt execution": "yellow",
-        "Change cycle": "cyan",
-        "Issue raised": "blue",
-        "Test phase": "magenta",
-        "Idle": "dim",
-    }
-    _ael_colours = {
-        "running": "green",
-        "ship": "bright_green",
-        "blocked": "red",
-        "idle": "dim",
-    }
-    _budget_colours = {
-        "ok": "green",
-        "warn": "yellow",
-        "abort": "red",
-        "unknown": "dim",
-    }
-
-    phase_col = _phase_colours.get(snapshot.phase, "white")
-    ael_col = _ael_colours.get(ael.status, "white")
-    bud_col = _budget_colours.get(budget.status, "white")
-
-    lines: list[str] = [
-        "[bold]Phase[/bold]",
-        f"  [{phase_col}]{escape(snapshot.phase)}[/{phase_col}]",
-        "",
-        "[bold]AEL Status[/bold]",
-        f"  [{ael_col}]{ael.status.upper()}[/{ael_col}]",
-    ]
-    if ael.iteration is not None:
-        lines.append(f"  Iteration: {ael.iteration}")
-    if ael.blocked_detail:
-        preview = ael.blocked_detail[:100].replace("\n", " ")
-        lines.append(f"  [red]Blocked:[/red] {escape(preview)}")
-
-    lines += [
-        "",
-        "[bold]Budget[/bold]",
-        f"  [{bud_col}]{budget.status.upper()}[/{bud_col}]",
-    ]
-    if budget.initial_pct is not None:
-        lines.append(f"  Initial load: {budget.initial_pct:.1f}%")
-    if not budget.present:
-        lines.append("  [dim]context-budget.md not found[/dim]")
-
-    return "\n".join(lines)
-
-
-def _render_compliance_alerts(snapshot: Snapshot) -> str:
-    """Build a Rich markup string for the Compliance Alerts panel."""
-    violations = [a for a in snapshot.alerts if a.severity == "violation"]
-    warnings = [a for a in snapshot.alerts if a.severity == "warning"]
-    ts = snapshot.scan_time.strftime("%H:%M:%S")
-
-    lines: list[str] = []
-
-    if violations:
-        lines.append(f"[bold red]VIOLATIONS ({len(violations)})[/bold red]")
-        for a in violations:
-            doc_str = f" [dim]({escape(a.document)})[/dim]" if a.document else ""
-            lines.append(f"  [red]• [{a.code}] {escape(a.message)}{doc_str}[/red]")
-    else:
-        lines.append("[green]No violations[/green]")
-
-    lines.append("")
-
-    if warnings:
-        lines.append(f"[bold yellow]WARNINGS ({len(warnings)})[/bold yellow]")
-        for a in warnings:
-            doc_str = f" [dim]({escape(a.document)})[/dim]" if a.document else ""
-            lines.append(f"  [yellow]• [{a.code}] {escape(a.message)}{doc_str}[/yellow]")
-    else:
-        lines.append("[green]No warnings[/green]")
-
-    lines.append("")
-    lines.append(
-        f"[dim]Last scan: {ts}  |  "
-        f"V: {len(violations)}  W: {len(warnings)}[/dim]"
-    )
-    return "\n".join(lines)
-
-
-def _render_document_registry(snapshot: Snapshot) -> str:
-    """Build a Rich markup string for the Document Registry panel."""
-    docs = [d for d in snapshot.documents if not d.is_master]
-
-    if not docs:
-        return "[dim]No open documents[/dim]"
-
-    # Group by filename UUID
-    by_uuid: dict[str, list[DocumentRecord]] = {}
-    no_uuid_docs: list[DocumentRecord] = []
-    for doc in docs:
-        if doc.uuid:
-            by_uuid.setdefault(doc.uuid, []).append(doc)
-        else:
-            no_uuid_docs.append(doc)
-
-    lines: list[str] = []
-    for uid in sorted(by_uuid):
-        grp = sorted(by_uuid[uid], key=lambda d: d.cls)
-        lines.append(f"[bold]{uid}[/bold]")
-        for doc in grp:
-            status_mark = "[green]✓[/green]" if doc.parse_ok else "[red]![/red]"
-            lines.append(
-                f"  {status_mark} [dim]{doc.cls}[/dim] "
-                f"{escape(os.path.basename(doc.path))}"
-            )
-        lines.append("")
-
-    if no_uuid_docs:
-        lines.append("[dim]── No UUID ──[/dim]")
-        for doc in no_uuid_docs:
-            lines.append(f"  [dim]{escape(os.path.basename(doc.path))}[/dim]")
-        lines.append("")
-
-    # Open-issue to-do list
-    open_issues = [d for d in docs if d.cls == "issue"]
-    if open_issues:
-        lines.append("[bold]Open Issues[/bold]")
-        for doc in open_issues:
-            lines.append(f"  • {escape(os.path.basename(doc.path))}")
-
-    return "\n".join(lines)
+    Handles the types the Snapshot graph actually contains: dataclass
+    instances, pathlib.Path (rendered as str), datetime (ISO 8601), and the
+    usual containers. Anything else falls through to str() rather than
+    raising, so a rendering pass can never fail on an unexpected type.
+    """
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return value.isoformat()
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return {f.name: to_jsonable(getattr(value, f.name)) for f in dataclasses.fields(value)}
+    if isinstance(value, dict):
+        return {str(k): to_jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [to_jsonable(v) for v in value]
+    return str(value)
 
 
 # ---------------------------------------------------------------------------
-# GovwatchApp
+# HtmlRenderer
 # ---------------------------------------------------------------------------
 
 
-class GovwatchApp(App):
-    """Governance monitoring TUI (textual.App subclass).
+class HtmlRenderer:
+    """Render a Snapshot as a single self-contained HTML document.
 
-    Hosts three panels (Workflow State, Compliance Alerts, Document Registry),
-    a polling timer, and key bindings for C / R / Q.
+    Replaces govwatch's Textual App (design §3.1, §5.0). The rendered page
+    carries inlined CSS, the serialised Snapshot as embedded JSON, and a
+    meta-refresh tag matching the scan interval. Severity colour-coding is
+    server-rendered as CSS classes, not applied client-side.
     """
 
-    CSS = """
-    Screen {
-        layout: vertical;
+    OUTPUT_NAME: str = "overwatch.html"
+    """Filename written to the project root each scan cycle."""
+
+    _SEVERITY_CLASS: dict[str, str] = {
+        "violation": "severity-violation",
+        "warning": "severity-warning",
+        "ok": "severity-ok",
     }
-    #panels {
-        layout: horizontal;
-        height: 1fr;
+    """Alert severity → CSS class name."""
+
+    _CSS: str = """
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0; padding: 1.5rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px; line-height: 1.5;
+      background: #16181d; color: #e6e6e6;
     }
+    h1 { font-size: 1.25rem; margin: 0 0 0.25rem 0; }
+    h2 { font-size: 1rem; margin: 0 0 0.75rem 0; text-transform: uppercase;
+         letter-spacing: 0.08em; color: #9aa4b2; }
+    h3 { font-size: 0.9rem; margin: 1rem 0 0.35rem 0; color: #c8d0da; }
+    .meta { color: #9aa4b2; margin-bottom: 1.25rem; font-size: 0.85rem; }
+    .panels { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
     .panel {
-        border: round $primary;
-        width: 1fr;
-        padding: 1 2;
-        overflow-y: auto;
+      flex: 1 1 20rem; min-width: 18rem;
+      border: 1px solid #333a45; border-radius: 6px;
+      padding: 1rem; background: #1c1f26;
     }
-    #workflow-state {
-        border: round $success;
-        width: 30%;
-    }
-    #compliance-alerts {
-        border: round $warning;
-        width: 45%;
-    }
-    #document-registry {
-        border: round $accent;
-        width: 25%;
-    }
+    .field { margin-bottom: 0.75rem; }
+    .label { color: #9aa4b2; font-size: 0.8rem; text-transform: uppercase;
+             letter-spacing: 0.06em; }
+    .value { font-size: 1.05rem; font-weight: 600; }
+    ul.alerts, ul.docs { list-style: none; margin: 0; padding: 0; }
+    ul.alerts li, ul.docs li { margin-bottom: 0.4rem; }
+    .code { font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem;
+            color: #9aa4b2; }
+    .doc-ref { color: #8f98a5; font-size: 0.8rem; }
+    .uuid-group { margin-bottom: 0.9rem; }
+    .uuid { font-family: ui-monospace, Menlo, monospace; font-weight: 600; }
+    .empty { color: #7d8794; font-style: italic; }
+    .severity-violation { color: #ff6b6b; }
+    .severity-warning  { color: #ffc857; }
+    .severity-ok       { color: #5ed18a; }
+    .status-blocked, .status-abort { color: #ff6b6b; }
+    .status-running, .status-ok, .status-ship { color: #5ed18a; }
+    .status-warn { color: #ffc857; }
+    .status-idle, .status-unknown { color: #9aa4b2; }
+    footer { margin-top: 1.5rem; color: #7d8794; font-size: 0.8rem; }
     """
-
-    BINDINGS = [
-        Binding("q", "quit", "Quit"),
-        Binding("r", "refresh_scan", "Refresh"),
-        Binding("c", "copy_alerts", "Copy alerts"),
-    ]
-
-    TITLE = "govwatch"
-    SUB_TITLE = "Governance Monitor"
+    """Inlined stylesheet for the rendered page."""
 
     def __init__(self, paths: ProjectPaths, interval: int = DEFAULT_INTERVAL) -> None:
-        """Initialise the application with project paths and poll interval."""
-        super().__init__()
+        """Initialise the renderer with project paths and the scan interval."""
         self.paths = paths
         self.interval = interval
-        self._scanner = Scanner(paths)
-        self._writer = AlertWriter(paths)
-        self._snapshot: Optional[Snapshot] = None
-
-    def compose(self) -> ComposeResult:
-        """Compose the three-panel layout."""
-        yield Header()
-        with Horizontal(id="panels"):
-            yield Static("", id="workflow-state", classes="panel")
-            yield Static("", id="compliance-alerts", classes="panel")
-            yield Static("", id="document-registry", classes="panel")
-        yield Footer()
-
-    def on_mount(self) -> None:
-        """Set panel border titles, run the first scan, and start the timer."""
-        self.query_one("#workflow-state", Static).border_title = "Workflow State"
-        self.query_one("#compliance-alerts", Static).border_title = "Compliance Alerts"
-        self.query_one("#document-registry", Static).border_title = "Document Registry"
-        self._do_scan()
-        self.set_interval(self.interval, self._do_scan)
 
     # ------------------------------------------------------------------
-    # Scan and render
+    # Public interface
     # ------------------------------------------------------------------
 
-    def _do_scan(self) -> None:
-        """Perform one full scan cycle and refresh all panels."""
-        snapshot = self._scanner.scan()
-        self._snapshot = snapshot
+    def render(self, snapshot: Snapshot) -> str:
+        """Return the complete HTML document for *snapshot* as a string.
 
-        write_err = self._writer.write(snapshot)
-        if write_err:
-            snapshot.alerts.append(Alert(
-                severity="warning",
-                code="WRITE-WARN",
-                message=write_err,
-            ))
+        Args:
+            snapshot: The current scan result.
 
-        self._update_panels(snapshot)
-
-    def _update_panels(self, snapshot: Snapshot) -> None:
-        """Push Rich markup into each panel widget."""
-        self.query_one("#workflow-state", Static).update(
-            _render_workflow_state(snapshot)
-        )
-        self.query_one("#compliance-alerts", Static).update(
-            _render_compliance_alerts(snapshot)
-        )
-        self.query_one("#document-registry", Static).update(
-            _render_document_registry(snapshot)
-        )
-        v = sum(1 for a in snapshot.alerts if a.severity == "violation")
-        w = sum(1 for a in snapshot.alerts if a.severity == "warning")
-        self.sub_title = (
-            f"{self.paths.root.name}  |  "
-            f"Phase: {snapshot.phase}  |  "
-            f"V: {v}  W: {w}"
-        )
-
-    # ------------------------------------------------------------------
-    # Actions
-    # ------------------------------------------------------------------
-
-    def action_refresh_scan(self) -> None:
-        """Force an immediate scan cycle (R key)."""
-        self._do_scan()
-
-    def action_copy_alerts(self) -> None:
-        """Copy the alert summary payload to the clipboard (C key).
-
-        Tries pyperclip first; falls back to macOS pbcopy; notifies on failure.
+        Returns:
+            A full HTML document: inlined <style>, embedded snapshot JSON,
+            meta-refresh tag, and the three FR-01 panel sections.
         """
-        if self._snapshot is None:
-            return
-        payload = self._writer.payload(self._snapshot)
-        # macOS pbcopy — reliable inside a textual alternate-screen session
-        import subprocess
-        try:
-            proc = subprocess.Popen(
-                ["pbcopy"],
-                stdin=subprocess.PIPE,
-            )
-            proc.communicate(input=payload.encode("utf-8"))
-            self.notify("Alert summary copied to clipboard.", title="Copied")
-            return
-        except Exception:  # noqa: BLE001
-            pass
-        self.notify(
-            "Clipboard copy failed: pbcopy not available on this platform.",
-            title="Copy error",
-            severity="error",
+        interval = self.interval
+        project = html.escape(self.paths.root.name)
+        ts = snapshot.scan_time.strftime("%Y-%m-%d %H:%M:%S")
+        violations = sum(1 for a in snapshot.alerts if a.severity == "violation")
+        warnings = sum(1 for a in snapshot.alerts if a.severity == "warning")
+
+        return (
+            "<!DOCTYPE html>\n"
+            '<html lang="en">\n'
+            "<head>\n"
+            '<meta charset="utf-8">\n'
+            '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+            f'<meta http-equiv="refresh" content="{interval}">\n'
+            f"<title>overwatch — {project}</title>\n"
+            f"<style>{self._CSS}</style>\n"
+            "</head>\n"
+            "<body>\n"
+            f"<h1>Project Overwatch — {project}</h1>\n"
+            f'<p class="meta">Last scan {html.escape(ts)} &middot; '
+            f"refresh {interval}s &middot; "
+            f"V: {violations} &nbsp; W: {warnings}</p>\n"
+            '<div class="panels">\n'
+            f"{self._render_workflow_state(snapshot)}\n"
+            f"{self._render_compliance_alerts(snapshot)}\n"
+            f"{self._render_document_registry(snapshot)}\n"
+            "</div>\n"
+            "<footer>Read-only view. Regenerated each scan cycle; "
+            "the browser reloads this file automatically.</footer>\n"
+            f"{self._render_snapshot_json(snapshot)}\n"
+            "<script>\n"
+            "// Embedded snapshot is available for inspection and for the\n"
+            "// client-side panels added in later phases.\n"
+            'window.OVERWATCH = JSON.parse('
+            'document.getElementById("snapshot").textContent);\n'
+            "</script>\n"
+            "</body>\n"
+            "</html>\n"
         )
 
-    def action_quit(self) -> None:
-        """Quit the application (Q key)."""
-        self.exit()
+    def write(
+        self,
+        snapshot: Snapshot,
+        project_root: Optional[Path] = None,
+        interval: Optional[int] = None,
+    ) -> None:
+        """Render *snapshot* and overwrite overwatch.html at the project root.
+
+        Write failures are reported to stderr and swallowed: a transient
+        filesystem error must not end the scan loop (design §10.0). The next
+        cycle retries.
+
+        Args:
+            snapshot: The current scan result.
+            project_root: Output directory; defaults to the configured root.
+            interval: Meta-refresh interval; defaults to the configured one.
+        """
+        root = project_root if project_root is not None else self.paths.root
+        if interval is not None:
+            self.interval = interval
+        target = Path(root) / self.OUTPUT_NAME
+        try:
+            content = self.render(snapshot)
+            target.write_text(content, encoding="utf-8")
+        except Exception as exc:  # noqa: BLE001 — must not end the loop
+            print(f"overwatch: {self.OUTPUT_NAME} write failed ({target}): {exc}",
+                  file=sys.stderr)
+
+    # ------------------------------------------------------------------
+    # Panel renderers
+    # ------------------------------------------------------------------
+
+    def _render_workflow_state(self, snapshot: Snapshot) -> str:
+        """Return the Workflow State panel: phase, AEL status, budget."""
+        ael = snapshot.ael_state
+        budget = snapshot.budget
+
+        parts: list[str] = [
+            '<section class="panel" id="workflow-state">',
+            "<h2>Workflow State</h2>",
+            '<div class="field"><div class="label">Phase</div>'
+            f'<div class="value">{html.escape(snapshot.phase)}</div></div>',
+            '<div class="field"><div class="label">AEL Status</div>'
+            f'<div class="value status-{html.escape(ael.status)}">'
+            f"{html.escape(ael.status.upper())}</div>",
+        ]
+        if ael.iteration is not None:
+            parts.append(f'<div class="doc-ref">Iteration {ael.iteration}</div>')
+        if ael.blocked_detail:
+            preview = ael.blocked_detail[:160].replace("\n", " ")
+            parts.append(
+                f'<div class="severity-violation">Blocked: {html.escape(preview)}</div>'
+            )
+        parts.append("</div>")
+
+        parts.append(
+            '<div class="field"><div class="label">Budget</div>'
+            f'<div class="value status-{html.escape(budget.status)}">'
+            f"{html.escape(budget.status.upper())}</div>"
+        )
+        if budget.initial_pct is not None:
+            parts.append(f'<div class="doc-ref">Initial load {budget.initial_pct:.1f}%</div>')
+        if not budget.present:
+            parts.append('<div class="empty">context-budget.md not found</div>')
+        parts.append("</div>")
+        parts.append("</section>")
+        return "\n".join(parts)
+
+    def _render_compliance_alerts(self, snapshot: Snapshot) -> str:
+        """Return the Compliance Alerts panel, grouped by severity."""
+        parts: list[str] = [
+            '<section class="panel" id="compliance-alerts">',
+            "<h2>Compliance Alerts</h2>",
+        ]
+
+        for severity, heading in (("violation", "Violations"), ("warning", "Warnings")):
+            group = [a for a in snapshot.alerts if a.severity == severity]
+            css = self._SEVERITY_CLASS.get(severity, "severity-ok")
+            parts.append(f'<h3 class="{css}">{heading} ({len(group)})</h3>')
+            if not group:
+                parts.append(
+                    f'<p class="severity-ok">No {heading.lower()}</p>'
+                )
+                continue
+            parts.append('<ul class="alerts">')
+            for alert in group:
+                doc = (
+                    f' <span class="doc-ref">({html.escape(alert.document)})</span>'
+                    if alert.document else ""
+                )
+                parts.append(
+                    f'<li class="{css}"><span class="code">[{html.escape(alert.code)}]</span> '
+                    f"{html.escape(alert.message)}{doc}</li>"
+                )
+            parts.append("</ul>")
+
+        others = [a for a in snapshot.alerts if a.severity not in ("violation", "warning")]
+        if others:
+            parts.append('<h3 class="severity-ok">Other (%d)</h3>' % len(others))
+            parts.append('<ul class="alerts">')
+            for alert in others:
+                css = self._SEVERITY_CLASS.get(alert.severity, "severity-ok")
+                parts.append(
+                    f'<li class="{css}"><span class="code">[{html.escape(alert.code)}]</span> '
+                    f"{html.escape(alert.message)}</li>"
+                )
+            parts.append("</ul>")
+
+        parts.append("</section>")
+        return "\n".join(parts)
+
+    def _render_document_registry(self, snapshot: Snapshot) -> str:
+        """Return the Document Registry panel, grouped by document UUID."""
+        docs = [d for d in snapshot.documents if not d.is_master]
+        parts: list[str] = [
+            '<section class="panel" id="document-registry">',
+            "<h2>Document Registry</h2>",
+        ]
+
+        if not docs:
+            parts.append('<p class="empty">No open documents</p>')
+            parts.append("</section>")
+            return "\n".join(parts)
+
+        by_uuid: dict[str, list[DocumentRecord]] = {}
+        no_uuid: list[DocumentRecord] = []
+        for doc in docs:
+            if doc.uuid:
+                by_uuid.setdefault(doc.uuid, []).append(doc)
+            else:
+                no_uuid.append(doc)
+
+        for uid in sorted(by_uuid):
+            parts.append('<div class="uuid-group">')
+            parts.append(f'<div class="uuid">{html.escape(uid)}</div>')
+            parts.append('<ul class="docs">')
+            for doc in sorted(by_uuid[uid], key=lambda d: d.cls):
+                parts.append(self._render_document_row(doc))
+            parts.append("</ul>")
+            parts.append("</div>")
+
+        if no_uuid:
+            parts.append('<div class="uuid-group">')
+            parts.append('<div class="uuid">No UUID</div>')
+            parts.append('<ul class="docs">')
+            for doc in no_uuid:
+                parts.append(self._render_document_row(doc))
+            parts.append("</ul>")
+            parts.append("</div>")
+
+        parts.append("</section>")
+        return "\n".join(parts)
+
+    def _render_document_row(self, doc: DocumentRecord) -> str:
+        """Return one <li> for *doc*: class, filename, iteration, coupling."""
+        css = "severity-ok" if doc.parse_ok else "severity-warning"
+        mark = "&#10003;" if doc.parse_ok else "!"
+        bits: list[str] = [html.escape(doc.cls)]
+        if doc.iteration is not None:
+            bits.append(f"iteration {doc.iteration}")
+        bits.append("coupled" if doc.coupled_ref else "uncoupled")
+        detail = " &middot; ".join(bits)
+        return (
+            f'<li><span class="{css}">{mark}</span> '
+            f"{html.escape(os.path.basename(doc.path))}"
+            f'<div class="doc-ref">{detail}</div></li>'
+        )
+
+    # ------------------------------------------------------------------
+    # Embedded JSON
+    # ------------------------------------------------------------------
+
+    def _render_snapshot_json(self, snapshot: Snapshot) -> str:
+        """Return the <script type="application/json" id="snapshot"> block.
+
+        The payload is escaped so that no substring can terminate the
+        enclosing <script> element prematurely.
+        """
+        payload = json.dumps(to_jsonable(snapshot), indent=2)
+        payload = payload.replace("<", "\\u003c").replace(">", "\\u003e")
+        return (
+            '<script type="application/json" id="snapshot">\n'
+            f"{payload}\n"
+            "</script>"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -1182,18 +1237,57 @@ class GovwatchApp(App):
 # ---------------------------------------------------------------------------
 
 
+def resolve_paths(root: Path) -> ProjectPaths:
+    """Build a ProjectPaths for *root* using govwatch's layout conventions."""
+    return ProjectPaths(
+        root=root,
+        workspace=root / "ai" / "workspace",
+        ael_state=root / "ai" / "state" / "ralph",
+        alerts_file=root / "ai" / "dashboard-alerts.md",
+    )
+
+
+def scan_cycle(
+    scanner: Scanner,
+    writer: AlertWriter,
+    renderer: HtmlRenderer,
+) -> Snapshot:
+    """Run one scan cycle: scan, write dashboard-alerts.md, write overwatch.html.
+
+    A dashboard-alerts.md write failure is surfaced both as a WARNING alert
+    on the rendered page and on stderr; neither write failure aborts the
+    cycle (design §10.0).
+
+    Returns:
+        The Snapshot produced by this cycle.
+    """
+    snapshot = scanner.scan()
+
+    write_err = writer.write(snapshot)
+    if write_err:
+        snapshot.alerts.append(Alert(
+            severity="warning",
+            code="WRITE-WARN",
+            message=write_err,
+        ))
+        print(f"overwatch: {write_err}", file=sys.stderr)
+
+    renderer.write(snapshot)
+    return snapshot
+
+
 def main() -> None:
-    """Parse CLI arguments, validate the project root, and launch GovwatchApp."""
+    """Parse CLI arguments, validate the project root, and run the scan loop."""
     parser = argparse.ArgumentParser(
-        prog="govwatch",
-        description="Read-only governance monitoring TUI.",
+        prog="overwatch",
+        description="Read-only governance monitoring, rendered to overwatch.html.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
-            "Key bindings:\n"
-            "  C  copy alert summary to clipboard\n"
-            "  R  force immediate refresh\n"
-            "  Q  quit\n\n"
-            "Write target: <project>/dashboard-alerts.md (overwritten each scan)"
+            "Write targets:\n"
+            "  <project>/overwatch.html           rendered dashboard\n"
+            "  <project>/ai/dashboard-alerts.md   alert summary\n\n"
+            "Open overwatch.html once in a browser; it reloads itself on the\n"
+            "scan interval. Press Ctrl-C to stop."
         ),
     )
     parser.add_argument(
@@ -1212,18 +1306,29 @@ def main() -> None:
     args = parser.parse_args()
 
     root = Path(args.project).resolve()
-    paths = ProjectPaths(
-        root=root,
-        workspace=root / "ai" / "workspace",
-        ael_state=root / "ai" / "state" / "ralph",
-        alerts_file=root / "ai" / "dashboard-alerts.md",
-    )
+    paths = resolve_paths(root)
 
     if not validate_project(paths):
         sys.exit(1)
 
-    app = GovwatchApp(paths=paths, interval=args.interval)
-    app.run()
+    interval = max(1, args.interval)
+    scanner = Scanner(paths)
+    writer = AlertWriter(paths)
+    renderer = HtmlRenderer(paths, interval=interval)
+
+    print(
+        f"overwatch: monitoring {root} every {interval}s\n"
+        f"overwatch: open {(root / HtmlRenderer.OUTPUT_NAME).as_uri()} in a "
+        f"browser (Ctrl-C to stop)",
+        file=sys.stderr,
+    )
+
+    try:
+        while True:
+            scan_cycle(scanner, writer, renderer)
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("\noverwatch: stopped", file=sys.stderr)
 
 
 if __name__ == "__main__":

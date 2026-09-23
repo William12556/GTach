@@ -168,7 +168,7 @@ python ai/ael/src/orchestrator.py --mode reset
 | `--duration` | Wall-clock time limit in hours (default: no limit) |
 | `--config` | Path to config.yaml |
 
-**`context-budget.md`** is written automatically by `orchestrator.py` at every startup (before the first phase); no separate invocation is required. It reports context window, thresholds, and recommended `tactical_brief` sizing. The Strategic Domain reads `ai/state/ralph/context-budget.md` before authoring any AEL-targeted T04 prompt.
+**`context-budget.md`** is written automatically by `orchestrator.py` at every startup (before the first phase); no separate invocation is required. It reports context window, thresholds, and recommended `tactical_brief` sizing. The Strategic Domain reads `ai/state/ralph/context-budget.md` before authoring any AEL-targeted T03 prompt.
 
 [Return to Table of Contents](<#table of contents>)
 

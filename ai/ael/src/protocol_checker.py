@@ -2,12 +2,12 @@
 Layer 2 Protocol Checker — Multi-document workflow invariant validation.
 
 Checks (require a complete workspace; multi-document):
-  1. UUID chain integrity      (P09 §1.10.2)
-  2. Bidirectional coupling    (P03 §1.4.2, P04 §1.5.7)
-  3. One-to-one constraint     (P03 §1.4.2)
-  4. Status consistency        (P04 §1.5.7)
-  5. Lifecycle placement       (P00 §1.1.14)
-  6. Prompt self-containment   (P09 §1.10.2)
+  1. UUID chain integrity      (P13.2)
+  2. Bidirectional coupling    (P04.2, P03.7)
+  3. One-to-one constraint     (P04.2)
+  4. Status consistency        (P03.7)
+  5. Lifecycle placement       (P00.14)
+  6. Prompt self-containment   (P13.2)
 
 Usage:
     python protocol_checker.py <workspace_dir>
@@ -29,7 +29,7 @@ from linter import Finding, _extract_yaml, _get, MASTER_RE, NORMAL_RE
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-# Terminal status values that satisfy closure criteria (P00 §1.1.14.3)
+# Terminal status values that satisfy closure criteria (P00.14.3)
 _TERMINAL_STATUS: dict[str, frozenset] = {
     "t02_change": frozenset({"verified"}),
     "t03_issue":  frozenset({"closed"}),
@@ -140,7 +140,7 @@ def load_workspace(workspace_dir: str) -> tuple[list[WorkspaceDoc], list[Finding
     return docs, warnings
 
 
-# ── Check 1: UUID chain integrity (P09 §1.10.2) ───────────────────────────────
+# ── Check 1: UUID chain integrity (P13.2) ───────────────────────────────
 
 def check_uuid_chain(docs: list[WorkspaceDoc]) -> list[Finding]:
     """
@@ -171,7 +171,7 @@ def check_uuid_chain(docs: list[WorkspaceDoc]) -> list[Finding]:
     return findings
 
 
-# ── Check 2: Bidirectional coupling (P03 §1.4.2, P04 §1.5.7) ─────────────────
+# ── Check 2: Bidirectional coupling (P04.2, P03.7) ─────────────────
 
 def check_bidirectional(docs: list[WorkspaceDoc]) -> list[Finding]:
     """
@@ -184,7 +184,7 @@ def check_bidirectional(docs: list[WorkspaceDoc]) -> list[Finding]:
     findings: list[Finding] = []
     by_id = {d.doc_id: d for d in docs}
 
-    # Back-reference is mandatory only for the change↔issue pair (P03 §1.4.2)
+    # Back-reference is mandatory only for the change↔issue pair (P04.2)
     MANDATORY_BACK = {"t02_change"}
 
     for doc in docs:
@@ -213,7 +213,7 @@ def check_bidirectional(docs: list[WorkspaceDoc]) -> list[Finding]:
     return findings
 
 
-# ── Check 3: One-to-one constraint (P03 §1.4.2) ───────────────────────────────
+# ── Check 3: One-to-one constraint (P04.2) ───────────────────────────────
 
 def check_one_to_one(docs: list[WorkspaceDoc]) -> list[Finding]:
     """
@@ -245,7 +245,7 @@ def check_one_to_one(docs: list[WorkspaceDoc]) -> list[Finding]:
     return findings
 
 
-# ── Check 4: Status consistency (P04 §1.5.7) ──────────────────────────────────
+# ── Check 4: Status consistency (P03.7) ──────────────────────────────────
 
 def check_status_consistency(docs: list[WorkspaceDoc]) -> list[Finding]:
     """
@@ -295,7 +295,7 @@ def check_status_consistency(docs: list[WorkspaceDoc]) -> list[Finding]:
     return findings
 
 
-# ── Check 5: Lifecycle placement (P00 §1.1.14) ────────────────────────────────
+# ── Check 5: Lifecycle placement (P00.14) ────────────────────────────────
 
 def check_lifecycle_placement(docs: list[WorkspaceDoc]) -> list[Finding]:
     """
@@ -324,11 +324,11 @@ def check_lifecycle_placement(docs: list[WorkspaceDoc]) -> list[Finding]:
     return findings
 
 
-# ── Check 6: Prompt self-containment (P09 §1.10.2) ───────────────────────────
+# ── Check 6: Prompt self-containment (P13.2) ───────────────────────────
 
 def check_prompt_self_contained(docs: list[WorkspaceDoc]) -> list[Finding]:
     """
-    T04 prompt documents must be self-contained:
+    T03 prompt documents must be self-contained:
       - specification.description must be non-empty
       - design.components must contain at least one entry
       - deliverable.files must contain at least one entry

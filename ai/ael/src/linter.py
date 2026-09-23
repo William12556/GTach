@@ -2,11 +2,11 @@
 Layer 1 Governance Linter — Static validation of workspace documents.
 
 Checks:
-  1. File naming conventions  (P00 §1.1.10)
+  1. File naming conventions  (P00.10)
   2. Markdown structure       (Version History, Created timestamp, copyright)
   3. YAML field validity      (schema_type, id pattern, enum values, iteration)
-  4. UUID coupling integrity  (P03 §1.4.2, P04 §1.5.7, P06 §1.7.12, P09 §1.10.2)
-  5. Obsidian link targets    (P02 §1.3.9)
+  4. UUID coupling integrity  (P04.2, P03.7, P15.12, P13.2)
+  5. Obsidian link targets    (P12.9)
 
 Usage:
     python linter.py <workspace_dir>
@@ -31,15 +31,18 @@ import yaml
 VALID_CLASSES = frozenset({
     "design", "change", "issue", "prompt",
     "test", "result", "audit", "trace", "requirements",
+    "proposal", "report",
 })
 
 MASTER_RE    = re.compile(r"^([a-z]+)-(.+)-master\.md$")
 NORMAL_RE    = re.compile(r"^([a-z]+)-([0-9a-f]{8})-(.+)\.md$")
 YAML_BLOCK_RE = re.compile(r"```yaml\n(.*?)```", re.DOTALL)
 HEADING_RE   = re.compile(r"^#{1,6}\s+(.+)$", re.MULTILINE)
+VH_HEADING_RE = re.compile(r"^#{1,6}\s+version history\s*$", re.IGNORECASE | re.MULTILINE)
+VH_KEY_RE    = re.compile(r"^\s*version_history:", re.MULTILINE)
 LINK_RE      = re.compile(r"\[[^\]]*\]\(<([^>]*)>|\[[^\]]*\]\(([^)]+)\)")
 
-# Enum constraints per schema_type (P00 §1.1.10, template schemas)
+# Enum constraints per schema_type (P00.10, template schemas)
 _ENUMS: dict[str, dict[str, frozenset]] = {
     "t02_change": {
         "change_info.status":   frozenset({"proposed", "approved", "implemented", "verified", "rejected"}),
@@ -48,7 +51,8 @@ _ENUMS: dict[str, dict[str, frozenset]] = {
     "t03_issue": {
         "issue_info.status":   frozenset({"open", "investigating", "resolved", "verified", "closed", "deferred"}),
         "issue_info.severity": frozenset({"critical", "high", "medium", "low"}),
-        "issue_info.type":     frozenset({"bug", "defect", "error", "performance", "security"}),
+        "issue_info.type":     frozenset({"bug", "defect", "error", "performance", "security",
+                                           "enhancement", "requirement_change"}),
     },
     "t04_prompt": {
         "prompt_info.task_type": frozenset({"code_generation", "debug", "refactor", "optimization"}),
@@ -152,7 +156,7 @@ def _is_governance_doc(fname: str) -> bool:
     return bool(MASTER_RE.match(fname) or NORMAL_RE.match(fname))
 
 
-# ── Check 1: file naming (P00 §1.1.10) ───────────────────────────────────────
+# ── Check 1: file naming (P00.10) ───────────────────────────────────────
 
 def check_naming(fname: str, path: str) -> list[Finding]:
     """Verify document class is recognised in master and normal naming patterns."""
@@ -177,12 +181,22 @@ def check_naming(fname: str, path: str) -> list[Finding]:
 
 # ── Check 2: markdown structure ───────────────────────────────────────────────
 
-def check_structure(path: str, content: str) -> list[Finding]:
-    """Verify mandatory markdown sections are present."""
+def check_structure(path: str, content: str, fname: str = "") -> list[Finding]:
+    """
+    Verify mandatory markdown sections are present.
+
+    change-51f1aef0: version history is satisfied by a markdown heading or a
+    YAML version_history key; prompt documents are exempt (single-use,
+    versioned by their iteration field and git).
+    """
     findings = []
     lower = content.lower()
+    m = MASTER_RE.match(fname) or NORMAL_RE.match(fname)
+    doc_class = m.group(1) if m else None
 
-    if "version history" not in lower:
+    if (doc_class != "prompt"
+            and not VH_HEADING_RE.search(content)
+            and not VH_KEY_RE.search(content)):
         findings.append(Finding("ERROR", path, "structure",
             "missing 'Version History' section"))
 
@@ -289,7 +303,7 @@ def check_coupling(
     return findings
 
 
-# ── Check 5: Obsidian link targets (P02 §1.3.9) ───────────────────────────────
+# ── Check 5: Obsidian link targets (P12.9) ───────────────────────────────
 
 def check_links(path: str, content: str, workspace_dir: str) -> list[Finding]:
     """
@@ -349,7 +363,13 @@ def run(workspace_dir: str) -> list[Finding]:
             if not _is_governance_doc(fname):
                 continue
 
-            findings.extend(check_structure(path, content))
+            findings.extend(check_structure(path, content, fname))
+
+            # change-51f1aef0: index by filename so prose-format documents
+            # (no YAML id) resolve as coupling targets.
+            _nm = NORMAL_RE.match(fname)
+            if _nm:
+                doc_index.setdefault(f"{_nm.group(1)}-{_nm.group(2)}", {})
             findings.extend(check_links(path, content, workspace_dir))
 
             yaml_findings, data, schema_type = check_yaml(path, content)

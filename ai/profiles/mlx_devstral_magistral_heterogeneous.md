@@ -107,7 +107,7 @@ context:
 
 The worker uses `default_model`; the reviewer uses `reviewer_model`. Per-role resolution precedence is: CLI flag (`--worker-model` / `--reviewer-model`) > config key (`worker_model` / `reviewer_model`) > `default_model`. Each model id must match the id reported by oMLX `/v1/models` exactly.
 
-Setup guides: [Devstral](../../../docs/setup-apple-silicon-mlx.md) (worker) and [Magistral](../../../docs/setup-apple-silicon-mlx-magistral.md) (reviewer).
+Setup guides: [Devstral](../../docs/setup-apple-silicon-mlx.md) (worker) and [Magistral](../../docs/setup-apple-silicon-mlx-magistral.md) (reviewer).
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -172,8 +172,8 @@ ai/state/ralph/
 ```
 
 **Setup guides:**
-- [Apple Silicon + MLX Setup Guide (Devstral)](../../../docs/setup-apple-silicon-mlx.md)
-- [Apple Silicon + MLX Setup Guide (Magistral)](../../../docs/setup-apple-silicon-mlx-magistral.md)
+- [Apple Silicon + MLX Setup Guide (Devstral)](../../docs/setup-apple-silicon-mlx.md)
+- [Apple Silicon + MLX Setup Guide (Magistral)](../../docs/setup-apple-silicon-mlx-magistral.md)
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -184,6 +184,7 @@ ai/state/ralph/
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-16 | Initial document; heterogeneous Devstral (worker, 8bit) / Magistral (reviewer, 6bit) profile |
+| 1.1 | 2026-09-23 | Setup-guide links corrected: ../../../docs/ → ../../docs/ |
 
 ---
 

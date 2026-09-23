@@ -54,14 +54,14 @@ direct conversational access to the other.
 - **Claude Code** — alternative profile. Manual invocation; no automated loop.
   Uses `CLAUDE.md` at project root as tactical context file. See `ai/profiles/claude-code.md`.
 
-**Tactical Domain execution options** (P09 §1.10.3) — after T04 prompt approval, human
+**Tactical Domain execution options** (P13.3) — after T03 prompt approval, human
 selects one of three options:
 
 - **Option A** — human executes AEL command directly (all profiles).
 - **Option B** — Strategic Domain launches AEL via `ael-mcp` (Claude Desktop profile
   only). Standalone MCP server exposing `start_ael`, `ael_status`, and `reset_ael`.
   Allows the Strategic Domain to launch AEL and query outcome without human terminal
-  relay. See P01 §1.2.8.
+  relay. See P10.8.
 - **Option C** — Claude Code manual invocation (`claude_code`/`claude_omlx` profiles).
   Human issues the task instruction directly in Claude Code. See `ai/profiles/claude-code.md` §5.0.
 
@@ -112,32 +112,33 @@ The Strategic Domain owns the following functions:
 
 **Planning**
 
-- Requirements elicitation (P10)
-- Three-tier design hierarchy: master → domain → component (P02)
+- Requirements elicitation (P11)
+- Three-tier design hierarchy: master → domain → component (P12)
 - Name registry maintenance
 
 **Execution Coordination**
 
-- T04 prompt authoring and AEL command delivery (P09)
-- Context budget check before every AEL-targeted T04 prompt
+- T03 prompt authoring and AEL command delivery (P13)
+- Context budget check before every AEL-targeted T03 prompt
 - Human handoff: ready-to-execute command after approval
 
 **Quality**
 
 - Code review after AEL `SHIP` (or Claude Code completion)
-- Test documentation and pytest generation (P06)
-- Configuration audit against design baseline (P08)
+- Test documentation and pytest generation (P15)
+- Configuration audit against design baseline (P02)
 
 **Issue Management**
 
-- T03 issue creation from failed tests or AEL `BLOCKED` (P04)
-- T02 change document creation from issues (P03)
+- T06 issue creation from failed tests or AEL `BLOCKED` (P03)
+- T07 change document creation from issues (P04)
 - Issue–change one-to-one coupling enforcement
 
 **Governance**
 
-- Traceability matrix updates at every phase transition (P05)
-- Document lifecycle management: active → closed (P00 §1.1.14)
+- Traceability matrix updates at every phase transition (P01)
+- Document lifecycle management: active → closed (P00.14)
+- Open-work register maintenance: `ai/task.md` (P00.20)
 - Git commit after every iteration increment
 
 [Return to Table of Contents](<#table of contents>)
@@ -149,10 +150,10 @@ The Strategic Domain owns the following functions:
 Condensed stage sequence. See `workflow.md` for the full flowchart.
 
 ```
-P01  Project Initialization  →  configure config.yaml
-P10  Requirements            →  human approval → baseline
-P02  Design (Tier 1–3)       →  human approval per tier → git tag baseline
-P09  T04 Prompt              →  query omlx_model_status → human approval
+P10  Project Initialization  →  configure config.yaml
+P11  Requirements            →  human approval → baseline
+P12  Design (Tier 1–3)       →  human approval per tier → git tag baseline
+P13  T03 Prompt              →  query omlx_model_status → human approval
      Human selects execution option:
        Option A: human runs AEL terminal command (all profiles)
        Option B: Strategic Domain calls start_ael / polls ael_status
@@ -160,9 +161,9 @@ P09  T04 Prompt              →  query omlx_model_status → human approval
        Option C: Claude Code manual invocation (claude_code/claude_omlx profiles)
      Options A/B (AEL)  →  SHIP or BLOCKED
      Option C (Claude Code)  →  human-directed execution (no loop)
-       SHIP / complete  →  P08 code review → P06 test → progressive validation
-       BLOCKED          →  P04 issue → P03 change → P09 new prompt
-P06  Tests pass              →  human acceptance
+       SHIP / complete  →  P02 code review → P15 test → progressive validation
+       BLOCKED          →  P03 issue → P04 change → P13 new prompt
+P15  Tests pass              →  human acceptance
 P00  Close documents         →  move to closed/ → git commit → AEL reset
 ```
 
@@ -172,12 +173,12 @@ P00  Close documents         →  move to closed/ → git commit → AEL reset
 
 ## 4.1 Audit Modes
 
-Two audit modes serve P08 (governance §1.9). The operator selects by trigger phrase.
+Two audit modes serve P02 (governance P02). The operator selects by trigger phrase.
 
 | Mode | Trigger | Actor | Procedure |
 |---|---|---|---|
 | Strategic | "conduct a strategic audit" | Claude Desktop | Read source via MCP, reason holistically, author `audit-<uuid>-<name>.md` (T08) inline |
-| Tactical | "conduct a tactical audit" | AEL audit loop | Prepare `audit-uml.md` + `audit-index.md` + audit T04 prompt; human approval; launch per `ai/doc/guide-audit-loop.md` |
+| Tactical | "conduct a tactical audit" | AEL audit loop | Prepare `audit-uml.md` + `audit-index.md` + audit T03 prompt; human approval; launch per `ai/doc/guide-audit-loop.md` |
 
 Strategic favours frontier judgement: architecture, protocol and name-registry
 conformance, traceability. Tactical favours exhaustive per-item coverage and
@@ -194,16 +195,16 @@ the requested mode is unclear, ask before proceeding.
 | Protocol | Name | Key Action |
 |---|---|---|
 | P00 | Governance | Master directives, architecture, document conventions |
-| P01 | Project Initialization | Folder structure, `.gitignore`, venv, `config.yaml` |
-| P02 | Design | Three-tier hierarchy, name registry, Mermaid diagrams |
-| P03 | Change | T02 from T03 issue; one-to-one coupling; trivial exemption |
-| P04 | Issue | T03 from test failure or `BLOCKED`; issue–change coupling |
-| P05 | Trace | Traceability matrix updates at every phase boundary |
-| P06 | Test | T05 docs, pytest generation, progressive validation |
-| P07 | Quality | Code validation, automated audits via AEL hooks |
-| P08 | Audit | Strategic or tactical audit (§4.1); findings → issues (P04) |
-| P09 | Prompt | T04 authoring, `tactical_brief`, AEL command delivery |
-| P10 | Requirements | T07 elicitation before design; baseline before Tier 1 |
+| P10 | Project Initialization | Folder structure, `.gitignore`, venv, `config.yaml` |
+| P12 | Design | Three-tier hierarchy, name registry, Mermaid diagrams |
+| P04 | Change | T07 from T06 issue; one-to-one coupling; trivial exemption |
+| P03 | Issue | T06 from test failure or `BLOCKED`; issue–change coupling |
+| P01 | Trace | Traceability matrix updates at every phase boundary |
+| P15 | Test | T04 docs, pytest generation, progressive validation |
+| P14 | Quality | Code validation, automated audits via AEL hooks |
+| P02 | Audit | Strategic or tactical audit (§4.1); findings → issues (P03) |
+| P13 | Prompt | T03 authoring, `tactical_brief`, AEL command delivery |
+| P11 | Requirements | T01 elicitation before design; baseline before Tier 1 |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -220,6 +221,9 @@ the requested mode is unclear, ask before proceeding.
 
 Document classes: `design`, `change`, `issue`, `prompt`, `test`, `result`,
 `audit`, `trace`, `requirements`.
+
+**Exempt:** `ai/task.md` (open-work register) carries no UUID and no
+lifecycle state — see P00.20.
 
 **UUID propagation:** The first document created in a workflow cycle (issue or
 change) generates the UUID. All coupled documents inherit it.
@@ -245,12 +249,12 @@ required after each increment.
 
 - Creating, modifying, or deleting source code or documents without explicit
   human request (both domains).
-- Exceeding the Tactical Domain context budget when authoring T04 prompts.
+- Exceeding the Tactical Domain context budget when authoring T03 prompts.
 - Issuing an AEL command when `tactical_brief` is empty.
 
 **Context Budget**
 
-- Before authoring any AEL-targeted T04 prompt (prompt_info.target_profile:
+- Before authoring any AEL-targeted T03 prompt (prompt_info.target_profile:
   ael), call `omlx_model_status` (mcp_omlx) for the configured model; a null
   or missing `settings.max_context_window` is unresolved — warn the operator,
   same as the resolver's own unknown-window behavior.
@@ -262,12 +266,12 @@ required after each increment.
 - Must be a ` ```yaml ` fenced block with `tactical_brief:` as the root key.
 - Plain text blocks are not detected by the orchestrator.
 
-**Trivial Change Exemption (P03 §1.4.12)**
+**Trivial Change Exemption (P04.12)**
 
 - Qualifies only when both trivial AND surgical, and all five criteria met:
   single function, ≤20 line delta, no interface changes, unambiguous,
   human-approved.
-- Exempt from T03 → T02 → T04 → AEL. Git commit is the sole audit record.
+- Exempt from T06 → T07 → T03 → AEL. Git commit is the sole audit record.
 
 **Change Documentation Scope**
 
@@ -277,8 +281,8 @@ required after each increment.
 **Initial Implementation**
 
 - First-time source code implementation from an approved design does not require issue or change documents.
-- Forward path: approved design → T04 prompt → execution → review.
-- The T03 → T02 corrective loop is triggered only by AEL `BLOCKED` or test failure.
+- Forward path: approved design → T03 prompt → execution → review.
+- The T06 → T07 corrective loop is triggered only by AEL `BLOCKED` or test failure.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -291,13 +295,13 @@ any document.
 
 | Template | Document Class | Location |
 |---|---|---|
-| T01 | Design | `ai/templates/T01-design.md` |
-| T02 | Change | `ai/templates/T02-change.md` |
-| T03 | Issue | `ai/templates/T03-issue.md` |
-| T04 | Prompt | `ai/templates/T04-prompt.md` |
-| T05 | Test | `ai/templates/T05-test.md` |
-| T06 | Result | `ai/templates/T06-result.md` |
-| T07 | Requirements | `ai/templates/T07-requirements.md` |
+| T02 | Design | `ai/templates/T02-design.md` |
+| T07 | Change | `ai/templates/T07-change.md` |
+| T06 | Issue | `ai/templates/T06-issue.md` |
+| T03 | Prompt | `ai/templates/T03-prompt.md` |
+| T04 | Test | `ai/templates/T04-test.md` |
+| T05 | Result | `ai/templates/T05-result.md` |
+| T01 | Requirements | `ai/templates/T01-requirements.md` |
 | T08 | Audit | `ai/templates/T08-audit.md` |
 
 [Return to Table of Contents](<#table of contents>)
@@ -321,6 +325,7 @@ any document.
 | 0.11 | 2026-07-02 | Rescoped §3.0 and §7.0 context-budget directives to AEL-targeted T04 prompts only (prompt_info.target_profile field; issue-713437bc) |
 | 0.12 | 2026-07-08 | §4.0/§5.0/§7.0: replaced retired `budget.py` file-existence gate with direct `omlx_model_status` (mcp_omlx) query before authoring AEL-targeted T04 prompts; `context-budget.md` now written automatically by the orchestrator at AEL runtime (change-d42e64a9) |
 | 0.13 | 2026-08-19 | Synced with governance v9.13: added Option C (Claude Code manual invocation) to §2.0 alongside Options A/B; corrected stale `ai/profiles/claude.md` → `ai/profiles/claude-code.md` reference in §2.0 and §2.1; flattened §4.0 workflow block to present Options A/B/C as one selection set, matching governance §1.10.3 structure |
+| 0.14 | 2026-08-21 | Synced with governance v9.16: added §3.0 Governance bullet for `ai/task.md` open-work register maintenance (P00 §1.1.20); added §6.1 exemption note for `ai/task.md` |
 
 ---
 

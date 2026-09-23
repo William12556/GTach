@@ -155,7 +155,7 @@ Worker and reviewer roles are differentiated by prompt engineering within the sa
 ai/state/ralph/
 ```
 
-**Setup guide:** [Apple Silicon + MLX Setup Guide](../../../docs/setup-apple-silicon-mlx.md).
+**Setup guide:** [Apple Silicon + MLX Setup Guide](../../docs/setup-apple-silicon-mlx.md).
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -172,6 +172,7 @@ ai/state/ralph/
 | 1.4 | 2026-06-16 | Renamed file Q8 → 6bit to match document content; removed AGENTS.md from Placeholder Mappings (unsupported elsewhere); corrected AEL config example to full model id verified against oMLX /v1/models (mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-6Bit); corrected model download local_dir to match actual on-disk path convention; added section numbering |
 | 1.5 | 2026-06-17 | Updated <tactical_context> mapping: CLAUDE.md → ai/context.md |
 | 1.6 | 2026-07-16 | §5.0 tool-guidance example: mcp-grep__grep → mcp-ripgrep__search |
+| 1.7 | 2026-09-23 | Setup-guide link corrected: ../../../docs/ → ../../docs/ |
 
 ---
 

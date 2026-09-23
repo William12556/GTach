@@ -22,7 +22,7 @@ Created: 2026 June 02
 
 This document is an operational reference for the Strategic Domain when working with the AEL orchestrator in a downstream project. It covers state files, configuration, CLI arguments, termination conditions, context budget management, recipes, and common failure modes.
 
-Authoritative governance reference: `ai/governance.md` P00 §1.1.11 and P09.
+Authoritative governance reference: `ai/governance.md` P00.11 and P13.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -36,14 +36,14 @@ State files reside in `ai/state/ralph/` (configured via `loop.state_dir` in `con
 
 | File | Written by | Purpose |
 |---|---|---|
-| `task.md` | Orchestrator | Task loaded from T04 prompt at startup |
+| `task.md` | Orchestrator | Task loaded from T03 prompt at startup |
 | `iteration.txt` | Orchestrator | Current outer loop cycle number |
 | `work-summary.txt` | Worker | Summary of work done this iteration |
 | `work-complete.txt` | Worker | Signals worker phase is complete |
 | `review-result.txt` | Reviewer | `SHIP` or `REVISE` |
 | `review-feedback.txt` | Reviewer | Specific feedback for next worker iteration |
 | `.ralph-complete` | Orchestrator | Completion marker (see §5.0 for content variants) |
-| `RALPH-BLOCKED.md` | Worker | Unrecoverable failure details; seeds T03 issue |
+| `RALPH-BLOCKED.md` | Worker | Unrecoverable failure details; seeds T06 issue |
 | `context-budget.md` | Orchestrator | Context window sizing report for Strategic Domain |
 | `ael_<timestamp>.LOG` | Orchestrator | Full debug log; preserved across reset |
 
@@ -120,7 +120,7 @@ context:
 
 **Key distinctions:**
 
-`max_iterations` controls outer Ralph Loop cycles (one work phase + one review phase per cycle). `phase_max_iterations` controls how many times the model is called within a single phase before the phase exits. These are independent — do not conflate them in T04 notes.
+`max_iterations` controls outer Ralph Loop cycles (one work phase + one review phase per cycle). `phase_max_iterations` controls how many times the model is called within a single phase before the phase exits. These are independent — do not conflate them in T03 notes.
 
 For audit runs, set `max_iterations` to at least the number of items in `audit-index.md`.
 
@@ -135,7 +135,7 @@ All arguments to `orchestrator.py`:
 | Argument | Type | Default | Purpose |
 |---|---|---|---|
 | `--mode` | choice | `loop` | `worker` \| `reviewer` \| `loop` \| `reset` |
-| `--task` | string | — | Task string or path to T04 prompt file |
+| `--task` | string | — | Task string or path to T03 prompt file |
 | `--config` | path | `ai/ael/config.yaml` | Path to config.yaml |
 | `--model` | string | config default | Model for all phases |
 | `--worker-model` | string | `--model` | Model for work phase only (loop mode) |
@@ -143,7 +143,7 @@ All arguments to `orchestrator.py`:
 | `--max-iterations` | int | config value | Outer Ralph cycle limit override |
 | `--duration` | float | None | Wall-clock time limit in hours |
 
-Standard invocation after T04 approval:
+Standard invocation after T03 approval:
 
 ```bash
 python ai/ael/src/orchestrator.py --mode loop \
@@ -172,9 +172,9 @@ python ai/ael/src/orchestrator.py --mode reset
 
 | Condition | `.ralph-complete` content | Action for Strategic Domain |
 |---|---|---|
-| Reviewer issued SHIP | `COMPLETE: iteration N` | Review `work-summary.txt`; proceed to P06 test |
+| Reviewer issued SHIP | `COMPLETE: iteration N` | Review `work-summary.txt`; proceed to P15 test |
 | Duration limit reached | `DURATION_LIMIT: iteration N` | Review `audit-report.md`; archive and reset |
-| RALPH-BLOCKED | Not written | Read `RALPH-BLOCKED.md`; create T03 issue via P04 |
+| RALPH-BLOCKED | Not written | Read `RALPH-BLOCKED.md`; create T06 issue via P03 |
 | `max_iterations` exhausted | Not written | Review partial state; extend or retry |
 | Context budget abort | Not written | Reduce `tactical_brief`; run `--mode reset`; retry |
 | Unclean exit (crash/signal) | Not written | Check `.LOG` for `AEL end rc=N` line; absence indicates unclean exit |
@@ -189,7 +189,7 @@ The `AEL end rc=N` line is always written to the `.LOG` file on any clean exit. 
 
 ### 6.1 Initial setup
 
-`context-budget.md` is written automatically by the orchestrator at every startup (`write_context_report()`, run before the first phase). No separate invocation is required; a standalone `budget.py` script previously performed this role and has been retired (change-d42e64a9). Read `ai/state/ralph/context-budget.md` after the first run following any config or model change, before authoring any AEL-targeted T04 prompt (P09 §1.10.2).
+`context-budget.md` is written automatically by the orchestrator at every startup (`write_context_report()`, run before the first phase). No separate invocation is required; a standalone `budget.py` script previously performed this role and has been retired (change-d42e64a9). Read `ai/state/ralph/context-budget.md` after the first run following any config or model change, before authoring any AEL-targeted T03 prompt (P13.2).
 
 ### 6.2 Budget thresholds
 
@@ -202,7 +202,7 @@ The orchestrator tracks estimated token count per phase iteration. At each thres
 
 ### 6.3 Tactical_brief sizing (AEL-targeted prompts only)
 
-Applies only when the T04 prompt's `prompt_info.target_profile` is `ael`; `claude_code` and `claude_omlx` profiles do not use `tactical_brief`.
+Applies only when the T03 prompt's `prompt_info.target_profile` is `ael`; `claude_code` and `claude_omlx` profiles do not use `tactical_brief`.
 
 Keep the `tactical_brief` to approximately 200–400 tokens (~800–1,600 characters), hard ceiling 1,000 tokens. The brief should contain only: file(s) to modify, hard constraints, implementation steps, deliverables, success criteria. Do not embed design documents or code blocks.
 
@@ -249,7 +249,7 @@ The orchestrator selects recipes from `ai/ael/recipes/` relative to `orchestrato
 
 **Cause:** The worker issued malformed tool calls (wrong argument names or types) three consecutive times.
 
-**Remediation:** Read `RALPH-BLOCKED.md` for the failing tool call. Verify tool parameter names against the live MCP schema. If the brief is ambiguous about file paths, clarify. Create T03 issue if the block recurs.
+**Remediation:** Read `RALPH-BLOCKED.md` for the failing tool call. Verify tool parameter names against the live MCP schema. If the brief is ambiguous about file paths, clarify. Create T06 issue if the block recurs.
 
 ### 8.2 Max iterations exhausted without SHIP
 
@@ -257,7 +257,7 @@ The orchestrator selects recipes from `ai/ael/recipes/` relative to `orchestrato
 
 **Cause:** Task complexity exceeds configured iteration budget.
 
-**Remediation:** Review `work-summary.txt` to assess progress. Either increase `max_iterations` in `config.yaml` or decompose the task into smaller T04 prompts.
+**Remediation:** Review `work-summary.txt` to assess progress. Either increase `max_iterations` in `config.yaml` or decompose the task into smaller T03 prompts.
 
 ### 8.3 Worker loop — malformed final response
 

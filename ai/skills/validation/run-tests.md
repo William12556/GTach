@@ -17,7 +17,7 @@ Created: 2026 July 17
 
 ## 1.0 Purpose
 
-Canonical source for the PostToolUse validation hook specified in governance P06 §1.7.15 (Code validation: executes pytest for modified component). Provisioned into downstream projects during P01 §1.2.8 (Claude and claude-omlx profiles).
+Canonical source for the PostToolUse validation hook specified in governance P15.15 (Code validation: executes pytest for modified component). Provisioned into downstream projects during P10.8 (Claude and claude-omlx profiles).
 
 Mandatory for `claude_code` and `claude_omlx` target profiles. Not applicable to the `ael` profile — AEL has no Claude Code hook runtime; test execution for AEL-generated code remains a Strategic Domain review step.
 
@@ -70,7 +70,7 @@ Save as `.claude/hooks/run-tests.sh`:
 
 ```bash
 #!/bin/bash
-# run-tests.sh — PostToolUse pytest validation (governance P06 §1.7.15)
+# run-tests.sh — PostToolUse pytest validation (governance P15.15)
 # Runs targeted tests for the file Claude just modified. Does not block
 # the write itself (PostToolUse cannot undo a completed tool call);
 # reports failure back to Claude via decision:block so it can revise.
@@ -107,11 +107,11 @@ exit 0
 
 ## 5.0 Scope and Limitations
 
-- File-level targeted validation only (per-modification). Iteration-level full-suite validation remains a Strategic Domain review step (governance P06 §1.7.15 Progressive Validation Strategy) and is not automated by this hook.
+- File-level targeted validation only (per-modification). Iteration-level full-suite validation remains a Strategic Domain review step (governance P15.15 Progressive Validation Strategy) and is not automated by this hook.
 - `PostToolUse` cannot undo a write already made; a failing test surfaces as feedback for Claude to revise in a subsequent turn, not as a blocked edit.
 - Requires `jq` on the tactical execution host.
-- Test-to-component mapping assumes `tests/<component>/` layout per governance P06 §1.7.3/§1.7.7. Projects with a different layout must adapt §4.0 before provisioning.
-- The other §1.1.18 example skills (`.claude/governance/validate-design.md`, `.claude/testing/generate-pytest.md`, `.claude/validation/coupling-check.md`, `.claude/audit/protocol-compliance.md`) remain illustrative only; not addressed by this template.
+- Test-to-component mapping assumes `tests/<component>/` layout per governance P15.3/P15.7. Projects with a different layout must adapt §4.0 before provisioning.
+- The other P00.18 example skills (`.claude/governance/validate-design.md`, `.claude/testing/generate-pytest.md`, `.claude/validation/coupling-check.md`, `.claude/audit/protocol-compliance.md`) remain illustrative only; not addressed by this template.
 
 [Return to Table of Contents](<#table of contents>)
 

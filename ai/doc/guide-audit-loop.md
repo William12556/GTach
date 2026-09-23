@@ -11,7 +11,7 @@ Created: 2026 June 02
 [2.1 Generate the UML Map](<#2.1 generate the uml map>)
 [2.2 Generate audit-index.md](<#2.2 generate audit-index.md>)
 [2.3 Configure config.yaml](<#2.3 configure config.yaml>)
-[3.0 Author the T04 Brief](<#3.0 author the t04 brief>)
+[3.0 Author the T03 Brief](<#3.0 author the t03 brief>)
 [4.0 Launch](<#4.0 launch>)
 [5.0 Monitoring](<#5.0 monitoring>)
 [6.0 Interpreting audit-report.md](<#6.0 interpreting audit-report.md>)
@@ -103,9 +103,9 @@ loop:
 
 ---
 
-## 3.0 Author the T04 Brief
+## 3.0 Author the T03 Brief
 
-The `tactical_brief` in the T04 prompt must specify:
+The `tactical_brief` in the T03 prompt must specify:
 
 - Absolute path to the target `src/` directory
 - Read-only constraint (explicit)
@@ -124,7 +124,7 @@ tactical_brief: |
   Append all findings to audit-report.md in the required format.
 ```
 
-Verify `tactical_brief` is non-empty and in a `yaml` fenced block before issuing the AEL command (P09 §1.10.2).
+Verify `tactical_brief` is non-empty and in a `yaml` fenced block before issuing the AEL command (P13.2).
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -132,7 +132,7 @@ Verify `tactical_brief` is non-empty and in a `yaml` fenced block before issuing
 
 ## 4.0 Launch
 
-From the project root, after human approval of the T04 prompt:
+From the project root, after human approval of the T03 prompt:
 
 ```bash
 # With wall-clock time limit (recommended for long runs)
@@ -186,7 +186,7 @@ Severity guidance:
 
 | Severity | Meaning | Action |
 |---|---|---|
-| high | Security risk, data loss potential, or critical conformance violation | Create T03 issue immediately |
+| high | Security risk, data loss potential, or critical conformance violation | Create T06 issue immediately |
 | medium | Degraded quality; correctness or maintainability concern | Schedule for next iteration |
 | low | Style or documentation gap | Discretionary |
 
@@ -212,7 +212,7 @@ Read `audit-report.md` in full. Group findings by severity.
 
 **7.2 Promote high-severity findings**
 
-For each high-severity finding, create a T03 issue via P04. Reference the audit report path in the issue. The issue enters the standard P04 → P03 → T04 → AEL remediation workflow.
+For each high-severity finding, create a T06 issue via P03. Reference the audit report path in the issue. The issue enters the standard P03 → P04 → T03 → AEL remediation workflow.
 
 **7.3 Archive the audit report**
 
@@ -220,7 +220,7 @@ For each high-severity finding, create a T03 issue via P04. Reference the audit 
 cp ai/state/ralph/audit-report.md ai/workspace/audit/audit-<uuid>-<name>.md
 ```
 
-The UUID is the same UUID used for the T04 audit prompt. Name the file descriptively (e.g. `audit-a1b2c3d4-framework-src-2026-06.md`).
+The UUID is the same UUID used for the T03 audit prompt. Name the file descriptively (e.g. `audit-a1b2c3d4-framework-src-2026-06.md`).
 
 **7.4 Reset AEL state**
 
@@ -230,7 +230,7 @@ python ai/ael/src/orchestrator.py --mode reset
 
 **7.5 Close the audit**
 
-When remediation of all critical and high-severity findings is complete, close the audit document per P08 §1.9.8:
+When remediation of all critical and high-severity findings is complete, close the audit document per P02.8:
 
 ```bash
 mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
