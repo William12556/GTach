@@ -41,7 +41,7 @@ Real-time automotive RPM tachometer. Python package (`gtach`).
 **Prime directive**: Do not create, add, remove, or change source code or documents
 unless explicitly requested by the T03 prompt task.
 
-- Governance: `ai/governance.md`
+- Governance: `ai/governance/software-engineering/governance.md` (AI-G&O governance 11.0)
 - Workflow (`src/` changes only): T06 issue → T07 change → T03 prompt, sharing one 8-hex UUID
 - Trivial exemption (P04.12): single function, ≤20 line delta, no interface change,
   unambiguous, human-approved → git commit is the sole audit record
@@ -196,6 +196,7 @@ ai/workspace/
 |---|---|---|
 | 0.1 | 2026-06-24 | Initial draft. Adapted Core Development Rules, Development Philosophy, and Coding Best Practices from `ai/doc/python-CLAUDE.md`; aligned with GTach toolchain (pip, pytest, mypy, black/isort/flake8), governance, and Linux-only runtime target. |
 | 1.0 | 2026-09-23 | Merged the root `CLAUDE.md` and `ai/doc/CLAUDE.md` into this file. Kept the full task-invocation text, the error-handling rule and the deploy commands from the root version. Governance numbering updated to 10.5 (T06 issue, T07 change, T03 prompt, P04.12). Removed the non-existent `--macos` flag and the `obd` conditional import. |
+| 1.1 | 2026-09-29 | Governance path updated for the AI-G&O 11.0 layout (`ai/governance/software-engineering/governance.md`). |
 
 ---
 

@@ -1,0 +1,76 @@
+# Framework template. Seeded to <project>/ai/config.yaml by bin/bootstrap.sh and
+# bin/propagate.sh when absent; the project copy is never overwritten.
+
+# oMLX inference endpoint
+omlx:
+  base_url: "http://127.0.0.1:8000/v1"
+  api_key: "local"
+  default_model: "mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-8Bit"
+  reviewer_model: "Magistral-Small-2509-MLX-8bit"
+
+# MCP server definitions
+# F4: filesystem MCP is confined to the project root for scope containment.
+# Each downstream project sets its own allowed_dirs in its local config.yaml.
+mcp_servers:
+  filesystem:
+    command: "/usr/local/bin/npx"
+    args:
+      - "-y"
+      - "@j0hanz/filesystem-mcp@2.5.0"  # pinned: tool names/arguments are version-specific (change-c37198be)
+      - "{PROJECT_ROOT}"
+    env:
+      PATH: "/opt/homebrew/opt/node@24/bin:/usr/local/bin:/usr/bin:/bin"
+
+  mcp-ripgrep:
+    command: "/Users/williamwatson/mcp-ripgrep/venv/bin/mcp-ripgrep"
+
+# Inference endpoint readiness
+readiness:
+  timeout_seconds: 60
+  poll_interval_seconds: 2
+
+# Loop control
+loop:
+  max_iterations: 5         # Loop outer iterations (work+review cycles)
+  phase_max_iterations: 20  # Inner tool-call iterations per phase
+  mcp_error_threshold: 3    # Write BLOCKED.md after this many consecutive MCP errors per phase
+  max_tool_calls_per_iteration: 10  # Truncate tool calls per iteration beyond this count
+  preflight_check: false             # Evaluate success criteria before first worker iteration
+  phase_duration_minutes: 30         # F28: soft cap on a single phase's wall-clock cost during audit-run refinement
+  state_dir: "ai/state"
+  # log_archive_dir: Copy prior run logs out of state_dir before each run.
+  # state_dir is transient — gitignored, reset between runs, re-propagated over —
+  # so logs left there do not survive to the next session. Null disables (default);
+  # set to a path outside state_dir to retain run evidence.
+  log_archive_dir: "ai/logs"
+
+# Execution controls (opt-in, default disabled)
+# These controls are independent and activate only when their config key is set.
+execution:
+  # max_completion_tokens: Cap output length by passing max_tokens to the completion call.
+  # When null (default), max_tokens is omitted and the model uses its default limit.
+  max_completion_tokens: null
+
+  # max_tool_result_chars: Truncate tool results exceeding this character count.
+  # Uses head/tail with an elision marker. When null (default), no truncation.
+  max_tool_result_chars: null
+
+  # strict_tactical_brief: When true and target_profile is 'engine', fail fast with a
+  # clear error if no valid tactical_brief is found instead of falling back to the
+  # raw document. When false (default), warn and use the raw document.
+  strict_tactical_brief: false
+
+# Context budget
+# context_window: null attempts a live query to the oMLX admin API, then falls
+# back to model_context_windows per-model overrides.
+# Set explicitly to override all tiers (e.g. when model is remote and admin API unavailable).
+context:
+  context_window: null      # tokens; null = try live oMLX query, then per-model override
+  budget_warn_pct: 0.80     # print warning at this fraction of context window
+  budget_abort_pct: 0.95    # abort phase at this fraction
+  # Per-model context window overrides (tier 3 fallback when live query returns null)
+  model_context_windows:
+    "North-Mini-Code-1.0-6bit": 262144
+    "mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-8Bit": 262144   # vendor-validated; overrides unvalidated live 393216 RoPE ceiling
+    "Magistral-Small-2509-MLX-8bit": 40960   # vendor-recommended effective window; overrides 131072 native max (accuracy degrades past 40k)
+    "Magistral-Small-2509-MLX-6bit": 40960   # retained: 6-bit remains a valid reviewer selection

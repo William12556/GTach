@@ -6,8 +6,8 @@ Project Overwatch FR-01 (design-project-overwatch.md §7.1): the three
 govwatch panels (Workflow State, Compliance Alerts, Document Registry)
 ported from a Textual TUI to a single self-contained HTML file. The data
 layer (Scanner, PhaseInference, ComplianceEngine, AlertWriter and their
-supporting types) is carried over from ai/src/govwatch.py unmodified; only
-the presentation layer is new.
+supporting types) was carried over from the govwatch TUI (retired under
+change-5bcd46ad); only the presentation layer was new.
 
 Each scan cycle writes two files and reads everything else read-only:
     <project>/overwatch.html          rendered dashboard (overwritten)
@@ -88,8 +88,8 @@ class ProjectPaths:
     """Absolute project root directory."""
     workspace: Path
     """ai/workspace/ directory under root."""
-    ael_state: Path
-    """ai/state/ralph/ state directory under root."""
+    engine_state: Path
+    """ai/state/ state directory under root."""
     alerts_file: Path
     """ai/dashboard-alerts.md (alert-summary write target)."""
 
@@ -126,21 +126,21 @@ class DocumentRecord:
     missing_fields: list[str] = field(default_factory=list)
     """Names of required fields that are absent or placeholder."""
     target_profile: Optional[str] = None
-    """prompt_info.target_profile value (ael, claude_code, claude_omlx), or None if absent."""
+    """prompt_info.target_profile value (engine, claude_code, claude_omlx; legacy ael), or None if absent."""
     is_design_sourced: bool = False
     """True if prompt_info.source_ref matches the design-<uuid> pattern."""
 
 
 @dataclass
-class AelState:
-    """AEL runtime state derived from .ael/ralph/ state files."""
+class EngineState:
+    """engine runtime state derived from ai/state/ state files."""
 
     status: str = "idle"
     """idle | running | ship | blocked"""
     iteration: Optional[int] = None
     """Current iteration number from iteration.txt, if available."""
     blocked_detail: Optional[str] = None
-    """Content of RALPH-BLOCKED.md when status is blocked."""
+    """Content of BLOCKED.md when status is blocked."""
     task_ref: Optional[str] = None
     """Leading content of task.md (first non-empty line)."""
 
@@ -177,8 +177,8 @@ class Snapshot:
 
     documents: list[DocumentRecord] = field(default_factory=list)
     """All open (non-closed) documents found during this scan."""
-    ael_state: AelState = field(default_factory=AelState)
-    """AEL runtime state at scan time."""
+    engine_state: EngineState = field(default_factory=EngineState)
+    """engine runtime state at scan time."""
     budget: BudgetState = field(default_factory=BudgetState)
     """Context budget status at scan time."""
     phase: str = "Idle"
@@ -388,7 +388,7 @@ class Scanner:
         self.paths = paths
 
     def scan(self) -> Snapshot:
-        """Walk the workspace, read AEL and budget state, return a Snapshot.
+        """Walk the workspace, read engine and budget state, return a Snapshot.
 
         The Snapshot is assembled, then PhaseInference and ComplianceEngine
         are applied before returning.
@@ -424,12 +424,12 @@ class Scanner:
                         document=filepath.name,
                     ))
 
-        ael_state = self._read_ael_state()
+        engine_state = self._read_engine_state()
         budget = self._read_budget()
 
         snapshot = Snapshot(
             documents=documents,
-            ael_state=ael_state,
+            engine_state=engine_state,
             budget=budget,
             scan_time=datetime.datetime.now(),
         )
@@ -442,15 +442,15 @@ class Scanner:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _read_ael_state(self) -> AelState:
-        """Read .ael/ralph/ state files; return idle AelState when absent.
+    def _read_engine_state(self) -> EngineState:
+        """Read ai/state/ state files; return idle EngineState when absent.
 
-        Precedence: RALPH-BLOCKED.md → blocked; .ralph-complete → ship;
+        Precedence: BLOCKED.md → blocked; .complete → ship;
         task.md present → running; otherwise → idle (NFR-05).
         """
-        state_dir = self.paths.ael_state
+        state_dir = self.paths.engine_state
         if not state_dir.is_dir():
-            return AelState(status="idle")
+            return EngineState(status="idle")
 
         def _read(name: str) -> Optional[str]:
             p = state_dir / name
@@ -459,8 +459,8 @@ class Scanner:
             except Exception:  # noqa: BLE001
                 return None
 
-        blocked_content = _read("RALPH-BLOCKED.md")
-        complete_content = _read(".ralph-complete")
+        blocked_content = _read("BLOCKED.md")
+        complete_content = _read(".complete")
         task_content = _read("task.md")
 
         if blocked_content is not None:
@@ -488,7 +488,7 @@ class Scanner:
                     task_ref = stripped[:160]
                     break
 
-        return AelState(
+        return EngineState(
             status=status,
             iteration=iteration,
             blocked_detail=blocked_content,
@@ -496,12 +496,12 @@ class Scanner:
         )
 
     def _read_budget(self) -> BudgetState:
-        """Derive BudgetState from context-budget.md in the AEL state dir.
+        """Derive BudgetState from context-budget.md in the engine state dir.
 
         Parses initial-load %, warn %, and abort %; classifies accordingly.
         Absent file → unknown. File present but no initial-load → ok.
         """
-        budget_file = self.paths.ael_state / "context-budget.md"
+        budget_file = self.paths.engine_state / "context-budget.md"
         if not budget_file.exists():
             return BudgetState(present=False, status="unknown")
 
@@ -561,20 +561,20 @@ class PhaseInference:
         """Return a plain-language phase string.
 
         Precedence (first match wins):
-          1. AEL running                           → Tactical execution
-          2. Open prompt + AEL idle/ship           → Awaiting prompt execution
+          1. engine running                           → Tactical execution
+          2. Open prompt + engine idle/ship           → Awaiting prompt execution
           3. Open change + issue, no prompt        → Change cycle
           4. Open issue, no change                 → Issue raised
           5. Open test or result                   → Test phase
           6. No open documents                     → Idle
         """
         docs = snapshot.documents
-        ael = snapshot.ael_state
+        eng = snapshot.engine_state
         open_classes = {d.cls for d in docs if not d.is_master}
 
-        if ael.status == "running":
+        if eng.status == "running":
             return "Tactical execution"
-        if "prompt" in open_classes and ael.status in ("idle", "ship"):
+        if "prompt" in open_classes and eng.status in ("idle", "ship"):
             return "Awaiting prompt execution"
         if "change" in open_classes and "issue" in open_classes and "prompt" not in open_classes:
             return "Change cycle"
@@ -619,7 +619,7 @@ class ComplianceEngine:
         """Run all Tier 1 (FR-02-01 through FR-02-07) checks."""
         alerts: list[Alert] = []
         docs = snapshot.documents
-        ael = snapshot.ael_state
+        eng = snapshot.engine_state
 
         # Group open non-master documents by filename UUID
         uuid_groups: dict[str, list[DocumentRecord]] = {}
@@ -685,44 +685,44 @@ class ComplianceEngine:
                     document=rel,
                 ))
 
-        # FR-02-05: open documents present while AEL signals SHIP → WARNING
-        if ael.status == "ship":
+        # FR-02-05: open documents present while engine signals SHIP → WARNING
+        if eng.status == "ship":
             open_non_master = [d for d in docs if not d.is_master]
             if open_non_master:
                 alerts.append(Alert(
                     severity="warning",
                     code="FR-02-05",
                     message=(
-                        f"AEL reports SHIP but {len(open_non_master)} "
+                        f"engine reports SHIP but {len(open_non_master)} "
                         f"open document(s) remain"
                     ),
                     document=None,
                 ))
 
         # FR-02-06: task.md content not matching any open prompt → WARNING
-        if ael.task_ref:
+        if eng.task_ref:
             open_prompts = [d for d in docs if d.cls == "prompt" and not d.is_master]
             if open_prompts:
                 matched = any(
-                    (doc.uuid and doc.uuid in ael.task_ref)
-                    or os.path.basename(doc.path) in ael.task_ref
+                    (doc.uuid and doc.uuid in eng.task_ref)
+                    or os.path.basename(doc.path) in eng.task_ref
                     for doc in open_prompts
                 )
                 if not matched:
                     alerts.append(Alert(
                         severity="warning",
                         code="FR-02-06",
-                        message="AEL task.md does not reference any open prompt document",
+                        message="engine task.md does not reference any open prompt document",
                         document=None,
                     ))
 
-        # FR-02-07: context-budget.md absent while an AEL-targeted prompt is open → WARNING
-        # (only relevant when target_profile is ael, or absent — default assumes ael)
-        open_ael_prompts = [
+        # FR-02-07: context-budget.md absent while an engine-targeted prompt is open → WARNING
+        # (only relevant when target_profile is engine (legacy ael), or absent — default assumes engine)
+        open_engine_prompts = [
             d for d in docs
-            if d.cls == "prompt" and not d.is_master and d.target_profile in (None, "ael")
+            if d.cls == "prompt" and not d.is_master and d.target_profile in (None, "engine", "ael")
         ]
-        if open_ael_prompts and not snapshot.budget.present:
+        if open_engine_prompts and not snapshot.budget.present:
             alerts.append(Alert(
                 severity="warning",
                 code="FR-02-07",
@@ -779,12 +779,12 @@ class ComplianceEngine:
                     ))
 
             # FR-02-10: prompt missing valid tactical_brief → VIOLATION
-            # (only when target_profile is ael, or absent — default assumes ael
+            # (only when target_profile is engine (legacy ael), or absent — default assumes engine
             # for prompts predating the target_profile field, P13.2)
             if (
                 doc.cls == "prompt"
                 and not doc.has_tactical_brief
-                and doc.target_profile in (None, "ael")
+                and doc.target_profile in (None, "engine", "ael")
             ):
                 alerts.append(Alert(
                     severity="violation",
@@ -842,12 +842,12 @@ class AlertWriter:
         """
         project_name = self.paths.root.name
         ts = snapshot.scan_time.strftime("%Y-%m-%dT%H:%M:%S")
-        ael = snapshot.ael_state
+        eng = snapshot.engine_state
         budget = snapshot.budget
 
-        ael_str = ael.status.upper()
-        if ael.iteration is not None:
-            ael_str += f" [iteration {ael.iteration}]"
+        engine_str = eng.status.upper()
+        if eng.iteration is not None:
+            engine_str += f" [iteration {eng.iteration}]"
 
         violations = [a for a in snapshot.alerts if a.severity == "violation"]
         warnings = [a for a in snapshot.alerts if a.severity == "warning"]
@@ -857,7 +857,7 @@ class AlertWriter:
             "",
             f"Scan: {ts}",
             f"Phase: {snapshot.phase}",
-            f"AEL: {ael_str}",
+            f"engine: {engine_str}",
             f"Budget: {budget.status}",
             "",
             f"## Violations ({len(violations)})",
@@ -1078,8 +1078,8 @@ class HtmlRenderer:
     # ------------------------------------------------------------------
 
     def _render_workflow_state(self, snapshot: Snapshot) -> str:
-        """Return the Workflow State panel: phase, AEL status, budget."""
-        ael = snapshot.ael_state
+        """Return the Workflow State panel: phase, engine status, budget."""
+        eng = snapshot.engine_state
         budget = snapshot.budget
 
         parts: list[str] = [
@@ -1087,14 +1087,14 @@ class HtmlRenderer:
             "<h2>Workflow State</h2>",
             '<div class="field"><div class="label">Phase</div>'
             f'<div class="value">{html.escape(snapshot.phase)}</div></div>',
-            '<div class="field"><div class="label">AEL Status</div>'
-            f'<div class="value status-{html.escape(ael.status)}">'
-            f"{html.escape(ael.status.upper())}</div>",
+            '<div class="field"><div class="label">engine Status</div>'
+            f'<div class="value status-{html.escape(eng.status)}">'
+            f"{html.escape(eng.status.upper())}</div>",
         ]
-        if ael.iteration is not None:
-            parts.append(f'<div class="doc-ref">Iteration {ael.iteration}</div>')
-        if ael.blocked_detail:
-            preview = ael.blocked_detail[:160].replace("\n", " ")
+        if eng.iteration is not None:
+            parts.append(f'<div class="doc-ref">Iteration {eng.iteration}</div>')
+        if eng.blocked_detail:
+            preview = eng.blocked_detail[:160].replace("\n", " ")
             parts.append(
                 f'<div class="severity-violation">Blocked: {html.escape(preview)}</div>'
             )
@@ -1242,7 +1242,7 @@ def resolve_paths(root: Path) -> ProjectPaths:
     return ProjectPaths(
         root=root,
         workspace=root / "ai" / "workspace",
-        ael_state=root / "ai" / "state" / "ralph",
+        engine_state=root / "ai" / "state",
         alerts_file=root / "ai" / "dashboard-alerts.md",
     )
 

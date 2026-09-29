@@ -12,21 +12,22 @@ Created: 2026 March 31
 - [4.0 Tactical Domain](<#4.0 tactical domain>)
 - [5.0 Claude Code Task invocation](<#5.0 claude code task invocation>)
 - [6.0 Project Setup](<#6.0 project setup>)
+- [References](<#references>)
 - [Version History](<#version history>)
 
 ---
 
 ## 1.0 Overview
 
-This profile maps governance abstract placeholders to Claude Code tooling. It is an optional alternative to the MLX/Devstral profile, intended for use when the local inference stack is unavailable.
+This profile maps governance abstract placeholders to Claude Code tooling. It is a manual Tactical Domain option alongside the engine profiles; providers carry equal weight and none is preferred (proposal-5bcd46ad D-16).
 
-Claude Code fulfils both the worker and reviewer roles in a single manual pass. There is no automated AEL loop; the human operator controls the workflow and performs the review gate.
+Claude Code fulfils both the worker and reviewer roles in a single manual pass. There is no automated engine loop; the human operator controls the workflow and performs the review gate.
 
 | Concern | Implementation |
 |---|---|
 | Strategic Domain | Claude Desktop (preferred) |
 | Tactical Domain | Claude Code |
-| AEL mechanism | Manual — human invokes Claude Code per task |
+| Execution | Manual — human invokes Claude Code per task; no engine loop |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -66,8 +67,9 @@ Context file: `CLAUDE.md` at project root (checked into git).
 Local context file: `CLAUDE.local.md` at project root (`.gitignore`'d).
 
 **Prerequisites:**
-- Anthropic API key configured
-- Claude Code installed: `npm install -g @anthropic-ai/claude-code`
+- Claude Code installed. Recommended (native installer): `curl -fsSL https://claude.ai/install.sh | bash`. Alternatives: `brew install --cask claude-code`, or `npm install -g @anthropic-ai/claude-code` (Node.js 22+) [1]
+- An account with Claude Code access: Claude Pro, Max, Team or Enterprise subscription (browser login on first run), or a Console account / `ANTHROPIC_API_KEY` [1]
+- Mandatory validation skill provisioned (§6.0; governance P00.18)
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -79,7 +81,7 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 
 **Procedure:**
 
-1. Strategic Domain authors and approves the T03 prompt per the standard workflow.
+1. Strategic Domain authors and approves the T03 prompt per the standard workflow, with `prompt_info.target_profile: claude_code`. A `tactical_brief` is not required for this profile.
 2. Open Claude Code in the project root.
 3. Issue the following instruction, substituting the actual T03 file path:
 
@@ -91,9 +93,10 @@ ai/workspace/report/report-<uuid>-<name>.md.
 ```
 
 4. Claude Code reads the T03 prompt from disk and implements the task.
-5. The human operator reviews the result and accepts or requests changes.
+5. The PostToolUse hook (§6.0) runs pytest for modified components after each edit.
+6. The human operator reviews the result and accepts or requests changes.
 
-Reference: `ai/governance.md` P13.3 Option C.
+Reference: `ai/governance/software-engineering/governance.md` P13.3 Option C.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -106,17 +109,33 @@ Reference: `ai/governance.md` P13.3 Option C.
 ```
 # Claude Code profile - Tactical Domain
 CLAUDE.local.md
-.claude/settings.json
+.claude/settings.local.json
 ```
+
+`.claude/settings.json` is team-shared and git-tracked (governance P10.6).
 
 **Directory structure additions (within project root):**
 
 ```
 ├── .claude/
-│   └── settings.json
+│   ├── settings.json         # git-tracked; holds the PostToolUse hook
+│   ├── settings.local.json   # gitignored
+│   ├── hooks/
+│   │   └── run-tests.sh      # git-tracked
+│   └── validation/           # skill docs provisioned from ai/governance/software-engineering/skills/
 ├── CLAUDE.md
 └── CLAUDE.local.md
 ```
+
+**Mandatory skill (P00.18):** follow `ai/governance/software-engineering/skills/validation/run-tests.md` §2.0 to install `.claude/hooks/run-tests.sh` and merge its PostToolUse block into `.claude/settings.json`.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## References
+
+[1] ANTHROPIC, 2026. *Claude Code: Advanced setup* [online]. Available from: https://code.claude.com/docs/en/setup [Accessed 29 September 2026].
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -131,6 +150,8 @@ CLAUDE.local.md
 | 1.2 | 2026-06-16 | Added section numbering throughout |
 | 1.3 | 2026-06-17 | Removed <tactical_config>/ and <skills_dir>/ placeholder rows from §2.0; added note that .claude/ is a native Claude Code directory |
 | 1.4 | 2026-08-19 | §5.0: corrected report path defect (ai/workspace/report-<uuid>-<name>.md → ai/workspace/report/report-<uuid>-<name>.md, aligning with governance §1.2.6 canonical directory); added cross-reference to governance §1.10.3 Option C |
+| 1.5 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
+| 1.6 | 2026-09-29 | §1.0 aligned with D-16 and "Execution" row; §4.0 current install methods and account options [1]; §5.0 target_profile claude_code and validation hook; §6.0 .gitignore corrected to settings.local.json, hooks/ and validation/ added, mandatory skill step; References added |
 
 ---
 

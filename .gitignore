@@ -40,7 +40,7 @@ ai/workspace/proposal/closed/
 CLAUDE.local.md
 .claude/settings.json
 .claude/commands/
-ai/state/ralph/
+ai/state/
 
 # other
 10000

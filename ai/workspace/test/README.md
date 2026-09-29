@@ -15,8 +15,8 @@ the executable tests live at the project root.
 `pyproject.toml` sets `testpaths = ["tests"]`, so `pytest` collects only
 from the project root `tests/` directory. A `.py` file placed in this
 folder is **silently ignored** — it will not run and nothing will warn
-you. The same setting is why the AEL framework's own tests under
-`ai/ael/tests/` are not swept into the project suite.
+you. The same setting keeps everything under `ai/` (the AI-G&O framework)
+out of the project suite.
 
 Workflow: T05 document here → generate `tests/<component>/test_*.py` →
 execute → T06 result in `result/`.

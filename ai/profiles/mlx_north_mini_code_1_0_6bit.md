@@ -11,7 +11,7 @@ Created: 2026 June 26
 - [3.0 Strategic Domain](<#3.0 strategic domain>)
 - [4.0 Tactical Domain](<#4.0 tactical domain>)
 - [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Autonomous Execution Loop](<#6.0 autonomous execution loop>)
+- [6.0 Engine](<#6.0 autonomous execution loop>)
 - [7.0 Model Selection](<#7.0 model selection>)
 - [8.0 Project Setup](<#8.0 project setup>)
 - [9.0 Verification Status](<#9.0 verification status>)
@@ -26,8 +26,8 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 | Concern | Implementation |
 |---|---|
 | Strategic Domain | Claude Desktop (preferred) |
-| Tactical Domain | North Mini Code 1.0 6bit via oMLX + AEL |
-| AEL mechanism | AEL orchestrator / Ralph Loop |
+| Tactical Domain | North Mini Code 1.0 6bit via oMLX + engine |
+| Engine mechanism | Engine orchestrator / loop |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -39,7 +39,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 |---|---|
 | `<tactical_context>` | `ai/context.md` |
 
-`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. AEL configuration is in `ai/ael/config.yaml`; recipes are in `ai/ael/recipes/`.
+`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/`.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -57,7 +57,7 @@ Any frontier model with sufficient reasoning capability may substitute. The Stra
 
 ## 4.0 Tactical Domain
 
-**Implementation:** North Mini Code 1.0 6bit via oMLX + AEL orchestrator
+**Implementation:** North Mini Code 1.0 6bit via oMLX + engine orchestrator
 
 **Architecture:** Cohere2 mixture-of-experts (`cohere2_moe`); 30B total parameters, 3B active; 128 experts, 8 active per token.
 
@@ -87,7 +87,7 @@ snapshot_download(
 
 Use Python 3.11+. The `huggingface-cli` may be unreliable on some macOS configurations.
 
-**AEL config** (`ai/ael/config.yaml`):
+**Engine config** (`ai/config.yaml`):
 
 ```yaml
 omlx:
@@ -104,7 +104,7 @@ The model ID must match the id reported by oMLX `/v1/models` exactly. The verifi
 
 ## 5.0 Tool-Calling Behaviour
 
-North Mini Code 1.0 emits tool calls in the Cohere action format — `<|START_ACTION|>` / `<|END_ACTION|>` blocks containing a JSON array of objects with `tool_name` and `parameters` keys. This differs from the Mistral/Devstral tool-call format the AEL orchestrator parser was validated against.
+North Mini Code 1.0 emits tool calls in the Cohere action format — `<|START_ACTION|>` / `<|END_ACTION|>` blocks containing a JSON array of objects with `tool_name` and `parameters` keys. This differs from the Mistral/Devstral tool-call format the engine orchestrator parser was validated against.
 
 The model also emits reasoning output in `<|START_THINKING|>` / `<|END_THINKING|>` blocks; thinking is enabled by default (`enable_thinking: true`). The orchestrator must separate thinking output from action blocks.
 
@@ -123,21 +123,21 @@ Name tools explicitly in recipe prompts.
 
 ---
 
-## 6.0 Autonomous Execution Loop
+## 6.0 Engine
 
-**Implementation:** AEL orchestrator / Ralph Loop
+**Implementation:** engine orchestrator / loop
 
-State directory: `ai/state/ralph/` (ephemeral, per-task)
+State directory: `ai/state/` (ephemeral, per-task)
 
 **Prerequisites:**
 - oMLX running on `localhost:8000`
-- AEL dependencies installed: `pip install -r ai/ael/requirements.txt`
-- `ai/ael/config.yaml` configured with `default_model: North-Mini-Code-1.0-6bit`
+- Engine dependencies installed: `pip install -r ai/engine/requirements.txt`
+- `ai/config.yaml` configured with `default_model: North-Mini-Code-1.0-6bit`
 
 **Invocation:**
 
 ```bash
-python ai/ael/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
+python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
 Worker and reviewer roles are differentiated by prompt engineering within the same model, not by separate model binaries.
@@ -165,7 +165,7 @@ Context window: 256K tokens (Cohere specification; 64K maximum generation). The 
 
 ```
 # MLX profile - Tactical Domain
-ai/state/ralph/
+ai/state/
 ```
 
 **Setup guide:** [Apple Silicon + MLX Setup Guide](../../docs/setup-apple-silicon-mlx.md).
@@ -183,10 +183,10 @@ This profile is provisional pending evaluation. Open items:
 | oMLX served id matches `default_model` | Verified (`North-Mini-Code-1.0-6bit`) |
 | Resident memory footprint | Verified (~25 GB, oMLX estimate) |
 | Licence | Verified (Apache 2.0, Cohere blog 2026-06-09) |
-| AEL parser handles Cohere action-block tool calls | Unverified |
+| Engine parser handles Cohere action-block tool calls | Unverified |
 | Orchestrator separates thinking blocks from action blocks | Unverified |
 | Worker/reviewer prompt engineering effective with this model | Unverified |
-| `vlm` engine path behaviour under AEL load | Unverified |
+| `vlm` engine path behaviour under engine load | Unverified |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -200,6 +200,7 @@ This profile is provisional pending evaluation. Open items:
 | 0.2 | 2026-06-26 | Added Apache 2.0 licence, 30B/3B parameter figures, official CohereLabs card reference; corrected context 500K → 256K per Cohere specification |
 | 0.3 | 2026-07-16 | Tool-guidance example: mcp-grep__grep → mcp-ripgrep__search |
 | 0.4 | 2026-09-23 | Setup-guide link corrected: ../../../docs/ → ../../docs/ |
+| 0.5 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 
 ---
 

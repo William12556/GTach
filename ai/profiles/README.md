@@ -16,7 +16,7 @@ Created: 2026 February 18
 
 ## 1.0 Purpose
 
-Implementation profiles map abstract governance placeholders to concrete tooling for a specific execution environment. The governance framework (`ai/governance.md`) is model-agnostic. Profiles resolve the implementation details without modifying governance rules.
+Implementation profiles map abstract governance placeholders to concrete tooling for a specific execution environment. The governance framework (`ai/governance/software-engineering/governance.md`) is model-agnostic. Profiles resolve the implementation details without modifying governance rules.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -76,6 +76,7 @@ Strategic Domain is not prescribed. Any frontier model with sufficient reasoning
 | 1.9 | 2026-06-16 | Updated §4.0 link: mlx_devstral_small_2_2512_Q8.md → mlx_devstral_small_2_2512_6bit.md; added section numbering throughout |
 | 1.10 | 2026-07-16 | Added heterogeneous Devstral/Magistral profile to §4.0 Available Profiles |
 | 1.11 | 2026-09-23 | §4.0: Claude Desktop link retargeted from nonexistent claude-desktop-instructions.md to ../../docs/claude/project_information.md; claude.md link corrected to claude-code.md |
+| 1.12 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 
 ---
 

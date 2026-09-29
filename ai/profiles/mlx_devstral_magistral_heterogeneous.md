@@ -11,7 +11,7 @@ Created: 2026 July 16
 - [3.0 Strategic Domain](<#3.0 strategic domain>)
 - [4.0 Tactical Domain](<#4.0 tactical domain>)
 - [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Autonomous Execution Loop](<#6.0 autonomous execution loop>)
+- [6.0 Engine](<#6.0 autonomous execution loop>)
 - [7.0 Model Selection](<#7.0 model selection>)
 - [8.0 Project Setup](<#8.0 project setup>)
 - [Version History](<#version history>)
@@ -20,16 +20,16 @@ Created: 2026 July 16
 
 ## 1.0 Overview
 
-This profile maps governance abstract placeholders to a heterogeneous Apple Silicon MLX setup: a Devstral worker and a Magistral reviewer, both served locally by oMLX and driven by the AEL orchestrator. It requires Apple M-series hardware with sufficient unified memory to hold both models (see [7.0 Model Selection](<#7.0 model selection>)).
+This profile maps governance abstract placeholders to a heterogeneous Apple Silicon MLX setup: a Devstral worker and a Magistral reviewer, both served locally by oMLX and driven by the engine orchestrator. It requires Apple M-series hardware with sufficient unified memory to hold both models (see [7.0 Model Selection](<#7.0 model selection>)).
 
 | Concern | Implementation |
 |---|---|
 | Strategic Domain | Claude Desktop (preferred) |
-| Tactical Domain — worker | Devstral Small 2 2512 8bit via oMLX + AEL |
-| Tactical Domain — reviewer | Magistral Small 2509 6bit via oMLX + AEL |
-| AEL mechanism | AEL orchestrator / Ralph Loop |
+| Tactical Domain — worker | Devstral Small 2 2512 8bit via oMLX + engine |
+| Tactical Domain — reviewer | Magistral Small 2509 6bit via oMLX + engine |
+| Engine mechanism | Engine orchestrator / loop |
 
-Rationale: the worker performs synthesis (code generation, multi-file editing); the reviewer performs verification. Using a distinct reasoning model for review provides heterogeneity without changing the worker. Both models are Mistral-family (`mistral3`), so the AEL parser applies to both.
+Rationale: the worker performs synthesis (code generation, multi-file editing); the reviewer performs verification. Using a distinct reasoning model for review provides heterogeneity without changing the worker. Both models are Mistral-family (`mistral3`), so the engine parser applies to both.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -41,7 +41,7 @@ Rationale: the worker performs synthesis (code generation, multi-file editing); 
 |---|---|
 | `<tactical_context>` | `ai/context.md` |
 
-`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. AEL configuration is in `ai/ael/config.yaml`; recipes are in `ai/ael/recipes/`.
+`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/`.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -59,8 +59,8 @@ Any frontier model with sufficient reasoning capability may substitute. The Stra
 
 ## 4.0 Tactical Domain
 
-**Worker:** Devstral Small 2 2512 8bit via oMLX + AEL orchestrator
-**Reviewer:** Magistral Small 2509 6bit via oMLX + AEL orchestrator
+**Worker:** Devstral Small 2 2512 8bit via oMLX + engine orchestrator
+**Reviewer:** Magistral Small 2509 6bit via oMLX + engine orchestrator
 
 **Hardware requirement:** Apple M-series chip. Both models resident require approximately 43 GB; 64 GB unified memory is recommended. On 48 GB, oMLX TTL eviction reloads the inactive model each phase transition, adding reload latency.
 
@@ -90,7 +90,7 @@ snapshot_download(
 
 Use Python 3.11+. Confirm each repo id against the served id reported by oMLX `/v1/models` before relying on it.
 
-**AEL config** (`ai/ael/config.yaml`):
+**Engine config** (`ai/config.yaml`):
 
 ```yaml
 omlx:
@@ -115,7 +115,7 @@ Setup guides: [Devstral](../../docs/setup-apple-silicon-mlx.md) (worker) and [Ma
 
 ## 5.0 Tool-Calling Behaviour
 
-Both models are Mistral-family (`mistral3`) and emit Mistral-format tool calls, which the AEL parser (`ai/ael/src/parser.py`) handles. The orchestrator owns the full tool dispatch loop; tool calls are parsed from model output and dispatched directly via the Python MCP SDK.
+Both models are Mistral-family (`mistral3`) and emit Mistral-format tool calls, which the engine parser (`ai/engine/src/parser.py`) handles. The orchestrator owns the full tool dispatch loop; tool calls are parsed from model output and dispatched directly via the Python MCP SDK.
 
 Reviewer verdict parsing was verified for Magistral (clean `SHIP` / `REVISE` leading token; reasoning not leaked into content despite `enable_thinking: true`). Native reviewer tool-calling (reading files, writing `review-result.txt`) is expected on the `mistral3` family basis and should be confirmed on the first real review phase.
 
@@ -125,21 +125,21 @@ Name tools explicitly in recipe prompts; use imperative phrasing.
 
 ---
 
-## 6.0 Autonomous Execution Loop
+## 6.0 Engine
 
-**Implementation:** AEL orchestrator / Ralph Loop
+**Implementation:** engine orchestrator / loop
 
-State directory: `ai/state/ralph/` (ephemeral, per-task)
+State directory: `ai/state/` (ephemeral, per-task)
 
 **Prerequisites:**
 - oMLX running on `localhost:8000` with both models available
-- AEL dependencies installed: `pip install -r ai/ael/requirements.txt`
-- `ai/ael/config.yaml` configured with `default_model` and `reviewer_model`
+- Engine dependencies installed: `pip install -r ai/engine/requirements.txt`
+- `ai/config.yaml` configured with `default_model` and `reviewer_model`
 
 **Invocation:**
 
 ```bash
-python ai/ael/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
+python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
 The worker and reviewer models are resolved from config; no per-run model flags are required. Worker and reviewer roles differ by model here, not only by prompt engineering.
@@ -168,7 +168,7 @@ Context windows (forced via `model_context_windows`): Devstral 262144 (vendor-va
 
 ```
 # MLX profile - Tactical Domain
-ai/state/ralph/
+ai/state/
 ```
 
 **Setup guides:**
@@ -185,6 +185,7 @@ ai/state/ralph/
 |---|---|---|
 | 1.0 | 2026-07-16 | Initial document; heterogeneous Devstral (worker, 8bit) / Magistral (reviewer, 6bit) profile |
 | 1.1 | 2026-09-23 | Setup-guide links corrected: ../../../docs/ → ../../docs/ |
+| 1.2 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 
 ---
 

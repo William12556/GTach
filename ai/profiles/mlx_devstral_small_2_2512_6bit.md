@@ -11,7 +11,7 @@ Created: 2026 March 12
 - [3.0 Strategic Domain](<#3.0 strategic domain>)
 - [4.0 Tactical Domain](<#4.0 tactical domain>)
 - [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Autonomous Execution Loop](<#6.0 autonomous execution loop>)
+- [6.0 Engine](<#6.0 autonomous execution loop>)
 - [7.0 Model Selection](<#7.0 model selection>)
 - [8.0 Project Setup](<#8.0 project setup>)
 - [Version History](<#version history>)
@@ -25,8 +25,8 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 | Concern | Implementation |
 |---|---|
 | Strategic Domain | Claude Desktop (preferred) |
-| Tactical Domain | Devstral Small 2 2512 6bit via oMLX + AEL |
-| AEL mechanism | AEL orchestrator / Ralph Loop |
+| Tactical Domain | Devstral Small 2 2512 6bit via oMLX + engine |
+| Engine mechanism | Engine orchestrator / loop |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -38,7 +38,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 |---|---|
 | `<tactical_context>` | `ai/context.md` |
 
-`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. AEL configuration is in `ai/ael/config.yaml`; recipes are in `ai/ael/recipes/`.
+`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/`.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -56,7 +56,7 @@ Any frontier model with sufficient reasoning capability may substitute. The Stra
 
 ## 4.0 Tactical Domain
 
-**Implementation:** Devstral Small 2 2512 6bit via oMLX + AEL orchestrator
+**Implementation:** Devstral Small 2 2512 6bit via oMLX + engine orchestrator
 
 **Hardware requirement:** Apple M-series chip; 24 GB unified memory minimum (6bit quantisation).
 
@@ -80,7 +80,7 @@ snapshot_download(
 
 Use Python 3.11+. The `huggingface-cli` may be unreliable on some macOS configurations.
 
-**AEL config** (`ai/ael/config.yaml`):
+**Engine config** (`ai/config.yaml`):
 
 ```yaml
 omlx:
@@ -97,7 +97,7 @@ The model ID must match the id reported by oMLX `/v1/models` exactly, including 
 
 ## 5.0 Tool-Calling Behaviour
 
-Devstral Small 2 2512 6bit via oMLX supports tool calling. The AEL orchestrator owns the full tool dispatch loop; tool calls are parsed from model output and dispatched directly via the Python MCP SDK.
+Devstral Small 2 2512 6bit via oMLX supports tool calling. The engine orchestrator owns the full tool dispatch loop; tool calls are parsed from model output and dispatched directly via the Python MCP SDK.
 
 **Prompt guidance — imperative phrasing:**
 
@@ -112,21 +112,21 @@ Name tools explicitly in recipe prompts.
 
 ---
 
-## 6.0 Autonomous Execution Loop
+## 6.0 Engine
 
-**Implementation:** AEL orchestrator / Ralph Loop
+**Implementation:** engine orchestrator / loop
 
-State directory: `ai/state/ralph/` (ephemeral, per-task)
+State directory: `ai/state/` (ephemeral, per-task)
 
 **Prerequisites:**
 - oMLX running on `localhost:8000`
-- AEL dependencies installed: `pip install -r ai/ael/requirements.txt`
-- `ai/ael/config.yaml` configured
+- Engine dependencies installed: `pip install -r ai/engine/requirements.txt`
+- `ai/config.yaml` configured
 
 **Invocation:**
 
 ```bash
-python ai/ael/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
+python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
 Worker and reviewer roles are differentiated by prompt engineering within the same model, not by separate model binaries.
@@ -152,7 +152,7 @@ Worker and reviewer roles are differentiated by prompt engineering within the sa
 
 ```
 # MLX profile - Tactical Domain
-ai/state/ralph/
+ai/state/
 ```
 
 **Setup guide:** [Apple Silicon + MLX Setup Guide](../../docs/setup-apple-silicon-mlx.md).
@@ -173,6 +173,7 @@ ai/state/ralph/
 | 1.5 | 2026-06-17 | Updated <tactical_context> mapping: CLAUDE.md → ai/context.md |
 | 1.6 | 2026-07-16 | §5.0 tool-guidance example: mcp-grep__grep → mcp-ripgrep__search |
 | 1.7 | 2026-09-23 | Setup-guide link corrected: ../../../docs/ → ../../docs/ |
+| 1.8 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 
 ---
 

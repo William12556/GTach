@@ -33,3 +33,13 @@ Files moved or copied out of ai/ by LLM-G&O bin/propagate.sh (governance P10.6).
 Reviewed 2026-09-23: 18 files deleted — all 'retired framework file' rows, plus empty ael/tests/__init__.py and the stale ai/README.md stub where present. Remaining files await a decision. Deleted files remain in git history.
 
 Reviewed 2026-09-23: doc/CLAUDE.md merged into the root CLAUDE.md; doc/CLAUDE.md, doc/python-CLAUDE.md, doc/python2-CLAUDE.md and doc/claude-desktop-instructions.md deleted. Deleted files remain in git history.
+| 2026-09-29 | ai/ael | ai-local/retired-5bcd46ad/ael | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/governance.md | ai-local/retired-5bcd46ad/governance.md | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/workflow.md | ai-local/retired-5bcd46ad/workflow.md | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/primer.md | ai-local/retired-5bcd46ad/primer.md | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/templates | ai-local/retired-5bcd46ad/templates | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/skills | ai-local/retired-5bcd46ad/skills | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/doc | ai-local/retired-5bcd46ad/doc | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/index.md | ai-local/retired-5bcd46ad/index.md | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/src/govwatch.py | ai-local/retired-5bcd46ad/src/govwatch.py | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-09-29 | ai/src/requirements-govwatch.txt | ai-local/retired-5bcd46ad/src/requirements-govwatch.txt | retired framework path (contents not verified) | layout migration change-5bcd46ad |

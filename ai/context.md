@@ -47,7 +47,7 @@ Created: 2026 June 17
 
 | Artifact | Location |
 |---|---|
-| Governance | `ai/governance.md` |
+| Governance | `ai/governance/software-engineering/governance.md` |
 | Designs | `ai/workspace/design/` |
 | Changes | `ai/workspace/change/` |
 | Prompts | `ai/workspace/prompt/` |
@@ -63,6 +63,7 @@ Created: 2026 June 17
 | 0.1 | 2026-06-17 | Initial template |
 | 1.0 | 2026-09-23 | Project context filled in (GTach) |
 | 1.1 | 2026-09-23 | §1.0–§3.0: runtime/host roles, simulation run command and platform detection corrected |
+| 1.2 | 2026-09-29 | Governance path updated for the AI-G&O 11.0 layout |
 
 ---
 

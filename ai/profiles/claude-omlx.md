@@ -20,13 +20,13 @@ Created: 2026 April 30
 
 This profile routes Claude Code CLI through the local oMLX inference server instead of the Anthropic API. It provides Claude Code tooling and invocation UX with Devstral as the underlying model.
 
-Claude Code fulfils both the worker and reviewer roles in a single manual pass. There is no automated AEL loop; the human operator controls the workflow and performs the review gate.
+Claude Code fulfils both the worker and reviewer roles in a single manual pass. There is no automated engine loop; the human operator controls the workflow and performs the review gate.
 
 | Concern | Implementation |
 |---|---|
 | Strategic Domain | Claude Desktop (preferred) |
 | Tactical Domain | Claude Code CLI → oMLX → Devstral |
-| AEL mechanism | Manual — human invokes Claude Code per task |
+| Engine mechanism | Manual — human invokes Claude Code per task |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -133,6 +133,7 @@ CLAUDE.local.md
 | 1.1 | 2026-06-14 | workspace/ → ai/workspace/ in invocation example |
 | 1.2 | 2026-06-16 | Added section numbering throughout |
 | 1.3 | 2026-06-17 | Removed <tactical_config>/ and <skills_dir>/ placeholder rows from §2.0; added note that .claude/ is a native Claude Code directory |
+| 1.4 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 
 ---
 
