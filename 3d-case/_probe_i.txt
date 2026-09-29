@@ -1,0 +1,23 @@
+clean outer boundary pts (z=0.5): 78
+  superellipse n=2.00  RMS=1.0700 max=1.6050
+  superellipse n=2.05  RMS=0.9154 max=1.3922
+  superellipse n=2.10  RMS=0.7733 max=1.2112
+  superellipse n=2.15  RMS=0.6453 max=1.0621
+  superellipse n=2.20  RMS=0.5348 max=0.9221
+  superellipse n=2.30  RMS=0.3918 max=0.6679
+  superellipse n=2.50  RMS=0.5156 max=0.9092
+  stadium          RMS=0.0223 max=0.0515
+  4-arc oval sweep (R2 = side radius):
+    R2=  35.0 R1=17.465 tan=(29.18,9.64) RMS=1.4770 max=2.1331
+    R2=  38.0 R1=21.448 tan=(24.42,16.43) RMS=1.1062 max=1.7208
+    R2=  40.0 R1=22.425 tan=(21.98,18.73) RMS=0.9419 max=1.4931
+    R2=  42.0 R1=23.009 tan=(20.07,20.21) RMS=0.8202 max=1.3549
+    R2=  45.0 R1=23.545 tan=(17.91,21.60) RMS=0.6864 max=1.1713
+    R2=  48.0 R1=23.879 tan=(16.33,22.46) RMS=0.5922 max=1.0123
+    R2=  52.0 R1=24.168 tan=(14.79,23.17) RMS=0.4997 max=0.8616
+    R2=  56.0 R1=24.360 tan=(13.67,23.62) RMS=0.4334 max=0.7768
+    R2=  60.0 R1=24.498 tan=(12.82,23.93) RMS=0.3837 max=0.7030
+    R2=  70.0 R1=24.714 tan=(11.39,24.38) RMS=0.2983 max=0.5585
+    R2=  85.0 R1=24.885 tan=(10.18,24.71) RMS=0.2233 max=0.4155
+    R2= 100.0 R1=24.981 tan=(9.47,24.87) RMS=0.1797 max=0.3345
+  best R2=(100, 0.17972005902269594)
