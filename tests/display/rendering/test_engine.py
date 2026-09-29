@@ -33,6 +33,9 @@ SURFACE_H = 32
 BYTES_PER_PIXEL = 4
 ROW_BYTES = SURFACE_W * BYTES_PER_PIXEL
 FB_SIZE = ROW_BYTES * SURFACE_H
+# Non-zero offset for the tests, independent of the deployed value,
+# which may be 0 (compensation inactive).
+TEST_OFFSET_PX = 8
 
 
 class FakeFramebuffer:
@@ -53,8 +56,10 @@ class FakeFramebuffer:
 
 
 @pytest.fixture
-def engine():
+def engine(monkeypatch):
     """An engine wired to a fake framebuffer, single-buffer mode."""
+    monkeypatch.setattr(DisplayRenderingEngine, 'VERTICAL_OFFSET_PX',
+                        TEST_OFFSET_PX)
     pygame.init()
     eng = DisplayRenderingEngine()
     eng.surface_size = (SURFACE_W, SURFACE_H)
