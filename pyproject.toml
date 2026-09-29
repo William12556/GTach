@@ -35,6 +35,7 @@ dependencies = [
     "click>=8.0",
     "pyserial>=3.5",
     "pygame>=2.0",
+    "psutil>=5.9",
 ]
 
 [project.optional-dependencies]
