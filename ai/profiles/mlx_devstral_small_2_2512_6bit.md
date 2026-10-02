@@ -8,10 +8,10 @@ Created: 2026 March 12
 
 - [1.0 Overview](<#1.0 overview>)
 - [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
-- [3.0 Strategic Domain](<#3.0 strategic domain>)
-- [4.0 Tactical Domain](<#4.0 tactical domain>)
+- [3.0 Planner](<#3.0 planner>)
+- [4.0 Worker and Reviewer](<#4.0 worker and reviewer>)
 - [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Engine](<#6.0 autonomous execution loop>)
+- [6.0 Engine](<#6.0 engine>)
 - [7.0 Model Selection](<#7.0 model selection>)
 - [8.0 Project Setup](<#8.0 project setup>)
 - [Version History](<#version history>)
@@ -24,8 +24,8 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 
 | Concern | Implementation |
 |---|---|
-| Strategic Domain | Claude Desktop (preferred) |
-| Tactical Domain | Devstral Small 2 2512 6bit via oMLX + engine |
+| Planner | Claude Desktop (preferred) |
+| Worker and reviewer | Devstral Small 2 2512 6bit via oMLX + engine |
 | Engine mechanism | Engine orchestrator / loop |
 
 [Return to Table of Contents](<#table of contents>)
@@ -38,23 +38,23 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 |---|---|
 | `<tactical_context>` | `ai/context.md` |
 
-`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/`.
+`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/` and `ai/governance/<model>/recipes/`, mapped by the model's `manifest.yaml`.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 3.0 Strategic Domain
+## 3.0 Planner
 
 **Preferred implementation:** Claude Desktop
 
-Any frontier model with sufficient reasoning capability may substitute. The Strategic Domain role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
+Any frontier model with sufficient reasoning capability may substitute. The planner role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 4.0 Tactical Domain
+## 4.0 Worker and Reviewer
 
 **Implementation:** Devstral Small 2 2512 6bit via oMLX + engine orchestrator
 
@@ -151,7 +151,7 @@ Worker and reviewer roles are differentiated by prompt engineering within the sa
 **.gitignore additions:**
 
 ```
-# MLX profile - Tactical Domain
+# MLX profile - Worker and Reviewer
 ai/state/
 ```
 
@@ -174,6 +174,9 @@ ai/state/
 | 1.6 | 2026-07-16 | §5.0 tool-guidance example: mcp-grep__grep → mcp-ripgrep__search |
 | 1.7 | 2026-09-23 | Setup-guide link corrected: ../../../docs/ → ../../docs/ |
 | 1.8 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
+| 1.9 | 2026-10-01 | Recipe location: governance model recipes and manifest run types (change-e58fd295) |
+| 1.10 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 1.11 | 2026-10-01 | TOC anchor for §6.0 corrected (audit-14e05e35 L-05, change-82dbf16a) |
 
 ---
 

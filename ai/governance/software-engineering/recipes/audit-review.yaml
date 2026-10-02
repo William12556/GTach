@@ -1,4 +1,4 @@
-version: 1.1.0
+version: 1.2.0
 title: Audit Review Phase
 description: Reviewer role system prompt — coverage check and finding quality critique
 
@@ -41,11 +41,15 @@ instructions: |
   AVAILABLE TOOLS — use these exact names, no others:
   {{TOOLS}}
 
-  OUTPUT (use write tool with absolute paths from STATE_DIR):
-  - If approved:   write path=STATE_DIR/review-result.txt content=SHIP
-  - If needs work: write path=STATE_DIR/review-result.txt content=REVISE
-                   write path=STATE_DIR/review-feedback.txt content=<specific feedback>
+  OUTPUT:
+  You are in read-only mode — you cannot write state files.
+  Your final response is your verdict:
+    SHIP
+  or
+    REVISE: <specific feedback>
 
 # Version History
+# 1.2.0  2026-10-01  change-82dbf16a: OUTPUT states the verdict in the final
+#                    response; the review phase refuses write tools.
 # 1.1.0  2026-09-25  change-5bcd46ad: terminology (BLOCKED.md, .complete)
 # 1.0.0  initial

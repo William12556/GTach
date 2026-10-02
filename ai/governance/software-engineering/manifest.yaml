@@ -1,0 +1,81 @@
+# Governance model manifest (design-14e05e35 §5.0; change-e58fd295).
+# Machine-readable part of the software-engineering governance model.
+# governance.md remains the narrative source of the rules.
+
+model:
+  name: software-engineering
+  version: "12.2"   # tracks governance.md
+
+# Created under ai/workspace/ by bootstrap.sh and propagate.sh when absent.
+# Existing folders are never changed.
+workspace_folders:
+  - requirements
+  - requirements/closed
+  - design
+  - issues
+  - issues/closed
+  - change
+  - change/closed
+  - prompt
+  - prompt/closed
+  - report
+  - report/closed
+  - proposal
+  - proposal/closed
+  - trace
+  - audit
+  - audit/closed
+  - test
+  - test/closed
+  - test/result
+  - test/result/closed
+
+# Paths the worker may always write, in addition to a task's deliverables (FR-01-07).
+writable_paths:
+  - tests/
+
+# Run type -> recipe pair. Paths resolve against this folder first, then ai/engine/recipes/.
+run_types:
+  loop:
+    worker: loop-work.yaml
+    reviewer: loop-review.yaml
+  audit:
+    worker: recipes/audit-work.yaml
+    reviewer: recipes/audit-review.yaml
+
+# Command gates. Override per project under gates.<name> in ai/config.yaml.
+# {python} is gates.python from ai/config.yaml, or the engine's interpreter.
+gates:
+  pytest:
+    command: "{python} -m pytest -q {targets}"
+    timeout_seconds: 300
+
+# Stages in order (D-06). owner: planner, loop or human.
+stages:
+  - id: issue
+    owner: planner
+    evidence: { folder: issues, prefix: issue, status_field: issue_info.status,
+                complete_statuses: [open, investigating, resolved, verified, closed] }
+  - id: change
+    owner: planner
+    approval: true
+    evidence: { folder: change, prefix: change, status_field: change_info.status,
+                complete_statuses: [approved, implemented, verified] }
+  - id: prompt
+    owner: planner
+    approval: true
+    evidence: { folder: prompt, prefix: prompt }
+  - id: implement
+    owner: loop
+    gates: [syntax, pytest, reviewer]
+    on_blocked: prompt
+  - id: accept
+    owner: human
+    approval: true
+
+# Permitted stage sequences. detect: the earliest stage whose document selects the path.
+# The trivial exemption (P04.12) creates no documents and is not tracked.
+paths:
+  full:           { detect: issue,  stages: [issue, change, prompt, implement, accept] }
+  change_sourced: { detect: change, stages: [change, prompt, implement, accept] }
+  design_sourced: { detect: prompt, stages: [prompt, implement, accept] }

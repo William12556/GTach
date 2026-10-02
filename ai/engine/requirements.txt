@@ -1,4 +1,5 @@
 openai>=1.0.0
+anthropic>=0.50.0  # kind anthropic only; imported lazily (change-53c6f252)
 mcp>=1.0.0,<2  # mcp 2.x removed Tool.inputSchema (issue-c37198be)
 pyyaml>=6.0
 rich>=13.0.0

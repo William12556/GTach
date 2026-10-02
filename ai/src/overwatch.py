@@ -561,7 +561,7 @@ class PhaseInference:
         """Return a plain-language phase string.
 
         Precedence (first match wins):
-          1. engine running                           → Tactical execution
+          1. engine running                           → Loop execution
           2. Open prompt + engine idle/ship           → Awaiting prompt execution
           3. Open change + issue, no prompt        → Change cycle
           4. Open issue, no change                 → Issue raised
@@ -573,7 +573,7 @@ class PhaseInference:
         open_classes = {d.cls for d in docs if not d.is_master}
 
         if eng.status == "running":
-            return "Tactical execution"
+            return "Loop execution"
         if "prompt" in open_classes and eng.status in ("idle", "ship"):
             return "Awaiting prompt execution"
         if "change" in open_classes and "issue" in open_classes and "prompt" not in open_classes:
@@ -1237,12 +1237,22 @@ class HtmlRenderer:
 # ---------------------------------------------------------------------------
 
 
+def _configured_state_dir(root: Path) -> Path:
+    """loop.state_dir from ai/config.yaml, else ai/state (change-793992ae, audit L-01)."""
+    try:
+        data = yaml.safe_load((root / "ai" / "config.yaml").read_text()) or {}
+        value = (data.get("loop") or {}).get("state_dir")
+    except Exception:
+        value = None
+    return root / (value if isinstance(value, str) and value.strip() else "ai/state")
+
+
 def resolve_paths(root: Path) -> ProjectPaths:
-    """Build a ProjectPaths for *root* using govwatch's layout conventions."""
+    """Build a ProjectPaths for *root* using the framework layout conventions."""
     return ProjectPaths(
         root=root,
         workspace=root / "ai" / "workspace",
-        engine_state=root / "ai" / "state",
+        engine_state=_configured_state_dir(root),
         alerts_file=root / "ai" / "dashboard-alerts.md",
     )
 

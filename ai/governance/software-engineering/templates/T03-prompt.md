@@ -16,7 +16,7 @@ Created: 2025-12-12
 
 ```yaml
 # T03 Prompt Template v1.11 - YAML Format
-# Optimized for Strategic Domain → Tactical Domain filesystem communication
+# Optimized for planner → worker/reviewer filesystem communication
 # Designed for minimal token usage while maintaining completeness
 
 prompt_info:
@@ -223,7 +223,7 @@ properties:
           - claude_code
           - claude_omlx
           - ael
-        description: "Tactical Domain profile this prompt targets. Governs whether tactical_brief is required (see root-level allOf). ael is deprecated (legacy value in closed documents, read as engine); do not use it in new prompts."
+        description: "worker/reviewer profile this prompt targets. Governs whether tactical_brief is required (see root-level allOf). ael is deprecated (legacy value in closed documents, read as engine); do not use it in new prompts."
       date:
         type: string
       iteration:
@@ -547,6 +547,8 @@ properties:
 | 1.11    | 2026-07-17 | Added deliverable.format_requirements default entry instructing pytest suite execution on completion, applicable to claude_code/claude_omlx/ael target profiles |
 | 1.12 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 | 1.13 | 2026-09-29 | target_profile enum: ael added as deprecated legacy value so closed prompts validate (audit-5bcd46ad L-06) |
+| 1.14 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 1.15 | 2026-10-01 | Header comment: worker/reviewer compound (audit-14e05e35 L-05, change-82dbf16a) |
 
 ---
 

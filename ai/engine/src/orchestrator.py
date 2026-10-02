@@ -2,9 +2,9 @@
 Engine orchestrator — worker/reviewer loop.
 
 Standalone tool loop: connects directly to MCP servers, sends tool
-definitions to oMLX, parses model tool calls (OpenAI and Mistral
-plain-text formats), dispatches tools, injects results, iterates
-until no tool calls remain.
+definitions to the worker and reviewer providers (providers.py: oMLX,
+OpenAI-compatible APIs, Anthropic), dispatches tool calls, injects results,
+iterates until no tool calls remain.
 
 Modes:
     worker   — single work phase pass
@@ -48,19 +48,22 @@ import subprocess
 import sys
 import time
 import traceback
-import urllib.parse
-import urllib.request
-import uuid
 
 import yaml
 
 # Project root derived from working directory, consistent with _archive_audit_artifacts() precedent.
 PROJECT_ROOT: str = os.getcwd()
-from openai import AsyncOpenAI
+from typing import Any, Callable
 
 sys.path.insert(0, os.path.dirname(__file__))
 from mcp_client import MCPClient
-from parser import parse_tool_calls
+from providers import (ConfigError, ProviderError, as_provider, build_role_bindings,
+                       query_omlx_context_window as _query_omlx_context_window)
+import gates as G
+import scope as S
+import stages as ST
+from manifest import ManifestError, load_manifest, locate_manifest
+from scope import is_write_tool, written_targets as _written_targets
 
 from rich.console import Console
 from rich.markup import escape
@@ -91,63 +94,6 @@ _EDIT_PATTERN_ERRORS = (
     "E_INVALID_INPUT",
 )
 
-# F4: Write/destructive tool names for scope validation
-_WRITE_TOOLS = {
-    "write", "write_file", "create_file",
-    "edit", "edit_file",
-    "delete", "remove", "delete_file", "remove_file",
-    "move", "rename", "move_file", "rename_file",
-    "mkdir", "create_directory", "makedirs",
-    # change-c37198be (D3): @j0hanz/filesystem-mcp 2.x write tools
-    "create", "patch", "replace_text", "search_and_replace",
-}
-
-# change-c37198be (D3): argument keys that carry paths. filesystem-mcp 2.x
-# batches paths in lists (create/edit: files[{path}], delete: paths[],
-# move: moves[{...}]); scalar keys cover the 1.x-style tools.
-_PATH_KEYS = ("path", "file_path", "destination", "new_path", "source",
-              "from", "to", "src", "dst", "target", "newPath")
-_DEST_KEYS = ("destination", "new_path", "newPath", "to", "dst", "target")
-_MOVE_TOOLS = ("move", "rename", "move_file", "rename_file")
-
-
-def _path_values(obj: dict, keys: tuple) -> list[str]:
-    return [obj[k] for k in keys if isinstance(obj.get(k), str) and obj[k]]
-
-
-def _scope_targets(arguments: dict) -> list[str]:
-    """Every path a write call names, including those nested in files/paths/moves/edits."""
-    targets = _path_values(arguments, _PATH_KEYS)
-    for key in ("paths",):
-        targets += [p for p in arguments.get(key) or [] if isinstance(p, str) and p]
-    for key in ("files", "moves", "edits"):
-        for item in arguments.get(key) or []:
-            if isinstance(item, dict):
-                targets += _path_values(item, _PATH_KEYS)
-    return targets
-
-
-def _written_targets(tool_name: str, arguments: dict) -> list[str]:
-    """
-    Paths a successful write call leaves as files: move/rename destinations,
-    otherwise the paths written. Delete calls produce no deliverable.
-    """
-    if tool_name in ("delete", "remove", "delete_file", "remove_file"):
-        return []
-    if tool_name in _MOVE_TOOLS:
-        dests = _path_values(arguments, _DEST_KEYS)
-        for item in arguments.get("moves") or []:
-            if isinstance(item, dict):
-                dests += _path_values(item, _DEST_KEYS)
-        if dests:
-            return dests
-        return _path_values(arguments, ("path", "file_path"))[:1]
-    written = _path_values(arguments, ("path", "file_path", "destination"))[:1]
-    for item in arguments.get("files") or []:
-        if isinstance(item, dict):
-            written += _path_values(item, ("path", "file_path"))[:1]
-    return written
-
 # F12: Stall detection — consecutive identical REVISE feedback threshold
 _DEFAULT_STALL_THRESHOLD = 3
 
@@ -157,41 +103,15 @@ _COMPLETION_INITIAL_BACKOFF = 2.0  # seconds
 _COMPLETION_BACKOFF_MULTIPLIER = 2.0
 
 
-def _validate_write_scope(tool_name: str, arguments: dict, project_root: str) -> str | None:
+def _validate_write_scope(tool_name: str, arguments: dict, project_root: str,
+                          write_scope: "S.WriteScope | None" = None) -> str | None:
     """
-    F4: Validate that write/destructive tool calls target paths within project_root.
-
-    Returns None if the tool is in scope or not a write tool.
-    Returns an error message string if the path is out of scope.
+    F4 / change-bdc6820f: pre-dispatch write check (scope.check). Returns None
+    when allowed or not a write tool, otherwise the error message for the
+    worker. Without write_scope only project-root containment applies.
     """
-    if tool_name not in _WRITE_TOOLS:
-        return None
-
-    # change-d1f4a83b (N2): every path argument a write tool carries is checked,
-    # not merely the first one present. The prior `path or file_path or
-    # destination` chain stopped at the first match, so a move or rename that
-    # supplied its source as `path` was validated on the source alone and its
-    # destination was never examined — a call relocating a file out of the
-    # project root passed the gate. Each path a call touches is a distinct
-    # containment obligation, so each is tested.
-    # change-c37198be (D3): nested files/paths/moves/edits entries included.
-    targets = _scope_targets(arguments)
-    if not targets:
-        return None  # Let MCP validate missing required args
-
-    # Resolve to absolute and check containment
-    for target_path in targets:
-        try:
-            resolved = os.path.abspath(target_path)
-            if not resolved.startswith(project_root + os.sep) and resolved != project_root:
-                return (
-                    f"Scope violation: path '{target_path}' is outside the project root "
-                    f"'{project_root}'. All writes must target paths within the project."
-                )
-        except Exception:
-            continue  # Let MCP handle malformed paths
-
-    return None
+    violation = S.check(tool_name, arguments, project_root, write_scope)
+    return violation.message if violation else None
 
 
 _TASK_FILE_SUFFIXES = (".md", ".yaml", ".yml", ".txt")
@@ -527,7 +447,7 @@ def _truncate_tool_result(content: str, max_chars: int) -> str:
 
 
 async def _completion_with_retry(
-    client,
+    provider,
     model: str,
     messages: list[dict],
     tools: list[dict] | None,
@@ -545,25 +465,16 @@ async def _completion_with_retry(
     a RuntimeError to signal clean termination (no uncaught exception).
 
     Args:
+        provider: A providers.py provider; returns a normalised Completion.
         max_completion_tokens: When non-null, passed as max_tokens to the completion
-            call to cap output length. When null, max_tokens is omitted (default).
+            call to cap output length. When null, the provider default applies.
     """
     backoff = initial_backoff
     last_error = None
 
     for attempt in range(1, max_retries + 1):
         try:
-            # Build kwargs, conditionally including max_tokens
-            create_kwargs = {
-                "model": model,
-                "messages": messages,
-                "tools": tools or None,
-                "stream": False,
-            }
-            if max_completion_tokens is not None:
-                create_kwargs["max_tokens"] = max_completion_tokens
-            response = await client.chat.completions.create(**create_kwargs)
-            return response
+            return await provider.complete(model, messages, tools, max_completion_tokens)
         except Exception as e:
             last_error = e
             log.warning(
@@ -704,7 +615,8 @@ def reset_state(state_dir: str) -> int:
     """
     Remove all loop state files from state_dir.
     Log files (engine_*.LOG) and context-budget.md are preserved.
-    Returns 0 in all cases; reset is idempotent.
+    Returns 0 unless an entry cannot be removed (change-82dbf16a iteration 5);
+    reset is idempotent.
 
     change-f5c28a04 (2.3): an absent state directory previously returned 1.
     Reset is idempotent by intent — resetting nothing is the requested outcome
@@ -715,12 +627,14 @@ def reset_state(state_dir: str) -> int:
         console.print(f"[yellow][engine] reset: state directory not present: {state_dir}[/yellow]")
         console.print("[green][engine] reset: nothing to clear[/green]")
         return 0
-    removed = []
+    removed, failed = [], []
     for name in _RESET_FILES:
         path = os.path.join(state_dir, name)
-        if os.path.exists(path):
-            os.remove(path)
-            removed.append(name)
+        if os.path.lexists(path):  # change-82dbf16a iteration 5 (F4-01): symlinks and directories too
+            (removed if _remove_state_path(path) else failed).append(name)
+    if failed:
+        console.print(f"[red][engine] reset: could not remove: {escape(', '.join(failed))}[/red]")
+        return 1
     if removed:
         console.print(f"[green][engine] reset: removed {len(removed)} state file(s)[/green]")
         for name in removed:
@@ -730,69 +644,25 @@ def reset_state(state_dir: str) -> int:
     return 0
 
 
-def _query_omlx_context_window(model_name: str, base_url: str) -> int | None:
-    """
-    Query the oMLX admin API for the context window of a specific model.
-
-    Builds the admin URL by stripping a trailing '/v1' from base_url and
-    appending '/admin/api/models?model_id=<model_name>'.
-
-    Returns:
-        The value of settings.max_context_window for the matching model entry,
-        or None if the query fails or the value is absent.
-
-    This function never raises — all exceptions are caught and logged at WARNING.
-    """
-    log = logging.getLogger("engine")
-    try:
-        # Strip trailing '/v1' to get admin root
-        admin_root = base_url.rstrip("/")
-        if admin_root.endswith("/v1"):
-            admin_root = admin_root[:-3]
-
-        # Build admin API URL
-        encoded_model = urllib.parse.quote(model_name, safe="")
-        url = f"{admin_root}/admin/api/models?model_id={encoded_model}"
-
-        log.debug("querying oMLX admin API: %s", url)
-
-        # Make request with short timeout
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-
-        # Parse response: find matching model entry
-        models = data.get("models", [])
-        for entry in models:
-            if entry.get("id") == model_name:
-                settings = entry.get("settings", {})
-                ctx = settings.get("max_context_window")
-                if ctx is not None:
-                    log.debug("oMLX admin query: found max_context_window=%d for '%s'", ctx, model_name)
-                    return int(ctx)
-                log.debug("oMLX admin query: settings.max_context_window is null for '%s'", model_name)
-                return None
-
-        log.debug("oMLX admin query: no matching model entry for '%s'", model_name)
-        return None
-
-    except Exception as exc:
-        log.warning("oMLX admin query failed for '%s': %s", model_name, exc)
-        return None
+_LEGACY_LIVE_QUERY = object()
 
 
-def resolve_context_window(model_name: str, config: dict) -> int | None:
+def resolve_context_window(model_name: str, config: dict,
+                           live_query: Callable[[str], int | None] | None | object = _LEGACY_LIVE_QUERY,
+                           ) -> int | None:
     """
     Resolve the model context window in tokens using a four-tier chain.
 
     Tier 1: config['context']['context_window'] if not null (explicit global override)
-    Tier 2: Live query to oMLX admin endpoint for settings.max_context_window
+    Tier 2: Live query (oMLX admin endpoint for settings.max_context_window)
     Tier 3: config['context']['model_context_windows'][model_name] if present
     Tier 4: Return None (context window unknown)
 
     Args:
-        model_name: The model id as configured in omlx.default_model
+        model_name: The model id bound to the role being resolved (FR-04-05)
         config: The parsed config.yaml contents
+        live_query: The role provider's live_context_window, or None to skip
+            tier 2. Omitted: query the legacy omlx.base_url, as before.
 
     Returns:
         Context window size in tokens, or None if unresolved at every tier.
@@ -808,17 +678,18 @@ def resolve_context_window(model_name: str, config: dict) -> int | None:
         return int(override)
     tiers_tried.append("tier 1 (global override): null")
 
-    # Tier 2: Live oMLX admin query
-    omlx_cfg = config.get("omlx", {})
-    base_url = omlx_cfg.get("base_url", "")
-    if base_url:
-        live_ctx = _query_omlx_context_window(model_name, base_url)
+    # Tier 2: Live query (oMLX only)
+    if live_query is _LEGACY_LIVE_QUERY:
+        base_url = (config.get("omlx") or {}).get("base_url", "")
+        live_query = (lambda m: _query_omlx_context_window(m, base_url)) if base_url else None
+    if live_query is not None:
+        live_ctx = live_query(model_name)
         if live_ctx is not None:
             log.info("context window: %d (tier 2: live oMLX admin query)", live_ctx)
             return live_ctx
         tiers_tried.append("tier 2 (live oMLX query): null or failed")
     else:
-        tiers_tried.append("tier 2 (live oMLX query): skipped (no base_url)")
+        tiers_tried.append("tier 2 (live query): not available for this provider")
 
     # Tier 3: Per-model override from config
     model_overrides = ctx_cfg.get("model_context_windows", {})
@@ -890,8 +761,8 @@ def write_context_report(
     abort_pct: float,
 ) -> None:
     """
-    Write context-budget.md to state_dir for Strategic Domain consumption.
-    This file informs the Strategic Domain of available context headroom
+    Write context-budget.md to state_dir for planner consumption.
+    This file informs the planner of available context headroom
     before authoring the next tactical_brief or T03 prompt.
     """
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -937,7 +808,7 @@ Estimated accumulation per iteration: ~{est_per_iter} tokens
 Iterations before warn threshold:  ~{iters_to_warn}
 Iterations before abort threshold: ~{iters_to_abort}
 
-## Guidance for Strategic Domain
+## Guidance for Planner
 When authoring the next tactical_brief or T03 prompt:
 
 - Current initial load is {initial_pct:.1f}% of context window
@@ -950,47 +821,27 @@ When authoring the next tactical_brief or T03 prompt:
     write_state(state_dir, "context-budget.md", report)
 
 
-async def await_model_ready(
-    client: AsyncOpenAI,
-    model: str,
-    timeout: float = 60.0,
-    interval: float = 2.0,
-) -> None:
+def _remove_state_path(path: str) -> bool:
     """
-    Poll /v1/models until the target model is listed or the endpoint is
-    reachable. Raises TimeoutError if the endpoint remains unreachable.
+    change-82dbf16a iteration 5 (audit F4-01): remove a state entry whatever
+    its type: a file or symlink (dangling or not) is unlinked, a directory is
+    removed with its content (symlinks inside are not followed). True when the
+    name no longer exists.
     """
-    deadline = time.monotonic() + timeout
-    attempt = 0
-    while True:
-        attempt += 1
-        try:
-            models = await client.models.list()
-            ids = [m.id for m in models.data]
-            if model in ids:
-                console.print(f"[green][engine] model ready: {model}[/green]")
-                return
-            # Endpoint up; model not listed — oMLX loads on first request
-            console.print(f"[yellow][engine] endpoint ready; '{model}' not listed — proceeding[/yellow]")
-            return
-        except Exception as e:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                raise TimeoutError(
-                    f"[engine] inference endpoint not reachable after {timeout}s: {e}"
-                ) from e
-            console.print(
-                f"[yellow][engine] waiting for endpoint "
-                f"(attempt {attempt}, {remaining:.0f}s remaining): {e}[/yellow]"
-            )
-            await asyncio.sleep(interval)
+    try:
+        if os.path.isdir(path) and not os.path.islink(path):
+            shutil.rmtree(path)
+        elif os.path.lexists(path):
+            os.unlink(path)
+    except OSError:
+        pass
+    return not os.path.lexists(path)
 
 
-def clear_state(state_dir: str, *filenames: str) -> None:
-    for name in filenames:
-        path = os.path.join(state_dir, name)
-        if os.path.exists(path):
-            os.remove(path)
+def clear_state(state_dir: str, *filenames: str) -> list[str]:
+    """Remove the named state entries; returns the names that could not be removed."""
+    return [name for name in filenames
+            if not _remove_state_path(os.path.join(state_dir, name))]
 
 
 def archive_prior_logs(state_dir: str, archive_dir: str | None) -> int:
@@ -1174,8 +1025,20 @@ def format_tool_signatures(tools: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _dispatch_refusal(name: str, offered: set[str], is_worker_phase: bool) -> str | None:
+    """
+    change-82dbf16a (H-03): a tool call is dispatched only when the tool was
+    offered to this phase; a review phase never dispatches a write tool.
+    """
+    if name not in offered:
+        return f"tool '{name}' is not available in this phase"
+    if not is_worker_phase and is_write_tool(name):
+        return f"tool '{name}' writes; the review phase is read-only"
+    return None
+
+
 async def run_phase(
-    client: AsyncOpenAI,
+    client: Any,
     mcp: MCPClient,
     model: str,
     recipe: dict,
@@ -1193,6 +1056,7 @@ async def run_phase(
     phase_duration_seconds: float | None = None,
     max_completion_tokens: int | None = None,
     max_tool_result_chars: int | None = None,
+    write_scope: "S.WriteScope | None" = None,
 ) -> tuple[int, str, set[str]]:
     """
     Single phase (worker or reviewer): inject tools, send completions,
@@ -1203,9 +1067,14 @@ async def run_phase(
       - read_paths: set of abspath-normalized file paths read via read/read_file/read_text_file
                     (populated for review phase; empty for worker phase)
     """
+    provider = as_provider(client)  # change-53c6f252: raw OpenAI-style clients are wrapped
     is_worker_phase = "REVIEW" not in phase_label.upper()
     # F5: review phase gets read-only tool subset; worker gets full toolset
     tools = mcp.get_openai_tools(readonly=not is_worker_phase)
+    # change-82dbf16a (H-03): only offered tools are dispatched; (H-01) the
+    # worker never writes engine signal files.
+    _offered = {t["function"]["name"] for t in tools}
+    _protected = S.signal_files(state_dir) if is_worker_phase else frozenset()
 
     # Build real tool name list and inject into recipe system prompt
     tool_list = format_tool_signatures(tools)
@@ -1291,20 +1160,19 @@ async def run_phase(
 
         # F14: Use bounded retry with backoff for transient endpoint errors
         try:
-            response = await _completion_with_retry(
-                client, model, messages, tools, log, state_dir,
+            completion = await _completion_with_retry(
+                provider, model, messages, tools, log, state_dir,
                 max_completion_tokens=max_completion_tokens,
             )
         except RuntimeError:
             # Persistent failure — BLOCKED.md already written
             return 1, "", set()
 
-        message = response.choices[0].message
-        content = message.content or ""
+        content = completion.text or ""
         log.debug("iteration %d model response:\n%s", iteration, content)
 
         # Extract and display reasoning if present
-        reasoning, content = extract_reasoning(message, content, log)
+        reasoning, content = extract_reasoning(completion, content, log)
         if reasoning:
             log.debug("model reasoning:\n%s", reasoning)
             console.print(Panel(escape(reasoning), title="[dim cyan]think[/dim cyan]", border_style="dim cyan", expand=False))
@@ -1316,27 +1184,15 @@ async def run_phase(
             # Strip any plain-text [TOOL_CALLS] marker — that syntax is shown
             # separately via the 'call ->' line once parsed below.
             _narration = content.split("[TOOL_CALLS]")[0].strip()
-            if _narration and (message.tool_calls or "[TOOL_CALLS]" in content):
+            if _narration and (completion.tool_calls or "[TOOL_CALLS]" in content):
                 log.debug("untagged narration (%d chars)", len(_narration))
                 console.print(Panel(escape(_narration), title="[dim magenta]narration[/dim magenta]", border_style="dim magenta", expand=False))
 
-        tool_calls: list[dict] = []
-
-        if message.tool_calls:
-            # OpenAI-format tool_calls in API response
-            for tc in message.tool_calls:
-                try:
-                    arguments = json.loads(tc.function.arguments)
-                except json.JSONDecodeError:
-                    arguments = {}
-                tool_calls.append({"id": tc.id, "name": tc.function.name, "arguments": arguments})
-        else:
-            # Mistral plain-text format — parse from content
-            parsed = parse_tool_calls(content)
-            if parsed:
-                for tc in parsed:
-                    tc["id"] = f"call_{uuid.uuid4().hex[:8]}"
-                tool_calls = parsed
+        # change-53c6f252: native and plain-text tool calls are normalised by the provider
+        tool_calls: list[dict] = [
+            {"id": tc.id, "name": tc.name, "arguments": tc.arguments}
+            for tc in completion.tool_calls
+        ]
 
         # F3: Apply tool call cap BEFORE building assistant message to avoid orphaned IDs.
         # The assistant message must only reference tool_calls that will have matching results.
@@ -1369,7 +1225,7 @@ async def run_phase(
             # Check for unparsed tool call markers (model tried to emit calls but parser failed).
             # Do NOT use substring scans for error patterns — a summary may legitimately
             # contain such text without indicating a malformed response.
-            _has_unparsed_tool_marker = "[TOOL_CALLS]" in content and not message.tool_calls
+            _has_unparsed_tool_marker = "[TOOL_CALLS]" in content
             if _has_unparsed_tool_marker:
                 blocked_msg = (
                     "# BLOCKED\n\n"
@@ -1398,11 +1254,27 @@ async def run_phase(
             console.print(f"[yellow]  call →[/yellow]  [bold]{escape(tc['name'])}[/bold][dim]({escape(json.dumps(tc['arguments']))})[/dim]")
             log.debug("tool call: %s args=%s", tc["name"], json.dumps(tc["arguments"]))
 
-            # F4: Pre-dispatch write scope validation
-            _scope_err = _validate_write_scope(tc["name"], tc["arguments"], project_root) if project_root else None
+            # change-82dbf16a (H-03): refuse tools not offered to this phase and
+            # every write tool in a review phase, before any other check.
+            _refusal = _dispatch_refusal(tc["name"], _offered, is_worker_phase)
+            if _refusal:
+                log.warning("tool refused tool=%s phase=%s reason=%s",
+                            tc["name"], phase_label or "-", _refusal)
+            # F4 / change-bdc6820f: pre-dispatch write scope validation (FR-05-01, FR-05-04)
+            _violation = (S.check(tc["name"], tc["arguments"], project_root, write_scope, _protected)
+                          if project_root and not _refusal else None)
+            _scope_err = _violation.message if _violation else None
+            if _violation:
+                log.warning("write rejected tool=%s path=%s reason=%s",
+                            tc["name"], _violation.path, _violation.reason)
             # F21: Pre-dispatch audit-report.md append-only validation
-            _report_err = _validate_audit_report_write(tc["name"], tc["arguments"], state_dir)
-            if _scope_err:
+            _report_err = (_validate_audit_report_write(tc["name"], tc["arguments"], state_dir)
+                           if not _refusal else None)
+            if _refusal:
+                console.print(f"[red][engine] tool refused: {escape(_refusal[:200])}[/red]")
+                result = f"Error: {_refusal}"
+                _scope_err = _refusal
+            elif _scope_err:
                 log.warning("scope violation: %s", _scope_err)
                 console.print(f"[red][engine] scope violation: {escape(_scope_err[:200])}[/red]")
                 result = f"Error: {_scope_err}"
@@ -1438,7 +1310,7 @@ async def run_phase(
             # change-a2f9c4d1: record successful write targets for work-summary
             # synthesis. Only calls that raised no scope error, no audit-report
             # error and no MCP error are treated as writes that actually landed.
-            if (tc["name"] in _WRITE_TOOLS
+            if (is_write_tool(tc["name"])
                     and not _scope_err and not _report_err
                     and not _is_mcp_error(result)):
                 # change-f5c28a04 (F3): for move/rename the deliverable ends up
@@ -1581,7 +1453,7 @@ async def run_phase(
                 # P4: post-write Python syntax check
                 # change-c37198be (D3): every file a write call leaves, incl. 2.x batches.
                 _py_paths = (_written_targets(tc["name"], tc["arguments"])
-                             if tc["name"] in _WRITE_TOOLS else [])
+                             if is_write_tool(tc["name"]) else [])
                 for _py_path in _py_paths:
                     if _py_path.endswith(".py") and os.path.isfile(_py_path):
                         proc = subprocess.run(
@@ -1766,173 +1638,72 @@ def run_preflight_check(task: str, log: logging.Logger) -> str:
 
 def _run_syntax_gate(state_dir: str, log: logging.Logger) -> str:
     """
-    F6: Run py_compile on modified .py files and return a summary for the reviewer.
-
-    Extracts .py file paths from work-summary.txt, runs py_compile on each,
-    and returns a [SYNTAX GATE] block to inject into the reviewer task.
-    Returns empty string if no .py files found or work-summary.txt absent.
+    F6: Built-in syntax gate (gates.syntax_check). Returns a [SYNTAX GATE]
+    block for the reviewer task, or '' when no .py deliverable exists.
     """
-    summary_path = os.path.join(state_dir, "work-summary.txt")
-    if not os.path.exists(summary_path):
-        return ""
-
-    summary_content = open(summary_path).read()
-
-    # Extract .py file paths from the work summary
-    # Match patterns like: path/to/file.py, "path/to/file.py", 'path/to/file.py'
-    py_files = re.findall(r'["\']?([\w./\-]+\.py)["\']?', summary_content)
-    # Deduplicate while preserving order
-    seen = set()
-    unique_py_files = []
-    for f in py_files:
-        if f not in seen and os.path.exists(f):
-            seen.add(f)
-            unique_py_files.append(f)
-
-    if not unique_py_files:
-        return ""
-
-    results = []
-    all_passed = True
-
-    for py_path in unique_py_files:
-        try:
-            proc = subprocess.run(
-                [sys.executable, "-m", "py_compile", py_path],
-                capture_output=True,
-                text=True,
-            )
-            if proc.returncode == 0:
-                results.append(f"  ✓ {py_path}: OK")
-            else:
-                all_passed = False
-                err = proc.stderr.strip()[:200]
-                results.append(f"  ✗ {py_path}: SYNTAX ERROR\n    {err}")
-        except Exception as exc:
-            all_passed = False
-            results.append(f"  ? {py_path}: check failed ({exc})")
-
-    status = "PASS" if all_passed else "FAIL"
-    log.info("syntax gate: %d files checked, status=%s", len(unique_py_files), status)
-
-    gate_block = (
-        f"[SYNTAX GATE: {status}]\n"
-        f"The orchestrator ran py_compile on {len(unique_py_files)} .py file(s):\n"
-        + "\n".join(results)
-        + "\n[END SYNTAX GATE]\n"
-    )
-
-    if not all_passed:
-        console.print(f"[yellow][engine] syntax gate: {status} ({len(unique_py_files)} files)[/yellow]")
-    else:
-        console.print(f"[dim][engine] syntax gate: {status} ({len(unique_py_files)} files)[/dim]")
-
-    return gate_block
+    block, count = G.syntax_check(state_dir, log)
+    if block:
+        status = G.gate_status(block)
+        style = "dim" if status == "PASS" else "yellow"
+        console.print(f"[{style}][engine] syntax gate: {status} ({count} files)[/{style}]")
+    return block
 
 
-def _run_pytest_gate(state_dir: str, log: logging.Logger, project_root: str) -> str:
+def _run_pytest_gate(state_dir: str, log: logging.Logger, project_root: str,
+                     spec: dict | None = None) -> str:
     """
-    F6b: Run pytest on deliverable-derived test targets and return a summary for the reviewer.
+    F6b: pytest command gate on deliverable-derived targets (gates.pytest_targets).
 
-    Extracts deliverables from work-summary.txt via _extract_deliverables, maps them to
-    test targets (tests/ paths direct; src/<component>/ -> tests/<component>/ if exists),
-    runs pytest, and returns a [TEST GATE] block to inject into the reviewer task.
-    Returns empty string if no test-relevant targets resolve.
-
-    Status interpretation:
-      - PASS: pytest ran successfully with exit code 0
-      - FAIL: pytest ran but reported test failures (exit code != 0)
-      - UNCHECKED: pytest could not be run (missing, timeout, exception)
-
-    Only FAIL triggers the SHIP override in run_loop; UNCHECKED and empty-result do not.
+    spec: {command, python, timeout_seconds} from the manifest and ai/config.yaml
+    (change-e58fd295); omitted, the historical command runs with this
+    interpreter. Returns a [TEST GATE] block, or '' when no target resolves.
+    PASS: exit 0; FAIL: tests failed; UNCHECKED: pytest could not run. In
+    run_loop FAIL overrides SHIP and UNCHECKED ends the run BLOCKED
+    (change-82dbf16a).
     """
     deliverables = _extract_deliverables(state_dir, log)
     if not deliverables:
         log.debug("pytest gate: no deliverables — gate is no-op")
         return ""
-
-    # Resolve test targets from deliverables
-    targets: set[str] = set()
-    for path in deliverables:
-        # Normalize to relative path for pattern matching
-        if project_root and path.startswith(project_root):
-            rel_path = path[len(project_root):].lstrip(os.sep)
-        else:
-            rel_path = path
-
-        # Direct include for tests/ paths
-        if rel_path.startswith("tests" + os.sep) or rel_path.startswith("tests/"):
-            if os.path.exists(path):
-                targets.add(path)
-        # Map src/<component>/ to tests/<component>/ if that directory exists
-        elif rel_path.startswith("src" + os.sep) or rel_path.startswith("src/"):
-            parts = rel_path.split(os.sep)
-            if len(parts) >= 2:
-                component = parts[1]
-                test_dir = os.path.join(project_root, "tests", component) if project_root else os.path.join("tests", component)
-                if os.path.isdir(test_dir):
-                    targets.add(test_dir)
-                else:
-                    # change-b7e3d5a9: flat-layout fallback. For src/<name>.py the
-                    # component-directory mapping above tests isdir("tests/<name>.py"),
-                    # which can never hold, so the gate resolved nothing and silently
-                    # enforced nothing. Fall back to the flat module convention.
-                    _stem = os.path.splitext(os.path.basename(rel_path))[0]
-                    for _candidate in (f"test_{_stem}.py", f"{_stem}_test.py"):
-                        _test_file = (os.path.join(project_root, "tests", _candidate)
-                                      if project_root else os.path.join("tests", _candidate))
-                        if os.path.isfile(_test_file):
-                            targets.add(_test_file)
-                            break
-
+    targets = G.pytest_targets(deliverables, project_root)
     if not targets:
         log.debug("pytest gate: no test-relevant targets resolved — gate is no-op")
         return ""
-
-    # Run pytest
-    target_list = sorted(targets)
-    log.info("pytest gate: running pytest on %d target(s): %s", len(target_list), target_list)
-
-    try:
-        proc = subprocess.run(
-            [sys.executable, "-m", "pytest"] + target_list + ["-q"],
-            capture_output=True,
-            text=True,
-            cwd=project_root if project_root else None,
-            timeout=300,  # 5 minute timeout
-        )
-        if proc.returncode == 0:
-            status = "PASS"
-        else:
-            status = "FAIL"
-        output = proc.stdout + proc.stderr
-    except Exception as exc:
-        status = "UNCHECKED"
-        output = f"pytest execution failed: {exc}"
-        log.warning("pytest gate: execution failed — %s", exc)
-        log.debug("pytest gate exception traceback:\n%s", traceback.format_exc())
-
-    # Truncate output to last 1000 chars for readability
-    if len(output) > 1000:
-        output = "...(truncated)...\n" + output[-1000:]
-
-    target_list_str = "\n".join(f"  - {t}" for t in target_list)
-    gate_block = (
-        f"[TEST GATE: {status}]\n"
-        f"The orchestrator ran pytest on {len(target_list)} test target(s):\n"
-        f"{target_list_str}\n\n"
-        f"Output:\n{output.strip()}\n"
-        f"[END TEST GATE]\n"
-    )
-
+    log.info("pytest gate: running pytest on %d target(s): %s", len(targets), targets)
+    block = G.run_command_gate(G.PYTEST_GATE, spec or {}, targets, project_root, log)
+    status = G.gate_status(block)
     if status == "PASS":
-        log.info("pytest gate: %d target(s), status=%s", len(target_list), status)
-        console.print(f"[dim][engine] pytest gate: {status} ({len(target_list)} targets)[/dim]")
+        log.info("pytest gate: %d target(s), status=%s", len(targets), status)
+        console.print(f"[dim][engine] pytest gate: {status} ({len(targets)} targets)[/dim]")
     else:
-        log.warning("pytest gate: %d target(s), status=%s", len(target_list), status)
-        console.print(f"[yellow][engine] pytest gate: {status} ({len(target_list)} targets)[/yellow]")
+        log.warning("pytest gate: %d target(s), status=%s", len(targets), status)
+        console.print(f"[yellow][engine] pytest gate: {status} ({len(targets)} targets)[/yellow]")
+    return block
 
-    return gate_block
+
+def _run_command_gate(name: str, spec: dict, state_dir: str, log: logging.Logger,
+                      project_root: str) -> str:
+    """
+    A declared command gate other than pytest (change-e58fd295). {targets}
+    expands to the deliverables of this cycle.
+    """
+    if not spec.get("command"):
+        log.warning("%s gate: no command configured — gate is no-op", name)
+        return ""
+    targets = sorted(_extract_deliverables(state_dir, log))
+    block = G.run_command_gate(name, spec, targets, project_root, log)
+    status = G.gate_status(block)
+    style = "dim" if status == "PASS" else "yellow"
+    console.print(f"[{style}][engine] {escape(name)} gate: {status}[/{style}]")
+    return block
+
+
+def _log_gate(log: logging.Logger, name: str, gate_type: str, result: str) -> None:
+    """FR-03-06: one line per gate per iteration."""
+    log.info("gate=%s type=%s result=%s", name, gate_type, result)
+
+
+_DEFAULT_LOOP_GATES = ("syntax", "pytest", "reviewer")
 
 
 def _parse_audit_items(index_path: str) -> list[tuple[bool, str]]:
@@ -2048,8 +1819,26 @@ def _extract_deliverables(state_dir: str, log: logging.Logger) -> set[str]:
     return deliverables
 
 
+def _deliverables_block_for(state_dir: str, log: logging.Logger,
+                            declared: "set[str] | frozenset[str]" = frozenset()) -> str:
+    """
+    [DELIVERABLES] block listing this cycle's deliverables as absolute paths:
+    those the worker reported, merged with the prompt's declared deliverable
+    files that exist (change-82dbf16a, L-13).
+    """
+    deliverables = sorted(_extract_deliverables(state_dir, log)
+                          | {p for p in declared if os.path.isfile(p)})
+    if not deliverables:
+        return ""
+    lines = "\n".join(f"  - {p}" for p in deliverables)
+    return ("[DELIVERABLES]\n"
+            "The worker reported these deliverables. Paths are absolute; read each at this path.\n"
+            f"{lines}\n"
+            "[END DELIVERABLES]\n")
+
+
 async def run_loop(
-    client: AsyncOpenAI,
+    client: Any,
     mcp: MCPClient,
     worker_model: str,
     reviewer_model: str,
@@ -2072,8 +1861,30 @@ async def run_loop(
     phase_duration_seconds: float | None = None,
     max_completion_tokens: int | None = None,
     max_tool_result_chars: int | None = None,
+    reviewer_client: Any = None,
+    reviewer_context_window: int | None = None,
+    gates: list[str] | None = None,
+    gate_specs: dict[str, dict] | None = None,
+    write_scope: "S.WriteScope | None" = None,
+    gate_outcomes: dict[str, str] | None = None,
 ) -> int:
-    """Full loop: worker/reviewer cycle until SHIP, max_iterations, or deadline."""
+    """
+    Full loop: worker/reviewer cycle until SHIP, max_iterations, or deadline.
+
+    client and context_window serve the worker; reviewer_client and
+    reviewer_context_window serve the reviewer and default to the worker's
+    (change-53c6f252, FR-04-05). gates lists the loop stage's gates and
+    gate_specs the command gate specifications from the manifest and
+    ai/config.yaml; omitted, the historical syntax, pytest and reviewer gates
+    run (change-e58fd295). gate_outcomes, when given, receives the last
+    cycle's status per gate (PASS, FAIL, UNCHECKED or SKIPPED; change-82dbf16a).
+    """
+    gate_list = list(gates) if gates else list(_DEFAULT_LOOP_GATES)
+    gate_specs = gate_specs or {}
+    if reviewer_client is None:
+        reviewer_client = client
+    if reviewer_context_window is None:
+        reviewer_context_window = context_window
     ctx_line = f"  context:  {context_window:,} tokens\n" if context_window else ""
     console.print(Panel(
         f"  worker:   {escape(worker_model)}\n"
@@ -2085,9 +1896,18 @@ async def run_loop(
     ))
     log.info("loop start worker=%s reviewer=%s task=%s", worker_model, reviewer_model, task)
 
-    clear_state(state_dir,
+    _not_cleared = clear_state(state_dir,
                 "review-result.txt", "review-feedback.txt",
-                "work-complete.txt", "work-summary.txt", ".complete", ".timeout")
+                "work-complete.txt", "work-summary.txt", ".complete", ".timeout",
+                "awaiting-approval.md")
+    if _not_cleared:  # change-82dbf16a iteration 5 (F4-01)
+        write_state(state_dir, "BLOCKED.md",
+                    "# BLOCKED\n\nState files could not be removed at loop start: "
+                    f"{', '.join(_not_cleared)}. Remove them by hand.\n")
+        log.error("BLOCKED: state files could not be removed: %s", ", ".join(_not_cleared))
+        console.print(f"[red][engine] BLOCKED: state files could not be removed: "
+                      f"{escape(', '.join(_not_cleared))}[/red]")
+        return 1
 
     # Audit scope snapshot: record original item count for scope lock enforcement.
     _audit_original_count = _snapshot_audit_index(state_dir, log)
@@ -2173,7 +1993,8 @@ async def run_loop(
                                    project_root=project_root,
                                    phase_duration_seconds=phase_duration_seconds,
                                    max_completion_tokens=max_completion_tokens,
-                                   max_tool_result_chars=max_tool_result_chars)
+                                   max_tool_result_chars=max_tool_result_chars,
+                                   write_scope=write_scope)
         log.info("work phase rc=%d", rc)
         if rc != 0:
             console.print("[red]✗ WORK PHASE FAILED[/red]")
@@ -2198,20 +2019,64 @@ async def run_loop(
             clear_state(state_dir, "work-complete.txt", "review-result.txt")
             continue
 
-        # Review phase — clear worker signal before reviewer starts
-        # change-b7e3d5a9: review-feedback.txt is cleared here, per cycle, not only
-        # at loop start. The worker has already consumed the prior cycle's feedback
-        # during its phase; without this clear the `if not existing_feedback:` guard
-        # freezes cycle 1's feedback for the whole run, so later reviewers are
-        # discarded and F12 stall detection compares the file to itself.
-        clear_state(state_dir, "work-complete.txt", "review-feedback.txt")
         console.print("\n[bold blue]▶ REVIEW PHASE[/bold blue]")
 
-        # F6: Run syntax gate and inject result into reviewer task
-        _syntax_result = _run_syntax_gate(state_dir, log)
+        # F6: syntax gate; F6b and change-e58fd295: declared command gates.
+        # Results are injected into the reviewer task.
+        _syntax_result = _run_syntax_gate(state_dir, log) if "syntax" in gate_list else ""
+        if "syntax" in gate_list:
+            _log_gate(log, "syntax", "built_in", G.gate_status(_syntax_result))
+        _command_results: list[tuple[str, str]] = []
+        for _g in gate_list:
+            if _g in ("syntax", "reviewer"):
+                continue
+            if _g == G.PYTEST_GATE:
+                _res = (_run_pytest_gate(state_dir, log, project_root, spec=gate_specs[_g])
+                        if _g in gate_specs else _run_pytest_gate(state_dir, log, project_root))
+            else:
+                _res = _run_command_gate(_g, gate_specs.get(_g, {}), state_dir, log, project_root)
+            _log_gate(log, _g, "command", G.gate_status(_res))
+            _command_results.append((_g, _res))
+        if gate_outcomes is not None:
+            gate_outcomes.clear()
+            if "syntax" in gate_list:
+                gate_outcomes["syntax"] = G.gate_status(_syntax_result)
+            gate_outcomes.update((_g, G.gate_status(_res)) for _g, _res in _command_results)
 
-        # F6b: Run pytest gate and inject result into reviewer task
-        _pytest_result = _run_pytest_gate(state_dir, log, project_root)
+        # Clear signal files after the gates, before the reviewer starts.
+        # change-b7e3d5a9: review-feedback.txt is cleared here, per cycle, not only
+        # at loop start; the worker has already consumed the prior cycle's feedback.
+        # change-82dbf16a iteration 3 (audit F2-03, F2-04): the clear runs after
+        # the gates, because gate processes run worker-written code; .complete and
+        # awaiting-approval.md are included, so only the engine's own SHIP path
+        # can leave them. review-result.txt is not a verdict source (F-01).
+        _not_cleared = clear_state(state_dir, "work-complete.txt", "review-feedback.txt",
+                                   "review-result.txt", ".complete", "awaiting-approval.md")
+        if _not_cleared:  # change-82dbf16a iteration 5 (F4-01)
+            write_state(state_dir, "BLOCKED.md",
+                        "# BLOCKED\n\nState files could not be removed after the gates: "
+                        f"{', '.join(_not_cleared)}. Remove them by hand.\n")
+            log.error("BLOCKED: state files could not be removed: %s", ", ".join(_not_cleared))
+            console.print(f"[red][engine] BLOCKED: state files could not be removed: "
+                          f"{escape(', '.join(_not_cleared))}[/red]")
+            return 1
+
+        # change-82dbf16a (M-02, FR-03-02 v1.3): a gate that cannot run ends the
+        # run BLOCKED, naming the gate; SHIP is not possible without it.
+        _not_run = [(_g, _res) for _g, _res in _command_results if G.gate_status(_res) == "UNCHECKED"]
+        # change-82dbf16a iteration 4 (audit F3-01): the clear above runs before
+        # this check, so a gate that writes state files and then cannot run
+        # leaves none of them.
+        if _not_run:
+            _names = ", ".join(_g for _g, _ in _not_run)
+            write_state(state_dir, "BLOCKED.md",
+                        "# BLOCKED\n\n"
+                        f"Gate could not run: {_names}. Check the gate command and "
+                        "gates.python in ai/config.yaml.\n\n"
+                        + "\n".join(_res for _, _res in _not_run))
+            log.error("BLOCKED: gate could not run: %s", _names)
+            console.print(f"[red][engine] BLOCKED: gate could not run: {escape(_names)}[/red]")
+            return 1
 
         # F16: Prepend [ENGINE RUNTIME CONTEXT] to review_task for consistent framing
         _review_header = (
@@ -2221,16 +2086,23 @@ async def run_loop(
             f"[END RUNTIME CONTEXT]\n\n"
         )
         review_task = _review_header + f"Review the work in state directory '{state_dir}'."
-        # Prepend gate results to review_task
-        if _pytest_result:
-            review_task = _pytest_result + "\n" + review_task
+        # change-bdc6820f (FR-05-03): absolute deliverable paths, so the reviewer
+        # does not resolve relative paths against the state directory.
+        _deliverables_block = _deliverables_block_for(
+            state_dir, log, write_scope.files if write_scope is not None else frozenset())
+        if _deliverables_block:
+            review_task = _deliverables_block + "\n" + review_task
+        # Prepend gate results to review_task (syntax first, then command gates in order)
+        for _g, _res in reversed(_command_results):
+            if _res:
+                review_task = _res + "\n" + review_task
         if _syntax_result:
             review_task = _syntax_result + "\n" + review_task
         rc, reviewer_final_msg, _reviewer_read_paths = await run_phase(
-            client, mcp, reviewer_model, review_recipe,
+            reviewer_client, mcp, reviewer_model, review_recipe,
             review_task, phase_max_iterations, state_dir, log,
             phase_label="REVIEWER",
-            context_window=context_window,
+            context_window=reviewer_context_window,
             budget_warn_pct=budget_warn_pct,
             budget_abort_pct=budget_abort_pct,
             mcp_error_threshold=mcp_error_threshold,
@@ -2245,33 +2117,32 @@ async def run_loop(
             console.print("[red]✗ REVIEW PHASE FAILED[/red]")
             return 1
 
-        # F1/F2: Read review-result.txt (precedence), fallback to reviewer final message
-        result_raw = read_state(state_dir, "review-result.txt")
-        if result_raw:
-            verdict = _normalize_verdict(result_raw)
-            log.debug("verdict from review-result.txt: '%s' -> '%s'", result_raw.strip(), verdict)
-        elif reviewer_final_msg:
+        # change-82dbf16a iteration 2 (audit F-01): the verdict comes from the
+        # reviewer's final message only. review-result.txt is no longer read: the
+        # review phase cannot write, and gate processes (worker-written test code)
+        # run between the clear above and this point.
+        if reviewer_final_msg:
             verdict = _normalize_verdict(reviewer_final_msg)
             log.debug("verdict from reviewer final message: '%s' -> '%s'",
                       reviewer_final_msg[:60].replace('\n', ' '), verdict)
         else:
             verdict = "REVISE"
             log.debug("no verdict source — defaulting to REVISE")
+        _log_gate(log, "reviewer", "reviewer_verdict", verdict)
 
-        # Persist fallback REVISE feedback body when reviewer_final_msg provided verdict.
+        # Persist the REVISE feedback body from the reviewer's final message.
         # Reviewer is read-only (F5) so cannot write review-feedback.txt itself.
-        # Extract feedback = reviewer_final_msg minus the leading verdict token.
-        if verdict == "REVISE" and not result_raw and reviewer_final_msg:
-            existing_feedback = read_state(state_dir, "review-feedback.txt")
-            if not existing_feedback:
-                # Strip the verdict declaration, whichever form it took. Using
-                # _strip_verdict rather than an unconditional leading-token drop
-                # keeps the body intact when the verdict was stated on its own
-                # line at the end, which is the common case.
-                feedback_body = _strip_verdict(reviewer_final_msg)
-                if feedback_body:
-                    write_state(state_dir, "review-feedback.txt", feedback_body)
-                    log.debug("persisted fallback REVISE feedback (%d chars)", len(feedback_body))
+        # The file was cleared before the review phase; any content now came from
+        # outside the engine (audit F-01), so the reviewer's feedback replaces it.
+        if verdict == "REVISE" and reviewer_final_msg:
+            # Strip the verdict declaration, whichever form it took. Using
+            # _strip_verdict rather than an unconditional leading-token drop
+            # keeps the body intact when the verdict was stated on its own
+            # line at the end, which is the common case.
+            feedback_body = _strip_verdict(reviewer_final_msg)
+            if feedback_body:
+                write_state(state_dir, "review-feedback.txt", feedback_body)
+                log.debug("persisted REVISE feedback (%d chars)", len(feedback_body))
 
         if verdict == "SHIP":
             # Audit SHIP gate: check scope integrity then coverage before accepting SHIP.
@@ -2328,19 +2199,33 @@ async def run_loop(
                         else:
                             log.debug("read-evidence SHIP gate: no deliverables — gate is no-op")
 
-                        # Pytest SHIP gate: non-audit (loop) path only.
-                        # Override SHIP to REVISE if pytest gate reported FAIL.
-                        if _read_gate_pass and "[TEST GATE: FAIL]" in _pytest_result:
+                        # Command SHIP gates: non-audit (loop) path only.
+                        # Override SHIP to REVISE if any command gate reported FAIL
+                        # (FR-03-02; the pytest gate keeps its historical message).
+                        for _g, _res in _command_results:
+                            if not _read_gate_pass:
+                                break
+                            if G.gate_status(_res) != "FAIL":
+                                continue
                             _read_gate_pass = False
-                            log.warning("pytest SHIP gate: test failures detected — overriding SHIP")
-                            console.print(
-                                "[yellow][engine] pytest SHIP gate: test failures detected "
-                                "— overriding SHIP to REVISE[/yellow]"
-                            )
-                            write_state(
-                                state_dir, "review-feedback.txt",
-                                f"Pytest gate failed: tests did not pass.\n\n{_pytest_result}"
-                            )
+                            if _g == G.PYTEST_GATE:
+                                log.warning("pytest SHIP gate: test failures detected — overriding SHIP")
+                                console.print(
+                                    "[yellow][engine] pytest SHIP gate: test failures detected "
+                                    "— overriding SHIP to REVISE[/yellow]"
+                                )
+                                write_state(
+                                    state_dir, "review-feedback.txt",
+                                    f"Pytest gate failed: tests did not pass.\n\n{_res}"
+                                )
+                            else:
+                                log.warning("%s SHIP gate: FAIL — overriding SHIP", _g)
+                                console.print(
+                                    f"[yellow][engine] {escape(_g)} SHIP gate: FAIL "
+                                    f"— overriding SHIP to REVISE[/yellow]"
+                                )
+                                write_state(state_dir, "review-feedback.txt",
+                                            f"{_g} gate failed.\n\n{_res}")
 
                     if _read_gate_pass:
                         console.print(Panel(
@@ -2383,6 +2268,105 @@ async def run_loop(
         clear_state(state_dir, "work-complete.txt", "review-result.txt")
 
 
+def _resolve_gate_specs(manifest, config: dict) -> dict[str, dict]:
+    """
+    Command gate specifications: manifest defaults overridden by gates.<name>
+    in ai/config.yaml; gates.python selects {python} (FR-03-03, change-e58fd295).
+    """
+    gcfg = config.get("gates") or {}
+    if not isinstance(gcfg, dict):
+        raise ConfigError("gates: must be a mapping")
+    unknown = sorted(set(gcfg) - set(manifest.gates) - {"python"})
+    if unknown:
+        raise ConfigError(f"gates.{unknown[0]}: not declared in the governance model manifest")
+    python = gcfg.get("python") or sys.executable
+    if os.sep in python and not os.path.isabs(python):
+        python = os.path.abspath(python)  # relative to the project root (cwd)
+    # change-82dbf16a (M-05): provider key variables are removed from the gate
+    # environment, so project tests never see them.
+    scrub = sorted({p["api_key_env"] for p in (config.get("providers") or {}).values()
+                    if isinstance(p, dict) and isinstance(p.get("api_key_env"), str)})
+    specs: dict[str, dict] = {}
+    for name, g in manifest.gates.items():
+        override = gcfg.get(name) or {}
+        if not isinstance(override, dict):
+            raise ConfigError(f"gates.{name}: must be a mapping")
+        specs[name] = {
+            "command": override.get("command") or g["command"],
+            "timeout_seconds": override.get("timeout_seconds") or g.get("timeout_seconds", G.DEFAULT_TIMEOUT_SECONDS),
+            "python": python,
+            "scrub_env": scrub,
+        }
+    return specs
+
+
+_PROMPT_UUID_RE = re.compile(r"^prompt-([0-9a-f]{8})-")
+
+
+def _work_item_uuid(task: str | None) -> str | None:
+    """The work-item UUID of a T03 prompt task file (prompt-<uuid>-<name>.md), else None."""
+    if not task:
+        return None
+    m = _PROMPT_UUID_RE.match(os.path.basename(task))
+    return m.group(1) if m else None
+
+
+def _write_awaiting_approval(state_dir: str, manifest, loop_stage_id: str,
+                             work_item: str | None, log: logging.Logger,
+                             not_applicable: list[str] | None = None) -> None:
+    """
+    After SHIP: record that operator approval is awaited (FR-03-05). Gates
+    that had nothing to check in the final cycle are listed as not applicable
+    (change-82dbf16a, M-02).
+    """
+    stage = manifest.next_approval_stage(loop_stage_id)
+    if stage is None:
+        return
+    item = work_item or "untracked task (no prompt UUID)"
+    na = ""
+    if not_applicable:
+        na = ("\nGates not applicable in the final cycle (nothing to check): "
+              f"{', '.join(not_applicable)}\n")
+    write_state(state_dir, "awaiting-approval.md",
+                "# Awaiting approval\n\n"
+                f"Work item: {item}\n"
+                f"Stage: {stage.id}\n\n"
+                "The loop shipped. The engine does not pass human approval gates; "
+                "the operator reviews the result and records the approval.\n" + na)
+    log.info("awaiting approval: work item=%s stage=%s", item, stage.id)
+    console.print(f"[blue][engine] awaiting operator approval: {escape(item)} → {escape(stage.id)}[/blue]")
+
+
+def _finish_run(mode: str, rc: int, state_dir: str, manifest, loop_stage, work_item: str | None,
+                gate_outcomes: dict[str, str], since: float, log: logging.Logger) -> None:
+    """
+    After a loop or worker run: SHIP in loop mode records the awaited approval
+    with the gates that were not applicable; a failed loop or worker run names
+    the stage to return to (change-82dbf16a, M-02 and L-12).
+    """
+    if mode == "loop" and rc == 0:
+        _write_awaiting_approval(state_dir, manifest, loop_stage.id, work_item, log,
+                                 [g for g, st in gate_outcomes.items() if st == "SKIPPED"])
+    elif mode in ("loop", "worker") and rc != 0:
+        _annotate_blocked_return(state_dir, loop_stage, work_item, since, log)
+
+
+def _annotate_blocked_return(state_dir: str, loop_stage, work_item: str | None,
+                             since: float, log: logging.Logger) -> None:
+    """On BLOCKED for a tracked work item, name the stage to return to (FR-02-03)."""
+    if not work_item or not loop_stage.on_blocked:
+        return
+    path = os.path.join(state_dir, "BLOCKED.md")
+    if not os.path.exists(path) or os.path.getmtime(path) < since:
+        return
+    with open(path) as fh:
+        if "Return to stage:" in fh.read():
+            return
+    with open(path, "a") as fh:
+        fh.write(f"\nReturn to stage: {loop_stage.on_blocked} (work item {work_item})\n")
+    log.info("BLOCKED: return to stage %s for work item %s", loop_stage.on_blocked, work_item)
+
+
 async def main_async(args: argparse.Namespace) -> int:
     config    = load_yaml(args.config)
     state_dir = os.path.abspath(config["loop"]["state_dir"])
@@ -2403,7 +2387,55 @@ async def main_async(args: argparse.Namespace) -> int:
         console.print(f"[yellow][engine] warning: prior SHIP detected in {state_dir}[/yellow]")
         console.print("[yellow][engine]          run --mode reset after human acceptance to clear[/yellow]")
 
-    omlx_cfg       = config["omlx"]
+    # change-53c6f252: role-to-model binding (FR-04-01, FR-04-08). Resolved
+    # before any state change so a configuration error stops the run cleanly.
+    try:
+        bindings = build_role_bindings(config, args)
+    except ConfigError as e:
+        console.print(f"[red][engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
+        return 1
+    worker_b, reviewer_b = bindings["worker"], bindings["reviewer"]
+
+    # change-e58fd295: the installed governance model's manifest (FR-01-05)
+    try:
+        manifest = load_manifest(locate_manifest())
+    except ManifestError as e:
+        console.print(f"[red][engine] manifest error: {escape(str(e))}[/red]")
+        return 1
+    try:
+        gate_specs = _resolve_gate_specs(manifest, config)
+    except ConfigError as e:
+        console.print(f"[red][engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
+        return 1
+    loop_stage = manifest.loop_stage()
+    work_item = _work_item_uuid(args.task)
+
+    # change-ee5357ec: pre-run check for tracked work items (FR-08-05). A T03
+    # prompt inside ai/workspace/ may enter the loop stage only when its
+    # earlier stages have evidence and committed approvals. Checked before any
+    # state change; exit code 3.
+    # change-82dbf16a iteration 4 (audit F3-02): the task file is read once,
+    # here; the pre-run check verifies these bytes and the run uses them.
+    _task_bytes: bytes | None = None
+    if args.task and os.path.isfile(args.task):
+        with open(args.task, "rb") as _fh:
+            _task_bytes = _fh.read()
+    _tracked = bool(work_item) and ST.is_tracked_task(os.getcwd(), args.task)
+    if args.mode in ("loop", "worker") and _tracked:
+        # change-82dbf16a iteration 5 (audit F4-02): prerun_missing refuses a
+        # tracked task whose content was not read.
+        _missing = ST.prerun_missing(os.getcwd(), manifest, work_item, args.task, _task_bytes)
+        if _missing:
+            console.print(f"[red][engine] work item {escape(work_item)} is not ready for "
+                          f"'{escape(loop_stage.id)}'; missing:[/red]")
+            for _m in _missing:
+                console.print(f"[red]  - {escape(_m)}[/red]")
+            return 3
+        console.print(f"[blue][engine] work item {escape(work_item)}: prerequisites for "
+                      f"'{escape(loop_stage.id)}' met[/blue]")
+    elif work_item and not _tracked:
+        console.print(f"[yellow][engine] work item {escape(work_item)}: prompt is outside "
+                      f"ai/workspace/ — not tracked[/yellow]")
     max_iter          = args.max_iterations or config["loop"]["max_iterations"]
     deadline          = time.monotonic() + args.duration * 3600 if args.duration else None
     phase_max_iter    = config["loop"].get("phase_max_iterations", max_iter)
@@ -2413,7 +2445,7 @@ async def main_async(args: argparse.Namespace) -> int:
     # F28: phase wall-clock cap (minutes -> seconds; None disables)
     _phase_duration_min   = config["loop"].get("phase_duration_minutes")
     phase_duration_seconds = _phase_duration_min * 60 if _phase_duration_min else None
-    model          = args.model or omlx_cfg["default_model"]
+    model          = worker_b.model  # worker binding; used for banners and the context report
 
     # Execution controls (opt-in, default disabled)
     exec_cfg = config.get("execution", {})
@@ -2432,16 +2464,25 @@ async def main_async(args: argparse.Namespace) -> int:
     archive_prior_logs(state_dir, _log_archive_dir)
 
     log = setup_logging(state_dir)
-    log.info("engine start mode=%s model=%s state_dir=%s", args.mode, model, state_dir)
+    log.info("engine start mode=%s worker=%s:%s reviewer=%s:%s state_dir=%s", args.mode,
+             worker_b.provider_name, worker_b.model, reviewer_b.provider_name, reviewer_b.model,
+             state_dir)
     if _log_archive_dir:
         log.info("log archive dir: %s", _log_archive_dir)
 
-    recipe_dir  = os.path.join(os.path.dirname(__file__), "..", "recipes")
+    # change-e58fd295: recipes come from the manifest's run types (FR-01-03)
     recipe_set  = _select_recipe_set(state_dir)
-    work_recipe = load_yaml(os.path.join(recipe_dir, f"{recipe_set}-work.yaml"))
-    rev_recipe  = load_yaml(os.path.join(recipe_dir, f"{recipe_set}-review.yaml"))
-    console.print(f"[blue][engine] recipe set: {recipe_set}[/blue]")
-    log.info("recipe set: %s", recipe_set)
+    try:
+        _work_path, _rev_path = manifest.recipe_paths(recipe_set)
+    except ManifestError as e:
+        console.print(f"[red][engine] manifest error: {escape(str(e))}[/red]")
+        return 1
+    work_recipe = load_yaml(_work_path)
+    rev_recipe  = load_yaml(_rev_path)
+    console.print(f"[blue][engine] governance model: {escape(manifest.name)} {escape(manifest.version)}; "
+                  f"recipe set: {recipe_set}[/blue]")
+    log.info("governance model: %s %s; recipe set: %s (%s, %s)", manifest.name, manifest.version,
+             recipe_set, _work_path, _rev_path)
 
     # F29: initialize audit-report.md as zero-byte at run start (audit runs
     # only, and only if absent) so the worker's first read/find/ls probe on
@@ -2454,22 +2495,38 @@ async def main_async(args: argparse.Namespace) -> int:
             write_state(state_dir, "audit-report.md", "")
             log.info("audit-report.md initialized (zero-byte)")
 
-    client = AsyncOpenAI(base_url=omlx_cfg["base_url"], api_key=omlx_cfg["api_key"])
-
+    # change-53c6f252: readiness and context window per role in use (FR-04-05, FR-04-06)
+    roles_in_use = {"worker": [worker_b], "reviewer": [reviewer_b]}.get(args.mode, [worker_b, reviewer_b])
     readiness = config.get("readiness", {})
-    await await_model_ready(
-        client,
-        model,
-        timeout=readiness.get("timeout_seconds", 60.0),
-        interval=readiness.get("poll_interval_seconds", 2.0),
-    )
+    _ready: set[tuple[str, str]] = set()
+    for b in roles_in_use:
+        if (b.provider_name, b.model) in _ready:
+            continue
+        try:
+            await b.provider.await_ready(
+                b.model,
+                timeout=readiness.get("timeout_seconds", 60.0),
+                interval=readiness.get("poll_interval_seconds", 2.0),
+                echo=lambda msg, _r=b.role: console.print(f"[blue][engine] {_r}: {escape(msg)}[/blue]"),
+            )
+        except (TimeoutError, ProviderError) as e:
+            write_state(state_dir, "BLOCKED.md",
+                        f"# BLOCKED\n\n{b.role} provider '{b.provider_name}' not ready: {e}\n")
+            console.print(f"[red][engine] BLOCKED: {b.role} provider '{escape(b.provider_name)}' not ready: {escape(str(e))}[/red]")
+            log.error("provider not ready role=%s provider=%s: %s", b.role, b.provider_name, e)
+            return 1
+        _ready.add((b.provider_name, b.model))
 
-    # Resolve context window using four-tier chain
-    context_window = resolve_context_window(model, config)
-    if context_window:
-        console.print(f"[blue][engine] context window: {context_window:,} tokens ({escape(model)})[/blue]")
-    else:
-        console.print("[yellow][engine] context window: unknown — budget tracking disabled[/yellow]")
+    # Resolve context window per role using the four-tier chain
+    context_windows: dict[str, int | None] = {}
+    for b in (worker_b, reviewer_b):
+        ctx = resolve_context_window(b.model, config, live_query=b.provider.live_context_window)
+        context_windows[b.role] = ctx
+        if ctx:
+            console.print(f"[blue][engine] context window ({b.role}): {ctx:,} tokens ({escape(b.model)})[/blue]")
+        else:
+            console.print(f"[yellow][engine] context window ({b.role}): unknown — budget tracking disabled[/yellow]")
+    context_window = context_windows["worker"]
 
     # Substitute {PROJECT_ROOT} placeholders in mcp_servers before connection
     _substitute_project_root(config)
@@ -2477,8 +2534,9 @@ async def main_async(args: argparse.Namespace) -> int:
     await mcp.connect()
 
     # Resolve task
-    if args.task and os.path.exists(args.task):
-        raw = open(args.task).read()
+    if _task_bytes is not None:
+        # universal newlines, as the text-mode read did before iteration 4
+        raw = _task_bytes.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
         brief = extract_tactical_brief(raw, log)
 
         # strict_tactical_brief: fail fast when engine profile has no valid brief
@@ -2509,8 +2567,21 @@ async def main_async(args: argparse.Namespace) -> int:
         await mcp.close()
         return 1
 
-    # Resolve placeholders and prepend runtime context
+    # change-bdc6820f: write scope from the T03 prompt's deliverables (FR-05-01)
     project_root = os.getcwd()
+    write_scope = None
+    if _task_bytes is not None:
+        _deliverables = S.extract_deliverable_paths(raw)
+        if _deliverables is not None:
+            write_scope = S.build_write_scope(project_root, _deliverables,
+                                              manifest.writable_paths, state_dir)
+    if write_scope is not None:
+        console.print(f"[blue][engine] write scope: {escape(write_scope.describe())}[/blue]")
+        log.info("write scope: %s", write_scope.describe())
+    else:
+        log.info("write scope: project root (task is not a T03 prompt)")
+
+    # Resolve placeholders and prepend runtime context
     task = task.replace("{STATE_DIR}", state_dir).replace("{PROJECT_ROOT}", project_root)
     runtime_header = (
         f"[ENGINE RUNTIME CONTEXT]\n"
@@ -2524,7 +2595,7 @@ async def main_async(args: argparse.Namespace) -> int:
     os.makedirs(state_dir, exist_ok=True)
     write_state(state_dir, "task.md", task)
 
-    # Write context budget report for Strategic Domain
+    # Write context budget report for the planner
     # F8: Include actual system prompt and tool schema in the initial estimate
     _sys_prompt = work_recipe.get("instructions", "")
     _tools = mcp.get_openai_tools()
@@ -2542,6 +2613,7 @@ async def main_async(args: argparse.Namespace) -> int:
         console.print(f"[dim][engine] context report: {state_dir}/context-budget.md[/dim]")
 
     rc = 1  # default: failure — ensures rc is defined even on unexpected exception
+    _run_started = time.time()  # change-e58fd295: BLOCKED.md written by this run
     try:
         if args.mode == "worker":
             # F11: Clear stale phase signals to prevent false completion on iteration 1
@@ -2550,16 +2622,17 @@ async def main_async(args: argparse.Namespace) -> int:
                 log.warning("clearing stale work-complete.txt from prior run")
                 console.print("[yellow][engine] clearing stale work-complete.txt from prior run[/yellow]")
                 os.remove(_stale)
-            rc, _, _ = await run_phase(client, mcp, model, work_recipe, task, phase_max_iter,
+            rc, _, _ = await run_phase(worker_b.provider, mcp, worker_b.model, work_recipe, task, phase_max_iter,
                                        state_dir, log, phase_label="WORKER",
-                                       context_window=context_window,
+                                       context_window=context_windows["worker"],
                                        budget_warn_pct=budget_warn,
                                        budget_abort_pct=budget_abort,
                                        mcp_error_threshold=mcp_error_thresh,
                                        max_tool_calls_per_iter=max_tool_calls,
                                        project_root=project_root,
                                        max_completion_tokens=max_completion_tokens,
-                                       max_tool_result_chars=max_tool_result_chars)
+                                       max_tool_result_chars=max_tool_result_chars,
+                                       write_scope=write_scope)
         elif args.mode == "reviewer":
             # F11: Clear stale phase signals for single-phase reviewer mode
             _stale = os.path.join(state_dir, "work-complete.txt")
@@ -2575,9 +2648,9 @@ async def main_async(args: argparse.Namespace) -> int:
                 f"[END RUNTIME CONTEXT]\n\n"
                 f"Review the work in state directory '{state_dir}'."
             )
-            rc, _, _ = await run_phase(client, mcp, model, rev_recipe, _review_task, phase_max_iter,
+            rc, _, _ = await run_phase(reviewer_b.provider, mcp, reviewer_b.model, rev_recipe, _review_task, phase_max_iter,
                                        state_dir, log, phase_label="REVIEWER",
-                                       context_window=context_window,
+                                       context_window=context_windows["reviewer"],
                                        budget_warn_pct=budget_warn,
                                        budget_abort_pct=budget_abort,
                                        mcp_error_threshold=mcp_error_thresh,
@@ -2586,12 +2659,17 @@ async def main_async(args: argparse.Namespace) -> int:
                                        max_completion_tokens=max_completion_tokens,
                                        max_tool_result_chars=max_tool_result_chars)
         else:  # loop
-            worker_model   = args.worker_model   or omlx_cfg.get("worker_model")   or model
-            reviewer_model = args.reviewer_model or omlx_cfg.get("reviewer_model") or model
-            rc = await run_loop(client, mcp, worker_model, reviewer_model,
+            _gate_outcomes: dict[str, str] = {}
+            rc = await run_loop(worker_b.provider, mcp, worker_b.model, reviewer_b.model,
                                 work_recipe, rev_recipe, task, max_iter, phase_max_iter,
                                 state_dir, log,
-                                context_window=context_window,
+                                context_window=context_windows["worker"],
+                                reviewer_client=reviewer_b.provider,
+                                reviewer_context_window=context_windows["reviewer"],
+                                gates=loop_stage.gates,
+                                gate_specs=gate_specs,
+                                write_scope=write_scope,
+                                gate_outcomes=_gate_outcomes,
                                 budget_warn_pct=budget_warn,
                                 budget_abort_pct=budget_abort,
                                 mcp_error_threshold=mcp_error_thresh,
@@ -2604,6 +2682,8 @@ async def main_async(args: argparse.Namespace) -> int:
                                 max_tool_result_chars=max_tool_result_chars)
             if rc == 0:
                 _archive_audit_artifacts(state_dir, args.task, log)
+        _finish_run(args.mode, rc, state_dir, manifest, loop_stage, work_item,
+                    _gate_outcomes if args.mode == "loop" else {}, _run_started, log)
     finally:
         log.info("engine end rc=%d", rc)
         await mcp.close()

@@ -1,6 +1,6 @@
 Created: 2026 April 27
 
-# Strategic Domain Primer
+# Planner Primer
 
 ---
 
@@ -8,7 +8,7 @@ Created: 2026 April 27
 
 [1.0 Purpose](<#1.0 purpose>)
 [2.0 Architecture](<#2.0 architecture>)
-[2.1 Tactical Profiles](<#2.1 tactical profiles>)
+[2.1 Worker/Reviewer Profiles](<#2.1 worker/reviewer profiles>)
 [2.2 Monitoring Tools](<#2.2 monitoring tools>)
 [3.0 Responsibilities](<#3.0 responsibilities>)
 [4.0 Workflow](<#4.0 workflow>)
@@ -23,7 +23,7 @@ Created: 2026 April 27
 
 ## 1.0 Purpose
 
-This document is a concise operational primer for the Strategic Domain. It distils
+This document is a concise operational primer for the planner. It distils
 `governance.md` into actionable guidance. `governance.md` is authoritative;
 this document provides orientation and quick reference only.
 
@@ -35,44 +35,47 @@ this document provides orientation and quick reference only.
 
 ## 2.0 Architecture
 
-The framework separates software development into two domains:
+The framework assigns work to three agent roles:
 
-| Domain | Role | Implementation |
+| Role | Function | Implementation |
 |---|---|---|
-| Strategic | Plan, control, validate | Claude Desktop |
-| Tactical | Execute, generate code | Engine (loop) or Claude Code |
+| Planner | Plan, control, validate | Claude Desktop |
+| Worker | Execute, generate code | Engine (loop) or Claude Code |
+| Reviewer | Review the worker's output; SHIP or REVISE | Engine (loop) |
 
-Communication between domains is filesystem-based (MCP). Neither domain has
-direct conversational access to the other.
+Communication between the planner and the worker and reviewer is
+filesystem-based (MCP). The planner has no direct conversational access to the
+worker or reviewer.
 
-**Tactical Domain implementations:**
+**Worker/reviewer implementations:**
 
 - **Engine** — reference implementation. Runs a
   worker/reviewer cycle (loop) until `SHIP` or `BLOCKED`. State resides
   in `ai/state/`. Requires oMLX inference endpoint and `config.yaml`.
   Context file: `ai/context.md`.
 - **Claude Code** — alternative profile. Manual invocation; no automated loop.
-  Uses `CLAUDE.md` at project root as tactical context file. See `ai/profiles/claude-code.md`.
+  Uses `CLAUDE.md` at project root as worker/reviewer context file. See `ai/profiles/claude-code.md`.
 
-**Tactical Domain execution options** (P13.3) — after T03 prompt approval, human
+**Worker/reviewer execution options** (P13.3) — after T03 prompt approval, human
 selects one of three options:
 
 - **Option A** — human executes engine command directly (all profiles).
-- **Option B** — Strategic Domain launches the engine via `engine-mcp` (Claude Desktop profile
-  only). Standalone MCP server exposing `start_engine`, `engine_status`, and `reset_engine`.
-  Allows the Strategic Domain to launch the engine and query outcome without human terminal
+- **Option B** — planner launches the engine via `engine-mcp` (Claude Desktop profile
+  only). Standalone MCP server exposing `start_engine`, `engine_status`, `reset_engine` and
+  the read-only `work_status`; loop and worker runs accept only a T03 prompt inside ai/workspace/.
+  Allows the planner to launch the engine and query outcome without human terminal
   relay. See P10.8.
 - **Option C** — Claude Code manual invocation (`claude_code`/`claude_omlx` profiles).
   Human issues the task instruction directly in Claude Code. See `ai/profiles/claude-code.md` §5.0.
 
 Implementation profiles are defined in `ai/profiles/`. The active profile
-determines the tactical context file name, skills directory, and engine configuration.
+determines the worker/reviewer context file name, skills directory, and engine configuration.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 2.1 Tactical Profiles
+## 2.1 Worker/Reviewer Profiles
 
 | Aspect       | Engine (Primary)                       | Claude Code                   | claude-omlx                         |
 | ------------ | ----------------------------------- | ----------------------------- | ----------------------------------- |
@@ -107,7 +110,7 @@ registry grouped by UUID. Writes `overwatch.html` (project root) and
 
 ## 3.0 Responsibilities
 
-The Strategic Domain owns the following functions:
+The planner owns the following functions:
 
 **Planning**
 
@@ -153,9 +156,10 @@ P10  Project Initialization  →  configure config.yaml
 P11  Requirements            →  human approval → baseline
 P12  Design (Tier 1–3)       →  human approval per tier → git tag baseline
 P13  T03 Prompt              →  query omlx_model_status → human approval
+                                 (recorded with approve.py; re-approve after any edit)
      Human selects execution option:
        Option A: human runs the engine terminal command (all profiles)
-       Option B: Strategic Domain calls start_engine / polls engine_status
+       Option B: Planner calls start_engine / polls engine_status
                  (Claude Desktop + engine-mcp only)
        Option C: Claude Code manual invocation (claude_code/claude_omlx profiles)
      Options A/B (engine)  →  SHIP or BLOCKED
@@ -248,7 +252,7 @@ required after each increment.
 
 - Creating, modifying, or deleting source code or documents without explicit
   human request (both domains).
-- Exceeding the Tactical Domain context budget when authoring T03 prompts.
+- Exceeding the worker/reviewer context budget when authoring T03 prompts.
 - Issuing an engine command when `tactical_brief` is empty.
 
 **Context Budget**
@@ -326,6 +330,9 @@ any document.
 | 0.13 | 2026-08-19 | Synced with governance v9.13: added Option C (Claude Code manual invocation) to §2.0 alongside Options A/B; corrected stale `ai/profiles/claude.md` → `ai/profiles/claude-code.md` reference in §2.0 and §2.1; flattened §4.0 workflow block to present Options A/B/C as one selection set, matching governance §1.10.3 structure |
 | 0.14 | 2026-08-21 | Synced with governance v9.16: added §3.0 Governance bullet for `ai/task.md` open-work register maintenance (P00 §1.1.20); added §6.1 exemption note for `ai/task.md` |
 | 0.15 | 2026-09-25 | Synced with governance v11.0 (change-5bcd46ad): paths under ai/governance/software-engineering/ and ai/engine/; terms AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp; §2.2 govwatch replaced by overwatch |
+| 0.16 | 2026-10-01 | Option B: work_status tool; tracked prompt tasks only (change-793992ae) |
+| 0.17 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 0.18 | 2026-10-01 | §2.0 three agent roles replace the two-domain table; §2.1 heading; context file wording; §4.0 approvals recorded with approve.py (audit-14e05e35 M-03, change-82dbf16a, L-15) |
 
 ---
 

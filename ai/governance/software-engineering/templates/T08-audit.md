@@ -26,7 +26,7 @@ audit_info:
   date: ""
   mode: ""  # strategic, tactical
   status: ""  # open, in_progress, complete, closed
-  auditor: ""  # Strategic Domain, or engine model identifier
+  auditor: ""  # planner, or engine model identifier
 
 scope:
   target: ""  # path to audited source tree (e.g. /path/to/project/src/)
@@ -278,6 +278,7 @@ properties:
 | ------- | ---------- | ----------- |
 | 1.0     | 2026-06-28 | Initial audit report template; supports strategic and tactical audit modes |
 | 1.1 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
+| 1.2 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 
 ---
 

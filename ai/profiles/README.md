@@ -28,9 +28,9 @@ Implementation profiles map abstract governance placeholders to concrete tooling
 
 | Placeholder | Meaning | Applies to |
 |---|---|---|
-| `<tactical_config>/` | Tactical Domain configuration directory | Claude Code profiles only |
+| `<tactical_config>/` | Worker/reviewer configuration directory | Claude Code profiles only |
 | `<skills_dir>/` | Skills and workflow recipes directory | Claude Code profiles only |
-| `<tactical_context>` | Tactical Domain project context file | All profiles |
+| `<tactical_context>` | Worker and reviewer project context file | All profiles |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -48,13 +48,13 @@ Select one profile per project. Copy the profile-specific `.gitignore` additions
 
 | Profile | Domain | File |
 |---|---|---|
-| Claude Desktop | Strategic Domain | [project_information.md](../../docs/claude/project_information.md) |
-| Claude Code (optional) | Tactical Domain | [claude-code.md](claude-code.md) |
-| claude-omlx | Tactical Domain | [claude-omlx.md](claude-omlx.md) |
-| Apple Silicon + MLX (Devstral Small 2 2512) | Tactical Domain | [mlx_devstral_small_2_2512_6bit.md](mlx_devstral_small_2_2512_6bit.md) |
-| Apple Silicon + MLX (Heterogeneous: Devstral worker / Magistral reviewer) | Tactical Domain | [mlx_devstral_magistral_heterogeneous.md](mlx_devstral_magistral_heterogeneous.md) |
+| Claude Desktop | Planner | [project_information.md](../../docs/claude/project_information.md) |
+| Claude Code (optional) | Worker and reviewer | [claude-code.md](claude-code.md) |
+| claude-omlx | Worker and reviewer | [claude-omlx.md](claude-omlx.md) |
+| Apple Silicon + MLX (Devstral Small 2 2512) | Worker and reviewer | [mlx_devstral_small_2_2512_6bit.md](mlx_devstral_small_2_2512_6bit.md) |
+| Apple Silicon + MLX (Heterogeneous: Devstral worker / Magistral reviewer) | Worker and reviewer | [mlx_devstral_magistral_heterogeneous.md](mlx_devstral_magistral_heterogeneous.md) |
 
-Strategic Domain is not prescribed. Any frontier model with sufficient reasoning capability is suitable. Claude Desktop is the preferred Strategic Domain implementation.
+Planner is not prescribed. Any frontier model with sufficient reasoning capability is suitable. Claude Desktop is the preferred planner implementation.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -77,6 +77,7 @@ Strategic Domain is not prescribed. Any frontier model with sufficient reasoning
 | 1.10 | 2026-07-16 | Added heterogeneous Devstral/Magistral profile to §4.0 Available Profiles |
 | 1.11 | 2026-09-23 | §4.0: Claude Desktop link retargeted from nonexistent claude-desktop-instructions.md to ../../docs/claude/project_information.md; claude.md link corrected to claude-code.md |
 | 1.12 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
+| 1.13 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 
 ---
 

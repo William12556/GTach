@@ -23,7 +23,7 @@ Created: 2026 June 02
 
 ## 1.0 Purpose
 
-This guide is an operational reference for the Strategic Domain when running a codebase quality audit against a downstream project. The audit loop uses `audit-work.yaml` and `audit-review.yaml` recipes. The orchestrator selects these recipes automatically when `audit-index.md` is present in the state directory; no source edit is required. No source file in the target codebase is written. Findings are accumulated in `ai/state/audit-report.md`.
+This guide is an operational reference for the planner when running a codebase quality audit against a downstream project. The audit loop uses `audit-work.yaml` and `audit-review.yaml` recipes. The orchestrator selects these recipes automatically when `audit-index.md` is present in the state directory; no source edit is required. No source file in the target codebase is written. Findings are accumulated in `ai/state/audit-report.md`.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -31,11 +31,11 @@ This guide is an operational reference for the Strategic Domain when running a c
 
 ## 2.0 Pre-Audit Steps
 
-The Strategic Domain performs all preparation steps before launching the engine. These steps are human-approved before proceeding.
+The planner performs all preparation steps before launching the engine. These steps are human-approved before proceeding.
 
 ### 2.1 Generate the UML Map
 
-The Strategic Domain reads the target `src/` tree using the Filesystem MCP and mcp-grep, then produces a Mermaid class diagram covering modules, classes, and key functions. This is saved as `ai/state/audit-uml.md`.
+The planner reads the target `src/` tree using the Filesystem MCP and mcp-grep, then produces a Mermaid class diagram covering modules, classes, and key functions. This is saved as `ai/state/audit-uml.md`.
 
 The UML serves two purposes:
 - Orients the worker each iteration without requiring it to re-traverse the codebase
@@ -153,7 +153,7 @@ The `--duration` value is in hours. The loop exits cleanly at the limit; partial
 
 ## 5.0 Monitoring
 
-The Strategic Domain may monitor progress at any time by reading state files directly:
+The planner may monitor progress at any time by reading state files directly:
 
 | File | What it shows |
 |---|---|
@@ -263,6 +263,7 @@ mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 | 1.2 | 2026-06-16 | Updated §7.5 cross-reference: P08 §1.9.7 → §1.9.8, following governance.md merge of duplicate Audit Closure sections |
 | 1.3 | 2026-06-28 | Noted automatic recipe selection on audit-index.md presence (§1.0); corrected §8.0 duration-limit row to `.ralph-timeout` / exit code 2 |
 | 1.4 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
+| 1.5 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 
 ---
 

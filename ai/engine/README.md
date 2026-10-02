@@ -7,7 +7,7 @@ Created: 2026 March 11
 ## Table of Contents
 
 - [1.0 Overview](<#1.0 overview>)
-- [2.0 Tactical Profiles](<#2.0 tactical profiles>)
+- [2.0 Worker/Reviewer Profiles](<#2.0 worker/reviewer profiles>)
 - [3.0 Structure](<#3.0 structure>)
 - [4.0 Requirements](<#4.0 requirements>)
 - [5.0 Installation](<#5.0 installation>)
@@ -29,9 +29,9 @@ This component replaces Goose as the engine for the oMLX/Devstral stack. It addr
 
 ---
 
-## 2.0 Tactical Profiles
+## 2.0 Worker/Reviewer Profiles
 
-Three Tactical Domain profiles are available. Engine is the primary profile; the others are manual alternatives.
+Three worker/reviewer profiles are available. Engine is the primary profile; the others are manual alternatives.
 
 | Aspect | Engine (Primary) | Claude Code | claude-omlx |
 |---|---|---|---|
@@ -56,16 +56,20 @@ engine/
 ├── config.template.yaml  # Seeds <project>/ai/config.yaml: inference endpoint, MCP servers, loop control
 ├── requirements.txt      # Python dependencies (engine and engine-mcp)
 ├── doc/
-│   └── guide-engine-operations.md  # Strategic Domain operational reference
+│   └── guide-engine-operations.md  # planner operational reference
 ├── mcp/
-│   └── server.py         # engine-mcp: start_engine, engine_status, reset_engine (Claude Desktop)
+│   └── server.py         # engine-mcp: start_engine, engine_status, reset_engine, work_status (Claude Desktop)
 ├── recipes/
 │   ├── loop-work.yaml   # Standard worker role system prompt
-│   ├── loop-review.yaml # Standard reviewer role system prompt
-│   ├── audit-work.yaml   # Audit worker role system prompt (read-only analysis)
-│   └── audit-review.yaml # Audit reviewer role system prompt (coverage + quality)
+│   └── loop-review.yaml # Standard reviewer role system prompt
 └── src/
     ├── orchestrator.py     # Main loop and CLI entry point (--mode worker|reviewer|loop|reset); sole context-window resolver
+    ├── providers.py        # Provider interface: oMLX / OpenAI-compatible, Anthropic; role bindings
+    ├── manifest.py         # Governance model manifest loader (run types, gates, stages, paths)
+    ├── gates.py            # Syntax gate and command gates
+    ├── scope.py            # Write-tool classification and worker write scope
+    ├── stages.py           # Work-item stage derivation from documents and committed approvals
+    ├── approve.py          # Operator command: record and commit an approval
     ├── mcp_client.py       # MCP stdio connection and tool dispatch
     ├── parser.py           # Mistral [TOOL_CALLS] plain-text parser
     ├── linter.py            # Layer 1 governance linter: static validation of workspace documents (naming, structure, YAML fields, UUID coupling, Obsidian links)
@@ -172,7 +176,7 @@ python ai/engine/src/orchestrator.py --mode reset
 | `--duration` | Wall-clock time limit in hours (default: no limit) |
 | `--config` | Path to config.yaml |
 
-**`context-budget.md`** is written automatically by `orchestrator.py` at every startup (before the first phase); no separate invocation is required. It reports context window, thresholds, and recommended `tactical_brief` sizing. The Strategic Domain reads `ai/state/context-budget.md` before authoring any engine-targeted T03 prompt.
+**`context-budget.md`** is written automatically by `orchestrator.py` at every startup (before the first phase); no separate invocation is required. It reports context window, thresholds, and recommended `tactical_brief` sizing. The planner reads `ai/state/context-budget.md` before authoring any engine-targeted T03 prompt.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -188,6 +192,8 @@ Recipes are YAML files providing role-specific system prompts. The `instructions
 | `loop-review.yaml` | Reviewer | Evaluates work and outputs `SHIP` or `REVISE` |
 | `audit-work.yaml` | Audit worker | Read-only codebase analysis; accumulates findings in `audit-report.md` |
 | `audit-review.yaml` | Audit reviewer | Checks finding quality and coverage; outputs `SHIP` or `REVISE` |
+
+The audit recipes belong to the software-engineering governance model (`ai/governance/software-engineering/recipes/`). The model's `manifest.yaml` maps each run type (`loop`, `audit`) to its recipe pair.
 
 State files are written to `ai/state/` in the project root during loop execution. This directory is ephemeral and excluded from git.
 
@@ -230,6 +236,12 @@ The tests use stub model and MCP clients; no oMLX endpoint is required.
 | 2.4 | 2026-07-16 | Removed budget.py (retired, change-d42e64a9): §3.0 structure entry removed; §6.0 config example rewritten (reviewer_model, execution.* controls, model_context_windows, removed models_dir); §7.0 invocation and explanatory note replaced with the automatic context-budget.md write. §4.0: noted 8bit and optional reviewer_model |
 | 2.5 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 | 2.6 | 2026-09-29 | Profile file name corrected: claude.md → claude-code.md |
+| 2.7 | 2026-10-01 | §3.0 structure: providers.py, manifest.py, gates.py added; audit recipes moved to the governance model; §8.0 run types (change-53c6f252, change-e58fd295) |
+| 2.8 | 2026-10-01 | §3.0 structure: scope.py added (change-bdc6820f) |
+| 2.9 | 2026-10-01 | §3.0 structure: stages.py and approve.py added (change-ee5357ec) |
+| 2.10 | 2026-10-01 | §3.0: engine-mcp work_status (change-793992ae) |
+| 2.11 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 2.12 | 2026-10-01 | §2.0 heading: Worker/Reviewer Profiles (audit-14e05e35 M-03, change-82dbf16a) |
 
 ---
 

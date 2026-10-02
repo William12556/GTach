@@ -50,50 +50,50 @@ Created: 2025 October 30
     - Agnostic plan, control and initiation of software generation
   - P00.3 Framework Practice
     - This governance framework defines software development processes and workflows
-    - Strategic Domain/Tactical Domain separation applies to software creation, not to generated application runtime
+    - Planner/worker/reviewer separation applies to software creation, not to generated application runtime
     - Generated software/applications (outputs) are independent of framework architecture
     - Framework controls: how we build software
     - Framework does not control: how the built software operates
     - Example: \<project name\> uses this framework for development but is a standalone Python application at runtime
   - P00.4 Architecture (Model-Agnostic)
-    - Strategic Domain: Plan and control: design, change, test and launching of code generation
+    - Planner: Plan and control: design, change, test and launching of code generation
       - Implementation options: Claude Desktop, API-based LLM
-    - Tactical Domain: Execute: code generation
+    - Worker: Execute: code generation
       - Implementation options: loop (engine), Claude Code, claude-omlx, custom agents, direct invocation
     - Communication: MCP filesystem (model-independent)
   - P00.5 Forbidden
-    - Both domains: Unrequested creation, addition, removal or change of source code and documents is forbidden
+    - Planner, worker and reviewer: Unrequested creation, addition, removal or change of source code and documents is forbidden
   - P00.6 Constraints
-    - Strategic Domain: Does not exceed language model context resource budget when communicating with Tactical Domain
+    - Planner: Does not exceed language model context resource budget when communicating with worker and reviewer
   - P00.7 Control
-    - Strategic Domain: Strategic coordination and validation authority
-    - Strategic Domain: Analyzes requirements and formulates design specifications
-    - Strategic Domain: Creates T03 prompts with complete technical context
-    - Strategic Domain: Validates Tactical Domain implementation for protocol compliance
-    - Strategic Domain: Coordinates quality assurance and integration verification
-    - Tactical Domain: Tactical implementation with project awareness
-    - Tactical Domain: Generates source code with MCP filesystem access
-    - Tactical Domain: Performs direct file operations in src/ directory
-    - Tactical Domain: Validates protocol compliance through direct file access
-    - Tactical Domain: Coordinates multi-file implementations and dependencies
+    - Planner: Coordination and validation authority
+    - Planner: Analyzes requirements and formulates design specifications
+    - Planner: Creates T03 prompts with complete technical context
+    - Planner: Validates worker/reviewer implementation for protocol compliance
+    - Planner: Coordinates quality assurance and integration verification
+    - Worker: Implementation with project awareness
+    - Worker: Generates source code with MCP filesystem access
+    - Worker: Performs direct file operations in src/ directory
+    - Worker: Validates protocol compliance through direct file access
+    - Worker: Coordinates multi-file implementations and dependencies
 
   - P00.8 Communication
-    - Both Strategic Domain and Tactical Domain have MCP filesystem access to project
+    - The planner, worker and reviewer have MCP filesystem access to project
     - Model Implementation Details:
-      - Strategic Domain model specified in project configuration
-      - Tactical Domain model(s) specified in execution recipes
+      - Planner model specified in project configuration
+      - Worker/reviewer model(s) specified in execution recipes
       - Multi-model orchestration supported (e.g., worker/reviewer pattern)
     - Communication uses filesystem-based message passing (semaphores)
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T03-prompt.md
-    - Strategic Domain: Uses T03 template to create code generation or debug prompts for Tactical Domain
-    - Strategic Domain: Embeds complete Tier 3 component design specifications and schema within prompt documents
-    - Strategic Domain: Ensures prompt documents are self-contained requiring no external file references
-    - Strategic Domain: Saves T03 prompt to ai/workspace/prompt/prompt-\<uuid\>-\<name\>.md
-    - Strategic Domain: Provides ready-to-execute engine command in conversation after human approval
+    - Planner: Reads template from ai/governance/software-engineering/templates/T03-prompt.md
+    - Planner: Uses T03 template to create code generation or debug prompts for worker and reviewer
+    - Planner: Embeds complete Tier 3 component design specifications and schema within prompt documents
+    - Planner: Ensures prompt documents are self-contained requiring no external file references
+    - Planner: Saves T03 prompt to ai/workspace/prompt/prompt-\<uuid\>-\<name\>.md
+    - Planner: Provides ready-to-execute engine command in conversation after human approval
     - Human: Executes engine command from project root
     - Engine: Reads T03 prompt as task; runs worker/reviewer loop until SHIP or BLOCKED
-    - Engine SHIP: Strategic Domain reviews generated code, proceeds with audit
-    - Engine BLOCKED: Strategic Domain creates T06 Issue from BLOCKED.md content
+    - Engine SHIP: Planner reviews generated code, proceeds with audit
+    - Engine BLOCKED: Planner creates T06 Issue from BLOCKED.md content
     - Command format:
 ```bash
 python ai/engine/src/orchestrator.py --mode loop \
@@ -101,19 +101,19 @@ python ai/engine/src/orchestrator.py --mode loop \
 ```
   - P00.9 Quality
     - Human review and approval of design, change and initiation of code generation is required
-    - Strategic Domain: Provides ready-to-execute command after human approval
-    - Human: Invokes Tactical Domain with provided command
-    - Human: Notifies Strategic Domain when Tactical Domain completes
-    - Strategic Domain: Reviews generated code before proceeding
+    - Planner: Provides ready-to-execute command after human approval
+    - Human: Invokes worker and reviewer with provided command
+    - Human: Notifies planner when the worker and reviewer complete
+    - Planner: Reviews generated code before proceeding
   - P00.10 Documents
     - Master documents: \<document class\>-\<document name\>-master.md
       - No UUID assigned (master documents are singletons per project)
       - Examples: design-myproject-master.md, trace-traceability-matrix-master.md
     - All other documents: \<document class\>-\<uuid\>-\<document name\>.md
-      - Strategic Domain: Generates 8-character UUID (first 8 hex digits of UUID v4)
+      - Planner: Generates 8-character UUID (first 8 hex digits of UUID v4)
       - Examples: change-a3f5b2c1-fix-parser.md, issue-d7e9f1a4-network-timeout.md
-    - Strategic Domain: Design documents follow tier naming convention: master_, domain_, component_ prefixes
-    - Strategic Domain: Insures related documents are Obsidian cross linked
+    - Planner: Design documents follow tier naming convention: master_, domain_, component_ prefixes
+    - Planner: Insures related documents are Obsidian cross linked
     - Document classes that require a master document are: design, audit, trace and test
     - Design class includes a dedicated name registry master: design-\<project\>-name_registry-master.md
     - All document classes (issue, change, prompt, test, result) contain internal iteration field starting at 1
@@ -126,18 +126,18 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Reference implementation: loop via Python engine orchestrator (`ai/engine/`)
     - Engine provides autonomous iterative code generation within governance boundaries
     - Loop State Directory: `ai/state/` (ephemeral, per-task)
-    - Loop Entry: After human approval of T03 Prompt
+    - Loop Entry: After human approval of T03 Prompt, recorded with `ai/engine/src/approve.py` (P13.3)
     - Integration Scripts: Project-scoped scripts reside in `<project>/bin/`. Scripts are version-controlled project artifacts. Global installation (e.g. `~/bin/`) is not required.
-    - Claude Desktop Interface: `engine-mcp` (`ai/engine/mcp/server.py`) provides `start_engine`, `engine_status`, and `reset_engine` MCP tools for use within the Claude Desktop profile; registers once in Claude Desktop MCP configuration; serves all downstream projects via `project_dir` parameter; reference: P10.8
+    - Claude Desktop Interface: `engine-mcp` (`ai/engine/mcp/server.py`) provides `start_engine`, `engine_status`, `reset_engine` and the read-only `work_status` MCP tools for use within the Claude Desktop profile; in loop and worker mode `start_engine` accepts only a T03 prompt inside ai/workspace/; registers once in Claude Desktop MCP configuration; serves all downstream projects via `project_dir` parameter; reference: P10.8
     - Loop Execution: Worker/reviewer cycle until SHIP or boundary exceeded
-    - Loop Exit: SHIP → Strategic Domain captures work-summary.txt in T05 Result; BLOCKED → Strategic Domain seeds T06 Issue from BLOCKED.md
+    - Loop Exit: SHIP → planner captures work-summary.txt in T05 Result; BLOCKED → planner seeds T06 Issue from BLOCKED.md
     - State Files:
       - `task.md`: Task description from T03
       - `iteration.txt`: Current cycle number
       - `work-summary.txt`: Worker iteration output
       - `work-complete.txt`: Worker completion signal
-      - `review-result.txt`: SHIP or REVISE decision
-      - `review-feedback.txt`: Reviewer notes for next iteration
+      - `review-result.txt`: Cleared before each review phase; not read (the verdict is the reviewer's final response)
+      - `review-feedback.txt`: Feedback for the next iteration, from the reviewer's final response or a gate
       - `.complete`: Success marker
       - `BLOCKED.md`: Failure details
     - Boundary Conditions:
@@ -149,11 +149,11 @@ python ai/engine/src/orchestrator.py --mode loop \
   - P00.12 Configuration Management
     - GitHub repository is authoritative source for all project artifacts
     - Human: Tags design document commits when approved as baseline for code generation via GitHub Desktop (History → right-click commit → Create Tag → Push Tags)
-    - Strategic Domain: Performs configuration audit verifying generated code matches approved design baseline commits
-    - Strategic Domain: Uses config-audit template from ai/workspace/audit/config-audit-template.md
-    - Strategic Domain: Verifies code matches tagged design baseline specifications
-    - Strategic Domain: Documents findings in config-audit-NNNN-YYYY-MM-DD.md
-    - Strategic Domain: Stores configuration audits in ai/workspace/audit/
+    - Planner: Performs configuration audit verifying generated code matches approved design baseline commits
+    - Planner: Uses config-audit template from ai/workspace/audit/config-audit-template.md
+    - Planner: Verifies code matches tagged design baseline specifications
+    - Planner: Documents findings in config-audit-NNNN-YYYY-MM-DD.md
+    - Planner: Stores configuration audits in ai/workspace/audit/
     - Critical deviations: Creates issues via P03 for remediation
   - P00.13 Versioning
     - All versioning is handled via GitHub
@@ -186,8 +186,8 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Audit: Per P02.8 Audit Closure (P02.8.1 criteria, P02.8.2 process)
     - P00.14.4 Archival Procedure
       - Human initiates closure after acceptance
-      - Strategic Domain verifies closure criteria met
-      - Strategic Domain moves coupled document set to respective closed/ subfolders
+      - Planner verifies closure criteria met
+      - Planner moves coupled document set to respective closed/ subfolders
       - Git commit records closure transition
       - Closed documents referenced but not modified
     - P00.14.5 Closed Subfolder Structure
@@ -228,11 +228,11 @@ python ai/engine/src/orchestrator.py --mode loop \
       - ai/governance/software-engineering/templates/T05-result.md
       - ai/governance/software-engineering/templates/T01-requirements.md
       - ai/governance/software-engineering/templates/T08-audit.md
-    - Strategic Domain: Read template from ai/governance/software-engineering/templates/ before creating documents
-    - Tactical Domain: Read templates when referenced in prompt documents
+    - Planner: Read template from ai/governance/software-engineering/templates/ before creating documents
+    - Worker: Read templates when referenced in prompt documents
     - Templates contain YAML structure and JSON Schema validation rules
   - P00.18 Skills Management (Claude Code profiles only)
-    - Tactical Domain: Utilizes skills from .claude/ for reusable workflows
+    - Worker: Utilizes skills from .claude/ for reusable workflows
     - Canonical source: ai/governance/software-engineering/skills/ — provisioned into .claude/ during P10.8; mirrors .claude/ subdirectory organization
     - Skills organization: governance/, testing/, validation/, audit/ subdirectories under .claude/
     - Hot-reload enabled: Skill modifications activate without session restart
@@ -248,7 +248,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - .claude/validation/coupling-check.md: Verify iteration synchronization in coupled documents
       - .claude/audit/protocol-compliance.md: Check generated code against protocol requirements
   - P00.19 Context Optimization
-    - Tactical Domain context file location:
+    - Worker/reviewer context file location:
       - Engine profile: ai/context.md (checked into git)
       - Claude Code profiles: CLAUDE.md at project root (checked into git)
     - Local context file: Personal preferences (.gitignore'd)
@@ -265,14 +265,14 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Platform-specific tooling and dependencies
     - Token efficiency: Externalize stable context from T03 prompts
     - Team coordination: Review context file changes during git commits
-    - Auto-generation: Strategic Domain creates initial context file during project initialization or when absent
+    - Auto-generation: Planner creates initial context file during project initialization or when absent
     - Implementation: Context file name and update mechanism defined in implementation profile (ai/profiles/)
   - P00.20 Task Register
     - Location: `ai/task.md` (project root, git-tracked)
     - Purpose: single-file index of open work items, cross-referencing document-class UUIDs (issue, change, prompt)
     - Exempt from P00.10 naming convention and P00.14 lifecycle management: no UUID, no master suffix, no closed/ archival
     - Row removed in place once the referenced document triple's closed/ records the outcome; git history preserves prior state
-    - Strategic Domain: adds a row when a T06/T07/T03 triple opens; removes the row when the triple closes
+    - Planner: adds a row when a T06/T07/T03 triple opens; removes the row when the triple closes
     - Framework ships a skeleton `ai/task.md`; `bin/propagate.sh` excludes it from overwrite and seeds it only when absent in the target, per `context.md` treatment
 
 [Return to Table of Contents](<#table of contents>)
@@ -280,18 +280,18 @@ python ai/engine/src/orchestrator.py --mode loop \
 ## P01 Trace
 
   - P01.1 Traceability Matrix Management
-    - Strategic Domain: Maintains traceability matrix in ai/workspace/trace/trace-traceability-matrix-master.md
-    - Strategic Domain: Updates matrix when requirements, designs, code, or tests modified
+    - Planner: Maintains traceability matrix in ai/workspace/trace/trace-traceability-matrix-master.md
+    - Planner: Updates matrix when requirements, designs, code, or tests modified
   - P01.2 Traceability Verification
-    - Strategic Domain: Verifies bidirectional links exist: requirements ↔ design ↔ code ↔ test (navigable forward and backward)
-    - Strategic Domain: Identifies and resolves traceability gaps
-    - Strategic Domain: Generates traceability reports on demand
+    - Planner: Verifies bidirectional links exist: requirements ↔ design ↔ code ↔ test (navigable forward and backward)
+    - Planner: Identifies and resolves traceability gaps
+    - Planner: Generates traceability reports on demand
   - P01.3 Requirements Traceability
-    - Strategic Domain: Maintains traceability matrix linking requirements through implementation
-    - Strategic Domain: Updates matrix when designs, code, or tests modified
-    - Strategic Domain: Ensures orphaned requirements or implementations identified
+    - Planner: Maintains traceability matrix linking requirements through implementation
+    - Planner: Updates matrix when designs, code, or tests modified
+    - Planner: Ensures orphaned requirements or implementations identified
   - P01.4 Traceability Matrix Structure
-    - Strategic Domain: Maintains single traceability matrix in ai/workspace/trace/trace-traceability-matrix-master.md
+    - Planner: Maintains single traceability matrix in ai/workspace/trace/trace-traceability-matrix-master.md
     - Required sections:
       - Functional Requirements: ID, Requirement, Design, Code, Test, Status
       - Non-Functional Requirements: ID, Requirement, Target, Design, Code, Test, Status
@@ -299,7 +299,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Design Document Cross-Reference: Design Doc → Requirements → Code → Tests
       - Test Coverage: Test File → Requirements Verified → Code Coverage
       - Bidirectional Navigation: Forward (Req→Design→Code→Test) and Backward (Test→Code→Design→Req)
-    - Strategic Domain: Updates matrix when requirements, designs, code, or tests change
+    - Planner: Updates matrix when requirements, designs, code, or tests change
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -314,7 +314,7 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Milestone-based: Upon completion of major development phases
     - Human-requested: Ad-hoc audits when compliance concerns arise
     - Baseline: After initial code generation before production deployment
-    - Mode selection: Human-requested audits resolve to one of two modes — strategic (Strategic Domain) or tactical (engine audit loop) — per P02.9
+    - Mode selection: Human-requested audits resolve to one of two modes — strategic (Planner) or tactical (engine audit loop) — per P02.9
   - P02.3 Audit Scope
     - Protocol compliance: All protocols
     - Document compliance: Naming, formatting, cross-linking, version histories
@@ -324,19 +324,19 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Configuration management: Code vs. baseline verification
   - P02.4 Audit Procedure
     - P02.4.1 Strategic-led (frontier reasoning)
-      - Strategic Domain: Conducts systematic review of source code against governance requirements
-      - Strategic Domain: Documents findings with severity classification (critical, high, medium, low)
-      - Strategic Domain: Provides evidence for each finding (file paths, line numbers, specific violations)
-      - Strategic Domain: Calculates compliance metrics (percentage, deficiency counts by severity)
+      - Planner: Conducts systematic review of source code against governance requirements
+      - Planner: Documents findings with severity classification (critical, high, medium, low)
+      - Planner: Provides evidence for each finding (file paths, line numbers, specific violations)
+      - Planner: Calculates compliance metrics (percentage, deficiency counts by severity)
     - P02.4.2 Tactical-led (engine audit loop)
-      - Strategic Domain: Prepares audit-uml.md and audit-index.md in the state directory; obtains human approval
-      - Strategic Domain: Authors a T03 audit prompt and presents the engine command (P13.3)
+      - Planner: Prepares audit-uml.md and audit-index.md in the state directory; obtains human approval
+      - Planner: Authors a T03 audit prompt and presents the engine command (P13.3)
       - Engine: Runs a read-only worker/reviewer loop, one audit-index.md item per iteration, accumulating findings in audit-report.md
       - Recipe selection is automatic on presence of audit-index.md in the state directory; operational detail in ai/governance/software-engineering/doc/guide-audit-loop.md
       - Outcome: findings consolidated into the audit report deliverable (P02.5)
   - P02.5 Audit Deliverables
-    - Strategic Domain: Creates audit report following naming format: audit-<uuid>-<audit name>.md
-    - Strategic Domain: Stores audit reports in ai/workspace/audit/ folder
+    - Planner: Creates audit report following naming format: audit-<uuid>-<audit name>.md
+    - Planner: Stores audit reports in ai/workspace/audit/ folder
     - Audit report template: ai/governance/software-engineering/templates/T08-audit.md (mode field records strategic or tactical)
     - Tactical-led runs: audit-report.md is archived to audit-<uuid>-<name>.md on SHIP automatically (see guide-audit-loop.md §7)
     - Audit report structure:
@@ -350,14 +350,14 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Recommendations for remediation
     - Positive findings (strengths identification)
   - P02.6 Remediation Process
-    - Strategic Domain: Converts critical and high-priority audit findings to issue documents via P03
-    - Strategic Domain: References source code audit report in issue documents
-    - Strategic Domain: Issue resolution follows standard P03 → P04 → implementation workflow
-    - Strategic Domain: Tracks remediation progress in audit report updates
+    - Planner: Converts critical and high-priority audit findings to issue documents via P03
+    - Planner: References source code audit report in issue documents
+    - Planner: Issue resolution follows standard P03 → P04 → implementation workflow
+    - Planner: Tracks remediation progress in audit report updates
   - P02.7 Audit Trail
-    - Strategic Domain: Maintains chronological audit history
-    - Strategic Domain: Links related audits (initial → follow-up → closure)
-    - Strategic Domain: Preserves audit reports for process improvement analysis
+    - Planner: Maintains chronological audit history
+    - Planner: Links related audits (initial → follow-up → closure)
+    - Planner: Preserves audit reports for process improvement analysis
   - P02.8 Audit Closure
     - P02.8.1 Closure Criteria
       - All critical findings fully resolved
@@ -365,17 +365,17 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Completion documented in audit report
       - Human approval obtained
     - P02.8.2 Closure Process
-      - Strategic Domain: Conducts follow-up audit after remediation completed, when remediation changed source code
+      - Planner: Conducts follow-up audit after remediation completed, when remediation changed source code
       - Human: May waive the follow-up audit when remediation changed documents only; waiver recorded in the audit report closure block
-      - Strategic Domain: Verifies all closure criteria satisfied
-      - Strategic Domain: Documents closure status with final compliance metrics
-      - Strategic Domain: Records closure date and approver
+      - Planner: Verifies all closure criteria satisfied
+      - Planner: Documents closure status with final compliance metrics
+      - Planner: Records closure date and approver
       - Human: Reviews closure documentation
       - Human: Approves audit closure and authorizes proceeding to next phase
     - P02.8.3 Post-Closure Archival
-      - Strategic Domain: Moves closed audit report to ai/workspace/audit/closed/
-      - Strategic Domain: Updates audit traceability links in master traceability matrix
-      - Strategic Domain: Preserves read-only access for future reference
+      - Planner: Moves closed audit report to ai/workspace/audit/closed/
+      - Planner: Updates audit traceability links in master traceability matrix
+      - Planner: Preserves read-only access for future reference
     - P02.8.4 Reopening Closed Audits
       - Prohibited: Closed audits are immutable
       - New findings: Create new audit with reference to closed audit
@@ -385,10 +385,10 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Two audit modes satisfy this protocol; the human selects by trigger phrase (primer §4.1)
     - P02.9.1 Strategic audit
       - Trigger: "conduct a strategic audit"
-      - Actor: Strategic Domain (frontier reasoning)
+      - Actor: Planner (frontier reasoning)
       - Method: Reads source via MCP and reasons holistically; authors the audit report directly
       - Best for: architecture, protocol and name-registry conformance, traceability, cross-cutting judgement
-      - Bound: Tactical Domain context budget does not apply; large codebases may exceed a single review pass
+      - Bound: Worker/reviewer context budget does not apply; large codebases may exceed a single review pass
     - P02.9.2 Tactical audit
       - Trigger: "conduct a tactical audit"
       - Actor: engine audit loop (local model)
@@ -403,33 +403,33 @@ python ai/engine/src/orchestrator.py --mode loop \
 ## P03 Issue
 
   - P03.1 Issue creation from test results
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T06-issue.md
-    - Strategic Domain: Before specifying any target file_path in a T06 issue, reads the project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms the named file is in the deployment path
-    - Strategic Domain: Creates issue documents from errors reported in ai/workspace/test/result using T06 template and saves them in folder ai/workspace/issues
+    - Planner: Reads template from ai/governance/software-engineering/templates/T06-issue.md
+    - Planner: Before specifying any target file_path in a T06 issue, reads the project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms the named file is in the deployment path
+    - Planner: Creates issue documents from errors reported in ai/workspace/test/result using T06 template and saves them in folder ai/workspace/issues
   - P03.2 Reserved for future use
-    - Strategic Domain: Reserved for future use
+    - Planner: Reserved for future use
   - P03.3 Debug workflow
-    - Tactical Domain: Debugs issues submitted from Tactical Domain and returns change proposal to Strategic Domain
+    - Worker: Debugs issues submitted from the loop and returns change proposal to planner
   - P03.4 Issue updates
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T06-issue.md
-    - Strategic Domain: Updates issue documents from bugs using T06 template and saves them in folder ai/workspace/issues
+    - Planner: Reads template from ai/governance/software-engineering/templates/T06-issue.md
+    - Planner: Updates issue documents from bugs using T06 template and saves them in folder ai/workspace/issues
   - P03.5 Non-Conformance Reporting
-    - Strategic Domain: Documents instances where generated code deviates from design specifications
-    - Strategic Domain: Records deviation type, severity, affected components
-    - Strategic Domain: Tracks non-conformance trends for process improvement
+    - Planner: Documents instances where generated code deviates from design specifications
+    - Planner: Records deviation type, severity, affected components
+    - Planner: Tracks non-conformance trends for process improvement
   - P03.6 Post-Implementation Review
-    - Strategic Domain: Evaluates code generation effectiveness after issue resolution
-    - Strategic Domain: Documents lessons learned
-    - Strategic Domain: Provides protocol improvement recommendations for human review (protocols immutable, human-modified only)
+    - Planner: Evaluates code generation effectiveness after issue resolution
+    - Planner: Documents lessons learned
+    - Planner: Provides protocol improvement recommendations for human review (protocols immutable, human-modified only)
   - P03.7 Issue-Change Coupling
-    - Strategic Domain: Updates issue document with change_ref field (UUID) when change created
-    - Strategic Domain: Sets issue status to "resolved" when corresponding change status becomes "implemented"
-    - Strategic Domain: Verifies bidirectional linkage exists: issue.change_ref ↔ change.source.reference
-    - Strategic Domain: Prevents issue closure without corresponding change document for source code issues
-    - Strategic Domain: issue.iteration must equal change.iteration throughout cycle
-    - Strategic Domain: When debugging requires new iteration, both documents increment together
-    - Strategic Domain: Git commit captures synchronized iteration state
-    - Strategic Domain: Validates iteration match before proceeding
+    - Planner: Updates issue document with change_ref field (UUID) when change created
+    - Planner: Sets issue status to "resolved" when corresponding change status becomes "implemented"
+    - Planner: Verifies bidirectional linkage exists: issue.change_ref ↔ change.source.reference
+    - Planner: Prevents issue closure without corresponding change document for source code issues
+    - Planner: issue.iteration must equal change.iteration throughout cycle
+    - Planner: When debugging requires new iteration, both documents increment together
+    - Planner: Git commit captures synchronized iteration state
+    - Planner: Validates iteration match before proceeding
     - Note: One-to-one coupling does not prevent modification of paired issue/change documents during debugging iterations
 
 [Return to Table of Contents](<#table of contents>)
@@ -437,55 +437,55 @@ python ai/engine/src/orchestrator.py --mode loop \
 ## P04 Change
 
   - P04.1 Change document creation
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T07-change.md
-    - Strategic Domain: Creates change documents exclusively from issue documents using T07 template and saves them in folder ai/workspace/change
-    - Strategic Domain: For human-requested source code changes, first creates issue document via P03, then creates change document referencing that issue
-    - Strategic Domain: For enhancement or requirement change requests, creates issue document via P03 with type `enhancement` or `requirement_change` and origin `requirement_change`, then creates change document referencing that issue
+    - Planner: Reads template from ai/governance/software-engineering/templates/T07-change.md
+    - Planner: Creates change documents exclusively from issue documents using T07 template and saves them in folder ai/workspace/change
+    - Planner: For human-requested source code changes, first creates issue document via P03, then creates change document referencing that issue
+    - Planner: For enhancement or requirement change requests, creates issue document via P03 with type `enhancement` or `requirement_change` and origin `requirement_change`, then creates change document referencing that issue
     - Exception: Non-source-code changes (ai/workspace/ documents per 1.4.10) may be implemented directly after human approval without issue/change documents
-    - Exception: Initial implementation of source code from an approved design document does not require issue or change documents. The forward path is: approved design → T03 prompt → Tactical Domain execution → review. Issue and change documents are required only when execution fails (engine BLOCKED) or tests fail.
+    - Exception: Initial implementation of source code from an approved design document does not require issue or change documents. The forward path is: approved design → T03 prompt → worker/reviewer execution → review. Issue and change documents are required only when execution fails (engine BLOCKED) or tests fail.
     - Cross-reference: P13.2 — T03 prompt_info.source_ref distinguishes design-sourced prompts (this exception) from change-sourced prompts; coupled_docs is required only for the latter.
   - P04.2 Document coupling
-    - Strategic Domain: Ensures one-to-one coupling between issue and change documents
-    - Strategic Domain: Every source code change document must reference exactly one source issue document via UUID
-    - Strategic Domain: Every resolved source code issue must reference exactly one change document via UUID
-    - Strategic Domain: Prohibits multiple change documents addressing same issue or multiple issues addressed by same change
-    - Strategic Domain: Change references source issue UUID in coupled_docs.issue_ref field
-    - Strategic Domain: Change iteration number matches source issue iteration number at creation
-    - Strategic Domain: When issue iteration increments, corresponding change iteration increments synchronously
-    - Strategic Domain: Verifies iteration synchronization before workflow transitions
+    - Planner: Ensures one-to-one coupling between issue and change documents
+    - Planner: Every source code change document must reference exactly one source issue document via UUID
+    - Planner: Every resolved source code issue must reference exactly one change document via UUID
+    - Planner: Prohibits multiple change documents addressing same issue or multiple issues addressed by same change
+    - Planner: Change references source issue UUID in coupled_docs.issue_ref field
+    - Planner: Change iteration number matches source issue iteration number at creation
+    - Planner: When issue iteration increments, corresponding change iteration increments synchronously
+    - Planner: Verifies iteration synchronization before workflow transitions
   - P04.3 Design document updates
-    - Strategic Domain: Updates all relevant design documents after implementation
+    - Planner: Updates all relevant design documents after implementation
   - P04.4 Design document cross-linking
-    - Strategic Domain: Insures all design document updates contain change references and links to their source change document
+    - Planner: Insures all design document updates contain change references and links to their source change document
   - P04.5 Change Review
-    - Strategic Domain: Performs impact analysis before change approval
-    - Strategic Domain: Evaluates effects on dependent components, interfaces, data structures
-    - Strategic Domain: Documents impact analysis results in change document
+    - Planner: Performs impact analysis before change approval
+    - Planner: Evaluates effects on dependent components, interfaces, data structures
+    - Planner: Documents impact analysis results in change document
   - P04.6 Requirements Change Management
-    - Strategic Domain: Links requirement changes to affected design elements
-    - Strategic Domain: Performs impact analysis when requirements change
-    - Strategic Domain: Updates requirement traceability matrix after changes
+    - Planner: Links requirement changes to affected design elements
+    - Planner: Performs impact analysis when requirements change
+    - Planner: Updates requirement traceability matrix after changes
   - P04.7 Maintenance Classification
-    - Strategic Domain: Categorizes changes: corrective, adaptive, perfective, preventive
-    - Strategic Domain: Records classification in change document metadata
-    - Strategic Domain: Tracks change type distribution for process metrics
+    - Planner: Categorizes changes: corrective, adaptive, perfective, preventive
+    - Planner: Records classification in change document metadata
+    - Planner: Tracks change type distribution for process metrics
   - P04.8 Checkpoint Strategy
-    - Tactical Domain: Creates automatic checkpoint per file modification during code generation
-    - Tactical Domain: Checkpoint captures pre-modification state for rewind capability
-    - Tactical Domain: Failed verifications trigger rewind to checkpoint before modification
-    - Strategic Domain: Reviews checkpoint log after code generation completion
+    - Worker: Creates automatic checkpoint per file modification during code generation
+    - Worker: Checkpoint captures pre-modification state for rewind capability
+    - Worker: Failed verifications trigger rewind to checkpoint before modification
+    - Planner: Reviews checkpoint log after code generation completion
     - Git commit occurs at iteration boundaries after human approval
     - Checkpoint scope: Session-local, ephemeral
     - Human oversight: Maintained through iteration approval gates
     - Rollback efficiency: Eliminates manual file restoration during debug cycles
   - P04.9 Change Impact Analysis
-    - Strategic Domain: Evaluates change effects on system integrity, performance, security
-    - Strategic Domain: Identifies all components requiring modification
-    - Strategic Domain: Documents cascading effects in change document
+    - Planner: Evaluates change effects on system integrity, performance, security
+    - Planner: Identifies all components requiring modification
+    - Planner: Documents cascading effects in change document
   - P04.10 Maintenance Documentation
-    - Strategic Domain: Updates all affected documentation when changes implemented
-    - Strategic Domain: Maintains documentation currency with code state
-    - Strategic Domain: Cross-links updated documents to source change document
+    - Planner: Updates all affected documentation when changes implemented
+    - Planner: Maintains documentation currency with code state
+    - Planner: Cross-links updated documents to source change document
   - P04.11 Documentation domain
     - Change documentation is only required for source code changes in src/. Change documentation to documents in the ai/workspace/ is not required and can be made directly after human approval.
   - P04.12 Trivial Change Exemption
@@ -493,7 +493,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Trivial: the outcome is fully predictable before implementation; no analysis, experimentation, or design judgement is required to determine the correct solution.
       - Surgical: confined to a single, well-bounded location in the codebase; does not disturb surrounding logic, interfaces, or dependent components.
     - A qualifying change must be both trivial and surgical simultaneously. Either quality alone is insufficient.
-    - When all five criteria below are satisfied, Strategic Domain may implement directly after human approval — no T06, T07, T03, or engine required. Git commit history is the sole audit record for exempt changes.
+    - When all five criteria below are satisfied, planner may implement directly after human approval — no T06, T07, T03, or engine required. Git commit history is the sole audit record for exempt changes.
     - Criteria (all must hold simultaneously):
       - (1) Confined to a single function or entry point
       - (2) Net line delta ≤20 lines
@@ -558,7 +558,7 @@ ai/workspace/proposal/closed/
 ai/state/
 ai/dashboard-alerts.md
 
-# Tactical Domain
+# Worker and Reviewer
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/commands/
@@ -582,7 +582,7 @@ test.txt
   - P10.6 Project folder structure
     - Note: This structure applies to projects using the framework, not to the AI-Governance-and-Orchestration repository itself
     - The governance framework repository contains only ai/, doc/, and templates/ directories
-    - ai/ holds framework files plus only the project files declared in the layout below (config.yaml, context.md, task.md, state/, logs/, dashboard-alerts.md, workspace/)
+    - ai/ holds framework files plus only the project files declared in the layout below (config.yaml, context.md, task.md, approvals.yaml, state/, logs/, dashboard-alerts.md, workspace/)
     - Framework-owned folders: ai/engine/, ai/governance/<model>/, ai/profiles/, ai/src/; propagation replaces their contents. All other ai/ content is project-owned (proposal-5bcd46ad)
     - A project in the pre-5bcd46ad layout (ai/ael/, ai/governance.md) is migrated once with bin/migrate-layout.sh before propagation
     - Any other project file belongs outside ai/; bin/propagate.sh relocates such files, and retired framework files, to ai-local/ and logs them in ai-local/RELOCATED.md
@@ -597,8 +597,9 @@ test.txt
         │   ├── profiles/             # Framework-owned: model profiles
         │   ├── src/                  # Framework-owned: overwatch
         │   ├── config.yaml           # Engine configuration (project-owned, git-tracked)
-        │   ├── context.md            # engine profile only — Tactical Domain context (team shared)
+        │   ├── context.md            # engine profile only — worker/reviewer context (team shared)
         │   ├── task.md                # open-work register (git-tracked)
+        │   ├── approvals.yaml        # operator approvals, written and committed by ai/engine/src/approve.py (git-tracked)
         │   ├── state/                # engine loop state (ephemeral, excluded from git)
         │   ├── logs/                 # engine run-log archive (log_archive_dir)
         │   ├── dashboard-alerts.md   # overwatch output (excluded from git)
@@ -658,15 +659,15 @@ pip list
 ```
   - P10.8 Implementation Profile Setup (Human executes)
     - Human: Select implementation profile from ai/profiles/
-    - Human: Create tactical context file at project root per selected profile
-    - **Claude profile** (Tactical Domain = Claude Code):
+    - Human: Create worker/reviewer context file at project root per selected profile
+    - **Claude profile** (Worker and reviewer = Claude Code):
       - Install Claude Code: `npm install -g @anthropic-ai/claude-code`
       - Ensure Anthropic API key is configured
       - Create `CLAUDE.md` at project root with project context
       - Create `.claude/` directory structure per P10.6
       - Provision mandatory skill: follow ai/governance/software-engineering/skills/validation/run-tests.md §2.0 to install `.claude/hooks/run-tests.sh` and merge its PostToolUse block into `.claude/settings.json` (P00.18)
       - Reference: [claude-code.md](../../profiles/claude-code.md)
-    - **claude-omlx profile** (Tactical Domain = Claude Code CLI → oMLX → Devstral):
+    - **claude-omlx profile** (Worker and reviewer = Claude Code CLI → oMLX → Devstral):
       - Ensure oMLX is running on `http://127.0.0.1:8000` with Devstral loaded
       - Install Claude Code: `npm install -g @anthropic-ai/claude-code`
       - No Anthropic API key required
@@ -695,7 +696,7 @@ pip list
       - Install engine dependencies: `pip install -r ai/engine/requirements.txt`
       - Configure `ai/config.yaml` with inference endpoint and MCP server definitions
       - `ai/engine/src/orchestrator.py` resolves context-window size at startup (config.yaml override → live oMLX query → per-model config.yaml override → unknown) and writes context-budget.md to the state directory automatically; no separate script to run
-      - Recipe location: `<project name>/ai/engine/recipes/`
+      - Recipe location: `<project name>/ai/engine/recipes/` (loop) and `<project name>/ai/governance/software-engineering/recipes/` (audit); run types are declared in `ai/governance/software-engineering/manifest.yaml`
       - Reference: P00.11, P10.4
 
   - P10.9 Python documents
@@ -750,22 +751,22 @@ exclude_lines = [
     - Systematic requirements capture and validation before design
     - Establishes baseline for design decomposition and traceability
   - P11.2 Requirements Capture
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T01-requirements.md
-    - Strategic Domain: Assists human through requirements elicitation
-    - Strategic Domain: Prompts for functional, non-functional, architectural requirements
-    - Strategic Domain: Validates completeness, clarity, testability
-    - Strategic Domain: Identifies conflicts and dependencies
-    - Strategic Domain: Creates requirements-<project>-master.md using T01 template
-    - Strategic Domain: Saves in ai/workspace/requirements/
+    - Planner: Reads template from ai/governance/software-engineering/templates/T01-requirements.md
+    - Planner: Assists human through requirements elicitation
+    - Planner: Prompts for functional, non-functional, architectural requirements
+    - Planner: Validates completeness, clarity, testability
+    - Planner: Identifies conflicts and dependencies
+    - Planner: Creates requirements-<project>-master.md using T01 template
+    - Planner: Saves in ai/workspace/requirements/
   - P11.3 Requirements Validation
-    - Strategic Domain: Verifies each requirement has objective acceptance criteria
-    - Strategic Domain: Ensures requirements are testable and unambiguous
-    - Strategic Domain: Documents validation results in validation section
+    - Planner: Verifies each requirement has objective acceptance criteria
+    - Planner: Ensures requirements are testable and unambiguous
+    - Planner: Documents validation results in validation section
     - Human: Reviews and approves requirements baseline
   - P11.4 Requirements Baseline
     - Human: Approves requirements document
-    - Strategic Domain: Establishes baseline for design phase
-    - Strategic Domain: Initializes traceability matrix with requirements
+    - Planner: Establishes baseline for design phase
+    - Planner: Initializes traceability matrix with requirements
   - P11.5 Requirements Lifecycle
     - Active: ai/workspace/requirements/requirements-<project>-master.md
     - Closed: ai/workspace/requirements/closed/ after human acceptance
@@ -773,8 +774,8 @@ exclude_lines = [
     - No iteration numbering - git history tracks all changes
   - P11.6 Requirements Change Management
     - Changes trigger P04 Change workflow
-    - Strategic Domain: Performs impact analysis across design/code/test
-    - Strategic Domain: Updates traceability matrix
+    - Planner: Performs impact analysis across design/code/test
+    - Planner: Updates traceability matrix
     - Human: Approves changes
   - P11.7 Framework Development Requirements
     - Scope: requirements for extending AI-G&O itself, held in dev/requirements/
@@ -785,45 +786,45 @@ exclude_lines = [
 ## P12 Design
 
   - P12.1 Tier 1: System Architecture
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T02-design.md
-    - Strategic Domain: Creates design-\<project\>-master.md from human requirements using T02 template
-    - Strategic Domain: Defines system architecture, technology stack, cross-cutting concerns
-    - Strategic Domain: Includes system-level Mermaid diagrams (architecture, component interaction, state machine, data flow)
-    - Strategic Domain: Clearly designates document as master design within document content
-    - Strategic Domain: Initialises design-\<project\>-name_registry-master.md; populates package name, top-level module names, and Mermaid class diagram skeleton
+    - Planner: Reads template from ai/governance/software-engineering/templates/T02-design.md
+    - Planner: Creates design-\<project\>-master.md from human requirements using T02 template
+    - Planner: Defines system architecture, technology stack, cross-cutting concerns
+    - Planner: Includes system-level Mermaid diagrams (architecture, component interaction, state machine, data flow)
+    - Planner: Clearly designates document as master design within document content
+    - Planner: Initialises design-\<project\>-name_registry-master.md; populates package name, top-level module names, and Mermaid class diagram skeleton
   - P12.2 Tier 1 Review
-    - Strategic Domain: Presents master design document for human approval
-    - Strategic Domain: Documents review findings, required changes, approval decision
-    - Strategic Domain: Proceeds with Tier 2 decomposition only after approval recorded
+    - Planner: Presents master design document for human approval
+    - Planner: Documents review findings, required changes, approval decision
+    - Planner: Proceeds with Tier 2 decomposition only after approval recorded
   - P12.3 Tier 2: Domain Decomposition
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T02-design.md
-    - Strategic Domain: Decomposes master into functional domains using T02 template
-    - Strategic Domain: Creates design-\<uuid\>-domain_\<name\>.md for each domain
-    - Strategic Domain: Each domain defines: boundaries, interfaces, domain patterns, responsibilities
-    - Strategic Domain: Includes domain-level Mermaid diagrams as needed
-    - Strategic Domain: Extends name registry with domain-level module names and key class names per domain
+    - Planner: Reads template from ai/governance/software-engineering/templates/T02-design.md
+    - Planner: Decomposes master into functional domains using T02 template
+    - Planner: Creates design-\<uuid\>-domain_\<name\>.md for each domain
+    - Planner: Each domain defines: boundaries, interfaces, domain patterns, responsibilities
+    - Planner: Includes domain-level Mermaid diagrams as needed
+    - Planner: Extends name registry with domain-level module names and key class names per domain
   - P12.4 Tier 2 Review
-    - Strategic Domain: Presents domain design documents for human approval
-    - Strategic Domain: Documents review findings, required changes, approval decision
-    - Strategic Domain: Proceeds with Tier 3 decomposition only after approval recorded
+    - Planner: Presents domain design documents for human approval
+    - Planner: Documents review findings, required changes, approval decision
+    - Planner: Proceeds with Tier 3 decomposition only after approval recorded
   - P12.5 Tier 3: Component Decomposition
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T02-design.md
-    - Strategic Domain: Decomposes each domain into components using T02 template
-    - Strategic Domain: Creates design-\<uuid\>-component_\<domain\>_\<name\>.md for each component
-    - Strategic Domain: Each component defines: implementation details, interfaces, processing logic, error handling
-    - Strategic Domain: Includes component-level Mermaid diagrams as needed
-    - Strategic Domain: Finalises name registry with all functions, constants, and complete signatures; registry is canonical before T03 creation
+    - Planner: Reads template from ai/governance/software-engineering/templates/T02-design.md
+    - Planner: Decomposes each domain into components using T02 template
+    - Planner: Creates design-\<uuid\>-component_\<domain\>_\<name\>.md for each component
+    - Planner: Each component defines: implementation details, interfaces, processing logic, error handling
+    - Planner: Includes component-level Mermaid diagrams as needed
+    - Planner: Finalises name registry with all functions, constants, and complete signatures; registry is canonical before T03 creation
   - P12.6 Tier 3 Review
-    - Strategic Domain: Presents component design documents for human approval
-    - Strategic Domain: Documents review findings, required changes, approval decision
-    - Strategic Domain: Proceeds with T03 prompt creation only after approval recorded
+    - Planner: Presents component design documents for human approval
+    - Planner: Documents review findings, required changes, approval decision
+    - Planner: Proceeds with T03 prompt creation only after approval recorded
   - P12.7 Design Hierarchy Naming Convention
     - Tier 1: design-\<project\>-master.md (single master document)
     - Tier 2: design-\<uuid\>-domain_\<name\>.md (one per domain)
     - Tier 3: design-\<uuid\>-component_\<domain\>_\<name\>.md
     - Registry: design-\<project\>-name_registry-master.md (singleton, maintained across all tiers)
   - P12.8 Exploration Phase
-    - Tactical Domain: Supports exploratory code generation without formal design hierarchy
+    - Worker: Supports exploratory code generation without formal design hierarchy
     - Use case: Proof-of-concept development, technology validation, prototype iteration
     - Documentation: Lightweight T03 prompts without coupled design documents
     - Permission scope: Limited to experimental/ directory tree
@@ -833,39 +834,39 @@ exclude_lines = [
     - Audit exemption: Exploration work excluded from P02 compliance audits
     - Git workflow: Feature branches for exploration, merge on formalization
   - P12.9 Cross-Linking Requirements
-    - Strategic Domain: Master lists all Tier 2 domain document references
-    - Strategic Domain: Each domain lists: master parent reference, all Tier 3 component children references
-    - Strategic Domain: Each component lists: domain parent reference, generated code file paths
-    - Strategic Domain: Uses Obsidian internal link syntax for all cross-references
+    - Planner: Master lists all Tier 2 domain document references
+    - Planner: Each domain lists: master parent reference, all Tier 3 component children references
+    - Planner: Each component lists: domain parent reference, generated code file paths
+    - Planner: Uses Obsidian internal link syntax for all cross-references
   - P12.10 Context Window Constraints
-    - Strategic Domain: Ensures design documents at each tier do not exceed Tactical Domain context window
-    - Strategic Domain: T03 prompts embed only Tier 3 component designs relevant to code generation task
+    - Planner: Ensures design documents at each tier do not exceed worker/reviewer context window
+    - Planner: T03 prompts embed only Tier 3 component designs relevant to code generation task
   - P12.11 Design Verification
-    - Strategic Domain: Validates design completeness at each tier before proceeding to next tier
-    - Strategic Domain: Verifies all functional requirements have corresponding design coverage
-    - Strategic Domain: Confirms all non-functional requirements addressed across design hierarchy
+    - Planner: Validates design completeness at each tier before proceeding to next tier
+    - Planner: Verifies all functional requirements have corresponding design coverage
+    - Planner: Confirms all non-functional requirements addressed across design hierarchy
   - P12.12 Requirements Traceability
-    - Strategic Domain: Assigns unique identifier to each functional and non-functional requirement
-    - Strategic Domain: Maps requirements through design tiers: requirement → master → domain → component
-    - Strategic Domain: Maintains bidirectional links in traceability matrix
+    - Planner: Assigns unique identifier to each functional and non-functional requirement
+    - Planner: Maps requirements through design tiers: requirement → master → domain → component
+    - Planner: Maintains bidirectional links in traceability matrix
   - P12.13 Requirements Validation
-    - Strategic Domain: Verifies design hierarchy satisfies all stated requirements before baseline
-    - Strategic Domain: Documents validation results in master design document
-    - Strategic Domain: Resolves discrepancies before proceeding to code generation
+    - Planner: Verifies design hierarchy satisfies all stated requirements before baseline
+    - Planner: Documents validation results in master design document
+    - Planner: Resolves discrepancies before proceeding to code generation
   - P12.14 Document Storage
-    - Strategic Domain: Saves all design documents in ai/workspace/design
+    - Planner: Saves all design documents in ai/workspace/design
   - P12.15 Visual Documentation Requirements
-    - Strategic Domain: Embeds Mermaid diagrams directly within design documents at all tiers
+    - Planner: Embeds Mermaid diagrams directly within design documents at all tiers
     - Tier 1 Master: System architecture, overall component relationships, system-level state machines
     - Tier 2 Domain: Domain boundaries, domain internal structure, domain interfaces
     - Tier 3 Component: Component-specific flows, detailed state machines, data transformations
-    - Strategic Domain: All diagrams use Mermaid syntax within markdown code blocks
-    - Strategic Domain: Each diagram includes: purpose statement, legend, cross-references
-    - Strategic Domain: Updates diagrams when design modifications require visual clarification
-    - Strategic Domain: Maintains diagram consistency with textual design specifications
+    - Planner: All diagrams use Mermaid syntax within markdown code blocks
+    - Planner: Each diagram includes: purpose statement, legend, cross-references
+    - Planner: Updates diagrams when design modifications require visual clarification
+    - Planner: Maintains diagram consistency with textual design specifications
   - P12.16 Name Registry
-    - Strategic Domain: Creates design-\<project\>-name_registry-master.md at Tier 1 design phase
-    - Strategic Domain: Stores registry in ai/workspace/design/
+    - Planner: Creates design-\<project\>-name_registry-master.md at Tier 1 design phase
+    - Planner: Stores registry in ai/workspace/design/
     - Registry document contains two sections:
       - Mermaid class diagram: visual representation of all program elements and relationships (human comprehension)
       - YAML element table: machine-readable canonical name list (T03 prompt inclusion)
@@ -876,10 +877,10 @@ exclude_lines = [
       - classes: name, module, base_classes
       - functions: name, module, signature
       - constants: name, module, type
-    - Strategic Domain: Populates incrementally — packages and modules at Tier 1, class names at Tier 2, functions and constants with full signatures at Tier 3
-    - Strategic Domain: Registry must be complete and approved before first T03 prompt creation
-    - Strategic Domain: Updates registry when design changes affect named elements
-    - Strategic Domain: Cross-links registry document to all design documents that define its elements
+    - Planner: Populates incrementally — packages and modules at Tier 1, class names at Tier 2, functions and constants with full signatures at Tier 3
+    - Planner: Registry must be complete and approved before first T03 prompt creation
+    - Planner: Updates registry when design changes affect named elements
+    - Planner: Cross-links registry document to all design documents that define its elements
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -887,44 +888,47 @@ exclude_lines = [
 
   - P13.1 Purpose
     - Manage creation and lifecycle of T03 prompt documents
-    - Facilitate Strategic Domain → Tactical Domain code generation communication
+    - Facilitate planner → worker/reviewer code generation communication
   - P13.2 Prompt Creation
-    - Prompt documents are always Tactical Domain specific; prompt_info.target_profile declares which profile (engine, claude_code, or claude_omlx) a given prompt targets; the legacy value ael in closed documents is read as engine.
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T03-prompt.md
-    - Strategic Domain: Creates prompt documents from design documents (initial implementation, P04.1 exception) or from change documents (corrective/enhancement cycle) using T03 template
-    - Strategic Domain: Saves prompts with naming format prompt-<uuid>-<name>.md in ai/workspace/prompt/
-    - Strategic Domain: UUID assignment follows workflow initiation pattern:
+    - Prompt documents are always worker/reviewer specific; prompt_info.target_profile declares which profile (engine, claude_code, or claude_omlx) a given prompt targets; the legacy value ael in closed documents is read as engine.
+    - Planner: Reads template from ai/governance/software-engineering/templates/T03-prompt.md
+    - Planner: Creates prompt documents from design documents (initial implementation, P04.1 exception) or from change documents (corrective/enhancement cycle) using T03 template
+    - Planner: Saves prompts with naming format prompt-<uuid>-<name>.md in ai/workspace/prompt/
+    - Planner: UUID assignment follows workflow initiation pattern:
     - First document created in workflow (Issue OR Change) generates new 8-character UUID
     - All subsequently coupled documents (Change, Prompt, Test, Result) inherit that UUID
     - UUID propagates through entire document lifecycle maintaining referential integrity
-    - Strategic Domain: Rewrites prompt documents in place when revisions required
-    - Strategic Domain: Embeds complete design specifications and schema within prompt documents
-    - Strategic Domain: Ensures prompt documents are self-contained requiring no external file references
-    - Strategic Domain: The following tactical_brief and context-budget directives apply only when prompt_info.target_profile is engine; tactical_brief is not consumed by claude_code or claude_omlx profiles and may be omitted for those
-    - Strategic Domain: Populates tactical_brief field with a concise prose engine task payload (~200-400 tokens); brief contains only: file(s) to modify, hard constraints, implementation steps, deliverable path(s), success criteria; all governance metadata omitted from brief
-    - Strategic Domain: Calls omlx_model_status (mcp_omlx) for the configured model before authoring tactical_brief; a null or missing settings.max_context_window is treated as unresolved and the operator is warned, consistent with the resolver's own unknown-window handling
-    - Strategic Domain: Reads context-budget.md (written automatically by the orchestrator at engine runtime) and adjusts brief size to fit within available context headroom
-    - Strategic Domain: Verifies tactical_brief field is non-empty before issuing engine command; an empty or placeholder brief causes orchestrator fallback to full raw document, inflating context and risking saturation
-    - Strategic Domain: Ensures tactical_brief is authored in a ```yaml fenced block with tactical_brief as the root key; the orchestrator scans only ```yaml blocks — plain text or non-YAML fenced blocks are not detected and cause fallback to raw document; when using per-section YAML blocks, §8.0 must be a dedicated ```yaml block (not ```text) with tactical_brief: as the sole root key
-    - Strategic Domain: config.yaml `loop.max_iterations` controls the number of outer loop cycles (worker + reviewer pass pairs); `loop.phase_max_iterations` controls the number of inner tool-call iterations per phase; these are distinct values and must not be conflated in T03 prompt notes
-    - Strategic Domain: engine end is logged as `INFO engine end rc=N` in the .LOG file on all exits including unexpected termination; absence of this line in a log indicates unclean exit (signal, crash, or resource failure); log review should check for this line before concluding outcome
-    - Strategic Domain: Before specifying any target file path in a T03 prompt, reads the project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms the named file is in the deployment path
-    - Strategic Domain: Embeds element_registry field in T03 prompt from name registry master, scoped to elements relevant to the code generation task
-    - Strategic Domain: When source_ref references a change document (change-<uuid>), prompt references that change's UUID in coupled_docs.change_ref field, prompt iteration number matches source change iteration number, and synchronization is maintained through debug cycles; verifies coupling before prompt creation
-    - Strategic Domain: When source_ref references a design document (design-<uuid>, initial implementation per P04.1), coupled_docs is omitted; no change document exists to couple to
+    - Planner: Rewrites prompt documents in place when revisions required
+    - Planner: Embeds complete design specifications and schema within prompt documents
+    - Planner: Ensures prompt documents are self-contained requiring no external file references
+    - Planner: The following tactical_brief and context-budget directives apply only when prompt_info.target_profile is engine; tactical_brief is not consumed by claude_code or claude_omlx profiles and may be omitted for those
+    - Planner: Populates tactical_brief field with a concise prose engine task payload (~200-400 tokens); brief contains only: file(s) to modify, hard constraints, implementation steps, deliverable path(s), success criteria; all governance metadata omitted from brief
+    - Planner: Calls omlx_model_status (mcp_omlx) for the configured model before authoring tactical_brief; a null or missing settings.max_context_window is treated as unresolved and the operator is warned, consistent with the resolver's own unknown-window handling
+    - Planner: Reads context-budget.md (written automatically by the orchestrator at engine runtime) and adjusts brief size to fit within available context headroom
+    - Planner: Verifies tactical_brief field is non-empty before issuing engine command; an empty or placeholder brief causes orchestrator fallback to full raw document, inflating context and risking saturation
+    - Planner: Ensures tactical_brief is authored in a ```yaml fenced block with tactical_brief as the root key; the orchestrator scans only ```yaml blocks — plain text or non-YAML fenced blocks are not detected and cause fallback to raw document; when using per-section YAML blocks, §8.0 must be a dedicated ```yaml block (not ```text) with tactical_brief: as the sole root key
+    - Planner: config.yaml `loop.max_iterations` controls the number of outer loop cycles (worker + reviewer pass pairs); `loop.phase_max_iterations` controls the number of inner tool-call iterations per phase; these are distinct values and must not be conflated in T03 prompt notes
+    - Planner: engine end is logged as `INFO engine end rc=N` in the .LOG file on all exits including unexpected termination; absence of this line in a log indicates unclean exit (signal, crash, or resource failure); log review should check for this line before concluding outcome
+    - Planner: Before specifying any target file path in a T03 prompt, reads the project entry point configuration (pyproject.toml [project.scripts] or equivalent) and confirms the named file is in the deployment path
+    - Planner: Embeds element_registry field in T03 prompt from name registry master, scoped to elements relevant to the code generation task
+    - Planner: When source_ref references a change document (change-<uuid>), prompt references that change's UUID in coupled_docs.change_ref field, prompt iteration number matches source change iteration number, and synchronization is maintained through debug cycles; verifies coupling before prompt creation
+    - Planner: When source_ref references a design document (design-<uuid>, initial implementation per P04.1), coupled_docs is omitted; no change document exists to couple to
     - GitHub version control maintains complete revision history
   - P13.3 Human Handoff
-    - Strategic Domain: Verifies tactical context file exists at project root before providing command
-    - Strategic Domain: If context file absent, generates initial context file with project context
-    - Strategic Domain: Generated context file requires human approval before proceeding
+    - Planner: Verifies worker/reviewer context file exists at project root before providing command
+    - Planner: If context file absent, generates initial context file with project context
+    - Planner: Generated context file requires human approval before proceeding
     - Context file name: Defined in implementation profile (ai/profiles/)
-    - Strategic Domain: After human approval of T03 prompt, presents Tactical Domain execution options; human selects preferred option:
+    - Human: Records each approval of a tracked work item with `python ai/engine/src/approve.py <uuid> <stage>` (SE: change and prompt); the command commits ai/approvals.yaml and binds the approval to the current content of the stage's documents
+    - Human: Re-approves after any edit of an approved document, or after a document with the same UUID is added (for example a prompt revised after BLOCKED); otherwise the engine refuses the run (exit 3)
+    - Planner: Passes the approved prompt itself as the engine task, from `ai/workspace/prompt/`; the engine and engine-mcp refuse any other task file for a tracked work item
+    - Planner: After human approval of T03 prompt, presents worker/reviewer execution options; human selects preferred option:
 
     - **Option A — Human executes (all profiles):**
-      - Strategic Domain: Provides ready-to-execute engine command in conversation
+      - Planner: Provides ready-to-execute engine command in conversation
       - Human: Executes command from project root directory
       - Engine exits with SHIP (proceed to review) or BLOCKED (create T06 Issue)
-      - Human: Notifies Strategic Domain of engine outcome
+      - Human: Notifies planner of engine outcome
       - Example command:
 
 ```bash
@@ -932,13 +936,13 @@ python ai/engine/src/orchestrator.py --mode loop \
   --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
-    - **Option B — Strategic Domain launches via engine-mcp (Claude Desktop profile only):**
-      - Human: Chooses to delegate engine launch to Strategic Domain
-      - Strategic Domain: Calls `start_engine` with `project_dir` and T03 prompt path as `task` parameter
-      - Engine runs detached; Strategic Domain returns `run_id`, PID, and log path
+    - **Option B — planner launches via engine-mcp (Claude Desktop profile only):**
+      - Human: Chooses to delegate engine launch to planner
+      - Planner: Calls `start_engine` with `project_dir` and T03 prompt path as `task` parameter
+      - Engine runs detached; planner returns `run_id`, PID, and log path
       - Human: Requests status check when ready
-      - Strategic Domain: Calls `engine_status`; reports SHIP or BLOCKED outcome
-      - On BLOCKED: Strategic Domain reads `BLOCKED.md` and creates T06 Issue per P03
+      - Planner: Calls `engine_status`; reports SHIP or BLOCKED outcome
+      - On BLOCKED: Planner reads `BLOCKED.md` and creates T06 Issue per P03
 
     - **Option C — Claude Code manual invocation (claude_code/claude_omlx profiles):**
       - Human: Opens Claude Code in the project root
@@ -955,7 +959,7 @@ ai/workspace/report/report-<uuid>-<name>.md.
 ```
 
   - P13.4 Wildcard Permissions
-    - Tactical Domain: Supports wildcard patterns in permission grants for batch operations
+    - Worker: Supports wildcard patterns in permission grants for batch operations
     - Permission scope: src/**/*.py enables modifications across source tree
     - Validation: PreToolUse hooks verify modifications within approved scope
     - Audit trail: All wildcard-permitted modifications logged per-file
@@ -965,8 +969,8 @@ ai/workspace/report/report-<uuid>-<name>.md.
     - Constraints: Wildcard permissions limited to src/ directory tree
     - Exclusions: Configuration files, test fixtures require individual approval
   - P13.5 Prompt Revision
-    - Strategic Domain: Rewrites existing prompt documents when changes needed
-    - Strategic Domain: Documents revision rationale in prompt version_history section
+    - Planner: Rewrites existing prompt documents when changes needed
+    - Planner: Documents revision rationale in prompt version_history section
     - GitHub commits provide complete change tracking and rollback capability
 
 [Return to Table of Contents](<#table of contents>)
@@ -975,27 +979,27 @@ ai/workspace/report/report-<uuid>-<name>.md.
 
   - P14.1 Purpose
   - P14.2 Code Validation
-    - Strategic Domain: Verifies generated code implements all design requirements
-    - Strategic Domain: Validates against design specifications, interface contracts, data schemas
-    - Strategic Domain: Documents validation results, discrepancies found
+    - Planner: Verifies generated code implements all design requirements
+    - Planner: Validates against design specifications, interface contracts, data schemas
+    - Planner: Documents validation results, discrepancies found
   - P14.3 Automated Audits
-    - Tactical Domain: Stop hook triggers automated compliance audit after code generation
+    - Worker: Stop hook triggers automated compliance audit after code generation
     - Audit verification: Protocol compliance, naming conventions, traceability links
-    - Compliance report: Generated in session metadata for Strategic Domain review
+    - Compliance report: Generated in session metadata for planner review
     - Critical violations: Halt workflow, require human intervention before commit
     - Minor violations: Logged as warnings, accumulated for periodic review
     - Audit scope: Document coupling integrity, iteration synchronization, file organization
-    - Human review: Strategic Domain evaluates audit findings before approving iteration
+    - Human review: Planner evaluates audit findings before approving iteration
     - Audit integration: Complements P02 milestone audits with continuous checking
   - P14.7 Hook-Based Auditing
-    - Tactical Domain: Lifecycle hooks enable automated audit event capture
+    - Worker: Lifecycle hooks enable automated audit event capture
     - PreToolUse hook: Records design context, requirements traceability before generation
     - PostToolUse hook: Captures test results, validation outcomes after modification
     - Stop hook: Logs session metrics, checkpoint usage, validation summary
     - Audit trail: Stored in session metadata for post-execution review
     - Hook configuration: Defined in <skills_dir>/audit/
     - Automated compliance: Reduces manual audit overhead for repetitive checks
-    - Human review: Session metadata reviewed by Strategic Domain after completion
+    - Human review: Session metadata reviewed by planner after completion
     - Audit scope: File-level modifications, iteration-level decisions, session-level metrics
     - Integration: Audit events linked to git commits via timestamp correlation
 
@@ -1005,59 +1009,59 @@ ai/workspace/report/report-<uuid>-<name>.md.
 
   - P15.1 Purpose
   - P15.2 Test documentation
-    - Strategic Domain: Reads template from ai/governance/software-engineering/templates/T04-test.md
-    - Strategic Domain: Creates test documents from source code generated by Tactical Domain using T04 template and saves them in folder ai/workspace/test
+    - Planner: Reads template from ai/governance/software-engineering/templates/T04-test.md
+    - Planner: Creates test documents from source code generated by worker and reviewer using T04 template and saves them in folder ai/workspace/test
   - P15.3 Test Script Creation
     - Test location: tests/ directory at project root (not src/tests/)
-    - Strategic Domain: Automatic precursor to test execution
-    - Strategic Domain: Generates executable test scripts from T04 test documentation in tests/
-    - Strategic Domain: Creates unit tests for components in subdirectories (tests/\<component\>/)
-    - Strategic Domain: Uses pytest or unittest framework per pyproject.toml configuration
-    - Strategic Domain: Names test files with test_*.py convention
-    - Strategic Domain: Links test scripts to test documentation via T04 references
+    - Planner: Automatic precursor to test execution
+    - Planner: Generates executable test scripts from T04 test documentation in tests/
+    - Planner: Creates unit tests for components in subdirectories (tests/\<component\>/)
+    - Planner: Uses pytest or unittest framework per pyproject.toml configuration
+    - Planner: Names test files with test_*.py convention
+    - Planner: Links test scripts to test documentation via T04 references
     - Workflow: T04 test doc creation → pytest file generation → test execution
   - P15.4 Test Planning
-    - Strategic Domain: Creates comprehensive test strategy before code generation
-    - Strategic Domain: Defines test scope, approach, resources, schedule
-    - Strategic Domain: Identifies test types: unit, integration, system, acceptance
+    - Planner: Creates comprehensive test strategy before code generation
+    - Planner: Defines test scope, approach, resources, schedule
+    - Planner: Identifies test types: unit, integration, system, acceptance
   - P15.5 Test Case Specification
-    - Strategic Domain: Structures test cases: preconditions, inputs, expected outputs, postconditions
-    - Strategic Domain: Links test cases to requirements and design elements
-    - Strategic Domain: Includes positive, negative, boundary, edge cases
+    - Planner: Structures test cases: preconditions, inputs, expected outputs, postconditions
+    - Planner: Links test cases to requirements and design elements
+    - Planner: Includes positive, negative, boundary, edge cases
   - P15.6 Test Results Documentation
-    - Strategic Domain: Records test execution results in standardized format
-    - Strategic Domain: Captures: pass/fail status, defects found, coverage achieved
-    - Strategic Domain: Links failed tests to issue documents
+    - Planner: Records test execution results in standardized format
+    - Planner: Captures: pass/fail status, defects found, coverage achieved
+    - Planner: Links failed tests to issue documents
   - P15.7 Test Organization
-    - Strategic Domain: Maintains hierarchical test structure in tests/
-    - Strategic Domain: Separates permanent unit tests from ephemeral validation scripts
-    - Strategic Domain: Organizes unit tests by component in subdirectories
-    - Strategic Domain: Places fix validation scripts at tests/ root level
+    - Planner: Maintains hierarchical test structure in tests/
+    - Planner: Separates permanent unit tests from ephemeral validation scripts
+    - Planner: Organizes unit tests by component in subdirectories
+    - Planner: Places fix validation scripts at tests/ root level
   - P15.8 Test Isolation
-    - Strategic Domain: Uses temporary environments (tempfile, shutil) for test execution
-    - Strategic Domain: Ensures tests create/destroy controlled test environments
-    - Strategic Domain: Prevents test pollution through environment isolation
-    - Strategic Domain: Enables parallel test execution through isolation
+    - Planner: Uses temporary environments (tempfile, shutil) for test execution
+    - Planner: Ensures tests create/destroy controlled test environments
+    - Planner: Prevents test pollution through environment isolation
+    - Planner: Enables parallel test execution through isolation
   - P15.9 Dependency Mocking
-    - Strategic Domain: Uses unittest.mock to isolate component dependencies
-    - Strategic Domain: Mocks external services, file systems, network calls
-    - Strategic Domain: Verifies interface contracts without external dependencies
-    - Strategic Domain: Documents mocking strategy in test documentation
+    - Planner: Uses unittest.mock to isolate component dependencies
+    - Planner: Mocks external services, file systems, network calls
+    - Planner: Verifies interface contracts without external dependencies
+    - Planner: Documents mocking strategy in test documentation
   - P15.10 Regression Testing
-    - Strategic Domain: Creates targeted validation scripts for specific fixes
-    - Strategic Domain: Implements progressive validation: minimal → integration → full suite
-    - Strategic Domain: Documents validation scripts with fix references
-    - Strategic Domain: Removes validation scripts after fix verification
+    - Planner: Creates targeted validation scripts for specific fixes
+    - Planner: Implements progressive validation: minimal → integration → full suite
+    - Planner: Documents validation scripts with fix references
+    - Planner: Removes validation scripts after fix verification
   - P15.11 Test Lifecycle Management
-    - Strategic Domain: Distinguishes permanent regression suite from temporary validation
-    - Strategic Domain: Maintains permanent tests in tests/\<component\>/ subdirectories
-    - Strategic Domain: Archives or removes ephemeral validation scripts post-verification
-    - Strategic Domain: Updates test documentation to reflect lifecycle status
+    - Planner: Distinguishes permanent regression suite from temporary validation
+    - Planner: Maintains permanent tests in tests/\<component\>/ subdirectories
+    - Planner: Archives or removes ephemeral validation scripts post-verification
+    - Planner: Updates test documentation to reflect lifecycle status
   - P15.12 Test-Prompt Coupling
     - Test references source prompt UUID in coupled_docs.prompt_ref field
     - Test iteration number matches source prompt iteration number
     - Iteration synchronization maintained through debug cycles
-    - Strategic Domain verifies coupling before test execution
+    - Planner verifies coupling before test execution
   - P15.13 Test Result Lifecycle
     - Results named: result-<uuid>-<n>.md in ai/workspace/test/result/
     - Result references parent test UUID in coupled_docs.test_ref field
@@ -1083,7 +1087,7 @@ ls -lh dist/
 pip install dist/*.whl
 ```
   - P15.15 Progressive Validation Strategy
-    - Strategic Domain: Implements graduated validation during debug cycles
+    - Planner: Implements graduated validation during debug cycles
     - Targeted validation: Execute minimal test to verify specific fix
     - Integration validation: Execute tests for dependent components
     - Regression validation: Execute full test suite before closure
@@ -1091,7 +1095,7 @@ pip install dist/*.whl
     - Permanent tests: Maintain regression suite in component subdirectories
     - Script lifecycle: Archive or remove validation scripts post-verification
     - Validation sequence mandatory before document closure
-    - **Validation Hooks (Tactical Domain, claude_code/claude_omlx profiles — mandatory):**
+    - **Validation Hooks (Worker and reviewer, claude_code/claude_omlx profiles — mandatory):**
       - PreToolUse hook: Validates design constraints before code generation
       - PostToolUse hook: Executes targeted tests after file modification
       - Hook failures trigger checkpoint rewind automatically
@@ -1107,7 +1111,7 @@ pip install dist/*.whl
     - Acceptance tests: Requirement validation (milestone-based)
     - Regression tests: All unit/integration tests (permanent)
     - Performance tests: NFR validation (periodic benchmarking)
-    - Strategic Domain: Selects appropriate test type based on requirements and architecture
+    - Planner: Selects appropriate test type based on requirements and architecture
     - Test documentation specifies type in test_info.type field
   - P15.17 Test Execution Platforms
     - Unit tests: Development platform with comprehensive mocking
@@ -1128,7 +1132,7 @@ pip install dist/*.whl
       - Document platform-specific tooling and dependencies in component designs
       - Include platform requirements in test documentation
     - Cross-platform considerations:
-      - Strategic Domain: Documents platform-specific limitations in test documentation
+      - Planner: Documents platform-specific limitations in test documentation
       - Mocking strategy must isolate tests from platform differences
       - Integration/system tests require target hardware availability
   - P15.18 Test Constraint Summary
@@ -1262,6 +1266,12 @@ See [workflow.md](workflow.md).
 | 10.5    | 2026-09-23 | P10.6: locally edited framework files are backed up to ai-local/ before propagation overwrites them. Non-breaking. |
 | 10.6 | 2026-09-25 | Project rename: title LLM Orchestration Framework → AI Governance and Orchestration Framework; LLM-G&O → AI-G&O in P10 and P11 notes. Historical row 5.4 unchanged. Non-breaking. |
 | 11.0 | 2026-09-25 | Layout and terminology migration (change-5bcd46ad): governance model at ai/governance/software-engineering/; ai/ael/ → ai/engine/; project configuration ai/ael/config.yaml → ai/config.yaml; state ai/state/ralph/ → ai/state/; terms AEL → engine, Ralph Loop → loop, RALPH-BLOCKED.md → BLOCKED.md, .ralph-complete/.ralph-timeout → .complete/.timeout, target_profile ael → engine (legacy value accepted); ael-mcp → engine-mcp in ai/engine/mcp/; govwatch retired (overwatch remains). P10.6 layout and ownership updated. Breaking: downstream projects run bin/migrate-layout.sh, then bin/propagate.sh --allow-major. |
+| 11.1 | 2026-10-01 | P10.4 recipe location: audit recipes moved to the governance model; run types declared in manifest.yaml (change-e58fd295) |
+| 11.2 | 2026-10-01 | P10.6: ai/approvals.yaml declared as a project file (operator approvals, change-ee5357ec) |
+| 11.3 | 2026-10-01 | P00 engine-mcp: work_status tool; loop and worker runs only for T03 prompts inside ai/workspace/ (change-793992ae) |
+| 12.0 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 12.1 | 2026-10-01 | P00.4–P00.7 two-domain wording replaced; P10/P13.3 context file wording; P00.11 and P13.3 approvals recorded with approve.py and re-approval after edits; P13.1 worker/reviewer compound (audit-14e05e35 M-03, L-05, L-15; change-82dbf16a) |
+| 12.2 | 2026-10-01 | P00.11 state files: review-result.txt not read; P13.3 task file must be the approved prompt in ai/workspace/prompt/ (change-82dbf16a iteration 2, audit-14e05e35 follow-up) |
 
 ---
 [Return to Table of Contents](<#table of contents>)

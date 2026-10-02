@@ -8,7 +8,6 @@ Note: connect() and close() must be awaited in the same task to ensure
 proper AsyncExitStack teardown without anyio cancel-scope errors.
 """
 
-import re
 import uuid
 from contextlib import AsyncExitStack
 from typing import Any
@@ -19,24 +18,9 @@ from mcp.client.stdio import stdio_client
 
 # Read-only tool name patterns — tools matching these are safe for reviewer use.
 # All other tools (write/edit/delete/move) are excluded from the read-only subset.
-_READONLY_TOOL_PATTERNS = (
-    r"^read",           # read, read_file, read_text_file
-    r"^list",           # list, list_files, list_directory
-    r"^grep",           # grep, grep_file
-    r"^search",         # search
-    r"^stat",           # stat
-    r"^get_file_info",  # get_file_info
-    r"^find",           # find (read-only search)
-    r"^head",           # head
-    r"^tail",           # tail
-    r"^cat",            # cat
-)
-
-
-# change-c37198be (D3): a name that also carries a write verb is never
-# read-only, whatever its prefix (e.g. search_and_replace matched ^search).
-_WRITE_NAME_PATTERNS = (r"replace", r"write", r"edit", r"create", r"delete",
-                        r"remove", r"move", r"rename", r"patch", r"mkdir")
+# change-bdc6820f (audit-5bcd46ad L-09): read-only and write classification
+# come from one source, scope.py, shared with the write-scope check.
+from scope import is_readonly_tool
 
 
 class MCPClient:
@@ -80,10 +64,8 @@ class MCPClient:
                 print(f"[engine] Warning: failed to connect to '{name}': {e}")
 
     def _is_readonly_tool(self, name: str) -> bool:
-        """Return True if the tool name matches a read-only pattern."""
-        if any(re.search(pattern, name) for pattern in _WRITE_NAME_PATTERNS):
-            return False
-        return any(re.match(pattern, name) for pattern in _READONLY_TOOL_PATTERNS)
+        """Return True for a read-only tool (scope.is_readonly_tool)."""
+        return is_readonly_tool(name)
 
     def get_openai_tools(self, readonly: bool = False) -> list[dict]:
         """

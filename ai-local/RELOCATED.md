@@ -43,3 +43,5 @@ Reviewed 2026-09-23: doc/CLAUDE.md merged into the root CLAUDE.md; doc/CLAUDE.md
 | 2026-09-29 | ai/index.md | ai-local/retired-5bcd46ad/index.md | retired framework path (contents not verified) | layout migration change-5bcd46ad |
 | 2026-09-29 | ai/src/govwatch.py | ai-local/retired-5bcd46ad/src/govwatch.py | retired framework path (contents not verified) | layout migration change-5bcd46ad |
 | 2026-09-29 | ai/src/requirements-govwatch.txt | ai-local/retired-5bcd46ad/src/requirements-govwatch.txt | retired framework path (contents not verified) | layout migration change-5bcd46ad |
+| 2026-10-02 | ai/engine/recipes/audit-review.yaml | ai-local/engine/recipes/audit-review.yaml | retired framework file |  |
+| 2026-10-02 | ai/engine/recipes/audit-work.yaml | ai-local/engine/recipes/audit-work.yaml | retired framework file |  |

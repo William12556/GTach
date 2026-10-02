@@ -8,6 +8,51 @@ omlx:
   default_model: "mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-8Bit"
   reviewer_model: "Magistral-Small-2509-MLX-8bit"
 
+# Role-to-model binding (change-53c6f252, design-14e05e35 §3.0).
+# Without a roles: block, both roles use the omlx: block above (legacy binding).
+# To bind roles to other providers, uncomment and edit. API keys are read from
+# the named environment variable only; set it for the engine process, not
+# globally (a global MISTRAL_API_KEY overrides Mistral Vibe's own key).
+# Use pinned model IDs, not -latest aliases.
+#
+# providers:
+#   omlx:
+#     kind: omlx                     # OpenAI-compatible + live context query
+#     base_url: "http://127.0.0.1:8000/v1"
+#     api_key: "local"
+#   mistral:
+#     kind: openai_compatible
+#     base_url: "https://api.mistral.ai/v1"
+#     api_key_env: MISTRAL_API_KEY
+#   anthropic:
+#     kind: anthropic
+#     api_key_env: ANTHROPIC_API_KEY
+#     max_tokens: 8192               # required by the Anthropic API
+#     strict_tools: true             # set false if a tool schema is rejected
+#   omlx_anthropic:                  # Anthropic-format requests to a local server
+#     kind: anthropic
+#     base_url: "http://127.0.0.1:8000"
+#     api_key: "local"               # literal key allowed for local endpoints only
+#
+# roles:
+#   worker:   { provider: omlx,    model: "mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-8Bit" }
+#   reviewer: { provider: mistral, model: "mistral-medium-2604" }
+#
+# For API models, add the context window under context.model_context_windows
+# (no live query exists for them).
+
+# Gate overrides (change-e58fd295, design-14e05e35 §6.0). Command gates are
+# declared in ai/governance/<model>/manifest.yaml; override them here per project.
+# gates.python sets the interpreter for {python}, e.g. the project venv, so the
+# pytest gate finds the project's test dependencies. Default: the engine's own
+# interpreter.
+#
+# gates:
+#   python: "venv/bin/python"        # relative to the project root
+#   pytest:
+#     command: "{python} -m pytest -q {targets}"
+#     timeout_seconds: 300
+
 # MCP server definitions
 # F4: filesystem MCP is confined to the project root for scope containment.
 # Each downstream project sets its own allowed_dirs in its local config.yaml.

@@ -8,10 +8,10 @@ Created: 2026 June 26
 
 - [1.0 Overview](<#1.0 overview>)
 - [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
-- [3.0 Strategic Domain](<#3.0 strategic domain>)
-- [4.0 Tactical Domain](<#4.0 tactical domain>)
+- [3.0 Planner](<#3.0 planner>)
+- [4.0 Worker and Reviewer](<#4.0 worker and reviewer>)
 - [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Engine](<#6.0 autonomous execution loop>)
+- [6.0 Engine](<#6.0 engine>)
 - [7.0 Model Selection](<#7.0 model selection>)
 - [8.0 Project Setup](<#8.0 project setup>)
 - [9.0 Verification Status](<#9.0 verification status>)
@@ -21,12 +21,12 @@ Created: 2026 June 26
 
 ## 1.0 Overview
 
-This profile maps governance abstract placeholders to Apple Silicon MLX-based local model tooling using North Mini Code 1.0 (Cohere2 mixture-of-experts architecture; 30B total parameters, 3B active). It requires Apple M-series hardware. Licence: Apache 2.0. This profile is provisional; the model is under evaluation as a Tactical Domain. See [9.0 Verification Status](<#9.0 verification status>).
+This profile maps governance abstract placeholders to Apple Silicon MLX-based local model tooling using North Mini Code 1.0 (Cohere2 mixture-of-experts architecture; 30B total parameters, 3B active). It requires Apple M-series hardware. Licence: Apache 2.0. This profile is provisional; the model is under evaluation as a worker and reviewer. See [9.0 Verification Status](<#9.0 verification status>).
 
 | Concern | Implementation |
 |---|---|
-| Strategic Domain | Claude Desktop (preferred) |
-| Tactical Domain | North Mini Code 1.0 6bit via oMLX + engine |
+| Planner | Claude Desktop (preferred) |
+| Worker and reviewer | North Mini Code 1.0 6bit via oMLX + engine |
 | Engine mechanism | Engine orchestrator / loop |
 
 [Return to Table of Contents](<#table of contents>)
@@ -39,23 +39,23 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 |---|---|
 | `<tactical_context>` | `ai/context.md` |
 
-`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/`.
+`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/` and `ai/governance/<model>/recipes/`, mapped by the model's `manifest.yaml`.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 3.0 Strategic Domain
+## 3.0 Planner
 
 **Preferred implementation:** Claude Desktop
 
-Any frontier model with sufficient reasoning capability may substitute. The Strategic Domain role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
+Any frontier model with sufficient reasoning capability may substitute. The planner role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 4.0 Tactical Domain
+## 4.0 Worker and Reviewer
 
 **Implementation:** North Mini Code 1.0 6bit via oMLX + engine orchestrator
 
@@ -110,7 +110,7 @@ The model also emits reasoning output in `<|START_THINKING|>` / `<|END_THINKING|
 
 Parser compatibility is **unverified** for this profile. Confirm that the orchestrator correctly parses Cohere-format action blocks and ignores thinking blocks before relying on this profile for execution. See [9.0 Verification Status](<#9.0 verification status>).
 
-**Prompt guidance — imperative phrasing** (as for all tactical profiles):
+**Prompt guidance — imperative phrasing** (as for all worker/reviewer profiles):
 
 | Avoid | Prefer |
 |---|---|
@@ -164,7 +164,7 @@ Context window: 256K tokens (Cohere specification; 64K maximum generation). The 
 **.gitignore additions:**
 
 ```
-# MLX profile - Tactical Domain
+# MLX profile - Worker and Reviewer
 ai/state/
 ```
 
@@ -201,6 +201,9 @@ This profile is provisional pending evaluation. Open items:
 | 0.3 | 2026-07-16 | Tool-guidance example: mcp-grep__grep → mcp-ripgrep__search |
 | 0.4 | 2026-09-23 | Setup-guide link corrected: ../../../docs/ → ../../docs/ |
 | 0.5 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
+| 0.6 | 2026-10-01 | Recipe location: governance model recipes and manifest run types (change-e58fd295) |
+| 0.7 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 0.8 | 2026-10-01 | Terminology: worker/reviewer profiles; TOC anchor for §6.0 corrected (audit-14e05e35 M-03, L-05; change-82dbf16a) |
 
 ---
 

@@ -1,4 +1,4 @@
-version: 1.9.0
+version: 1.10.0
 title: Loop Review Phase
 description: Reviewer role system prompt — SHIP or REVISE decision
 
@@ -15,7 +15,7 @@ instructions: |
   3. For each output file mentioned in work-summary.txt, read it and verify
      it exists and contains the expected content
   4. Decide: SHIP if all required outputs are present and correct, REVISE otherwise
-  5. Write your decision
+  5. State your decision as the leading token of your final response
 
   ORCHESTRATOR-MANAGED FILES (ignore these during verification):
   The following files are managed by the orchestrator and may be cleared between
@@ -63,6 +63,8 @@ instructions: |
     SHIP
 
 # Version History
+# 1.10.0 2026-10-01  change-82dbf16a: step 5 states the verdict in the final
+#                    response (second follow-up audit, observation 5).
 # 1.9.0  2026-09-25  change-5bcd46ad: terminology (loop, engine, BLOCKED.md,
 #                    .complete, .timeout); file renamed from ralph-review.yaml.
 # 1.8.0  2026-06-28  Reconcile OUTPUT with read-only toolset: remove write tool

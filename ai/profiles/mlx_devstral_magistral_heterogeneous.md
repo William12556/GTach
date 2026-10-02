@@ -8,10 +8,10 @@ Created: 2026 July 16
 
 - [1.0 Overview](<#1.0 overview>)
 - [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
-- [3.0 Strategic Domain](<#3.0 strategic domain>)
-- [4.0 Tactical Domain](<#4.0 tactical domain>)
+- [3.0 Planner](<#3.0 planner>)
+- [4.0 Worker and Reviewer](<#4.0 worker and reviewer>)
 - [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Engine](<#6.0 autonomous execution loop>)
+- [6.0 Engine](<#6.0 engine>)
 - [7.0 Model Selection](<#7.0 model selection>)
 - [8.0 Project Setup](<#8.0 project setup>)
 - [Version History](<#version history>)
@@ -24,9 +24,9 @@ This profile maps governance abstract placeholders to a heterogeneous Apple Sili
 
 | Concern | Implementation |
 |---|---|
-| Strategic Domain | Claude Desktop (preferred) |
-| Tactical Domain — worker | Devstral Small 2 2512 8bit via oMLX + engine |
-| Tactical Domain — reviewer | Magistral Small 2509 6bit via oMLX + engine |
+| Planner | Claude Desktop (preferred) |
+| Worker | Devstral Small 2 2512 8bit via oMLX + engine |
+| Reviewer | Magistral Small 2509 6bit via oMLX + engine |
 | Engine mechanism | Engine orchestrator / loop |
 
 Rationale: the worker performs synthesis (code generation, multi-file editing); the reviewer performs verification. Using a distinct reasoning model for review provides heterogeneity without changing the worker. Both models are Mistral-family (`mistral3`), so the engine parser applies to both.
@@ -41,23 +41,23 @@ Rationale: the worker performs synthesis (code generation, multi-file editing); 
 |---|---|
 | `<tactical_context>` | `ai/context.md` |
 
-`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/`.
+`<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/` and `ai/governance/<model>/recipes/`, mapped by the model's `manifest.yaml`.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 3.0 Strategic Domain
+## 3.0 Planner
 
 **Preferred implementation:** Claude Desktop
 
-Any frontier model with sufficient reasoning capability may substitute. The Strategic Domain role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
+Any frontier model with sufficient reasoning capability may substitute. The planner role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 4.0 Tactical Domain
+## 4.0 Worker and Reviewer
 
 **Worker:** Devstral Small 2 2512 8bit via oMLX + engine orchestrator
 **Reviewer:** Magistral Small 2509 6bit via oMLX + engine orchestrator
@@ -117,7 +117,7 @@ Setup guides: [Devstral](../../docs/setup-apple-silicon-mlx.md) (worker) and [Ma
 
 Both models are Mistral-family (`mistral3`) and emit Mistral-format tool calls, which the engine parser (`ai/engine/src/parser.py`) handles. The orchestrator owns the full tool dispatch loop; tool calls are parsed from model output and dispatched directly via the Python MCP SDK.
 
-Reviewer verdict parsing was verified for Magistral (clean `SHIP` / `REVISE` leading token; reasoning not leaked into content despite `enable_thinking: true`). Native reviewer tool-calling (reading files, writing `review-result.txt`) is expected on the `mistral3` family basis and should be confirmed on the first real review phase.
+Reviewer verdict parsing was verified for Magistral (clean `SHIP` / `REVISE` leading token; reasoning not leaked into content despite `enable_thinking: true`). Native reviewer tool-calling (reading files; the verdict is the final response, the review phase cannot write) is expected on the `mistral3` family basis and should be confirmed on the first real review phase.
 
 Name tools explicitly in recipe prompts; use imperative phrasing.
 
@@ -167,7 +167,7 @@ Context windows (forced via `model_context_windows`): Devstral 262144 (vendor-va
 **.gitignore additions:**
 
 ```
-# MLX profile - Tactical Domain
+# MLX profile - Worker and Reviewer
 ai/state/
 ```
 
@@ -186,6 +186,9 @@ ai/state/
 | 1.0 | 2026-07-16 | Initial document; heterogeneous Devstral (worker, 8bit) / Magistral (reviewer, 6bit) profile |
 | 1.1 | 2026-09-23 | Setup-guide links corrected: ../../../docs/ → ../../docs/ |
 | 1.2 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
+| 1.3 | 2026-10-01 | Recipe location: governance model recipes and manifest run types (change-e58fd295) |
+| 1.4 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 1.5 | 2026-10-01 | TOC anchor for §6.0 corrected (audit-14e05e35 L-05, change-82dbf16a); reviewer verdict wording (follow-up F-06) |
 
 ---
 
