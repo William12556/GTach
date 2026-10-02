@@ -20,7 +20,7 @@ change_info:
   title: "Focused-index Device List: 3 fixed slots, middle-only selection, swipe-only focus shift"
   date: "2026-08-19"
   author: "Claude"
-  status: "proposed"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -72,7 +72,9 @@ scope:
   affected_designs:
     - design_ref: "design-a3b4c5d6-component_display_setup_manager"
       sections:
-        - "DEVICE_LIST screen behaviour"
+        - "4.7 handle_touch"
+        - "5.2 User Interactions"
+        - "5.3 DEVICE_LIST Screen Behaviour"
   out_of_scope:
     - "Tap-target arrows (explicitly rejected — swipe only)"
     - "Multi-device shift per swipe (rejected — 1-device shift confirmed)"
@@ -143,7 +145,7 @@ technical_details:
   implementation_approach: >
     1. SetupStateCoordinator: rename usage of scroll_offset to
        represent focused_index conceptually (field name may be kept
-       for minimal diff, or renamed — confirm during T04 authoring);
+       for minimal diff, or renamed — confirm during T03 authoring);
        on transition to DEVICE_LIST or reset_discovery(), clamp to
        [0, max(0, len(discovered_devices) - 1)].
     2. CircularPositioningEngine: add or reuse a fixed 3-slot
@@ -216,7 +218,7 @@ technical_details:
       backward_compatible: "yes"
     - interface: "DeviceSurfaceRenderer.create_curved_device_surface (or equivalent)"
       change_type: "signature"
-      details: "Additional optional parameter(s) for selected-state indicator and empty-frame mode; exact signature to be finalised at T04 authoring"
+      details: "Additional optional parameter(s) for selected-state indicator and empty-frame mode; exact signature to be finalised at T03 authoring"
       backward_compatible: "yes"
 
 dependencies:
@@ -270,19 +272,21 @@ implementation:
   deployment_notes: ""
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-19"
+  implemented_by: "Claude Code"
+  verification_date: "2026-10-02"
+  verified_by: "William Watson"
+  test_results: "On-device verification at gtach.local: test_cases passed. pytest: 286 passed, 1 failed (test_compensation_is_announced_once_per_session; pre-existing, unrelated; see report-479b2e51 §3.1). 62 new tests in tests/test_device_list_focus.py. Implementing commit cc998dd."
   issues_found: []
 
 traceability:
   design_updates:
     - design_ref: "design-a3b4c5d6-component_display_setup_manager"
       sections_updated:
-        - "DEVICE_LIST screen behaviour"
-      update_date: ""
+        - "4.7 handle_touch"
+        - "5.2 User Interactions"
+        - "5.3 DEVICE_LIST Screen Behaviour"
+      update_date: "2026-10-02"
   related_changes: []
   related_issues:
     - issue_ref: "issue-479b2e51"
@@ -294,6 +298,21 @@ notes: >
   requirements (middle-only selection, always-3-slots with empty
   frames, border+tint selection indicator, device-presence-based
   arrow visibility).
+
+  Implementation deviations (report-479b2e51 §4.0), accepted 2026-10-02:
+  (1) swipe detection placed in TouchHandler._handle_short_press via a new
+  _handle_setup_swipe helper, not in _process_touch/_handle_setup_touch;
+  (2) the setup manager is reached via getattr(display_manager,
+  '_setup_manager'); (3) the setup error message moved from (240, 310) to
+  (240, 118) to avoid overlapping the bottom slot; (4) scroll_offset and
+  max_scroll replaced by focused_index, and get_scroll_info /
+  update_scroll_offset replaced by get_focus_info, set_focused_index and
+  shift_focused_index; (5) calculate_curved_list_layout retained but has
+  no remaining caller.
+
+  Known limitation (report-479b2e51 §4.6): the second text line of a
+  device slot is clipped at the 45 px slot height. Pre-existing; deferred
+  to the device_surfaces.py rendering consolidation item in ai/task.md.
 
 version_history:
   - version: "1.0"
@@ -324,6 +343,7 @@ metadata:
 | 1.0 | 2026-08-19 | Initial change creation |
 | 1.1 | 2026-08-19 | Superseded sliding-window model with focused-index model per additional requirements |
 | 1.2 | 2026-10-02 | Terminology: Strategic Domain → planner; T04 → T03 prompt (governance 12.2) |
+| 1.3 | 2026-10-02 | Status implemented; implementation (cc998dd) and on-device verification recorded; deviations and known limitation noted; remaining T04 → T03 references; design sections corrected and design update recorded. |
 
 ---
 

@@ -20,7 +20,7 @@ issue_info:
   title: "Device List screen lacks pagination for more than 3 discovered devices"
   date: "2026-08-19"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -111,23 +111,24 @@ resolution:
   target_date: ""
   approach: "See change-479b2e51"
   change_ref: "change-479b2e51"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-19"
+  resolved_by: "Claude Code"
+  fix_description: "Implemented by change-479b2e51 (commit cc998dd)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-02"
+  verified_by: "William Watson"
+  test_results: "On-device verification at gtach.local: test_cases passed. pytest: 286 passed, 1 failed (test_compensation_is_announced_once_per_session; pre-existing, unrelated; see report-479b2e51 §3.1). 62 new tests in tests/test_device_list_focus.py. Implementing commit cc998dd."
+  closure_notes: "Closure follows the change, prompt and accept approvals."
 
 prevention:
   preventive_measures: "Bound rendered list windows by design going forward."
   process_improvements: ""
 
 verification_enhanced:
-  verification_steps: []
-  verification_results: ""
+  verification_steps:
+    - "Execute change-479b2e51 testing_requirements.test_cases on the device."
+  verification_results: "All test cases passed on the device (2026-10-02)."
 
 traceability:
   design_refs:
@@ -181,6 +182,7 @@ metadata:
 | 1.0 | 2026-08-19 | Initial issue creation |
 | 1.1 | 2026-08-19 | Revised expected behaviour per additional requirements (middle-only selection, always-3-slots, selection indicator, arrow visibility rule) |
 | 1.2 | 2026-10-02 | Terminology: Strategic Domain → planner (governance 12.2) |
+| 1.3 | 2026-10-02 | Status resolved; resolution (cc998dd) and on-device verification recorded. |
 
 ---
 

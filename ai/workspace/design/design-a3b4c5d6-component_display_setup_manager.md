@@ -26,8 +26,8 @@ document_info:
   component: "SetupDisplayManager"
   parent: "design-2c6b8e4d-domain_display.md"
   source_file: "src/gtach/display/setup_manager.py"
-  version: "1.0"
-  date: "2025-12-29"
+  version: "1.1"
+  date: "2026-10-02"
   author: "William Watson"
 ```
 
@@ -211,7 +211,8 @@ def handle_touch(self, action: TouchAction) -> None:
     
     Actions vary by current step:
         - WELCOME: Start scan on tap
-        - DEVICE_LIST: Select on tap, connect on long press
+        - DEVICE_LIST: Select the focused (middle-slot) device on tap;
+          vertical swipe shifts focus by one device (see 5.3)
         - FAILURE: Retry on tap
     """
 ```
@@ -240,10 +241,21 @@ CONNECTING -> FAILURE -> SCANNING (retry)
 |------|------------|------------|-------|
 | WELCOME | Start scan | - | - |
 | SCANNING | Cancel | - | - |
-| DEVICE_LIST | Select device | Connect | Scroll list |
+| DEVICE_LIST | Select focused device (middle slot only) | Connect | Shift focus ±1 (vertical) |
 | CONNECTING | - | Cancel | - |
 | SUCCESS | Continue | - | - |
 | FAILURE | Retry | Exit | - |
+
+### 5.3 DEVICE_LIST Screen Behaviour
+
+Defined by change-479b2e51.
+
+- Exactly three slots (top, middle, bottom) are drawn, centred vertically on the display, whatever the discovered-device count.
+- The middle slot shows the focused device (`focused_index`) with an accent border and background tint. It is the only touch region.
+- The top and bottom slots show the previous and next device, or an outlined empty frame where none exists.
+- A vertical swipe shifts `focused_index` by one, clamped to the discovered-device range. Arrows are indicators only, not touch targets.
+- An up arrow is drawn when a previous device exists; a down arrow when a next device exists.
+- With zero devices, "No devices found" is shown and no slots or arrows are drawn.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -316,6 +328,7 @@ stateDiagram-v2
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| 1.1 | 2026-10-02 | Claude | Added 5.3 DEVICE_LIST Screen Behaviour; updated 4.7 and 5.2 DEVICE_LIST interaction (change-479b2e51) |
 
 ---
 
