@@ -260,8 +260,8 @@ testing_requirements:
 implementation:
   effort_estimate: ""
   implementation_steps:
-    - step: "Author T04 prompt from this change"
-      owner: "Claude (Strategic Domain)"
+    - step: "Author T03 prompt from this change"
+      owner: "planner"
     - step: "Execute via Claude Code"
       owner: "William / Claude Code"
     - step: "On-device verification at gtach.local"
@@ -323,6 +323,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-08-19 | Initial change creation |
 | 1.1 | 2026-08-19 | Superseded sliding-window model with focused-index model per additional requirements |
+| 1.2 | 2026-10-02 | Terminology: Strategic Domain → planner; T04 → T03 prompt (governance 12.2) |
 
 ---
 

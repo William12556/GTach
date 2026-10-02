@@ -107,7 +107,7 @@ analysis:
   related_issues: []
 
 resolution:
-  assigned_to: "Claude Code / Strategic Domain"
+  assigned_to: "planner"
   target_date: ""
   approach: "See change-479b2e51"
   change_ref: "change-479b2e51"
@@ -180,6 +180,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-08-19 | Initial issue creation |
 | 1.1 | 2026-08-19 | Revised expected behaviour per additional requirements (middle-only selection, always-3-slots, selection indicator, arrow visibility rule) |
+| 1.2 | 2026-10-02 | Terminology: Strategic Domain → planner (governance 12.2) |
 
 ---
 
