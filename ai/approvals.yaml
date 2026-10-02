@@ -7,3 +7,4 @@ approvals:
   - { uuid: "479b2e51", stage: "change", date: "2026-10-02T08:48:31Z", blobs: { "change/change-479b2e51-device-list-pagination.md": "c51a0ca1139b84de706fe8b8fad91aed481d0078" } }
   - { uuid: "479b2e51", stage: "prompt", date: "2026-10-02T08:48:33Z", blobs: { "prompt/closed/prompt-479b2e51-device-list-focused-index.md": "a68f7f30ac62a4974aa7686e62e9e9f303a4021c" } }
   - { uuid: "479b2e51", stage: "accept", date: "2026-10-02T08:48:34Z", blobs: {  } }
+  - { uuid: "ba672e81", stage: "change", date: "2026-10-02T08:48:36Z", blobs: { "change/change-ba672e81-text-standardisation.md": "afef460ee0078fb9f647d5d1af1ce8d2b13895e7" } }
