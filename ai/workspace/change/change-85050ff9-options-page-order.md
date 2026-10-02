@@ -14,14 +14,14 @@ Created: 2026 August 19
 ## 2.0 Template
 
 ```yaml
-# T02 Change Template v1.2 - YAML Format
+# T07 Change Template v1.2 - YAML Format
 
 change_info:
   id: "change-85050ff9"
   title: "Swap options menu page order: Clear settings/Check for updates first, Simulation/Debug second"
   date: "2026-08-19"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -145,11 +145,11 @@ implementation:
   deployment_notes: "No config or migration impact; session-only page state."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-19"
+  implemented_by: "Claude Code"
+  verification_date: "2026-10-02"
+  verified_by: "William Watson"
+  test_results: "On-device verification at gtach.local: the three test_cases passed. pytest: 286 passed, 1 failed (test_compensation_is_announced_once_per_session; pre-existing, unrelated; see report-85050ff9 §3.0). Implementing commit f8cb19d."
   issues_found: []
 
 traceability:
@@ -161,7 +161,10 @@ traceability:
     - issue_ref: "issue-85050ff9"
       relationship: "source"
 
-notes: ""
+notes: >
+  Deviation: five docstring references were corrected, not the three
+  enumerated. One is in _register_disconnected_regions, which is not listed
+  in affected_components (comment-only edit). See report-85050ff9 §4.0.
 
 version_history:
   - version: "1.0"
@@ -183,6 +186,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-19 | Initial change document creation. |
+| 1.1 | 2026-10-02 | Status implemented; implementation (f8cb19d) and on-device verification recorded; docstring deviation noted; template ref T02 → T07. |
 
 ---
 

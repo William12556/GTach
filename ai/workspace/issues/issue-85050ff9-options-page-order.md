@@ -14,14 +14,14 @@ Created: 2026 August 19
 ## 2.0 Template
 
 ```yaml
-# T03 Issue Template v1.3 - YAML Format
+# T06 Issue Template v1.3 - YAML Format
 
 issue_info:
   id: "issue-85050ff9"
   title: "Options menu shows Simulation/Debug on the default page instead of Clear settings/Check for updates"
   date: "2026-08-19"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -79,7 +79,7 @@ analysis:
     references to the current page assignment
     (_register_options_menu_regions, _draw_options_menu,
     _on_clear_settings_requested). No interface, state, or touch-region
-    ID changes. Does not qualify for the P03 §1.4.12 trivial exemption
+    ID changes. Does not qualify for the P04.12 trivial exemption
     because it is not confined to a single function.
   related_issues: []
 
@@ -88,15 +88,15 @@ resolution:
   target_date: ""
   approach: "See change-85050ff9."
   change_ref: "change-85050ff9"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-19"
+  resolved_by: "Claude Code"
+  fix_description: "Implemented by change-85050ff9 (commit f8cb19d)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-02"
+  verified_by: "William Watson"
+  test_results: "On-device verification at gtach.local: the three test_cases passed. pytest: 286 passed, 1 failed (test_compensation_is_announced_once_per_session; pre-existing, unrelated; see report-85050ff9 §3.0). Implementing commit f8cb19d."
+  closure_notes: "Closure follows the change, prompt and accept approvals."
 
 prevention:
   preventive_measures: ""
@@ -107,7 +107,7 @@ verification_enhanced:
     - "Swipe down into OPTIONS and confirm Clear settings / Check for updates render first."
     - "Swipe left/right and confirm Simulation mode / Debug toggle render on the second page."
     - "Confirm touch regions on each page match the drawn labels."
-  verification_results: ""
+  verification_results: "All three verification steps passed on the device (2026-10-02)."
 
 traceability:
   design_refs: []
@@ -143,6 +143,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-19 | Initial issue creation. |
+| 1.1 | 2026-10-02 | Status resolved; resolution (f8cb19d) and on-device verification recorded; P03 §1.4.12 → P04.12; template ref T03 → T06. |
 
 ---
 
