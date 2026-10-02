@@ -1,8 +1,0 @@
-file = /Users/williamwatson/Documents/GitHub/GTach/3d-case/GTach_holder.FCStd
-fillet edges selected: 5
-Plate_Outer    Part::MultiFuse    vol=  21592.50  state=['Up-to-date']
-Cavity_Tool    Part::MultiFuse    vol=  18714.39  state=['Up-to-date']
-Plate_Shelled  Part::Cut          vol=   5217.40  state=['Up-to-date']
-Post_Solid     Part::MultiFuse    vol=  20668.10  state=['Up-to-date']
-Body_Base      Part::MultiFuse    vol=  25885.50  state=['Up-to-date']
-Fillet_Top     Part::Fillet       vol=  25776.31  state=['Up-to-date']
