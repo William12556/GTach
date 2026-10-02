@@ -19,7 +19,7 @@ change_info:
   title: "Consolidate small-text typography to one 18px tier; eliminate parallel font-creation paths"
   date: "2026-08-19"
   author: "Claude"
-  status: "proposed"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -201,6 +201,10 @@ technical_details:
       change_type: "contract"
       details: "Method removed entirely"
       backward_compatible: "no"
+    - interface: "FontManager.get_plain_font"
+      change_type: "signature"
+      details: "New method; DisplayManager._get_plain_font now delegates to it (report-ba672e81 §4.1)"
+      backward_compatible: "yes"
 
 dependencies:
   internal:
@@ -252,11 +256,11 @@ implementation:
   deployment_notes: "Deploy to root@gtach.local per standard process; verify visually before closing issue"
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-08-19"
+  implemented_by: "Claude Code"
+  verification_date: "2026-10-02"
+  verified_by: "William Watson"
+  test_results: "On-device verification at gtach.local (2026-10-02) at FONT_SMALL_TEXT = 20; installed gtach 0.4.3, display sources identical to repository HEAD (SHA-256). pytest: 224 passed, 1 failed (test_compensation_is_announced_once_per_session; pre-existing, unrelated; see report-ba672e81 §3.3). Commits 4ff5f18 and 325c304."
   issues_found: []
 
 traceability:
@@ -270,8 +274,28 @@ notes: >
   FONT_SMALL_TEXT = 18 is a starting value per explicit instruction;
   may be revised after on-device testing without requiring this
   change's reopening if the revision is a single-constant value
-  change (trivial exemption may apply per P03 §1.4.12 if criteria
+  change (trivial exemption may apply per P04.12 if criteria
   met at that time).
+
+  Follow-up 325c304 (2026-08-19), human-approved: FONT_SMALL_TEXT raised
+  from 18 to 20 after on-device testing; the options-menu "Swipe up to
+  return" hint moved from y=445 to y=435 to keep clearance from the
+  viewport boundary. Applied as a trivial change under P04.12; it spans
+  two files (typography.py, manager.py), so the single-function
+  criterion was not met. 20 px is the accepted value.
+
+  Implementation deviations (report-ba672e81 §4.0), accepted 2026-10-02:
+  (1) plain-font creation moved into a new FontManager.get_plain_font();
+  DisplayManager._get_plain_font is a delegate; (2) both get_minimal_font()
+  definitions removed (one shadowed the other); (3) two further bypasses
+  in splash.py (_draw_title_text, _draw_version_text) repointed to
+  FontManager at unchanged sizes; (4) get_label_small_font() retained as
+  the single small-text accessor.
+
+  Known inconsistency: the disconnection-cause line
+  (manager.py, _render_disconnected) still uses get_font(18), 2 px below
+  FONT_SMALL_TEXT. Out of scope here (report-ba672e81 §4.4); tracked in
+  ai/task.md.
 
 version_history:
   - version: "1.0"
@@ -293,6 +317,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-19 | Initial creation |
+| 1.1 | 2026-10-02 | Status implemented; implementation (4ff5f18) and on-device verification recorded; 325c304 follow-up (20 px) and exemption point recorded; deviations and cause-line inconsistency noted; FontManager.get_plain_font added to interface_changes; P03 §1.4.12 → P04.12. |
 
 ---
 

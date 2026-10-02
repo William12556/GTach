@@ -19,7 +19,7 @@ issue_info:
   title: "Small-text font sizes inconsistent across screens; parallel font-creation paths bypass FontManager validation"
   date: "2026-08-19"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -128,15 +128,15 @@ resolution:
     return None, removing the need for raw pygame.font.Font fallbacks
     in splash.py and device_surfaces.py.
   change_ref: "change-ba672e81"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-08-19"
+  resolved_by: "Claude Code"
+  fix_description: "Implemented by change-ba672e81 (commit 4ff5f18); FONT_SMALL_TEXT raised to 20 px in follow-up commit 325c304."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-02"
+  verified_by: "William Watson"
+  test_results: "On-device verification at gtach.local (2026-10-02) at FONT_SMALL_TEXT = 20; installed gtach 0.4.3, display sources identical to repository HEAD (SHA-256). pytest: 224 passed, 1 failed (test_compensation_is_announced_once_per_session; pre-existing, unrelated; see report-ba672e81 §3.3). Commits 4ff5f18 and 325c304."
+  closure_notes: "Closure follows the change, prompt and accept approvals."
 
 prevention:
   preventive_measures: >
@@ -150,7 +150,7 @@ verification_enhanced:
     - "On-device visual inspection of all affected screens post-implementation (SSH to root@gtach.local, SDL_VIDEODRIVER=dummy per project convention)"
     - "Code search confirming zero remaining references to FONT_LABEL_SMALL, FONT_MINIMAL, and manager.py::_get_cached_font()"
     - "Code search confirming zero remaining raw pygame.font.Font(None, ...) calls outside typography.py"
-  verification_results: ""
+  verification_results: "All verification steps passed (2026-10-02); small text verified on the device at 20 px."
 
 traceability:
   design_refs: []
@@ -191,6 +191,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-19 | Initial creation |
+| 1.1 | 2026-10-02 | Status resolved; resolution (4ff5f18, 325c304) and on-device verification recorded. |
 
 ---
 
