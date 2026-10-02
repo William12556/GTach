@@ -4,3 +4,4 @@ approvals:
   - { uuid: "85050ff9", stage: "change", date: "2026-10-02T08:48:27Z", blobs: { "change/change-85050ff9-options-page-order.md": "461071368b05398f34320d9bbe7fcd5a908fcdaa" } }
   - { uuid: "85050ff9", stage: "prompt", date: "2026-10-02T08:48:28Z", blobs: { "prompt/closed/prompt-85050ff9-options-page-order.md": "6b80f6eb756e77aeaa12988d5e9658779d527d76" } }
   - { uuid: "85050ff9", stage: "accept", date: "2026-10-02T08:48:30Z", blobs: {  } }
+  - { uuid: "479b2e51", stage: "change", date: "2026-10-02T08:48:31Z", blobs: { "change/change-479b2e51-device-list-pagination.md": "c51a0ca1139b84de706fe8b8fad91aed481d0078" } }
