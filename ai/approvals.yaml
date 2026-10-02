@@ -8,3 +8,4 @@ approvals:
   - { uuid: "479b2e51", stage: "prompt", date: "2026-10-02T08:48:33Z", blobs: { "prompt/closed/prompt-479b2e51-device-list-focused-index.md": "a68f7f30ac62a4974aa7686e62e9e9f303a4021c" } }
   - { uuid: "479b2e51", stage: "accept", date: "2026-10-02T08:48:34Z", blobs: {  } }
   - { uuid: "ba672e81", stage: "change", date: "2026-10-02T08:48:36Z", blobs: { "change/change-ba672e81-text-standardisation.md": "afef460ee0078fb9f647d5d1af1ce8d2b13895e7" } }
+  - { uuid: "ba672e81", stage: "prompt", date: "2026-10-02T08:48:37Z", blobs: { "prompt/closed/prompt-ba672e81-text-standardisation.md": "f8b735ef1c90c8b121b411145057c2ee33bd0201" } }
