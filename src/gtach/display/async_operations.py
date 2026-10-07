@@ -298,10 +298,13 @@ class AsyncOperationManager:
                 # Notify progress callback if registered
                 if operation_id in self.progress_callbacks:
                     try:
+                        # Capture under the lock, call after releasing it
+                        # (CLAUDE.md §4 rule 8, issue-fbe7e98a).
                         with self._operations_lock:
                             operation = self.operations.get(operation_id)
-                            if operation:
-                                self.progress_callbacks[operation_id](operation)
+                            callback = self.progress_callbacks.get(operation_id)
+                        if operation and callback:
+                            callback(operation)
                     except Exception as e:
                         self.logger.error(f"Progress callback error for {operation_id}: {e}", exc_info=True)
                 
@@ -330,10 +333,13 @@ class AsyncOperationManager:
         # Notify progress callback if registered
         if operation_id in self.progress_callbacks:
             try:
+                # Capture under the lock, call after releasing it
+                # (CLAUDE.md §4 rule 8, issue-fbe7e98a).
                 with self._operations_lock:
                     operation = self.operations.get(operation_id)
-                    if operation:
-                        self.progress_callbacks[operation_id](operation)
+                    callback = self.progress_callbacks.get(operation_id)
+                if operation and callback:
+                    callback(operation)
             except Exception as e:
                 self.logger.error(f"Progress callback error for {operation_id}: {e}", exc_info=True)
 

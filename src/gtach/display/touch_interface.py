@@ -170,14 +170,17 @@ class TouchInterface(ABC):
         Args:
             event: TouchEvent to emit
         """
+        # Capture under the lock, call after releasing it (CLAUDE.md §4
+        # rule 8, issue-fbe7e98a).
         with self._lock:
-            if self._callback:
-                try:
-                    self._callback(event)
-                except Exception as e:
-                    self.logger.error(f"Error in touch callback: {e}", exc_info=True)
-            else:
-                self.logger.debug(f"Touch event {event.event_type.name} at ({event.x:.3f}, {event.y:.3f}) - no callback registered")
+            callback = self._callback
+        if callback:
+            try:
+                callback(event)
+            except Exception as e:
+                self.logger.error(f"Error in touch callback: {e}", exc_info=True)
+        else:
+            self.logger.debug(f"Touch event {event.event_type.name} at ({event.x:.3f}, {event.y:.3f}) - no callback registered")
     
     def is_running(self) -> bool:
         """

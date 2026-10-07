@@ -208,6 +208,11 @@ class TouchEventCoordinator(TouchEventInterface):
         Returns:
             TouchAction or None
         """
+        # A button callback is captured under the lock and invoked after
+        # it is released (CLAUDE.md §4 rule 8, issue-fbe7e98a).
+        result = None
+        deferred = None
+        deferred_region_id = None
         with self._lock:
             try:
                 if not self.validate_coordinates(pos):
@@ -228,26 +233,37 @@ class TouchEventCoordinator(TouchEventInterface):
                 # Find the topmost region that contains the touch point
                 hit_region = self._find_hit_region(pos)
                 
+                handled = False
                 if hit_region:
                     self._touch_state['active_region'] = hit_region.region_id
                     
                     # Handle slider touch down
                     if hit_region.metadata.get('type') == 'slider':
-                        return self._handle_slider_touch_down(pos, hit_region)
+                        result = self._handle_slider_touch_down(pos, hit_region)
+                        handled = True
                     
                     # Handle button touch down
                     elif hit_region.metadata.get('type') == 'button':
-                        return self._handle_button_touch_down(pos, hit_region)
+                        result, deferred = self._handle_button_touch_down(pos, hit_region)
+                        deferred_region_id = hit_region.region_id
+                        handled = True
                 
-                # Update statistics
-                self._stats['touches_processed'] += 1
-                self._stats['last_touch_time'] = current_time
-                
-                return None
+                if not handled:
+                    # Update statistics
+                    self._stats['touches_processed'] += 1
+                    self._stats['last_touch_time'] = current_time
                 
             except Exception as e:
                 self.logger.error(f"Touch down handling error: {e}", exc_info=True)
                 return None
+
+        if deferred is not None:
+            try:
+                deferred(pos)
+            except Exception as e:
+                self.logger.error(f"Button callback error for {deferred_region_id}: {e}", exc_info=True)
+
+        return result
     
     def handle_touch_move(self, pos: Tuple[int, int]) -> Optional[TouchAction]:
         """Handle touch move/drag event"""
@@ -465,23 +481,30 @@ class TouchEventCoordinator(TouchEventInterface):
             self.logger.error(f"Slider value calculation error: {e}", exc_info=True)
             return track_bounds.get('min_val', 0)
     
-    def _handle_button_touch_down(self, pos: Tuple[int, int], region: TouchRegion) -> TouchAction:
-        """Handle touch down on button region"""
+    def _handle_button_touch_down(
+        self, pos: Tuple[int, int], region: TouchRegion
+    ) -> Tuple[TouchAction, Optional[Callable]]:
+        """Resolve a touch down on a button region.
+
+        The callback is returned rather than invoked: handle_touch_down
+        calls it after releasing the coordinator lock (issue-fbe7e98a).
+        handle_touch_up is not called in this delivery path (TouchHandler
+        routes taps via handle_touch_down only), so the callback must run
+        on touch down.
+
+        Returns:
+            (action type, callback or None).
+        """
         try:
             self.logger.debug(f"Button {region.region_id} pressed at {pos}")
-            # Execute callback immediately — handle_touch_up is not called in this
-            # delivery path (TouchHandler routes taps via handle_touch_down only)
             callback = region.metadata.get('callback')
-            if callback and callable(callback):
-                try:
-                    callback(pos)
-                except Exception as e:
-                    self.logger.error(f"Button callback error for {region.region_id}: {e}", exc_info=True)
-            return region.action_type
+            if not (callback and callable(callback)):
+                callback = None
+            return region.action_type, callback
             
         except Exception as e:
             self.logger.error(f"Button touch down error: {e}", exc_info=True)
-            return TouchAction.NONE
+            return TouchAction.NONE, None
     
     def _end_slider_interaction(self) -> None:
         """End active slider interaction"""

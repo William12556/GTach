@@ -72,6 +72,10 @@ class BluetoothSetupInterface:
         def on_bluetooth_init_complete(operation):
             """Callback when Bluetooth initialization completes"""
             try:
+                # Progress updates arrive here too; act only on a
+                # terminal status (audit-36b6ea95 D12).
+                if operation.status in (OperationStatus.PENDING, OperationStatus.RUNNING):
+                    return
                 if operation.status == OperationStatus.COMPLETED:
                     self.pairing = operation.result
                     self._pairing_ready.set()
@@ -226,6 +230,10 @@ class BluetoothSetupInterface:
         def on_discovery_complete(operation):
             """Callback when discovery operation completes"""
             try:
+                # Progress updates arrive here too; act only on a
+                # terminal status (audit-36b6ea95 D12).
+                if operation.status in (OperationStatus.PENDING, OperationStatus.RUNNING):
+                    return
                 if operation.status == OperationStatus.COMPLETED:
                     devices = operation.result
                     state.discovered_devices = devices
@@ -313,6 +321,10 @@ class BluetoothSetupInterface:
         def on_pairing_complete(operation):
             """Callback when pairing operation completes"""
             try:
+                # Progress updates arrive here too; act only on a
+                # terminal status (audit-36b6ea95 D12).
+                if operation.status in (OperationStatus.PENDING, OperationStatus.RUNNING):
+                    return
                 if operation.status == OperationStatus.COMPLETED:
                     success = operation.result
                     if success:
@@ -379,6 +391,57 @@ class BluetoothSetupInterface:
             self.logger.error(f"Failed to submit pairing operation: {e}", exc_info=True)
             state.pairing_status = PairingStatus.FAILED
     
+    def start_device_probe(self, on_result: Callable[[bool], None]) -> None:
+        """Check asynchronously that the stored device is reachable.
+
+        Runs the RFCOMM connect on an async worker so the caller (the
+        touch thread) never blocks on it (issue-fbe7e98a). In simulation
+        mode, or where AF_BLUETOOTH is unavailable, the probe passes.
+
+        Args:
+            on_result: Called once, on a worker thread, with True if the
+                device answered and False otherwise.
+        """
+        def probe_task():
+            """Connect to the primary device and disconnect again."""
+            import socket as _socket
+            from ....comm.rfcomm import RFCOMMTransport
+            if self._pairing_factory is not None or not hasattr(_socket, 'AF_BLUETOOTH'):
+                return True
+            device = self.device_store.get_primary_device()
+            if device is None:
+                return False
+            transport = RFCOMMTransport(device.mac_address, channel=1)
+            ok = transport.connect()
+            if ok:
+                transport.disconnect()
+            return ok
+
+        def deliver(ok: bool) -> None:
+            try:
+                on_result(ok)
+            except Exception as e:
+                self.logger.error(f"Device probe result handler failed: {e}", exc_info=True)
+
+        def on_probe_complete(operation):
+            """Report the probe outcome on a terminal status only."""
+            if operation.status in (OperationStatus.PENDING, OperationStatus.RUNNING):
+                return
+            if operation.status == OperationStatus.COMPLETED:
+                deliver(bool(operation.result))
+            else:
+                deliver(False)
+
+        try:
+            self.async_manager.submit_operation(
+                OperationType.OBD_CONNECTION_TEST,
+                probe_task,
+                progress_callback=on_probe_complete
+            )
+        except Exception as e:
+            self.logger.error(f"Failed to submit device probe: {e}", exc_info=True)
+            deliver(False)
+
     def cancel_operations(self) -> None:
         """Cancel all active Bluetooth operations"""
         try:

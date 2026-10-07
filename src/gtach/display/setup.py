@@ -79,6 +79,7 @@ class SetupDisplayManager:
         self.positioning_engine = CircularPositioningEngine()
         self.device_renderer = DeviceSurfaceRenderer()
         self._on_complete = on_complete
+        self._probe_in_flight = False
         
         # UI state and threading
         self.touch_regions = []  # Protected by _touch_regions_lock
@@ -780,22 +781,24 @@ class SetupDisplayManager:
                 return SetupAction.COMPLETE
 
             elif action == "current_continue":
-                # Verify the stored device is reachable before completing
-                from ..comm.device_store import DeviceStore
-                from ..comm.rfcomm import RFCOMMTransport
-                device = DeviceStore().get_primary_device()
-                if device:
-                    probe = RFCOMMTransport(device.mac_address)
-                    reachable = probe.connect()
-                    if reachable:
-                        probe.disconnect()
-                    else:
-                        self.logger.warning(f"Stored device {device.mac_address} not reachable — returning to welcome")
-                        self.state_coordinator.update_state(error_message="Device not available")
-                        self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
-                        return SetupAction.CANCEL
-                self.state_coordinator.complete_setup()
-                return SetupAction.COMPLETE
+                # Verify the stored device is reachable before completing.
+                # The probe runs on an async worker, never on the touch
+                # thread (issue-fbe7e98a); one probe at a time.
+                if self._probe_in_flight:
+                    return None
+                self._probe_in_flight = True
+
+                def _on_probe_result(ok: bool) -> None:
+                    self._probe_in_flight = False
+                    if ok:
+                        self.state_coordinator.complete_setup()
+                        return
+                    self.logger.warning("Stored device not reachable — returning to welcome")
+                    self.state_coordinator.update_state(error_message="Device not available")
+                    self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
+
+                self.bluetooth_interface.start_device_probe(_on_probe_result)
+                return None
 
             elif action == "new_setup":
                 # Clear stored device and restart setup
