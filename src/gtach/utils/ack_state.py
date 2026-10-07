@@ -28,7 +28,7 @@ except ImportError:
     yaml = None
     YAML_AVAILABLE = False
 
-from .home import get_home_path
+from .home import gtach_home
 
 
 class AcknowledgementStateManager:
@@ -45,16 +45,14 @@ class AcknowledgementStateManager:
         Initialize acknowledgement state manager.
 
         Args:
-            state_file_path: Path to state file. If None, uses default path
-                           in config directory: ~/.config/gtach/ack_state.yaml
+            state_file_path: Path to state file. If None, uses
+                           gtach_home()/config/ack_state.yaml; the
+                           directory is created on save (issue-5fbff586).
         """
         self.logger = logging.getLogger(f'{__name__}.AcknowledgementStateManager')
 
         if state_file_path is None:
-            # Default to config directory
-            config_dir = get_home_path() / 'config'
-            config_dir.mkdir(parents=True, exist_ok=True)
-            self.state_file_path = config_dir / 'ack_state.yaml'
+            self.state_file_path = gtach_home() / 'config' / 'ack_state.yaml'
         else:
             self.state_file_path = Path(state_file_path)
 

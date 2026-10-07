@@ -64,7 +64,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 |---|---|
 | Display / events | pygame (SDL2); framebuffer renderer (`SDL_VIDEODRIVER=dummy`, `/dev/fb0` mmap) on Pi |
 | Serial transport | pyserial |
-| Configuration | PyYAML |
+| Configuration | PyYAML — single flat config.yaml under GTACH_HOME (default /opt/gtach) |
 | CLI | argparse |
 | Threading | stdlib `threading` — all shared state behind `threading.Lock` |
 | Logging | `start.log` (truncated at boot, always written) + `debug.log` (`RotatingFileHandler`, suppressed unless `--debug`) + error.log (WARNING and above, always on, 1 MB × 5, size rotation only) |
@@ -178,7 +178,7 @@ src/gtach/
   comm/             transports (tcp, serial, rfcomm, simtcp, simbt), OBD, DeviceStore
   core/             ThreadManager, WatchdogMonitor
   display/          DisplayManager, rendering, touch, setup
-  utils/            ConfigManager, PlatformDetector
+  utils/            ConfigStore, gtach_home, PlatformDetector
 ai/workspace/
   design/           design documents
   change/           active change documents
@@ -200,6 +200,7 @@ ai/workspace/
 | 1.1 | 2026-09-29 | Governance path updated for the AI-G&O 11.0 layout (`ai/governance/software-engineering/governance.md`). |
 | 1.2 | 2026-10-07 | Logging row: error.log (change-269871a0) |
 | 1.3 | 2026-10-07 | Rule 8: no call-outs under a lock (change-e9216e17) |
+| 1.4 | 2026-10-07 | Configuration: single ConfigStore under GTACH_HOME (change-5fbff586) |
 
 ---
 

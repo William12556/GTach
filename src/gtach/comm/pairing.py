@@ -32,43 +32,28 @@ except ImportError:
         BLUETOOTH_BACKEND = 'none'
 
 from ..display.setup_models import BluetoothDevice, PairingStatus, DeviceType
-from ..utils import ConfigManager
 
 class BluetoothPairing:
     """Manages Bluetooth device discovery and pairing operations with timeout protection"""
     
-    def __init__(self, config_manager: ConfigManager = None):
+    # Timeouts in seconds; constants since no configuration file defines
+    # them (issue-5fbff586).
+    DISCOVERY_TIMEOUT_S = 30
+    CONNECTION_TIMEOUT_S = 10
+    LOOKUP_TIMEOUT_S = 5
+    INITIALIZATION_TIMEOUT_S = 15
+    OPERATION_TIMEOUT_S = 30
+
+    def __init__(self):
         self.logger = logging.getLogger('BluetoothPairing')
-        self._config_manager = config_manager or ConfigManager()
         self._discovery_thread = None
-        
-        # Load timeout configuration from YAML file directly  
-        try:
-            # Load raw YAML config for pairing timeouts
-            import yaml
-            with open(self._config_manager.config_path, 'r') as f:
-                raw_config = yaml.safe_load(f)
-            pairing_config = raw_config.get('bluetooth', {}).get('pairing', {})
-            
-            # int() at the read, not at the range() call. The value
-            # reaches two sites — range(chunks) below and the
-            # duration argument to bluetooth.discover_devices — and
-            # PyBluez expects an int at the second as well
-            # (core review §3.5, recommendation #5).
-            self.discovery_timeout = int(pairing_config.get('discovery_timeout', 30))
-            self.connection_timeout = pairing_config.get('connection_timeout', 10) 
-            self.lookup_timeout = pairing_config.get('lookup_timeout', 5)
-            self.initialization_timeout = pairing_config.get('initialization_timeout', 15)
-            self.operation_timeout = pairing_config.get('operation_timeout', 30)
-        except Exception as e:
-            self.logger.warning(f"Could not load pairing timeouts from config: {e}")
-            # Use default timeouts
-            self.discovery_timeout = 30
-            self.connection_timeout = 10
-            self.lookup_timeout = 5
-            self.initialization_timeout = 15
-            self.operation_timeout = 30
-        
+
+        self.discovery_timeout = self.DISCOVERY_TIMEOUT_S
+        self.connection_timeout = self.CONNECTION_TIMEOUT_S
+        self.lookup_timeout = self.LOOKUP_TIMEOUT_S
+        self.initialization_timeout = self.INITIALIZATION_TIMEOUT_S
+        self.operation_timeout = self.OPERATION_TIMEOUT_S
+
         self.logger.info(f"Pairing timeouts: discovery={self.discovery_timeout}s, connection={self.connection_timeout}s")
         
         # Thread pool for timeout operations

@@ -31,13 +31,6 @@ except ImportError:
     pygame = None
     PYGAME_AVAILABLE = False
 
-try:
-    import yaml
-    YAML_AVAILABLE = True
-except ImportError:
-    yaml = None
-    YAML_AVAILABLE = False
-
 # Component imports
 from .rendering import DisplayRenderingEngine, RenderTarget
 from .input import TouchEventCoordinator, TouchAction, GestureType
@@ -47,6 +40,7 @@ from .performance import PerformanceMonitor
 from .models import (DisplayMode, DisplayConfig, ConnectionStatus,
                      Palette, DAY_PALETTE, NIGHT_PALETTE)
 from .splash import SplashScreen
+from ..utils.config import AppConfig, ConfigStore
 from .typography import (get_font_manager, get_title_font, get_medium_font, get_small_font,
                          get_rpm_large_font, get_rpm_medium_font, get_label_small_font,
                          get_title_display_font, get_heading_font, TypographyConstants,
@@ -77,10 +71,12 @@ class DisplayManager:
     LINK_LOSS_TIMEOUT = 2.0
     LINK_RECOVERY_SAMPLES = 2
 
-    def __init__(self, thread_manager: ThreadManager, terminal_restorer: TerminalRestorer = None, config_path: str = 'config.yaml'):
+    def __init__(self, thread_manager: ThreadManager, terminal_restorer: TerminalRestorer = None,
+                 config_store: Optional[ConfigStore] = None):
         self.logger = logging.getLogger('DisplayManager')
         self.thread_manager = thread_manager
-        self.config_path = config_path
+        # All configuration I/O goes through the store (issue-5fbff586).
+        self._config_store = config_store or ConfigStore()
         self._shutdown_event = threading.Event()
         self.terminal_restorer = terminal_restorer
         self._sim_mode = False  # Session-only simulation mode flag
@@ -509,88 +505,51 @@ class DisplayManager:
             self.logger.error(f"Legacy component initialization failed: {e}", exc_info=True)
     
     def _load_config(self) -> None:
-        """Load display configuration"""
+        """Load display configuration from the ConfigStore"""
         try:
-            if YAML_AVAILABLE and os.path.exists(self.config_path):
-                with open(self.config_path, 'r') as f:
-                    config_data = yaml.safe_load(f)
-                    saved_mode_str = config_data.get('mode', 'RADIAL')
+            app = self._config_store.load()
+            # DIGITAL was retired in v0.4.0 (display review §7.5/§7.6,
+            # recommendation 25; ai/task.md §7.3.14). ConfigStore.load
+            # maps it to RADIAL, which now shows the numeric readout
+            # DIGITAL existed for. The operator's file is not rewritten.
+            saved_mode_str = app.mode
 
-                    # DIGITAL was retired in v0.4.0 (display review
-                    # §7.5/§7.6, recommendation 25; ai/task.md §7.3.14).
-                    # Every system upgrading from an earlier build has it
-                    # persisted, so this is the expected case rather than
-                    # an error. RADIAL now shows the numeric readout
-                    # DIGITAL existed for. The migration is read-side
-                    # only — the operator's file is not rewritten.
-                    if saved_mode_str == 'DIGITAL':
-                        self.logger.info(
-                            "Display mode DIGITAL was retired; using RADIAL, "
-                            "which now shows the numeric readout"
-                        )
-                        saved_mode_str = 'RADIAL'
+            # Try to parse saved mode with fallback to RADIAL
+            try:
+                saved_mode = DisplayMode[saved_mode_str]
+                # Transient modes must not be used as post-splash target
+                _transient = (DisplayMode.SPLASH, DisplayMode.OPTIONS, DisplayMode.ACKNOWLEDGEMENT)
+                if saved_mode in _transient:
+                    saved_mode = DisplayMode.RADIAL
+            except KeyError:
+                self.logger.warning(f"Unknown display mode '{saved_mode_str}', using RADIAL")
+                saved_mode = DisplayMode.RADIAL
 
-                    # Try to parse saved mode with GAUGE fallback to RADIAL
-                    try:
-                        saved_mode = DisplayMode[saved_mode_str]
-                        # Transient modes must not be used as post-splash target
-                        _transient = (DisplayMode.SPLASH, DisplayMode.OPTIONS, DisplayMode.ACKNOWLEDGEMENT)
-                        if saved_mode in _transient:
-                            saved_mode = DisplayMode.RADIAL
-                    except KeyError:
-                        self.logger.warning(f"Unknown display mode '{saved_mode_str}', using RADIAL")
-                        saved_mode = DisplayMode.RADIAL
-
-                    # An absent key yields day through the default and
-                    # warns nothing — that is every installation
-                    # predating change-5012004e, not an error.
-                    palette_name = config_data.get('palette', 'day')
-                    if palette_name == 'night':
-                        self._palette = NIGHT_PALETTE
-                    elif palette_name == 'day':
-                        self._palette = DAY_PALETTE
-                    else:
-                        self.logger.warning(
-                            f"Unknown palette '{palette_name}', using day"
-                        )
-                        self._palette = DAY_PALETTE
-
-                    engine_profile = config_data.get('engine_profile', 'abarth_595_turismo')
-
-                    # Load engine profile RPM bands
-                    from ..utils.config import load_engine_profile
-                    rpm_bands = load_engine_profile(engine_profile)
-
-                    self.config = DisplayConfig(
-                        mode=DisplayMode.SPLASH,  # Always start with splash
-                        rpm_warning=config_data.get('rpm_warning', 6500),
-                        rpm_danger=config_data.get('rpm_danger', 7000),
-                        fps_limit=config_data.get('fps_limit', 60),
-                        touch_long_press=config_data.get('touch_long_press', 1.0),
-                        engine_profile=engine_profile,
-                        rpm_bands=rpm_bands
-                    )
-                    self._post_splash_mode = saved_mode
+            palette_name = app.palette
+            if palette_name == 'night':
+                self._palette = NIGHT_PALETTE
+            elif palette_name == 'day':
+                self._palette = DAY_PALETTE
             else:
-                if not YAML_AVAILABLE:
-                    self.logger.info("YAML not available - using default configuration")
-
-                # Load default engine profile
-                try:
-                    from ..utils.config import load_engine_profile
-                    rpm_bands = load_engine_profile('abarth_595_turismo')
-                except Exception as e:
-                    self.logger.warning(f"Failed to load engine profile: {e}")
-                    from .models import RPMBands
-                    rpm_bands = RPMBands()
-
-                self.config = DisplayConfig(
-                    mode=DisplayMode.SPLASH,
-                    rpm_bands=rpm_bands
+                self.logger.warning(
+                    f"Unknown palette '{palette_name}', using day"
                 )
-                self._post_splash_mode = DisplayMode.RADIAL
-                if YAML_AVAILABLE:
-                    self._save_config()
+                self._palette = DAY_PALETTE
+
+            # Load engine profile RPM bands
+            from ..utils.config import load_engine_profile
+            rpm_bands = load_engine_profile(app.engine_profile)
+
+            self.config = DisplayConfig(
+                mode=DisplayMode.SPLASH,  # Always start with splash
+                rpm_warning=app.rpm_warning,
+                rpm_danger=app.rpm_danger,
+                fps_limit=app.fps_limit,
+                touch_long_press=app.touch_long_press,
+                engine_profile=app.engine_profile,
+                rpm_bands=rpm_bands
+            )
+            self._post_splash_mode = saved_mode
 
         except Exception as e:
             self.logger.error(f"Config load failed: {e}", exc_info=True)
@@ -610,16 +569,12 @@ class DisplayManager:
             self._post_splash_mode = DisplayMode.RADIAL
     
     def _save_config(self) -> None:
-        """Save current configuration.
+        """Save current configuration through the ConfigStore.
 
         Never persists SPLASH as the display mode — saves _post_splash_mode
         instead so that the next startup transitions correctly to the last
         active mode rather than looping the splash screen.
         """
-        if not YAML_AVAILABLE:
-            self.logger.debug("YAML not available - configuration will not be persisted")
-            return
-
         try:
             # Do not persist transient modes: SPLASH, OPTIONS, ACKNOWLEDGEMENT
             _transient = (DisplayMode.SPLASH, DisplayMode.OPTIONS, DisplayMode.ACKNOWLEDGEMENT)
@@ -628,17 +583,15 @@ class DisplayManager:
                 if self.config.mode in _transient
                 else self.config.mode
             )
-            config_data = {
-                'mode': mode_to_save.name,
-                'rpm_warning': self.config.rpm_warning,
-                'rpm_danger': self.config.rpm_danger,
-                'fps_limit': self.config.fps_limit,
-                'touch_long_press': self.config.touch_long_press,
-                'engine_profile': self.config.engine_profile,
-                'palette': self._palette.name,
-            }
-            with open(self.config_path, 'w') as f:
-                yaml.dump(config_data, f)
+            self._config_store.save(AppConfig(
+                mode=mode_to_save.name,
+                palette=self._palette.name,
+                engine_profile=self.config.engine_profile,
+                fps_limit=self.config.fps_limit,
+                touch_long_press=self.config.touch_long_press,
+                rpm_warning=self.config.rpm_warning,
+                rpm_danger=self.config.rpm_danger,
+            ))
 
         except Exception as e:
             self.logger.error(f"Config save failed: {e}", exc_info=True)

@@ -16,6 +16,7 @@ import signal
 import logging
 import atexit
 import threading
+from pathlib import Path
 from typing import NoReturn
 import argparse
 from .core import ThreadManager, WatchdogMonitor
@@ -24,7 +25,7 @@ from .comm.transport import TRANSPORT_NAMES, TRANSPORT_FORCED, TRANSPORT_FAST
 from .comm.device_store import DeviceStore
 from .display import DisplayManager
 from .display.setup import SetupDisplayManager
-from .utils import ConfigManager, TerminalRestorer, get_platform_type
+from .utils import ConfigStore, TerminalRestorer, get_platform_type
 
 class GTachApplication:
     """Main application controller"""
@@ -37,7 +38,9 @@ class GTachApplication:
 
     def __init__(self, config_path: str = None, debug: bool = False, args=None):
         """Initialize application components"""
-        self._config_manager = ConfigManager(config_path)
+        # The single configuration store, injected into DisplayManager
+        # (issue-5fbff586).
+        self._config_store = ConfigStore(Path(config_path) if config_path else None)
         self.logger = logging.getLogger(__name__)
         self._args = args or argparse.Namespace()
         self._debug = debug
@@ -131,7 +134,6 @@ class GTachApplication:
         try:
             from . import __version__
             self.logger.info(f"Starting GTach application v{__version__}")
-            config = self._config_manager.load_config()
             
             # Check if setup is needed
             # If --transport is explicitly specified, bypass device store check
@@ -342,7 +344,8 @@ class GTachApplication:
 
         # Reuse existing DisplayManager on re-entry; only create on first call
         if not hasattr(self, '_display') or self._display is None:
-            self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
+            self._display = DisplayManager(self._thread_manager, self._terminal_restorer,
+                                           config_store=self._config_store)
             self._display._setup_entry_callback = self._re_enter_setup
             self._display._restart_callback = self._request_restart
             self._display._debug_toggle_callback = self.toggle_debug_logging
@@ -471,7 +474,8 @@ class GTachApplication:
     def _start_normal_mode(self) -> None:
         """Start application in normal mode with splash screen"""
         # Initialize display manager first with splash screen
-        self._display = DisplayManager(self._thread_manager, self._terminal_restorer)
+        self._display = DisplayManager(self._thread_manager, self._terminal_restorer,
+                                       config_store=self._config_store)
         self._display._setup_entry_callback = self._re_enter_setup
         self._display._restart_callback = self._request_restart
         self._display._debug_toggle_callback = self.toggle_debug_logging

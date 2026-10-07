@@ -337,23 +337,11 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def find_configuration_file() -> Optional[Path]:
-    import os
-    env = os.getenv('GTACH_CONFIG')
-    if env and Path(env).exists():
-        return Path(env)
-    user = Path.home() / '.config' / 'gtach' / 'config.yaml'
-    if user.exists():
-        return user
-    system = Path('/etc/gtach/config.yaml')
-    if system.exists():
-        return system
-    return None
-
-
 def main() -> int:
     args = parse_arguments()
-    config_file = args.config or find_configuration_file()
+    # One location rule: --config, else the ConfigStore default under
+    # GTACH_HOME (issue-5fbff586).
+    config_file = args.config
     setup_logging(args.debug)
 
     if args.validate_dependencies:
@@ -363,13 +351,15 @@ def main() -> int:
         return 0 if v.can_start_application() else 1
 
     if args.validate_config:
-        try:
-            from .utils.config import ConfigManager
-            ConfigManager(config_file).load_config()
-            return 0
-        except Exception as e:
-            print(f'Config invalid: {e}')
+        from .utils.config import ConfigStore
+        store = ConfigStore(Path(config_file) if config_file else None)
+        errors = store.validate()
+        for error in errors:
+            print(f'Config invalid: {error}')
+        if errors:
             return 1
+        print(f'Config valid: {store.path}')
+        return 0
 
     from .app import GTachApplication
     app = GTachApplication(config_file, args.debug, args)

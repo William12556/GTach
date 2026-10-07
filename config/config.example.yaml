@@ -1,0 +1,14 @@
+# GTach display configuration (example).
+#
+# Copy to $GTACH_HOME/config.yaml (default /opt/gtach/config.yaml) to use.
+# `gtach --validate-config` checks the file. Values shown are the defaults.
+#
+# Copyright (c) 2026 William Watson. MIT License.
+
+mode: RADIAL
+palette: day
+engine_profile: abarth_595_turismo
+fps_limit: 30
+touch_long_press: 1.0
+rpm_warning: 6500
+rpm_danger: 7000
