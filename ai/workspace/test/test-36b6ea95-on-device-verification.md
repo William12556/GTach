@@ -94,7 +94,7 @@ scp bin/gtach-verify-36b6ea95.sh root@gtach.local:/tmp/
 | C6 | 453f0a80 | `devices.yaml` present with a paired MAC address |
 | C7a/b/c | 52653cd6 | `[pi]` extra installed; `pip check` clean; no mock fallback |
 | C8a/b | 52653cd6 | Unit directives; `systemd-analyze security` summary |
-| C9 | 674bec49 | At most one SetupManager thread per stack dump (needs Debug on) |
+| C9 | 674bec49 | At most one SetupManager thread per stack dump (needs Debug on and dumps requested with SIGUSR1) |
 | C10 | 52653cd6, d140121d | Stop time below 25 s; active after restart (`--stop-test`) |
 
 [Return to Table of Contents](<#table of contents>)
@@ -182,7 +182,13 @@ Issue: 269871a0.
 
 Issues: e9216e17, fbe7e98a, 674bec49, 4005360c.
 
-1. Note the time. Turn Debug on (OPTIONS → "Debug: On"). This arms `stacks.log` for C9.
+1. Note the time. Turn Debug on (OPTIONS → "Debug: On"). This arms on-request stack dumps for C9 (`change-fe755cfd`; the former 15 s periodic dump is removed). After each of steps 2, 3 and 6, request a dump:
+
+   ```bash
+   ssh root@gtach.local 'kill -USR1 $(systemctl show -p MainPID --value gtach)'
+   ```
+
+   Send SIGUSR1 only while Debug is on; with Debug off it terminates the process and systemd restarts it.
 2. WELCOME screen (e9216e17): for 1 minute, alternate Start Setup and Cancel repeatedly. Pass if every tap responds without delay.
 3. Disconnected path (fbe7e98a, 674bec49):
    1. With the adapter unavailable, wait for DISCONNECTED and tap Setup.
@@ -310,6 +316,7 @@ scp 'root@gtach.local:/opt/gtach/{error,debug,start,stacks}.log*' ai/workspace/t
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial guide for the 21 pending on-device steps of audit-36b6ea95, with `bin/gtach-verify-36b6ea95.sh`. |
+| 1.1 | 2026-10-07 | Session E uses on-request stack dumps (SIGUSR1) after `change-fe755cfd`. Session A passed; results recorded in `ai/task.md`. |
 
 ---
 

@@ -19,7 +19,7 @@ issue_info:
   title: "A 0100 reply arriving after its 1.0 s timeout shifts every later response by one command; with the strict 0100 check (issue-907de6de) initialisation then fails indefinitely"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -85,15 +85,15 @@ resolution:
   target_date: ""
   approach: "See change-dc52c4e4."
   change_ref: "change-dc52c4e4"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: "change-dc52c4e4 implemented 2026-10-07; on-device verification pending."
+  resolved_date: "2026-10-07"
+  resolved_by: "change-dc52c4e4"
+  fix_description: "change-dc52c4e4 implemented 2026-10-07; verified on device."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-07"
+  verified_by: "William Watson"
+  test_results: "Pi 0.4.6, 2026-10-07 14:51: RPM shown after reboot without operator action; first 0100 answered after 3.0 s ('SEARCHING...' + two 4100 replies) and passed within the 5 s timeout; no initialisation failure after the link was established."
+  closure_notes: "Closed after on-device verification."
 
 prevention:
   preventive_measures: "Unit test with a late reply."
@@ -102,7 +102,7 @@ prevention:
 verification_enhanced:
   verification_steps:
     - "Pi: start gtach with the emulator running; RPM shown without operator action; no 'Initialization failed' records after the first successful start."
-  verification_results: ""
+  verification_results: "Passed 2026-10-07."
 
 traceability:
   design_refs: []
@@ -124,6 +124,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from on-device verification Session A."
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -140,6 +145,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. |
+| 1.1 | 2026-10-07 | Verified on device; closed. |
 
 ---
 

@@ -129,7 +129,7 @@ if [ "$BAD" -eq 0 ] && [ "${NR:-0}" -eq 0 ]; then
 else
     result C1 b9ee7428 FAIL "$BAD exit/restart lines this boot; NRestarts=$NR"
 fi
-echo "   Note: meaningful only after a cold boot (power off > 1 min) with Wi-Fi; see guide step 3."
+echo "   Note: meaningful only after a cold boot (power off > 1 min) with Wi-Fi; see guide session C (4.3)."
 
 # ------------------------------------------------- C2 269871a0 (B04)
 hdr "C2 269871a0 — error.log always on and preserved"
@@ -151,7 +151,7 @@ if [ -n "$ERR_FILES" ]; then
 else
     result C2 269871a0 FAIL "no $APP/error.log"
 fi
-result C2b 269871a0 MANUAL "adapter-off event with traceback: guide step 4, then rerun"
+result C2b 269871a0 MANUAL "adapter-off event with traceback: guide session D (4.4), then rerun"
 
 # ---------------------------------------- C3 watchdog (Phase 1 issues)
 hdr "C3 e9216e17 / fbe7e98a / 860fd5f7 — watchdog and shutdown events"
@@ -182,9 +182,9 @@ for p in "Initialization failed" "No valid 0100" "adapter closed the connection"
 done
 show "Initialization failed|No valid 0100|adapter closed the connection|consecutive timeouts|dropped - will|Connected to " 10
 if [ -z "$DBG_FILES" ]; then
-    echo "   debug.log absent: INFO-level link records are only in debug.log; enable Debug for guide steps 9-10."
+    echo "   debug.log absent: INFO-level link records are only in debug.log; enable Debug for guide session F (4.6)."
 fi
-result C4 907de6de MANUAL "evidence above; pass judged against guide steps 9-10"
+result C4 907de6de MANUAL "evidence above; pass judged against guide session F (4.6)"
 
 # ------------------------------------------------- C5 5fbff586 (Phase 3)
 hdr "C5 5fbff586 — configuration"
@@ -248,7 +248,7 @@ if [ -f "$DEV" ]; then
 else
     result C6 453f0a80 FAIL "no $DEV"
 fi
-result C6b 453f0a80 MANUAL "adapter used without re-pairing: guide step 6"
+result C6b 453f0a80 MANUAL "adapter used without re-pairing: guide session A (4.1)"
 
 # ------------------------------------------------- C7 52653cd6 (Phase 5)
 hdr "C7 52653cd6 — packaging"
@@ -346,7 +346,7 @@ PYEOF
     fi
     echo "   Run headers:"; grep -h "^=== gtach" $STK_FILES | tail -5 | sed 's/^/      /'
 else
-    result C9 674bec49 SKIP "no stacks.log (Debug not enabled); see guide step 8"
+    result C9 674bec49 SKIP "no stacks.log (Debug not enabled); see guide session E (4.5)"
 fi
 
 # ------------------------------------- C10 stop timing (opt-in, intrusive)

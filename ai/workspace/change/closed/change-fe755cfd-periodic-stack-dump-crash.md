@@ -19,7 +19,7 @@ change_info:
   title: "enable_stack_dumps registers a SIGUSR1 all-thread dump instead of a 15 s repeat timer; disable_stack_dumps unregisters it"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -122,8 +122,8 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude (planner session, approved by William Watson)"
-  verification_date: ""
-  verified_by: ""
+  verification_date: "2026-10-07"
+  verified_by: "William Watson"
   test_results: "Edits A-C implemented. Pre-commit check: real faulthandler on Linux, SIGUSR1 to self writes header and all-thread dump to stacks.log. Full suite on the Mac 2026-10-07: 463 passed, 2 xfailed."
   issues_found: []
 

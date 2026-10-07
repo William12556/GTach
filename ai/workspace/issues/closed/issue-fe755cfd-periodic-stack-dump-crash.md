@@ -19,7 +19,7 @@ issue_info:
   title: "With debug on, faulthandler.dump_traceback_later(15, repeat=True) terminates gtach on a dump tick; systemd restarts it repeatedly"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -84,15 +84,15 @@ resolution:
   target_date: ""
   approach: "See change-fe755cfd."
   change_ref: "change-fe755cfd"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: "change-fe755cfd implemented 2026-10-07; on-device verification pending."
+  resolved_date: "2026-10-07"
+  resolved_by: "change-fe755cfd"
+  fix_description: "change-fe755cfd implemented 2026-10-07; verified on device."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-07"
+  verified_by: "William Watson"
+  test_results: "Pi 0.4.6 with --debug from boot, 2026-10-07 14:51-15:01: 9 min continuous, NRestarts=0, no fatal record in stacks.log; kill -USR1 appended one all-thread dump. Earlier runs with the periodic dump terminated within 45-240 s."
+  closure_notes: "Closed after on-device verification."
 
 prevention:
   preventive_measures: "No timer-driven cross-thread dumps."
@@ -101,7 +101,7 @@ prevention:
 verification_enhanced:
   verification_steps:
     - "Pi: debug on for 30 minutes; NRestarts unchanged; kill -USR1 writes one dump to stacks.log."
-  verification_results: ""
+  verification_results: "Passed 2026-10-07."
 
 traceability:
   design_refs: []
@@ -123,6 +123,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document."
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -139,6 +144,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. |
+| 1.1 | 2026-10-07 | Verified on device; closed. |
 
 ---
 

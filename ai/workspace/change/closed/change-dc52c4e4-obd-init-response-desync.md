@@ -19,7 +19,7 @@ change_info:
   title: "send_command discards stale input before writing and returns only the text before the first '>'; the initialisation 0100 uses a 5 s timeout"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -138,8 +138,8 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude (planner session, approved by William Watson)"
-  verification_date: ""
-  verified_by: ""
+  verification_date: "2026-10-07"
+  verified_by: "William Watson"
   test_results: "Edits A-D implemented; tests/test_response_alignment.py added (8 tests). Pre-commit check in a stub environment: 8/8 pass; the late-reply test fails with the discard step disabled. Full suite on the Mac 2026-10-07: 463 passed, 2 xfailed."
   issues_found: []
 
