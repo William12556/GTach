@@ -107,7 +107,7 @@ scp bin/gtach-verify-36b6ea95.sh root@gtach.local:/tmp/
 
 Issues: 52653cd6, 5fbff586, 453f0a80, 674bec49.
 
-1. Deploy from the Mac: (deployed 0.4.5)
+1. Deploy from the Mac:
 
    ```bash
    cd ~/Documents/GitHub/GTach
@@ -117,19 +117,12 @@ Issues: 52653cd6, 5fbff586, 453f0a80, 674bec49.
 2. Watch the display through startup:
    - The service starts and the display appears.
    - Touch responds: tap through to OPTIONS and back. 
-     (disconected then setup current device ELM... then continue then RPM)
 2. The acknowledgement screen is expected once, because its state file has moved. Acknowledge it. 
-   (no acknowledgement screen)
 3. Confirm that the paired adapter connects without re-pairing (453f0a80). 
-   (Adapter connects I do not know about re-pairing )
 4. Confirm that settings from the existing `config.yaml` apply: palette, mode and engine profile as configured (5fbff586). 
-   (confirmed)
 5. Confirm that the gauge is unchanged for the current profile (674bec49). For the Abarth (redline 6000), the scale ends at 7000. 
-   (confirmed)
 6. Reboot the Pi with `ssh root@gtach.local reboot`. Confirm that the acknowledgement screen does not appear again. 
-   (no acknowledgement screen)
 7. Copy the script again and run it (section 3.1). 
-   (disconnected then need to setup current device ELM... then continue then RPMs) 
 8. Expected results: C0, C5a–C5d, C6, C7a–C7c and C8a pass.
 
 ### 4.2 Session B: Service Stop Time
