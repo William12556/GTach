@@ -63,18 +63,20 @@ class SimTransport(OBDTransport):
         """Check if the simulated transport is connected.
 
         Returns:
-            bool: Always True (sim never drops connection).
+            bool: True between connect() and disconnect()
+            (issue-860fd5f7).
         """
-        return True
+        with self._lock:
+            return self._connected
 
     @property
     def state(self) -> TransportState:
         """Get the current transport state.
 
         Returns:
-            TransportState: Always CONNECTED.
+            TransportState: CONNECTED if connected, else DISCONNECTED.
         """
-        return TransportState.CONNECTED
+        return TransportState.CONNECTED if self.is_connected() else TransportState.DISCONNECTED
 
     def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]:
         """Send a command and return a synthetic ELM327 response.

@@ -57,9 +57,12 @@ class WatchdogMonitor:
     Provides escalating recovery responses:
     1. WARNING: Log warnings for unresponsive threads
     2. SOFT_RECOVERY: Attempt gentle recovery (interrupts, signals)
-    3. HARD_RECOVERY: Force thread restart
-    4. GRACEFUL_SHUTDOWN: Controlled application shutdown
-    5. EMERGENCY_SHUTDOWN: Immediate process termination
+    3. GRACEFUL_SHUTDOWN: Controlled application shutdown of a stalled
+       or exited critical thread; systemd restarts the process
+    4. EMERGENCY_SHUTDOWN: Immediate process termination
+
+    No thread is restarted in process; recovery is by process restart
+    (issue-860fd5f7).
     """
     
     def __init__(self, thread_manager: ThreadManager, check_interval: float = 5.0, 
@@ -96,7 +99,10 @@ class WatchdogMonitor:
         # blocking connect() lasting tens of seconds is expected
         # transport behaviour on a Bluetooth link, not a fault, and
         # must not be able to trigger an application restart.
-        self.critical_threads = {'display'}
+        # 'obd_protocol' is critical: without it no data reaches the
+        # display, and it is never restarted in process, so a stall or
+        # exit is recovered by process restart (issue-860fd5f7).
+        self.critical_threads = {'display', 'obd_protocol'}
 
         # Advisory threads are observed and may produce warnings, but
         # their timeouts are clamped below the recovery tier and can
@@ -173,6 +179,16 @@ class WatchdogMonitor:
                     )
 
                 health = self.thread_health[name]
+
+                # A started thread that has exited is marked STOPPED;
+                # a registered thread not yet started (ident None) is
+                # left alone (issue-860fd5f7).
+                t = thread_info.thread
+                if t.ident is not None and not t.is_alive():
+                    thread_info.status = ThreadStatus.STOPPED
+                    pending.append(('exited', name, health, 0.0))
+                    continue
+
                 time_since_heartbeat = current_time - thread_info.last_heartbeat
 
                 # Determine appropriate response level
@@ -199,7 +215,13 @@ class WatchdogMonitor:
 
         # Phase 2 — dispatch with the lock released.
         for level, name, health, elapsed in pending:
-            if level == 'critical':
+            if level == 'exited':
+                if name in self.critical_threads:
+                    self.logger.critical(f"Critical thread {name} exited unexpectedly")
+                    self._initiate_graceful_shutdown(f"Critical thread {name} exited")
+                else:
+                    self.logger.info(f"Thread {name} exited; marked STOPPED")
+            elif level == 'critical':
                 self._handle_critical_timeout(name, health, elapsed)
             elif level == 'recovery':
                 self._handle_recovery_timeout(name, health, elapsed)
@@ -238,8 +260,7 @@ class WatchdogMonitor:
             # First attempt: soft recovery
             self._attempt_soft_recovery(name, health, timeout)
         elif health.consecutive_failures >= 2:
-            # Escalate to hard recovery
-            self._attempt_hard_recovery(name, health, timeout)
+            self.logger.error(f"Thread {name} unresponsive ({timeout:.1f}s); no in-process restart")
     
     def _handle_critical_timeout(self, name: str, health: ThreadHealth, timeout: float) -> None:
         """Handle critical timeout - may trigger shutdown"""
@@ -252,9 +273,6 @@ class WatchdogMonitor:
                 f"Critical thread {name} failed recovery - initiating graceful shutdown"
             )
             self._initiate_graceful_shutdown(f"Critical thread {name} timeout")
-        else:
-            # Non-critical thread - attempt hard recovery one more time
-            self._attempt_hard_recovery(name, health, timeout, force=True)
     
     def _attempt_soft_recovery(self, name: str, health: ThreadHealth, timeout: float) -> None:
         """Attempt soft recovery using thread interruption.
@@ -311,44 +329,6 @@ class WatchdogMonitor:
         except Exception as e:
             self.logger.error(f"Soft recovery failed for thread {name}: {e}", exc_info=True)
 
-    def _attempt_hard_recovery(self, name: str, health: ThreadHealth, timeout: float, force: bool = False) -> None:
-        """Attempt hard recovery by restarting the thread"""
-        if not force and health.recovery_attempts >= 3:
-            self.logger.error(f"Thread {name} exceeded maximum recovery attempts")
-            if health.is_critical:
-                self._initiate_graceful_shutdown(f"Thread {name} recovery failed")
-            return
-        
-        self.logger.warning(f"Attempting hard recovery for thread {name} (timeout: {timeout:.1f}s)")
-        
-        with self._recovery_lock:
-            self.recovery_stats.hard_recovery_attempts += 1
-        
-        health.current_level = RecoveryLevel.HARD_RECOVERY
-        health.recovery_attempts += 1
-        
-        try:
-            # Use existing thread manager failure handling
-            self.thread_manager.handle_thread_failure(
-                name,
-                Exception(f"Watchdog timeout: {timeout:.1f}s")
-            )
-            
-            # Wait and check if recovery was successful
-            time.sleep(2.0)
-            with self.thread_manager._lock:
-                if name in self.thread_manager.threads:
-                    thread_info = self.thread_manager.threads[name]
-                    if thread_info.status == ThreadStatus.RUNNING:
-                        self.logger.info(f"Hard recovery successful for thread {name}")
-                        with self._recovery_lock:
-                            self.recovery_stats.hard_recovery_successes += 1
-                        self._reset_thread_health(health)
-                        return
-        
-        except Exception as e:
-            self.logger.error(f"Hard recovery failed for thread {name}: {e}", exc_info=True)
-    
     def _reset_thread_health(self, health: ThreadHealth) -> None:
         """Reset thread health counters when thread becomes responsive"""
         health.consecutive_failures = 0

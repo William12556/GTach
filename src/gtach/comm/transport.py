@@ -15,6 +15,7 @@ import errno as _errno
 import logging
 import os
 import threading
+import time
 from typing import Callable, Optional
 
 from ..utils.platform import PlatformType
@@ -174,6 +175,12 @@ class OBDTransport(ABC):
     # the link is dropped and reconnection is under way before the
     # watchdog has anything to say about it (issue-9c2f41d8).
     _MAX_CONSECUTIVE_TIMEOUTS: int = 5
+
+    # Slack beyond the command timeout for the whole read loop. A peer
+    # that keeps sending without a '>' prompt (ELM327 'SEARCHING...')
+    # can no longer extend one command indefinitely, which bounds the
+    # OBD thread's heartbeat gap (change-860fd5f7).
+    _READ_DEADLINE_MARGIN_S: float = 1.0
 
     # Consecutive CONNECT failures after which a controller that is
     # present but never usable is reported as wedged. At the 5.0 s
@@ -462,14 +469,21 @@ class OBDTransport(ABC):
             # Prepare the command
             encoded_cmd = (command.strip() + '\r').encode('ascii')
             logger.debug("TX: %r", encoded_cmd)
+
+            # Set timeout for response, before the write so the write
+            # itself is bounded too (change-860fd5f7).
+            self._set_timeout(handle, timeout)
             self._write(handle, encoded_cmd)
 
-            # Set timeout for response
-            self._set_timeout(handle, timeout)
-
-            # Read response until '>' prompt is received
+            # Read response until '>' prompt is received, within a
+            # monotonic deadline.
+            deadline = time.monotonic() + timeout + self._READ_DEADLINE_MARGIN_S
             buf = b''
             while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return self._record_timeout(command, timeout)
+                self._set_timeout(handle, min(timeout, remaining))
                 data = self._read(handle, 1024)
                 if not data:
                     if self._EMPTY_READ_IS_EOF:
@@ -497,26 +511,7 @@ class OBDTransport(ABC):
                 self._consecutive_timeouts = 0
             return response
         except self._TIMEOUT_ERRORS:
-            logger.warning("Timeout waiting for response from device "
-                           "(cmd=%r, timeout=%.1fs)", command, timeout)
-            with self._lock:
-                self._consecutive_timeouts += 1
-                _dead = self._consecutive_timeouts >= self._MAX_CONSECUTIVE_TIMEOUTS
-                if _dead:
-                    # Reset here, under the same lock that observed the
-                    # trip, so the next silence starts a fresh count and
-                    # a sixth timeout cannot drop the link a second time.
-                    _count = self._consecutive_timeouts
-                    self._consecutive_timeouts = 0
-            if _dead:
-                logger.error(
-                    "No response from %s after %d consecutive timeouts "
-                    "- dropping link", self._describe(), _count
-                )
-                # OUTSIDE the lock: drop_link takes _lock itself. The
-                # decision is captured above and acted on here.
-                self.drop_link()
-            return None
+            return self._record_timeout(command, timeout)
         except self._IO_ERRORS as e:
             logger.error("Error communicating with device: %s", e)
             with self._lock:
@@ -526,6 +521,38 @@ class OBDTransport(ABC):
         except Exception as e:
             logger.error("Unexpected error during command send: %s", e, exc_info=True)
             return None
+
+    def _record_timeout(self, command: str, timeout: float) -> None:
+        """Count a command timeout and drop the link at the threshold.
+
+        Args:
+            command: The command that timed out.
+            timeout: The command timeout in seconds.
+
+        Returns:
+            None, so send_command can return the result directly.
+        """
+        logger = logging.getLogger(self.__class__.__name__)
+        logger.warning("Timeout waiting for response from device "
+                       "(cmd=%r, timeout=%.1fs)", command, timeout)
+        with self._lock:
+            self._consecutive_timeouts += 1
+            _dead = self._consecutive_timeouts >= self._MAX_CONSECUTIVE_TIMEOUTS
+            if _dead:
+                # Reset here, under the same lock that observed the
+                # trip, so the next silence starts a fresh count and
+                # a sixth timeout cannot drop the link a second time.
+                _count = self._consecutive_timeouts
+                self._consecutive_timeouts = 0
+        if _dead:
+            logger.error(
+                "No response from %s after %d consecutive timeouts "
+                "- dropping link", self._describe(), _count
+            )
+            # OUTSIDE the lock: drop_link takes _lock itself. The
+            # decision is captured above and acted on here.
+            self.drop_link()
+        return None
 
     def is_connected(self) -> bool:
         """Check if the transport is currently connected.

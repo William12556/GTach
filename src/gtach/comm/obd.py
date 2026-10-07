@@ -77,7 +77,7 @@ class OBDProtocol:
                 if not self._initialize_protocol():
                     continue
                 
-                while self.transport.is_connected():
+                while self.transport.is_connected() and not self.shutdown_event.is_set():
                     self.thread_manager.update_heartbeat('obd_protocol')
                     rpm_data = self._request_rpm()
                     if rpm_data:
@@ -147,6 +147,8 @@ class OBDProtocol:
     def _send_command(self, command: bytes, timeout: float = None) -> Optional[str]:
         """Send command to ELM327 device."""
         try:
+            # One heartbeat per command bounds the gap (issue-860fd5f7).
+            self.thread_manager.update_heartbeat('obd_protocol')
             if not self.transport.is_connected():
                 return None
 

@@ -121,9 +121,12 @@ class ThreadManager:
         with self._state_lock:
             if name in self.threads:
                 old_thread = self.threads[name]
-                if old_thread.status in {ThreadStatus.RUNNING, ThreadStatus.STARTING}:
+                if (old_thread.status in {ThreadStatus.RUNNING, ThreadStatus.STARTING}
+                        and old_thread.thread.is_alive()):
                     self.logger.warning(f"Thread {name} already exists and is active")
                     return
+                # A dead entry is replaced (issue-860fd5f7).
+                self.logger.debug(f"Replacing stale entry for {name}")
 
             thread_info = ThreadInfo(
                 thread=thread,
@@ -160,135 +163,6 @@ class ThreadManager:
             thread_info = self.threads.get(name)
             return thread_info.status if thread_info else None
             
-    def handle_thread_failure(self, name: str, error: Exception) -> None:
-        """Handle thread failure with atomic state transition and safe restart"""
-        if self._shutdown_event.is_set():
-            self.logger.debug(f"Ignoring failure for {name} during shutdown")
-            return
-
-        with self._state_lock:
-            if name not in self.threads:
-                self.logger.warning(f"Failure reported for unknown thread: {name}")
-                return
-
-            thread_info = self.threads[name]
-
-            # Atomic status transition
-            if not thread_info.status.can_transition_to(ThreadStatus.FAILED):
-                self.logger.warning(
-                    f"Invalid status transition for {name}: {thread_info.status} -> FAILED"
-                )
-                return
-
-            thread_info.status = ThreadStatus.FAILED
-            thread_info.last_error = error
-
-            # Calculate backoff with jitter to prevent thundering herd
-            base_backoff = min(2 ** thread_info.restart_count, 8)
-            jitter = base_backoff * 0.1 * (hash(name) % 10) / 10  # Deterministic jitter
-            backoff = base_backoff + jitter
-            thread_info.restart_count += 1
-
-            self.logger.error(
-                f"Thread {name} failed: {type(error).__name__}: {error}. "
-                f"Restart #{thread_info.restart_count} in {backoff:.2f}s",
-                exc_info=True  # Full traceback for debugging
-            )
-
-            # Cancel any existing restart operation
-            if thread_info.restart_future and not thread_info.restart_future.done():
-                thread_info.restart_future.cancel()
-
-            # Submit restart with future tracking
-            restart_future = self.worker_pool.submit(self._restart_thread, name, backoff)
-            thread_info.restart_future = restart_future
-            self._active_futures.add(restart_future)
-
-            # Clean up completed futures
-            restart_future.add_done_callback(lambda f: self._active_futures.discard(f))
-
-    def _restart_thread(self, name: str, backoff: float) -> None:
-        """Restart failed thread after backoff with proper error handling"""
-        try:
-            # Interruptible sleep that respects shutdown
-            for _ in range(int(backoff * 10)):
-                if self._shutdown_event.is_set():
-                    self.logger.debug(f"Restart cancelled for {name} due to shutdown")
-                    return
-                time.sleep(0.1)
-
-            with self._state_lock:
-                if self._shutdown_event.is_set():
-                    return
-
-                if name not in self.threads:
-                    self.logger.warning(f"Cannot restart {name}: thread no longer registered")
-                    return
-
-                thread_info = self.threads[name]
-
-                # Call stop_func if available before restarting
-                if thread_info.stop_func is not None:
-                    try:
-                        self.logger.debug(f"Calling stop_func for {name} before restart")
-                        thread_info.stop_func()
-                    except Exception as e:
-                        self.logger.error(f"stop_func failed for {name}: {e}", exc_info=True)
-
-                # Verify we're still in a restartable state
-                if thread_info.status not in {ThreadStatus.FAILED, ThreadStatus.STOPPED}:
-                    self.logger.debug(f"Thread {name} status changed to {thread_info.status}, restart cancelled")
-                    return
-
-                # Atomic transition to restarting state
-                if not thread_info.status.can_transition_to(ThreadStatus.RESTARTING):
-                    self.logger.warning(f"Cannot restart {name}: invalid state {thread_info.status}")
-                    return
-
-                thread_info.status = ThreadStatus.RESTARTING
-
-                # Validate thread target function is available
-                if not thread_info.target_func:
-                    self.logger.error(f"Cannot restart {name}: no target function available")
-                    thread_info.status = ThreadStatus.STOPPED
-                    return
-
-                try:
-                    # Create new thread with stored target info
-                    new_thread = threading.Thread(
-                        target=thread_info.target_func,
-                        args=thread_info.target_args,
-                        kwargs=thread_info.target_kwargs,
-                        name=f"{name}_r{thread_info.restart_count}",
-                        daemon=thread_info.thread.daemon
-                    )
-
-                    # Update thread info atomically
-                    thread_info.thread = new_thread
-                    thread_info.status = ThreadStatus.STARTING
-                    thread_info.last_heartbeat = time.monotonic()
-                    thread_info.last_error = None
-
-                    # Start the new thread
-                    new_thread.start()
-                    self.logger.info(f"Successfully restarted thread: {name} (attempt #{thread_info.restart_count})")
-
-                except Exception as e:
-                    self.logger.error(f"Failed to restart thread {name}: {e}", exc_info=True)
-                    thread_info.status = ThreadStatus.FAILED
-                    thread_info.last_error = e
-
-        except Exception as e:
-            self.logger.error(f"Unexpected error in _restart_thread for {name}: {e}", exc_info=True)
-            # Try to update status if possible
-            try:
-                with self._state_lock:
-                    if name in self.threads:
-                        self.threads[name].status = ThreadStatus.FAILED
-                        self.threads[name].last_error = e
-            except Exception:
-                pass  # Best effort status update
-
     def stop_thread(self, name: str, timeout: float = 5.0) -> bool:
         """Stop a specific thread with proper state management"""
         with self._state_lock:
@@ -307,6 +181,16 @@ class ThreadManager:
             # Cancel any pending restart
             if thread_info.restart_future and not thread_info.restart_future.done():
                 thread_info.restart_future.cancel()
+
+        # stop_func runs after the lock is released and before the
+        # join, so the thread is already STOPPING when it is released
+        # (CLAUDE.md §4 rule 8, issue-860fd5f7).
+        stop_func = thread_info.stop_func
+        if stop_func is not None:
+            try:
+                stop_func()
+            except Exception as e:
+                self.logger.error(f"stop_func failed for {name}: {e}", exc_info=True)
 
         # Join outside the lock. update_heartbeat, register_thread
         # and get_thread_status all take _state_lock, so joining

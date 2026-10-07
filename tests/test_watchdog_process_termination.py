@@ -174,11 +174,11 @@ def _aged_thread(manager: ThreadManager, name: str, age: float) -> None:
 
 
 class TestAdvisoryTier:
-    """critical_threads == {'display'}; advisory_threads == {'transport'}."""
+    """critical_threads == {'display', 'obd_protocol'}; advisory_threads == {'transport'}."""
 
     def test_membership(self):
         watchdog = WatchdogMonitor(ThreadManager())
-        assert watchdog.critical_threads == {'display'}
+        assert watchdog.critical_threads == {'display', 'obd_protocol'}
         assert watchdog.advisory_threads == {'transport'}
 
     def test_advisory_timeout_warns_but_never_recovers(self, caplog):

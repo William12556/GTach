@@ -413,43 +413,16 @@ class GTachApplication:
         try:
             self.logger.info("Re-entering setup from DISCONNECTED screen")
 
-            # Same sequence as shutdown() (app.py:295-310), and for
-            # the same reason. ThreadManager.stop_thread sets no
-            # event and does not call the registered stop_func, so
-            # it can only join. OBDProtocol's inner loop is bounded
-            # by transport.is_connected() (obd.py:79) and its outer
-            # loop by shutdown_event (obd.py:68), and when the
-            # transport is down the outer loop sleeps and continues
-            # rather than returning (obd.py:72-74). Disconnecting
-            # alone does not end the thread and stopping alone does
-            # not either — both are required, in this order.
-            # Previously the join came first, could never succeed,
-            # and ran to its 5s default on a UI callback while
-            # holding the thread-state lock (core review §5.9).
-
-            # 1. Transport — closes the socket, releasing the OBD
-            #    thread from any blocking read.
-            if hasattr(self, '_transport'):
-                try:
-                    self._transport.disconnect()
-                except Exception as e:
-                    self.logger.warning(f"Transport disconnect on re-entry: {e}")
-
-            # 2. OBD — sets shutdown_event, which is the only thing
-            #    that ends _protocol_loop.
-            if hasattr(self, '_obd'):
-                try:
-                    self._obd.stop()
-                except Exception as e:
-                    self.logger.warning(f"OBD stop on re-entry: {e}")
-
-            # 3. Thread manager — bookkeeping. The thread is already
-            #    dead by now, so this records STOPPED rather than
-            #    FAILED. 2.0s rather than the 5.0s default because
-            #    this runs on a UI-driven callback and a join that
-            #    needs longer than that indicates a fault worth
-            #    seeing in the log.
+            # Transport first: its stop_func (disconnect) closes the
+            # socket and releases the OBD thread from any blocking
+            # read. Then obd_protocol: its stop_func is
+            # OBDProtocol.stop, which sets shutdown_event. stop_thread
+            # marks each entry STOPPING before calling its stop_func,
+            # so the watchdog never sees a dead critical thread in
+            # RUNNING (change-860fd5f7). 2.0s rather than the 5.0s
+            # default because this runs on a UI-driven callback.
             if hasattr(self, '_thread_manager'):
+                self._thread_manager.stop_thread('transport', timeout=2.0)
                 self._thread_manager.stop_thread('obd_protocol', timeout=2.0)
 
             self._obd_started = False
@@ -474,7 +447,7 @@ class GTachApplication:
             kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport')},
             name='transport', daemon=True
         )
-        self._thread_manager.register_thread('transport', transport_thread)
+        self._thread_manager.register_thread('transport', transport_thread, stop_func=self._transport.disconnect)
         transport_thread.start()
         self._obd.start()
         self.logger.info("OBD protocol started after setup")
@@ -535,7 +508,7 @@ class GTachApplication:
             kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport')},
             name='transport', daemon=True
         )
-        self._thread_manager.register_thread('transport', transport_thread)
+        self._thread_manager.register_thread('transport', transport_thread, stop_func=self._transport.disconnect)
         transport_thread.start()
         
         self._obd.start()
