@@ -67,7 +67,7 @@ class CircularPositioningEngine:
             return geometry
             
         except Exception as e:
-            self.logger.error(f"Error getting circular safe area: {e}")
+            self.logger.error(f"Error getting circular safe area: {e}", exc_info=True)
             return {
                 'center': (240, 240),
                 'safe_radius': 200,
@@ -115,7 +115,7 @@ class CircularPositioningEngine:
             return result
             
         except Exception as e:
-            self.logger.error(f"Error positioning element in circle: {e}")
+            self.logger.error(f"Error positioning element in circle: {e}", exc_info=True)
             center_x, center_y = self.display_center
             return (center_x - 50, center_y - 15, 100, 30)
     
@@ -170,7 +170,7 @@ class CircularPositioningEngine:
             return result
             
         except Exception as e:
-            self.logger.error(f"Error validating circular bounds: {e}")
+            self.logger.error(f"Error validating circular bounds: {e}", exc_info=True)
             return {
                 'valid': False,
                 'center_distance': float('inf'),
@@ -367,7 +367,7 @@ class CircularPositioningEngine:
             return layout_data
             
         except Exception as e:
-            self.logger.error(f"Error calculating curved list layout: {e}")
+            self.logger.error(f"Error calculating curved list layout: {e}", exc_info=True)
             fallback_layout = []
             for i in range(item_count):
                 fallback_layout.append({
@@ -440,7 +440,7 @@ class CircularPositioningEngine:
             return result
             
         except Exception as e:
-            self.logger.error(f"Error validating layout elements: {e}")
+            self.logger.error(f"Error validating layout elements: {e}", exc_info=True)
             return {
                 'screen_name': screen_name,
                 'validation_summary': {'passed': False, 'error': str(e)},
@@ -478,7 +478,7 @@ class CircularPositioningEngine:
             self.logger.debug(f"Positioning metrics: {metrics}")
             
         except Exception as e:
-            self.logger.error(f"Error logging positioning metrics: {e}")
+            self.logger.error(f"Error logging positioning metrics: {e}", exc_info=True)
     
     def monitor_performance(self, enable_monitoring: bool = True) -> Dict[str, Any]:
         """Enable or disable performance monitoring for circular positioning operations"""
@@ -498,7 +498,7 @@ class CircularPositioningEngine:
             return current_config
             
         except Exception as e:
-            self.logger.error(f"Error configuring performance monitoring: {e}")
+            self.logger.error(f"Error configuring performance monitoring: {e}", exc_info=True)
             return {'error': str(e)}
     
     def get_performance_report(self) -> Dict[str, Any]:
@@ -541,7 +541,7 @@ class CircularPositioningEngine:
             return report
             
         except Exception as e:
-            self.logger.error(f"Error generating performance report: {e}")
+            self.logger.error(f"Error generating performance report: {e}", exc_info=True)
             return {'error': str(e)}
     
     def reset_performance_stats(self) -> None:
@@ -559,7 +559,7 @@ class CircularPositioningEngine:
             self.logger.info("Circular positioning performance statistics reset")
             
         except Exception as e:
-            self.logger.error(f"Error resetting performance statistics: {e}")
+            self.logger.error(f"Error resetting performance statistics: {e}", exc_info=True)
     
     def clear_layout_cache(self) -> None:
         """Clear the circular layout cache to free memory"""
@@ -570,4 +570,4 @@ class CircularPositioningEngine:
                 self.logger.info(f"Cleared circular layout cache ({cache_size} entries)")
                 
         except Exception as e:
-            self.logger.error(f"Error clearing layout cache: {e}")
+            self.logger.error(f"Error clearing layout cache: {e}", exc_info=True)

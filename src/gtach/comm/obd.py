@@ -141,7 +141,7 @@ class OBDProtocol:
             return True
 
         except Exception as e:
-            self.logger.error(f"Initialization failed: {e}")
+            self.logger.error(f"Initialization failed: {e}", exc_info=True)
             return False
 
     def _send_command(self, command: bytes, timeout: float = None) -> Optional[str]:
@@ -155,7 +155,7 @@ class OBDProtocol:
             return self.transport.send_command(command_str, timeout=effective_timeout)
 
         except Exception as e:
-            self.logger.error(f"Command error: {e}")
+            self.logger.error(f"Command error: {e}", exc_info=True)
             return None
 
     def _request_rpm(self) -> Optional[OBDResponse]:
@@ -181,5 +181,5 @@ class OBDProtocol:
             return None
             
         except Exception as e:
-            self.logger.error(f"RPM request error: {e}")
+            self.logger.error(f"RPM request error: {e}", exc_info=True)
             return None

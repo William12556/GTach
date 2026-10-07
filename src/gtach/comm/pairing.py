@@ -82,7 +82,7 @@ class BluetoothPairing:
             self.logger.error(f"Bluetooth initialization timed out after {self.initialization_timeout}s")
             self.bluetooth_available = False
         except Exception as e:
-            self.logger.error(f"Bluetooth initialization failed: {e}")
+            self.logger.error(f"Bluetooth initialization failed: {e}", exc_info=True)
             self.bluetooth_available = False
             
         self._pairing_thread = None
@@ -101,7 +101,7 @@ class BluetoothPairing:
                 self.logger.info(f"Using Bluetooth backend: {BLUETOOTH_BACKEND}")
                 return True
         except Exception as e:
-            self.logger.error(f"Bluetooth availability check failed: {e}")
+            self.logger.error(f"Bluetooth availability check failed: {e}", exc_info=True)
             return False
     
     def discover_elm327_devices(self, timeout: int = None, 
@@ -219,7 +219,7 @@ class BluetoothPairing:
                     self.logger.error(f"Bluetooth discovery error: {e}")
                     break
                 except Exception as e:
-                    self.logger.error(f"Unexpected discovery error: {e}")
+                    self.logger.error(f"Unexpected discovery error: {e}", exc_info=True)
                     break
 
                 # Early exit: stop scanning once a confirmed ELM327 adapter is
@@ -238,7 +238,7 @@ class BluetoothPairing:
             self.logger.info(f"Discovery complete. Found {len(devices)} devices")
             
         except Exception as e:
-            self.logger.error(f"Discovery failed: {e}")
+            self.logger.error(f"Discovery failed: {e}", exc_info=True)
         finally:
             self._discovery_active = False
         
@@ -369,7 +369,7 @@ class BluetoothPairing:
             if status_callback:
                 status_callback(PairingStatus.FAILED, f"Pairing error: {str(e)}")
             
-            self.logger.error(f"Pairing failed: {e}")
+            self.logger.error(f"Pairing failed: {e}", exc_info=True)
             return False
         finally:
             self._pairing_active = False
@@ -423,7 +423,7 @@ class BluetoothPairing:
             return 'OK' in response
 
         except Exception as e:
-            self.logger.error(f"Communication test error: {e}")
+            self.logger.error(f"Communication test error: {e}", exc_info=True)
             return False
     
     def test_obd_connection(self, device: BluetoothDevice,
@@ -504,7 +504,7 @@ class BluetoothPairing:
             if status_callback:
                 status_callback(f"Test error: {str(e)}")
             
-            self.logger.error(f"OBD connection test failed: {e}")
+            self.logger.error(f"OBD connection test failed: {e}", exc_info=True)
             return False
     
     def get_device_info(self, mac_address: str) -> Optional[BluetoothDevice]:
@@ -546,7 +546,7 @@ class BluetoothPairing:
                     device_classification=device_classification
                 )
         except Exception as e:
-            self.logger.error(f"Failed to get device info for {mac_address}: {e}")
+            self.logger.error(f"Failed to get device info for {mac_address}: {e}", exc_info=True)
         
         return None
     
@@ -586,7 +586,7 @@ class BluetoothPairing:
         try:
             self._executor.shutdown(wait=True)
         except Exception as e:
-            self.logger.error(f"Error shutting down thread pool: {e}")
+            self.logger.error(f"Error shutting down thread pool: {e}", exc_info=True)
             
     def __del__(self):
         """Cleanup on object destruction"""

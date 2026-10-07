@@ -233,7 +233,7 @@ class ThreadManager:
                         self.logger.debug(f"Calling stop_func for {name} before restart")
                         thread_info.stop_func()
                     except Exception as e:
-                        self.logger.error(f"stop_func failed for {name}: {e}")
+                        self.logger.error(f"stop_func failed for {name}: {e}", exc_info=True)
 
                 # Verify we're still in a restartable state
                 if thread_info.status not in {ThreadStatus.FAILED, ThreadStatus.STOPPED}:
@@ -387,7 +387,7 @@ class ThreadManager:
                     else:
                         failed_count += 1
                 except Exception as e:
-                    self.logger.error(f"Error stopping thread {name}: {e}")
+                    self.logger.error(f"Error stopping thread {name}: {e}", exc_info=True)
                     failed_count += 1
                     
         # Resource cleanup verification

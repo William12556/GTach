@@ -531,7 +531,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 return surface
                 
             except Exception as e:
-                self.logger.error(f"Surface creation failed: {e}")
+                self.logger.error(f"Surface creation failed: {e}", exc_info=True)
                 return None
     
     def clear_surface(self, target: RenderTarget, 
@@ -544,7 +544,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     surface.fill(color)
                     
             except Exception as e:
-                self.logger.error(f"Surface clear failed: {e}")
+                self.logger.error(f"Surface clear failed: {e}", exc_info=True)
     
     def draw_circle(self, target: RenderTarget, color: Tuple[int, int, int], 
                    center: Tuple[int, int], radius: int, width: int = 0) -> None:
@@ -556,7 +556,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     pygame.draw.circle(surface, color, center, radius, width)
                     
             except Exception as e:
-                self.logger.error(f"Circle draw failed: {e}")
+                self.logger.error(f"Circle draw failed: {e}", exc_info=True)
     
     def draw_rect(self, target: RenderTarget, color: Tuple[int, int, int],
                  rect: Tuple[int, int, int, int], width: int = 0, 
@@ -577,7 +577,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                         pygame.draw.rect(surface, color, rect_obj, width)
                         
             except Exception as e:
-                self.logger.error(f"Rectangle draw failed: {e}")
+                self.logger.error(f"Rectangle draw failed: {e}", exc_info=True)
     
     def draw_line(self, target: RenderTarget, color: Tuple[int, int, int],
                  start_pos: Tuple[int, int], end_pos: Tuple[int, int], 
@@ -590,7 +590,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     pygame.draw.line(surface, color, start_pos, end_pos, width)
                     
             except Exception as e:
-                self.logger.error(f"Line draw failed: {e}")
+                self.logger.error(f"Line draw failed: {e}", exc_info=True)
     
     def blit_surface(self, target: RenderTarget, source: pygame.Surface,
                     dest: Tuple[int, int], area: Optional[Tuple[int, int, int, int]] = None) -> None:
@@ -605,7 +605,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                         surface.blit(source, dest)
                         
             except Exception as e:
-                self.logger.error(f"Surface blit failed: {e}")
+                self.logger.error(f"Surface blit failed: {e}", exc_info=True)
     
     def render_text(self, target: RenderTarget, text: str, font: pygame.font.Font,
                    color: Tuple[int, int, int], position: Tuple[int, int],
@@ -645,7 +645,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 return text_rect
                 
             except Exception as e:
-                self.logger.error(f"Text render failed: {e}")
+                self.logger.error(f"Text render failed: {e}", exc_info=True)
                 return pygame.Rect(position[0], position[1], 0, 0)
     
     def swap_buffers(self) -> bool:
@@ -836,7 +836,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 
             except Exception as e:
                 self._stats.framebuffer_errors += 1
-                self.logger.error(f"Framebuffer write failed: {e}")
+                self.logger.error(f"Framebuffer write failed: {e}", exc_info=True)
                 return False
     
     def _attempt_framebuffer_recovery(self) -> None:
@@ -862,7 +862,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             self.logger.info("Framebuffer recovery completed")
             
         except Exception as e:
-            self.logger.error(f"Framebuffer recovery failed: {e}")
+            self.logger.error(f"Framebuffer recovery failed: {e}", exc_info=True)
             self.fb = None
     
     def get_surface(self, target: RenderTarget) -> Optional[pygame.Surface]:
@@ -951,7 +951,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 self.logger.info("Rendering engine cleanup completed")
                 
             except Exception as e:
-                self.logger.error(f"Rendering engine cleanup error: {e}")
+                self.logger.error(f"Rendering engine cleanup error: {e}", exc_info=True)
     
     def is_initialized(self) -> bool:
         """Check if rendering engine is initialized"""

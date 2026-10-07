@@ -266,7 +266,7 @@ class SetupDisplayManager:
         try:
             pygame.draw.circle(surface, self.colors['background'], (240, 240), 238, 4)
         except Exception as e:
-            self.logger.error(f'Circular border error: {e}')
+            self.logger.error(f'Circular border error: {e}', exc_info=True)
 
     def _render_welcome_screen(self, surface) -> None:
         """Render the welcome screen"""
@@ -280,7 +280,7 @@ class SetupDisplayManager:
                 title_rect = title.get_rect(center=(240, 80))
                 surface.blit(title, title_rect)
         except Exception as e:
-            self.logger.error(f"Error rendering welcome title: {e}")
+            self.logger.error(f"Error rendering welcome title: {e}", exc_info=True)
 
         # Description
         font_medium = get_body_font()
@@ -727,7 +727,7 @@ class SetupDisplayManager:
                             action = region[0]
                             return self._handle_touch_action(action, region)
         except Exception as e:
-            self.logger.error(f"Error handling touch event: {e}")
+            self.logger.error(f"Error handling touch event: {e}", exc_info=True)
         
         return None
     
@@ -815,7 +815,7 @@ class SetupDisplayManager:
             with self._touch_regions_lock:
                 self.touch_regions = new_regions.copy()
         except Exception as e:
-            self.logger.error(f"Error updating touch regions: {e}")
+            self.logger.error(f"Error updating touch regions: {e}", exc_info=True)
     
     def _update_cached_screen_touch_regions(self) -> None:
         """Update touch regions for cached screens"""

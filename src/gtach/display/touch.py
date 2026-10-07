@@ -64,7 +64,7 @@ class TouchHandler:
             return interface
             
         except Exception as e:
-            self.logger.error(f"Failed to initialize touch interface: {e}")
+            self.logger.error(f"Failed to initialize touch interface: {e}", exc_info=True)
             return None
 
     def _setup_touch_handler(self) -> None:
@@ -78,7 +78,7 @@ class TouchHandler:
             self.touch_interface.register_callback(self._handle_touch_event)
             self.logger.debug("Touch event callback registered with interface")
         except Exception as e:
-            self.logger.error(f"Failed to register touch callback: {e}")
+            self.logger.error(f"Failed to register touch callback: {e}", exc_info=True)
 
     def _handle_touch_event(self, event: TouchEvent) -> None:
         """Handle TouchEvent objects from the abstraction layer"""
@@ -106,7 +106,7 @@ class TouchHandler:
             self._process_touch(0, x, y, state, event.timestamp)
             
         except Exception as e:
-            self.logger.error(f"Error handling touch event: {e}")
+            self.logger.error(f"Error handling touch event: {e}", exc_info=True)
 
     def _process_touch(self, touch_id: int, x: int, y: int, state: bool, timestamp: float = None) -> None:
         """Process touch events with gesture recognition integration"""
@@ -147,7 +147,7 @@ class TouchHandler:
                 self._touch_start = None
                 
         except Exception as e:
-            self.logger.error(f"Touch processing error: {e}")
+            self.logger.error(f"Touch processing error: {e}", exc_info=True)
 
     def _handle_long_press(self, x: int, y: int) -> None:
         """Handle long press events"""
@@ -171,7 +171,7 @@ class TouchHandler:
             self.display_manager._handle_long_press((x, y), (x, y))
 
         except Exception as e:
-            self.logger.error(f"Long press handling error: {e}")
+            self.logger.error(f"Long press handling error: {e}", exc_info=True)
 
     def _handle_short_press(self, x: int, y: int, start_x: int, start_y: int) -> None:
         """Handle short press and swipe events"""
@@ -313,7 +313,7 @@ class TouchHandler:
             # to provide immediate user feedback
             
         except Exception as e:
-            self.logger.error(f"Touch feedback error: {e}")
+            self.logger.error(f"Touch feedback error: {e}", exc_info=True)
     
     def _handle_setup_swipe(self, x: int, y: int, start_x: int, start_y: int) -> bool:
         """Consume a vertical swipe on the setup DEVICE_LIST screen.
@@ -376,7 +376,7 @@ class TouchHandler:
                     self.display_manager.exit_setup_mode()
                     
         except Exception as e:
-            self.logger.error(f"Setup touch handling error: {e}")
+            self.logger.error(f"Setup touch handling error: {e}", exc_info=True)
 
     def stop(self) -> None:
         """Stop touch handler and clean up touch interface"""
@@ -387,7 +387,7 @@ class TouchHandler:
             else:
                 self.logger.debug("No touch interface to stop")
         except Exception as e:
-            self.logger.error(f"Error stopping touch interface: {e}")
+            self.logger.error(f"Error stopping touch interface: {e}", exc_info=True)
 
     def get_touch_interface_info(self) -> dict:
         """Get information about the current touch interface for debugging"""
@@ -407,7 +407,7 @@ class TouchHandler:
             return info
             
         except Exception as e:
-            self.logger.error(f"Error getting touch interface info: {e}")
+            self.logger.error(f"Error getting touch interface info: {e}", exc_info=True)
             return {'error': str(e)}
 
     def test_touch_simulation(self) -> None:
@@ -438,7 +438,7 @@ class TouchHandler:
             self.logger.info("Touch simulation test completed")
             
         except Exception as e:
-            self.logger.error(f"Touch simulation test failed: {e}")
+            self.logger.error(f"Touch simulation test failed: {e}", exc_info=True)
 
     def simulate_settings_button_press(self, button_name: str) -> None:
         """Simulate pressing a specific settings button for testing"""
@@ -476,4 +476,4 @@ class TouchHandler:
                 self.logger.warning("Touch simulation not supported")
                 
         except Exception as e:
-            self.logger.error(f"Settings button simulation failed: {e}")
+            self.logger.error(f"Settings button simulation failed: {e}", exc_info=True)

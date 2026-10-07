@@ -187,7 +187,7 @@ class NavigationGestureHandler:
                 return None
                 
         except Exception as e:
-            self.logger.error(f"Error detecting gesture: {e}")
+            self.logger.error(f"Error detecting gesture: {e}", exc_info=True)
             return None
     
     def _classify_gesture(self, start_pos: Tuple[int, int], end_pos: Tuple[int, int], 
@@ -254,7 +254,7 @@ class NavigationGestureHandler:
                 return False
                 
         except Exception as e:
-            self.logger.error(f"Error handling gesture: {e}")
+            self.logger.error(f"Error handling gesture: {e}", exc_info=True)
             return False
     
     def _is_gesture_enabled(self) -> bool:
@@ -268,7 +268,7 @@ class NavigationGestureHandler:
                 return self.config.enable_main_navigation
 
         except Exception as e:
-            self.logger.error(f"Error checking gesture enable state: {e}")
+            self.logger.error(f"Error checking gesture enable state: {e}", exc_info=True)
             return False
     
     def _get_navigation_context(self) -> str:
@@ -282,7 +282,7 @@ class NavigationGestureHandler:
                 return "main"
 
         except Exception as e:
-            self.logger.error(f"Error getting navigation context: {e}")
+            self.logger.error(f"Error getting navigation context: {e}", exc_info=True)
             return "main"
     
     def _get_action_key(self, context: str, gesture_type: GestureType) -> str:
@@ -318,7 +318,7 @@ class NavigationGestureHandler:
                 self._update_edge_indicators(pos)
 
         except Exception as e:
-            self.logger.error(f"Error starting gesture tracking: {e}")
+            self.logger.error(f"Error starting gesture tracking: {e}", exc_info=True)
     
     def end_gesture_tracking(self, pos: Tuple[int, int], timestamp: float) -> Optional[GestureEvent]:
         """End gesture tracking and detect completed gesture."""
@@ -338,7 +338,7 @@ class NavigationGestureHandler:
                 return gesture
                 
         except Exception as e:
-            self.logger.error(f"Error ending gesture tracking: {e}")
+            self.logger.error(f"Error ending gesture tracking: {e}", exc_info=True)
             return None
     
     def cancel_gesture(self) -> None:
@@ -351,7 +351,7 @@ class NavigationGestureHandler:
                 self.logger.debug("Gesture tracking cancelled")
                 
         except Exception as e:
-            self.logger.error(f"Error cancelling gesture: {e}")
+            self.logger.error(f"Error cancelling gesture: {e}", exc_info=True)
     
     def _update_edge_indicators(self, pos: Tuple[int, int]) -> None:
         """Update edge indicator visibility based on touch position."""
@@ -368,7 +368,7 @@ class NavigationGestureHandler:
                     self._last_edge_interaction = time.time()
                     
         except Exception as e:
-            self.logger.error(f"Error updating edge indicators: {e}")
+            self.logger.error(f"Error updating edge indicators: {e}", exc_info=True)
     
     def should_show_edge_indicators(self) -> bool:
         """Check if edge indicators should be visible."""
@@ -385,7 +385,7 @@ class NavigationGestureHandler:
                 return True
                 
         except Exception as e:
-            self.logger.error(f"Error checking edge indicator visibility: {e}")
+            self.logger.error(f"Error checking edge indicator visibility: {e}", exc_info=True)
             return False
     
     def get_edge_indicator_alpha(self) -> int:
@@ -406,7 +406,7 @@ class NavigationGestureHandler:
                 return int(255 * 0.3)  # 30% opacity
                 
         except Exception as e:
-            self.logger.error(f"Error calculating edge indicator alpha: {e}")
+            self.logger.error(f"Error calculating edge indicator alpha: {e}", exc_info=True)
             return 0
     
     # Navigation action implementations
@@ -420,7 +420,7 @@ class NavigationGestureHandler:
                 self.display_manager.change_mode(mode)
             self.logger.info(f"Display mode changed to {mode.name}")
         except Exception as e:
-            self.logger.error(f"Error changing display mode: {e}")
+            self.logger.error(f"Error changing display mode: {e}", exc_info=True)
 
     def _cycle_display_mode(self, direction: int) -> None:
         """Do nothing; display mode cycling no longer applies.
@@ -453,7 +453,7 @@ class NavigationGestureHandler:
                 self.display_manager._setup_manager.handle_touch_event((50, 400))  # Back button area
                 self.logger.info("Setup back navigation triggered")
         except Exception as e:
-            self.logger.error(f"Error handling setup back: {e}")
+            self.logger.error(f"Error handling setup back: {e}", exc_info=True)
     
     def _handle_setup_forward(self) -> None:
         """Handle forward navigation in setup mode."""
@@ -477,7 +477,7 @@ class NavigationGestureHandler:
             self.display_manager.change_mode(DisplayMode.RADIAL)
             self.logger.info("Exited settings via gesture")
         except Exception as e:
-            self.logger.error(f"Error exiting settings: {e}")
+            self.logger.error(f"Error exiting settings: {e}", exc_info=True)
     
     def _handle_edge_navigation(self, direction: str) -> None:
         """Handle edge swipe navigation."""
@@ -497,7 +497,7 @@ class NavigationGestureHandler:
                     gesture.end_pos
                 )
         except Exception as e:
-            self.logger.error(f"Error showing gesture feedback: {e}")
+            self.logger.error(f"Error showing gesture feedback: {e}", exc_info=True)
     
     def _show_edge_feedback(self, message: str) -> None:
         """Show temporary feedback message."""
@@ -521,5 +521,5 @@ class NavigationGestureHandler:
                     }
                 }
         except Exception as e:
-            self.logger.error(f"Error getting debug info: {e}")
+            self.logger.error(f"Error getting debug info: {e}", exc_info=True)
             return {'error': str(e)}

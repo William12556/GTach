@@ -188,7 +188,7 @@ class SetupStateCoordinator:
                 return False
                 
         except Exception as e:
-            self.logger.error(f"Error handling setup action {action.name}: {e}")
+            self.logger.error(f"Error handling setup action {action.name}: {e}", exc_info=True)
             return False
     
     def _handle_back_navigation(self) -> bool:
@@ -249,7 +249,7 @@ class SetupStateCoordinator:
             try:
                 callback(old_screen, new_screen)
             except Exception as e:
-                self.logger.error(f"Error in screen transition callback: {e}")
+                self.logger.error(f"Error in screen transition callback: {e}", exc_info=True)
     
     def _notify_state_change_callbacks(self, changed_fields: List[str]) -> None:
         """Notify all state change callbacks"""
@@ -257,7 +257,7 @@ class SetupStateCoordinator:
             try:
                 callback(changed_fields)
             except Exception as e:
-                self.logger.error(f"Error in state change callback: {e}")
+                self.logger.error(f"Error in state change callback: {e}", exc_info=True)
     
     def update_animation(self, delta_time: float) -> None:
         """Update animation time and control visibility"""
@@ -298,7 +298,7 @@ class SetupStateCoordinator:
                     self._control_alpha = 255
                     
         except Exception as e:
-            self.logger.error(f"Error updating control visibility: {e}")
+            self.logger.error(f"Error updating control visibility: {e}", exc_info=True)
     
     def get_control_alpha(self) -> int:
         """Get current control alpha value for rendering"""
@@ -354,7 +354,7 @@ class SetupStateCoordinator:
             return True
             
         except Exception as e:
-            self.logger.error(f"Error validating MAC address: {e}")
+            self.logger.error(f"Error validating MAC address: {e}", exc_info=True)
             return False
     
     def create_manual_device(self, mac_address: str, device_name: str = None) -> Optional[BluetoothDevice]:
@@ -384,7 +384,7 @@ class SetupStateCoordinator:
             return manual_device
             
         except Exception as e:
-            self.logger.error(f"Error creating manual device: {e}")
+            self.logger.error(f"Error creating manual device: {e}", exc_info=True)
             return None
     
     def _clamp_focused_index_locked(self) -> int:

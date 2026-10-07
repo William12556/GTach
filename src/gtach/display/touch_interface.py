@@ -175,7 +175,7 @@ class TouchInterface(ABC):
                 try:
                     self._callback(event)
                 except Exception as e:
-                    self.logger.error(f"Error in touch callback: {e}")
+                    self.logger.error(f"Error in touch callback: {e}", exc_info=True)
             else:
                 self.logger.debug(f"Touch event {event.event_type.name} at ({event.x:.3f}, {event.y:.3f}) - no callback registered")
     
@@ -251,7 +251,7 @@ class MockHyperPixelTouch:
             try:
                 self._callback(touch_id, x, y, state)
             except Exception as e:
-                self.logger.error(f"Error in mock touch callback: {e}")
+                self.logger.error(f"Error in mock touch callback: {e}", exc_info=True)
         else:
             self.logger.warning("Cannot simulate touch - callback not registered or device not running")
 
@@ -301,7 +301,7 @@ class HyperPixelTouchInterface(TouchInterface):
         try:
             self._start_mock_implementation()
         except Exception as e:
-            self.logger.error(f"Failed to start both real and mock implementations: {e}")
+            self.logger.error(f"Failed to start both real and mock implementations: {e}", exc_info=True)
             raise RuntimeError(f"HyperPixel touch interface startup failed: {e}")
     
     def _start_real_hardware(self) -> None:
@@ -335,7 +335,7 @@ class HyperPixelTouchInterface(TouchInterface):
                     self._emit_touch_event(event)
                     
                 except Exception as e:
-                    self.logger.error(f"Error handling real HyperPixel touch event: {e}")
+                    self.logger.error(f"Error handling real HyperPixel touch event: {e}", exc_info=True)
             
             self._running = True
             self._using_mock = False
@@ -345,7 +345,7 @@ class HyperPixelTouchInterface(TouchInterface):
             self.logger.error(f"HyperPixel2R import failed (missing dependencies): {e}")
             raise RuntimeError(f"HyperPixel2R library dependencies not available: {e}")
         except Exception as e:
-            self.logger.error(f"Real HyperPixel hardware initialization failed: {e}")
+            self.logger.error(f"Real HyperPixel hardware initialization failed: {e}", exc_info=True)
             raise RuntimeError(f"Real HyperPixel hardware startup failed: {e}")
     
     def _start_mock_implementation(self) -> None:
@@ -377,7 +377,7 @@ class HyperPixelTouchInterface(TouchInterface):
                     self._emit_touch_event(event)
                     
                 except Exception as e:
-                    self.logger.error(f"Error handling mock HyperPixel touch event: {e}")
+                    self.logger.error(f"Error handling mock HyperPixel touch event: {e}", exc_info=True)
             
             # Start the mock device
             self._touch_device.start()
@@ -387,7 +387,7 @@ class HyperPixelTouchInterface(TouchInterface):
             self.logger.info("💡 Use simulate_touch_event() method for testing touch interactions")
             
         except Exception as e:
-            self.logger.error(f"Mock implementation startup failed: {e}")
+            self.logger.error(f"Mock implementation startup failed: {e}", exc_info=True)
             raise RuntimeError(f"Mock HyperPixel implementation failed: {e}")
     
     def stop(self) -> None:
@@ -409,7 +409,7 @@ class HyperPixelTouchInterface(TouchInterface):
             self.logger.info(f"✅ HyperPixel touch interface ({implementation}) stopped")
             
         except Exception as e:
-            self.logger.error(f"Error stopping HyperPixel touch interface: {e}")
+            self.logger.error(f"Error stopping HyperPixel touch interface: {e}", exc_info=True)
     
     def simulate_touch_event(self, x: float, y: float, state: bool, touch_id: int = 0) -> None:
         """
@@ -448,7 +448,7 @@ class HyperPixelTouchInterface(TouchInterface):
             self._touch_device.simulate_touch(pixel_x, pixel_y, state, touch_id)
             
         except Exception as e:
-            self.logger.error(f"Error simulating touch event: {e}")
+            self.logger.error(f"Error simulating touch event: {e}", exc_info=True)
     
     def get_info(self) -> dict:
         """Get HyperPixel-specific interface information"""
@@ -596,7 +596,7 @@ class MockTouchInterface(TouchInterface):
             self._emit_touch_event(event)
             
         except Exception as e:
-            self.logger.error(f"❌ Error simulating touch: {e}")
+            self.logger.error(f"❌ Error simulating touch: {e}", exc_info=True)
     
     def simulate_tap(self, x: float, y: float, delay: Optional[float] = None) -> None:
         """
@@ -873,11 +873,11 @@ def create_touch_interface() -> TouchInterface:
                 logger.info("✅ Mock touch interface created as fallback")
                 return interface
             except Exception as fallback_error:
-                logger.error(f"Even mock interface creation failed: {fallback_error}")
+                logger.error(f"Even mock interface creation failed: {fallback_error}", exc_info=True)
                 raise RuntimeError(f"Failed to create any touch interface: {fallback_error}")
             
     except Exception as e:
-        logger.error(f"Critical error in touch interface factory: {e}")
+        logger.error(f"Critical error in touch interface factory: {e}", exc_info=True)
         # Ultimate fallback - try to create basic mock interface
         try:
             logger.info("🆘 Attempting emergency mock interface creation...")

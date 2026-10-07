@@ -184,7 +184,7 @@ class FontManager:
                 self.logger.error("Font system test failed")
                 
         except Exception as e:
-            self.logger.error(f"Font system initialization failed: {e}")
+            self.logger.error(f"Font system initialization failed: {e}", exc_info=True)
             self._initialized = False
     
     def get_font(self, size: int) -> pygame.font.Font:
@@ -574,7 +574,7 @@ class ButtonRenderer:
                 return visual_rect, touch_rect
                 
         except Exception as e:
-            self.logger.error(f"Error rendering button '{button_id}': {e}")
+            self.logger.error(f"Error rendering button '{button_id}': {e}", exc_info=True)
             # Return safe fallback rects
             size = self._size_mappings.get(button_size, (80, 35))
             fallback_rect = pygame.Rect(position[0] - size[0]//2, position[1] - size[1]//2, size[0], size[1])
@@ -621,7 +621,7 @@ class ButtonRenderer:
             return (int(x), int(y))
             
         except Exception as e:
-            self.logger.error(f"Error calculating circular position: {e}")
+            self.logger.error(f"Error calculating circular position: {e}", exc_info=True)
             # Fallback to center
             return TypographyConstants.DISPLAY_CENTER
     

@@ -68,7 +68,7 @@ class DeviceStore:
                 }
                 self._save_config()
         except Exception as e:
-            self.logger.error(f"Failed to load device config: {e}")
+            self.logger.error(f"Failed to load device config: {e}", exc_info=True)
             self.config = {
                 'paired_devices': {}
             }
@@ -135,7 +135,7 @@ class DeviceStore:
             os.replace(tmp_path, self.config_path)
             return True
         except Exception as e:
-            self.logger.error(f"Failed to save device config: {e}")
+            self.logger.error(f"Failed to save device config: {e}", exc_info=True)
             return False
     
     def save_device(self, device: BluetoothDevice, is_primary: bool = True) -> bool:
@@ -182,7 +182,7 @@ class DeviceStore:
             return saved
 
         except Exception as e:
-            self.logger.error(f"Failed to save device {device.name}: {e}")
+            self.logger.error(f"Failed to save device {device.name}: {e}", exc_info=True)
             return False
     
     def get_primary_device(self) -> Optional[BluetoothDevice]:
@@ -202,7 +202,7 @@ class DeviceStore:
                 )
             return None
         except Exception as e:
-            self.logger.error(f"Failed to get primary device: {e}")
+            self.logger.error(f"Failed to get primary device: {e}", exc_info=True)
             return None
     
     def get_all_devices(self) -> List[BluetoothDevice]:
@@ -229,7 +229,7 @@ class DeviceStore:
                 )
                 devices.append(device)
         except Exception as e:
-            self.logger.error(f"Failed to get secondary devices: {e}")
+            self.logger.error(f"Failed to get secondary devices: {e}", exc_info=True)
         
         return devices
     
@@ -254,7 +254,7 @@ class DeviceStore:
             
             return False
         except Exception as e:
-            self.logger.error(f"Failed to remove device {mac_address}: {e}")
+            self.logger.error(f"Failed to remove device {mac_address}: {e}", exc_info=True)
             return False
     
     def get_device_by_mac(self, mac_address: str) -> Optional[BluetoothDevice]:

@@ -296,7 +296,7 @@ class SplashScreen:
                 return font
                 
         except Exception as e:
-            self.logger.error(f"Font caching error for {font_type}: {e}")
+            self.logger.error(f"Font caching error for {font_type}: {e}", exc_info=True)
             return None
         finally:
             # Track performance
@@ -403,7 +403,7 @@ class SplashScreen:
             return True
             
         except Exception as e:
-            self.logger.error(f"Graphics rendering failed: {e}")
+            self.logger.error(f"Graphics rendering failed: {e}", exc_info=True)
             return False
     
     def _draw_title_text(self, surface, center_x: int, center_y: int) -> None:
@@ -430,7 +430,7 @@ class SplashScreen:
                     self.logger.debug(f"Circular validation failed for title: {e}")
             
         except Exception as e:
-            self.logger.error(f"Title text rendering failed: {e}")
+            self.logger.error(f"Title text rendering failed: {e}", exc_info=True)
     
     def _draw_subtitle_text(self, surface, center_x: int, center_y: int) -> None:
         """Draw the application subtitle with body typography (FONT_BODY = 20px, was 32px)."""
@@ -455,7 +455,7 @@ class SplashScreen:
                     self.logger.debug(f"Circular validation failed for subtitle: {e}")
             
         except Exception as e:
-            self.logger.error(f"Subtitle text rendering failed: {e}")
+            self.logger.error(f"Subtitle text rendering failed: {e}", exc_info=True)
     
     def _draw_obdii_icon(self, surface, center_x: int, center_y: int) -> None:
         """Draw animated OBD-II connector icon."""
@@ -483,7 +483,7 @@ class SplashScreen:
                 pygame.draw.circle(surface, color, (center_x, center_y), radius, 3)
                 
         except Exception as e:
-            self.logger.error(f"OBD-II icon rendering failed: {e}")
+            self.logger.error(f"OBD-II icon rendering failed: {e}", exc_info=True)
     
     def _draw_progress_indicator(self, surface, center_x: int, center_y: int) -> None:
         """Draw simplified progress indicator with automotive gauge only."""
@@ -510,7 +510,7 @@ class SplashScreen:
                 self.logger.warning("Automotive gauge rendering failed - no fallback progress indicator")
             
         except Exception as e:
-            self.logger.error(f"Progress indicator rendering failed: {e}")
+            self.logger.error(f"Progress indicator rendering failed: {e}", exc_info=True)
     
     
     def _draw_version_text(self, surface, center_x: int, center_y: int) -> None:
@@ -535,7 +535,7 @@ class SplashScreen:
                     self.logger.debug(f"Circular validation failed for version: {e}")
             
         except Exception as e:
-            self.logger.error(f"Version text rendering failed: {e}")
+            self.logger.error(f"Version text rendering failed: {e}", exc_info=True)
     
     def _render_text_fallback(self) -> bool:
         """
@@ -564,7 +564,7 @@ class SplashScreen:
             return True
             
         except Exception as e:
-            self.logger.error(f"Text fallback rendering failed: {e}")
+            self.logger.error(f"Text fallback rendering failed: {e}", exc_info=True)
             return True  # Fallback should never fail completely
     
     def get_progress(self) -> float:

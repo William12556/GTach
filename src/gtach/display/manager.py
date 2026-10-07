@@ -256,7 +256,7 @@ class DisplayManager:
             # same way in TouchHandler._handle_long_press.
 
         except Exception as e:
-            self.logger.error(f"Touch callback setup failed: {e}")
+            self.logger.error(f"Touch callback setup failed: {e}", exc_info=True)
     
     def _toggle_palette(self) -> None:
         """Swap the active palette, notify, and persist the choice.
@@ -307,7 +307,7 @@ class DisplayManager:
             self._toggle_palette()
             return TouchAction.SETTINGS_CHANGE
         except Exception as e:
-            self.logger.error(f'Double tap handling error: {e}')
+            self.logger.error(f'Double tap handling error: {e}', exc_info=True)
             return TouchAction.NONE
 
     def _handle_swipe_down(self, start_pos: Tuple[int, int],
@@ -350,7 +350,7 @@ class DisplayManager:
             self.config.mode = DisplayMode.OPTIONS
             return TouchAction.NAVIGATION
         except Exception as e:
-            self.logger.error(f'Swipe down handling error: {e}')
+            self.logger.error(f'Swipe down handling error: {e}', exc_info=True)
             return TouchAction.NONE
 
     def _handle_swipe_up(self, start_pos: Tuple[int, int],
@@ -385,7 +385,7 @@ class DisplayManager:
             self._pre_options_mode = None
             return TouchAction.NAVIGATION
         except Exception as e:
-            self.logger.error(f'Swipe up handling error: {e}')
+            self.logger.error(f'Swipe up handling error: {e}', exc_info=True)
             return TouchAction.NONE
 
     def _handle_swipe_left(self, start_pos: Tuple[int, int],
@@ -451,7 +451,7 @@ class DisplayManager:
             self.logger.debug(f'Options page -> {self._options_page}')
             return TouchAction.NAVIGATION
         except Exception as e:
-            self.logger.error(f'Options paging error: {e}')
+            self.logger.error(f'Options paging error: {e}', exc_info=True)
             return TouchAction.NONE
 
     def _initialize_legacy_components(self) -> None:
@@ -479,7 +479,7 @@ class DisplayManager:
                 self._splash_screen = SplashScreen(surface_size=(480, 480), duration=4.0, config=splash_config)
                 self.logger.info("Splash screen initialized successfully")
             except Exception as e:
-                self.logger.error(f"Failed to initialize splash screen: {e}")
+                self.logger.error(f"Failed to initialize splash screen: {e}", exc_info=True)
                 self._splash_screen = None
             
             # Navigation gesture handler
@@ -506,7 +506,7 @@ class DisplayManager:
                 self.gesture_handler = None
             
         except Exception as e:
-            self.logger.error(f"Legacy component initialization failed: {e}")
+            self.logger.error(f"Legacy component initialization failed: {e}", exc_info=True)
     
     def _load_config(self) -> None:
         """Load display configuration"""
@@ -641,7 +641,7 @@ class DisplayManager:
                 yaml.dump(config_data, f)
 
         except Exception as e:
-            self.logger.error(f"Config save failed: {e}")
+            self.logger.error(f"Config save failed: {e}", exc_info=True)
     
     def start(self) -> None:
         """Start display manager."""
@@ -664,7 +664,7 @@ class DisplayManager:
                 self.logger.warning("No splash screen available - skipping to normal mode")
                 self._enter_post_splash_mode()
         except Exception as e:
-            self.logger.error(f"Failed to start splash screen: {e}")
+            self.logger.error(f"Failed to start splash screen: {e}", exc_info=True)
             self._enter_post_splash_mode()
     
     def stop(self) -> None:
@@ -791,7 +791,7 @@ class DisplayManager:
                     try:
                         self._splash_screen.reset()
                     except Exception as e:
-                        self.logger.error(f"Error resetting splash screen: {e}")
+                        self.logger.error(f"Error resetting splash screen: {e}", exc_info=True)
                         
         except Exception as e:
             self.logger.error(f"Splash mode error: {e}", exc_info=True)
@@ -840,7 +840,7 @@ class DisplayManager:
             if back_surface and self._setup_manager:
                 self._setup_manager.render(back_surface)
         except Exception as e:
-            self.logger.error(f"Setup mode render error: {e}")
+            self.logger.error(f"Setup mode render error: {e}", exc_info=True)
             self._draw_setup_mode_fallback()
     
     def _drain_samples(self) -> None:
@@ -1010,7 +1010,7 @@ class DisplayManager:
             self._draw_status_indicator()
 
         except Exception as e:
-            self.logger.error(f"Normal mode render error: {e}")
+            self.logger.error(f"Normal mode render error: {e}", exc_info=True)
 
     def _condition_rpm(self, raw: float) -> float:
         """Smooth the raw RPM sample for display.
@@ -1377,7 +1377,7 @@ class DisplayManager:
             else:
                 self._draw_options_menu()
         except Exception as e:
-            self.logger.error(f"Options display error: {e}")
+            self.logger.error(f"Options display error: {e}", exc_info=True)
 
     def _current_view_key(self) -> tuple:
         """Identify the view whose touch regions should be registered.
@@ -2158,7 +2158,7 @@ class DisplayManager:
             self._render_slider_visuals("Danger RPM:", self.config.rpm_danger, 170, (255, 50, 50))
             
         except Exception as e:
-            self.logger.error(f"RPM sliders error: {e}")
+            self.logger.error(f"RPM sliders error: {e}", exc_info=True)
     
     def _render_slider_visuals(self, label: str, value: int, y_pos: int, color: Tuple[int, int, int]) -> None:
         """Render slider visual elements"""
@@ -2188,7 +2188,7 @@ class DisplayManager:
                 )
                 
         except Exception as e:
-            self.logger.error(f"Slider visuals error: {e}")
+            self.logger.error(f"Slider visuals error: {e}", exc_info=True)
     
     def _register_save_button(self) -> None:
         """Register save button with touch coordinator"""
@@ -2214,7 +2214,7 @@ class DisplayManager:
                 )
 
         except Exception as e:
-            self.logger.error(f"Save button error: {e}")
+            self.logger.error(f"Save button error: {e}", exc_info=True)
 
     def _draw_acknowledgement_mode(self) -> None:
         """Draw acknowledgement screen with blocking tap-to-dismiss interaction.
@@ -2555,7 +2555,7 @@ class DisplayManager:
                                             (color.r, color.g, color.b), (240, 60), 5)
             
         except Exception as e:
-            self.logger.error(f"Status indicator error: {e}")
+            self.logger.error(f"Status indicator error: {e}", exc_info=True)
     
     def _draw_setup_mode_fallback(self) -> None:
         """Draw basic setup mode indicator"""
@@ -2572,7 +2572,7 @@ class DisplayManager:
                 )
 
         except Exception as e:
-            self.logger.error(f"Setup mode fallback error: {e}")
+            self.logger.error(f"Setup mode fallback error: {e}", exc_info=True)
     
     def _get_plain_font(self, size: int) -> Optional[pygame.font.Font]:
         """Get a cached plain (SDL default) font for the given size.
@@ -2639,7 +2639,7 @@ class DisplayManager:
                 return action
                 
         except Exception as e:
-            self.logger.error(f"Touch event error: {e}")
+            self.logger.error(f"Touch event error: {e}", exc_info=True)
             return None
     
     def _update_config_from_sliders(self) -> None:
@@ -2654,7 +2654,7 @@ class DisplayManager:
                 self.config.rpm_danger = danger_value
                 
         except Exception as e:
-            self.logger.error(f"Config update error: {e}")
+            self.logger.error(f"Config update error: {e}", exc_info=True)
     
     # Performance and debugging methods
     def get_performance_stats(self) -> Dict[str, Any]:
@@ -2667,7 +2667,7 @@ class DisplayManager:
                 'performance_summary': self.performance_monitor.get_performance_summary()
             }
         except Exception as e:
-            self.logger.error(f"Performance stats error: {e}")
+            self.logger.error(f"Performance stats error: {e}", exc_info=True)
             return {}
     
     def get_display_state(self) -> Dict[str, Any]:
@@ -2685,5 +2685,5 @@ class DisplayManager:
                 'timestamp': time.time()
             }
         except Exception as e:
-            self.logger.error(f"Display state error: {e}")
+            self.logger.error(f"Display state error: {e}", exc_info=True)
             return {'error': str(e)}

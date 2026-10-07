@@ -384,7 +384,7 @@ class OBDTransport(ABC):
             return False
         except Exception as e:
             logger.error("Unexpected error during connection to %s: %s",
-                         self._describe(), e)
+                         self._describe(), e, exc_info=True)
             self._discard_handle()
             with self._lock:
                 self._state = TransportState.ERROR
@@ -524,7 +524,7 @@ class OBDTransport(ABC):
             self._discard_handle()
             return None
         except Exception as e:
-            logger.error("Unexpected error during command send: %s", e)
+            logger.error("Unexpected error during command send: %s", e, exc_info=True)
             return None
 
     def is_connected(self) -> bool:

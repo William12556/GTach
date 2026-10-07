@@ -151,7 +151,7 @@ class SystemBluetoothManager:
             self.logger.warning("hcitool not found - falling back to bluetoothctl")
             devices = self._discover_via_bluetoothctl(duration)
         except Exception as e:
-            self.logger.error(f"Device discovery failed: {e}")
+            self.logger.error(f"Device discovery failed: {e}", exc_info=True)
 
         result_list = list(devices.items())
         self.logger.info(f"Found {len(result_list)} devices")
@@ -191,7 +191,7 @@ class SystemBluetoothManager:
             process.terminate()
             t.join(timeout=3)
         except Exception as e:
-            self.logger.error(f"bluetoothctl fallback failed: {e}")
+            self.logger.error(f"bluetoothctl fallback failed: {e}", exc_info=True)
         return devices
 
     def pair_device(self, mac_address: str) -> bool:
@@ -205,7 +205,7 @@ class SystemBluetoothManager:
             self.logger.error(f"Failed to pair with {mac_address}")
             return False
         except Exception as e:
-            self.logger.error(f"Pairing failed: {e}")
+            self.logger.error(f"Pairing failed: {e}", exc_info=True)
             return False
 
     def connect_device(self, mac_address: str) -> bool:
@@ -218,7 +218,7 @@ class SystemBluetoothManager:
             self.logger.error(f"Failed to connect to {mac_address}")
             return False
         except Exception as e:
-            self.logger.error(f"Connection failed: {e}")
+            self.logger.error(f"Connection failed: {e}", exc_info=True)
             return False
 
     def disconnect_device(self, mac_address: str) -> bool:
@@ -227,7 +227,7 @@ class SystemBluetoothManager:
             self.logger.info(f"Disconnected from {mac_address}")
             return True
         except Exception as e:
-            self.logger.error(f"Disconnection failed: {e}")
+            self.logger.error(f"Disconnection failed: {e}", exc_info=True)
             return False
 
     def get_device_info(self, mac_address: str) -> Optional[Dict[str, str]]:
@@ -240,7 +240,7 @@ class SystemBluetoothManager:
                     info[key.strip()] = value.strip()
             return info if info else None
         except Exception as e:
-            self.logger.error(f"Failed to get device info: {e}")
+            self.logger.error(f"Failed to get device info: {e}", exc_info=True)
             return None
 
     def is_device_connected(self, mac_address: str) -> bool:
@@ -250,7 +250,7 @@ class SystemBluetoothManager:
                 return info.get('Connected', 'no').lower() == 'yes'
             return False
         except Exception as e:
-            self.logger.error(f"Failed to check connection status: {e}")
+            self.logger.error(f"Failed to check connection status: {e}", exc_info=True)
             return False
 
 

@@ -1240,7 +1240,7 @@ class ConfigManager:
                     return config
                     
                 except Exception as e:
-                    self.logger.error(f"Failed to load configuration: {e}")
+                    self.logger.error(f"Failed to load configuration: {e}", exc_info=True)
                     # Return default config on error
                     default_config = OBDConfig()
                     self._update_cache(default_config)
@@ -1300,7 +1300,7 @@ class ConfigManager:
             return config
             
         except Exception as e:
-            self.logger.error(f"Error loading config from disk: {e}")
+            self.logger.error(f"Error loading config from disk: {e}", exc_info=True)
             raise
     
     def _load_yaml_config(self) -> OBDConfig:
@@ -1422,7 +1422,7 @@ class ConfigManager:
                 raise e
                 
         except Exception as e:
-            self.logger.error(f"Failed to save configuration: {e}")
+            self.logger.error(f"Failed to save configuration: {e}", exc_info=True)
             return False
     
     def get_home_path(self) -> Path:

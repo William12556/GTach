@@ -64,7 +64,7 @@ class BluetoothSetupInterface:
                 return pairing
                 
             except Exception as e:
-                self.logger.error(f"Bluetooth pairing initialization failed: {e}")
+                self.logger.error(f"Bluetooth pairing initialization failed: {e}", exc_info=True)
                 if progress_callback:
                     progress_callback(1.0, f"Bluetooth initialization failed: {str(e)}")
                 raise
@@ -89,7 +89,7 @@ class BluetoothSetupInterface:
                     del self._active_operations['bluetooth_init']
                     
             except Exception as e:
-                self.logger.error(f"Error in bluetooth init callback: {e}")
+                self.logger.error(f"Error in bluetooth init callback: {e}", exc_info=True)
                 self.pairing = None
                 self._pairing_ready.set()
         
@@ -104,13 +104,13 @@ class BluetoothSetupInterface:
             self.logger.info(f"Bluetooth pairing initialization started (operation: {operation_id})")
             
         except Exception as e:
-            self.logger.error(f"Failed to submit bluetooth initialization operation: {e}")
+            self.logger.error(f"Failed to submit bluetooth initialization operation: {e}", exc_info=True)
             try:
                 self.pairing = (self._pairing_factory if self._pairing_factory else BluetoothPairing)()
                 self._pairing_ready.set()
                 self.logger.warning("Fallback to synchronous Bluetooth initialization")
             except Exception as fallback_error:
-                self.logger.error(f"Synchronous Bluetooth initialization also failed: {fallback_error}")
+                self.logger.error(f"Synchronous Bluetooth initialization also failed: {fallback_error}", exc_info=True)
                 self.pairing = None
                 self._pairing_ready.set()
     
@@ -129,7 +129,7 @@ class BluetoothSetupInterface:
             return True
 
         except Exception as e:
-            self.logger.error(f"Error ensuring pairing initialization: {e}")
+            self.logger.error(f"Error ensuring pairing initialization: {e}", exc_info=True)
             return False
 
     def verify_obd_connection(self, state) -> bool:
@@ -168,7 +168,7 @@ class BluetoothSetupInterface:
             finally:
                 transport.disconnect()
         except Exception as e:
-            self.logger.error(f"OBD verify exception: {e}")
+            self.logger.error(f"OBD verify exception: {e}", exc_info=True)
             return False
     
     def start_discovery(self, state, progress_callback=None, device_found_callback=None,
@@ -244,7 +244,7 @@ class BluetoothSetupInterface:
                     del self._active_operations['device_discovery']
                     
             except Exception as e:
-                self.logger.error(f"Error in discovery callback: {e}")
+                self.logger.error(f"Error in discovery callback: {e}", exc_info=True)
                 state.pairing_status = PairingStatus.FAILED
         
         try:
@@ -263,7 +263,7 @@ class BluetoothSetupInterface:
             self.logger.info(f"Device discovery started (operation: {operation_id})")
             
         except Exception as e:
-            self.logger.error(f"Failed to submit discovery operation: {e}")
+            self.logger.error(f"Failed to submit discovery operation: {e}", exc_info=True)
             state.pairing_status = PairingStatus.FAILED
 
     def start_pairing(self, device: BluetoothDevice, state, progress_callback=None) -> None:
@@ -357,7 +357,7 @@ class BluetoothSetupInterface:
                     del self._active_operations['device_pairing']
 
             except Exception as e:
-                self.logger.error(f"Error in pairing callback: {e}")
+                self.logger.error(f"Error in pairing callback: {e}", exc_info=True)
                 state.pairing_status = PairingStatus.FAILED
         
         try:
@@ -376,7 +376,7 @@ class BluetoothSetupInterface:
             self.logger.info(f"Device pairing started (operation: {operation_id})")
             
         except Exception as e:
-            self.logger.error(f"Failed to submit pairing operation: {e}")
+            self.logger.error(f"Failed to submit pairing operation: {e}", exc_info=True)
             state.pairing_status = PairingStatus.FAILED
     
     def cancel_operations(self) -> None:
@@ -386,7 +386,7 @@ class BluetoothSetupInterface:
                 self.async_manager.cancel_operation(operation_id)
             self._active_operations.clear()
         except Exception as e:
-            self.logger.error(f"Error cancelling async operations: {e}")
+            self.logger.error(f"Error cancelling async operations: {e}", exc_info=True)
         
         if self.pairing is not None:
             try:

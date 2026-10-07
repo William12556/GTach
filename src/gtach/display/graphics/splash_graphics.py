@@ -118,7 +118,7 @@ def draw_automotive_gauge(surface, center: Tuple[int, int], radius: int,
             pygame.draw.circle(surface, AUTOMOTIVE_COLORS['gauge_background'], 
                              center, radius, background_thickness)
         except Exception as e:
-            logger.error(f"Error drawing gauge background: {e}")
+            logger.error(f"Error drawing gauge background: {e}", exc_info=True)
             return False
         
         # Draw tick marks around the gauge
@@ -214,12 +214,12 @@ def draw_automotive_gauge(surface, center: Tuple[int, int], radius: int,
             pygame.draw.circle(surface, AUTOMOTIVE_COLORS['text_secondary'], 
                              center, hub_radius, 1)
         except Exception as e:
-            logger.error(f"Error drawing gauge hub: {e}")
+            logger.error(f"Error drawing gauge hub: {e}", exc_info=True)
         
         return True
         
     except Exception as e:
-        logger.error(f"Automotive gauge drawing failed: {e}")
+        logger.error(f"Automotive gauge drawing failed: {e}", exc_info=True)
         return False
 
 
@@ -287,7 +287,7 @@ def draw_obdii_connector(surface, center: Tuple[int, int], size: int,
             pygame.draw.rect(surface, outline_color, connector_rect, 2, 
                            border_radius=corner_radius)
         except Exception as e:
-            logger.error(f"Error drawing connector body: {e}")
+            logger.error(f"Error drawing connector body: {e}", exc_info=True)
             return False
         
         # Draw connector pins (small rectangles)
@@ -334,12 +334,12 @@ def draw_obdii_connector(surface, center: Tuple[int, int], size: int,
                 pygame.draw.circle(surface, AUTOMOTIVE_COLORS['accent_bright'],
                                  (cable_x, cable_y + cable_length), end_size)
             except Exception as e:
-                logger.error(f"Error drawing cable indicator: {e}")
+                logger.error(f"Error drawing cable indicator: {e}", exc_info=True)
         
         return True
         
     except Exception as e:
-        logger.error(f"OBD-II connector drawing failed: {e}")
+        logger.error(f"OBD-II connector drawing failed: {e}", exc_info=True)
         return False
 
 
@@ -391,7 +391,7 @@ def draw_progress_bar(surface, rect: pygame.Rect, progress: float,
             pygame.draw.rect(surface, background_color, rect, 
                            border_radius=border_radius)
         except Exception as e:
-            logger.error(f"Error drawing progress background: {e}")
+            logger.error(f"Error drawing progress background: {e}", exc_info=True)
             return False
         
         # Draw progress fill
@@ -404,7 +404,7 @@ def draw_progress_bar(surface, rect: pygame.Rect, progress: float,
                     pygame.draw.rect(surface, color, fill_rect, 
                                    border_radius=border_radius)
                 except Exception as e:
-                    logger.error(f"Error drawing progress fill: {e}")
+                    logger.error(f"Error drawing progress fill: {e}", exc_info=True)
         
         # Draw border
         border_color = AUTOMOTIVE_COLORS['text_tertiary']
@@ -412,7 +412,7 @@ def draw_progress_bar(surface, rect: pygame.Rect, progress: float,
             pygame.draw.rect(surface, border_color, rect, border_width, 
                            border_radius=border_radius)
         except Exception as e:
-            logger.error(f"Error drawing progress border: {e}")
+            logger.error(f"Error drawing progress border: {e}", exc_info=True)
         
         # Add highlight effect for enhanced appearance
         if progress > 0.1:  # Only show highlight when some progress is visible
@@ -434,7 +434,7 @@ def draw_progress_bar(surface, rect: pygame.Rect, progress: float,
         return True
         
     except Exception as e:
-        logger.error(f"Progress bar drawing failed: {e}")
+        logger.error(f"Progress bar drawing failed: {e}", exc_info=True)
         return False
 
 
@@ -527,7 +527,7 @@ def draw_animated_dots(surface, center: Tuple[int, int], frame_count: int,
         return True
         
     except Exception as e:
-        logger.error(f"Animated dots drawing failed: {e}")
+        logger.error(f"Animated dots drawing failed: {e}", exc_info=True)
         return False
 
 
@@ -581,5 +581,5 @@ def create_gradient_surface(size: Tuple[int, int], color_start: Tuple[int, int, 
         return surface
         
     except Exception as e:
-        logger.error(f"Gradient surface creation failed: {e}")
+        logger.error(f"Gradient surface creation failed: {e}", exc_info=True)
         return None

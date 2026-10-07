@@ -20,6 +20,7 @@ from logging.handlers import RotatingFileHandler
 # Module-level handler references for runtime manipulation.
 _start_handler: logging.Handler = None
 _debug_handler: logging.Handler = None
+_error_handler: Optional[logging.Handler] = None
 # Kept referenced so faulthandler's fd stays open for the process
 # lifetime; faulthandler writes to the file descriptor directly.
 _stacks_file = None
@@ -49,10 +50,31 @@ _STACKS_BACKUPS = 3
 # cannot exhaust the backups (issue-6a3b7c52).
 _DEBUG_MAX_BYTES = 10 * 1024 * 1024
 _DEBUG_BACKUPS = 10
+# error.log is always on: WARNING and above, size rotation only, and
+# never rotated at start, so a fault that caused a restart is still in
+# the live file afterwards. Without it nothing at all was persisted
+# after startup with debug off (issue-269871a0).
+_ERROR_LOG = '/opt/gtach/error.log'
+_ERROR_MAX_BYTES = 1 * 1024 * 1024
+_ERROR_BACKUPS = 5
 
 
 def setup_logging(debug: bool = False) -> None:
-    global _start_handler, _debug_handler
+    """Attach the three root log handlers.
+
+    * start.log — truncated at boot; written during startup and then
+      silenced by GTachApplication._finish_startup_logging.
+    * debug.log — rotated at start; suppressed unless debug is on.
+    * error.log — always on at WARNING and above; size-rotated only and
+      never rotated at start (issue-269871a0).
+
+    A handler whose file cannot be opened is skipped with a warning on
+    stderr; logging setup never prevents startup.
+
+    Args:
+        debug: Enable debug.log at DEBUG and arm stack dumps.
+    """
+    global _start_handler, _debug_handler, _error_handler
 
     formatter = logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FMT)
     root = logging.getLogger()
@@ -106,6 +128,21 @@ def setup_logging(debug: bool = False) -> None:
         root.addHandler(_debug_handler)
     except OSError as e:
         print(f'[gtach] WARNING: could not open {_DEBUG_LOG}: {e}', file=sys.stderr)
+
+    # error.log — always on, WARNING and above. Deliberately no
+    # doRollover here: a restart caused by a fault must leave that
+    # fault's record in the live file (issue-269871a0).
+    try:
+        _error_handler = RotatingFileHandler(
+            _ERROR_LOG, maxBytes=_ERROR_MAX_BYTES,
+            backupCount=_ERROR_BACKUPS, encoding='utf-8'
+        )
+        _error_handler.setLevel(logging.WARNING)
+        _error_handler.setFormatter(formatter)
+        root.addHandler(_error_handler)
+    except OSError as e:
+        _error_handler = None
+        print(f'[gtach] WARNING: could not open {_ERROR_LOG}: {e}', file=sys.stderr)
 
     if debug and _debug_handler is not None:
         _debug_handler.setLevel(logging.DEBUG)

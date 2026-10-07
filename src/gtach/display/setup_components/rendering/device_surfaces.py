@@ -130,7 +130,7 @@ class DeviceSurfaceRenderer:
             return truncated + "..." if truncated != text else text
             
         except Exception as e:
-            self.logger.error(f"Error truncating text: {e}")
+            self.logger.error(f"Error truncating text: {e}", exc_info=True)
             return text[:20]  # Fallback truncation
     
     def render_compact_device_item(self, device: BluetoothDevice, item_width: int = 400, 
@@ -232,7 +232,7 @@ class DeviceSurfaceRenderer:
             return item_surface, item_rect
             
         except Exception as e:
-            self.logger.error(f"Error rendering compact device item for {device.name}: {e}")
+            self.logger.error(f"Error rendering compact device item for {device.name}: {e}", exc_info=True)
             # Return minimal fallback surface
             fallback_surface = pygame.Surface((item_width, item_height), pygame.SRCALPHA)
             fallback_surface.fill(self.colors['surface'])
@@ -399,7 +399,7 @@ class DeviceSurfaceRenderer:
             return item_surface, touch_rect
             
         except Exception as e:
-            self.logger.error(f"Error creating curved device surface for {device.name}: {e}")
+            self.logger.error(f"Error creating curved device surface for {device.name}: {e}", exc_info=True)
             # Return fallback surface
             fallback_surface = pygame.Surface((layout_item['width'], layout_item['height']), pygame.SRCALPHA)
             fallback_surface.fill(self.colors['surface'])
@@ -498,7 +498,7 @@ class DeviceSurfaceRenderer:
                 if cache_size > 0:
                     self.logger.debug(f"Cleared device cache ({cache_size} items)")
         except Exception as e:
-            self.logger.error(f"Error clearing device cache: {e}")
+            self.logger.error(f"Error clearing device cache: {e}", exc_info=True)
     
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache and performance statistics"""
@@ -517,7 +517,7 @@ class DeviceSurfaceRenderer:
                     'total_cache_requests': total_requests
                 }
         except Exception as e:
-            self.logger.error(f"Error getting cache stats: {e}")
+            self.logger.error(f"Error getting cache stats: {e}", exc_info=True)
             return {'error': str(e)}
     
     def optimize_cache(self) -> Dict[str, Any]:
@@ -553,5 +553,5 @@ class DeviceSurfaceRenderer:
                     }
                     
         except Exception as e:
-            self.logger.error(f"Error optimizing cache: {e}")
+            self.logger.error(f"Error optimizing cache: {e}", exc_info=True)
             return {'error': str(e)}

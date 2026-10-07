@@ -60,7 +60,7 @@ class TerminalRestorer:
                     termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, self.original_termios)
                     self.logger.debug("Terminal settings restored")
             except Exception as e:
-                self.logger.error(f"Failed to restore terminal settings: {e}")
+                self.logger.error(f"Failed to restore terminal settings: {e}", exc_info=True)
         
         # Restore framebuffer settings if we have them
         if self.original_fb_settings is not None and self.fb_fd is not None:
@@ -69,7 +69,7 @@ class TerminalRestorer:
                 fcntl.ioctl(self.fb_fd, 0x4601, self.original_fb_settings)
                 self.logger.debug("Framebuffer settings restored")
             except Exception as e:
-                self.logger.error(f"Failed to restore framebuffer settings: {e}")
+                self.logger.error(f"Failed to restore framebuffer settings: {e}", exc_info=True)
         
         # Close framebuffer if open
         if self.fb_fd is not None:
@@ -77,10 +77,10 @@ class TerminalRestorer:
                 os.close(self.fb_fd)
                 self.fb_fd = None
             except Exception as e:
-                self.logger.error(f"Failed to close framebuffer: {e}")
+                self.logger.error(f"Failed to close framebuffer: {e}", exc_info=True)
         
         # Reset terminal settings directly using stty if all else fails
         try:
             os.system('stty sane')
         except Exception as e:
-            self.logger.error(f"Failed to reset terminal with stty: {e}")
+            self.logger.error(f"Failed to reset terminal with stty: {e}", exc_info=True)

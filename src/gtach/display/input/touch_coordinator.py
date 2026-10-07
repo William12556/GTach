@@ -102,7 +102,7 @@ class TouchEventCoordinator(TouchEventInterface):
                 return True
                 
             except Exception as e:
-                self.logger.error(f"Failed to register region {region.region_id}: {e}")
+                self.logger.error(f"Failed to register region {region.region_id}: {e}", exc_info=True)
                 return False
     
     def register_slider_region(self, region_id: str, rect: pygame.Rect, 
@@ -184,7 +184,7 @@ class TouchEventCoordinator(TouchEventInterface):
                 return True
             
             except Exception as e:
-                self.logger.error(f"Failed to unregister region {region_id}: {e}")
+                self.logger.error(f"Failed to unregister region {region_id}: {e}", exc_info=True)
                 return False
     
     def clear_regions(self) -> None:
@@ -196,7 +196,7 @@ class TouchEventCoordinator(TouchEventInterface):
                 self.logger.debug("Cleared all touch regions")
                 
             except Exception as e:
-                self.logger.error(f"Failed to clear regions: {e}")
+                self.logger.error(f"Failed to clear regions: {e}", exc_info=True)
     
     def handle_touch_down(self, pos: Tuple[int, int]) -> Optional[TouchAction]:
         """
@@ -246,7 +246,7 @@ class TouchEventCoordinator(TouchEventInterface):
                 return None
                 
             except Exception as e:
-                self.logger.error(f"Touch down handling error: {e}")
+                self.logger.error(f"Touch down handling error: {e}", exc_info=True)
                 return None
     
     def handle_touch_move(self, pos: Tuple[int, int]) -> Optional[TouchAction]:
@@ -273,7 +273,7 @@ class TouchEventCoordinator(TouchEventInterface):
                 return TouchAction.DRAG if self._is_drag_gesture() else None
                 
             except Exception as e:
-                self.logger.error(f"Touch move handling error: {e}")
+                self.logger.error(f"Touch move handling error: {e}", exc_info=True)
                 return None
     
     def handle_touch_up(self, pos: Tuple[int, int]) -> Optional[TouchAction]:
@@ -313,7 +313,7 @@ class TouchEventCoordinator(TouchEventInterface):
                         try:
                             callback(pos)
                         except Exception as e:
-                            self.logger.error(f"Button callback error: {e}")
+                            self.logger.error(f"Button callback error: {e}", exc_info=True)
                 
                 # Reset touch state
                 self._touch_state = {
@@ -328,7 +328,7 @@ class TouchEventCoordinator(TouchEventInterface):
                 return action
                 
             except Exception as e:
-                self.logger.error(f"Touch up handling error: {e}")
+                self.logger.error(f"Touch up handling error: {e}", exc_info=True)
                 return None
     
     def handle_gesture(self, gesture_type: GestureType, 
@@ -347,7 +347,7 @@ class TouchEventCoordinator(TouchEventInterface):
                     if result:
                         return result
                 except Exception as e:
-                    self.logger.error(f"Gesture callback error: {e}")
+                    self.logger.error(f"Gesture callback error: {e}", exc_info=True)
             
             # Default gesture handling
             if gesture_type == GestureType.TAP:
@@ -360,7 +360,7 @@ class TouchEventCoordinator(TouchEventInterface):
             return None
             
         except Exception as e:
-            self.logger.error(f"Gesture handling error: {e}")
+            self.logger.error(f"Gesture handling error: {e}", exc_info=True)
             return None
     
     def register_gesture_callback(self, gesture_type: GestureType, 
@@ -381,7 +381,7 @@ class TouchEventCoordinator(TouchEventInterface):
             return None
             
         except Exception as e:
-            self.logger.error(f"Hit region detection error: {e}")
+            self.logger.error(f"Hit region detection error: {e}", exc_info=True)
             return None
     
     def _handle_slider_touch_down(self, pos: Tuple[int, int], region: TouchRegion) -> TouchAction:
@@ -412,7 +412,7 @@ class TouchEventCoordinator(TouchEventInterface):
             return TouchAction.SLIDER_INTERACTION
             
         except Exception as e:
-            self.logger.error(f"Slider touch down error: {e}")
+            self.logger.error(f"Slider touch down error: {e}", exc_info=True)
             return TouchAction.NONE
     
     def _handle_slider_drag(self, pos: Tuple[int, int]) -> TouchAction:
@@ -439,7 +439,7 @@ class TouchEventCoordinator(TouchEventInterface):
             return TouchAction.SLIDER_INTERACTION
             
         except Exception as e:
-            self.logger.error(f"Slider drag error: {e}")
+            self.logger.error(f"Slider drag error: {e}", exc_info=True)
             return TouchAction.NONE
     
     def _calculate_slider_value(self, pos: Tuple[int, int], track_bounds: Dict) -> int:
@@ -462,7 +462,7 @@ class TouchEventCoordinator(TouchEventInterface):
             return max(min_val, min(max_val, new_value))
             
         except Exception as e:
-            self.logger.error(f"Slider value calculation error: {e}")
+            self.logger.error(f"Slider value calculation error: {e}", exc_info=True)
             return track_bounds.get('min_val', 0)
     
     def _handle_button_touch_down(self, pos: Tuple[int, int], region: TouchRegion) -> TouchAction:
@@ -476,11 +476,11 @@ class TouchEventCoordinator(TouchEventInterface):
                 try:
                     callback(pos)
                 except Exception as e:
-                    self.logger.error(f"Button callback error for {region.region_id}: {e}")
+                    self.logger.error(f"Button callback error for {region.region_id}: {e}", exc_info=True)
             return region.action_type
             
         except Exception as e:
-            self.logger.error(f"Button touch down error: {e}")
+            self.logger.error(f"Button touch down error: {e}", exc_info=True)
             return TouchAction.NONE
     
     def _end_slider_interaction(self) -> None:
@@ -527,7 +527,7 @@ class TouchEventCoordinator(TouchEventInterface):
             return None
             
         except Exception as e:
-            self.logger.error(f"Gesture recognition error: {e}")
+            self.logger.error(f"Gesture recognition error: {e}", exc_info=True)
             return None
     
     def _is_drag_gesture(self) -> bool:
@@ -549,7 +549,7 @@ class TouchEventCoordinator(TouchEventInterface):
             return distance >= self.drag_threshold
             
         except Exception as e:
-            self.logger.error(f"Drag detection error: {e}")
+            self.logger.error(f"Drag detection error: {e}", exc_info=True)
             return False
     
     def get_active_regions(self) -> List[TouchRegion]:
@@ -595,5 +595,5 @@ class TouchEventCoordinator(TouchEventInterface):
                 return False
                 
             except Exception as e:
-                self.logger.error(f"Set slider value error: {e}")
+                self.logger.error(f"Set slider value error: {e}", exc_info=True)
                 return False

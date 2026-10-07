@@ -188,7 +188,7 @@ class PlatformDetector:
                 return resolved_type
                 
             except Exception as e:
-                self.logger.error(f"Platform detection failed: {e}")
+                self.logger.error(f"Platform detection failed: {e}", exc_info=True)
                 return PlatformType.UNKNOWN
     
     def _run_all_detections(self) -> List[DetectionResult]:
@@ -583,7 +583,7 @@ class PlatformDetector:
                 return capabilities
                 
             except Exception as e:
-                self.logger.error(f"GPIO availability check failed: {e}")
+                self.logger.error(f"GPIO availability check failed: {e}", exc_info=True)
                 return PlatformCapabilities()  # All False
     
     def _check_gpio_devices(self) -> bool:
@@ -1022,7 +1022,7 @@ def import_module_with_mock(module_name: str,
         return get_detector().import_module_with_mock(module_name, required_attrs)
     except Exception as e:
         logger = logging.getLogger('platform.import_module_with_mock')
-        logger.error(f"Module import failed: {module_name}: {e}")
+        logger.error(f"Module import failed: {module_name}: {e}", exc_info=True)
         raise
 
 
@@ -1055,7 +1055,7 @@ def log_platform_info(level: int = logging.INFO) -> None:
         
     except Exception as e:
         logger = logging.getLogger('platform.log_platform_info')
-        logger.error(f"Exception logging platform info: {e}")
+        logger.error(f"Exception logging platform info: {e}", exc_info=True)
 
 
 # Legacy compatibility - simplified

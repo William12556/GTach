@@ -303,7 +303,7 @@ class AsyncOperationManager:
                             if operation:
                                 self.progress_callbacks[operation_id](operation)
                     except Exception as e:
-                        self.logger.error(f"Progress callback error for {operation_id}: {e}")
+                        self.logger.error(f"Progress callback error for {operation_id}: {e}", exc_info=True)
                 
                 self.operation_queue.task_done()
                 
@@ -335,7 +335,7 @@ class AsyncOperationManager:
                     if operation:
                         self.progress_callbacks[operation_id](operation)
             except Exception as e:
-                self.logger.error(f"Progress callback error for {operation_id}: {e}")
+                self.logger.error(f"Progress callback error for {operation_id}: {e}", exc_info=True)
 
 
 # Global async operation manager instance

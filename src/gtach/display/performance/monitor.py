@@ -115,7 +115,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 return True
                 
             except Exception as e:
-                self.logger.error(f"Failed to start performance monitoring: {e}")
+                self.logger.error(f"Failed to start performance monitoring: {e}", exc_info=True)
                 return False
     
     def stop_monitoring(self) -> None:
@@ -137,7 +137,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 self._monitoring = False
                 
             except Exception as e:
-                self.logger.error(f"Error stopping performance monitoring: {e}")
+                self.logger.error(f"Error stopping performance monitoring: {e}", exc_info=True)
     
     def record_frame_start(self) -> int:
         """Record start of frame rendering and return frame ID.
@@ -170,7 +170,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 return frame_id
 
             except Exception as e:
-                self.logger.error(f"Error recording frame start: {e}")
+                self.logger.error(f"Error recording frame start: {e}", exc_info=True)
                 return 0
 
     def record_frame_end(self, frame_id: int) -> float:
@@ -218,7 +218,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 return frame_time
                 
             except Exception as e:
-                self.logger.error(f"Error recording frame end: {e}")
+                self.logger.error(f"Error recording frame end: {e}", exc_info=True)
                 return 0.0
 
     def should_log_periodic(self) -> bool:
@@ -242,7 +242,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                     and self._frame_count % self._log_interval_frames == 0
                 )
         except Exception as e:
-            self.logger.error(f"Error testing periodic log interval: {e}")
+            self.logger.error(f"Error testing periodic log interval: {e}", exc_info=True)
             return False
 
     def record_render_operation(self, operation_type: str, duration: float) -> None:
@@ -261,7 +261,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                         self._render_operations[operation_type][-50:]
                         
             except Exception as e:
-                self.logger.error(f"Error recording render operation: {e}")
+                self.logger.error(f"Error recording render operation: {e}", exc_info=True)
     
     def record_cache_hit(self, cache_type: str) -> None:
         """Record a cache hit"""
@@ -329,7 +329,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 )
                 
             except Exception as e:
-                self.logger.error(f"Error getting current metrics: {e}")
+                self.logger.error(f"Error getting current metrics: {e}", exc_info=True)
                 return PerformanceMetrics()
     
     def get_historical_metrics(self, seconds: int = 60) -> List[PerformanceMetrics]:
@@ -343,7 +343,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                        if metrics.last_update_time >= cutoff_time]
                        
             except Exception as e:
-                self.logger.error(f"Error getting historical metrics: {e}")
+                self.logger.error(f"Error getting historical metrics: {e}", exc_info=True)
                 return []
     
     def reset_metrics(self) -> None:
@@ -369,7 +369,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 self.logger.debug("Performance metrics reset")
                 
             except Exception as e:
-                self.logger.error(f"Error resetting metrics: {e}")
+                self.logger.error(f"Error resetting metrics: {e}", exc_info=True)
     
     def set_target_fps(self, fps: int) -> None:
         """Set target FPS for performance monitoring"""
@@ -406,7 +406,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             return True
             
         except Exception as e:
-            self.logger.error(f"Error checking performance: {e}")
+            self.logger.error(f"Error checking performance: {e}", exc_info=True)
             return False
     
     def _calculate_current_fps(self) -> float:
@@ -496,7 +496,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             self._metrics_history.append(current_metrics)
             
         except Exception as e:
-            self.logger.error(f"Error updating metrics history: {e}")
+            self.logger.error(f"Error updating metrics history: {e}", exc_info=True)
     
     def add_dirty_region(self, rect: pygame.Rect) -> None:
         """Add a dirty region for optimization tracking"""
@@ -519,7 +519,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                     self._total_dirty_area -= removed['area']
                     
             except Exception as e:
-                self.logger.error(f"Error adding dirty region: {e}")
+                self.logger.error(f"Error adding dirty region: {e}", exc_info=True)
     
     def get_dirty_regions(self) -> List[pygame.Rect]:
         """Get current dirty regions for partial updates"""
@@ -534,7 +534,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 return recent_regions
                 
             except Exception as e:
-                self.logger.error(f"Error getting dirty regions: {e}")
+                self.logger.error(f"Error getting dirty regions: {e}", exc_info=True)
                 return []
     
     def clear_dirty_regions(self) -> None:
@@ -560,5 +560,5 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 }
                 
             except Exception as e:
-                self.logger.error(f"Error getting performance summary: {e}")
+                self.logger.error(f"Error getting performance summary: {e}", exc_info=True)
                 return {}
