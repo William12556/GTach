@@ -73,6 +73,8 @@ class _StubTransport(OBDTransport):
     """A transport whose _open outcome is scripted."""
 
     _IO_ERRORS = (OSError,)
+    # Models the RFCOMM transport, which opts in to adapter checks.
+    _ADAPTER_CHECKS = True
 
     def __init__(self, outcome=None):
         super().__init__()

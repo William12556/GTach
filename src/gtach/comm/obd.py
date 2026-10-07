@@ -31,6 +31,9 @@ class OBDResponse:
 
 class OBDProtocol:
     """Handles OBD protocol communication"""
+
+    # Wait after a failed initialisation before retrying (issue-907de6de).
+    _INIT_RETRY_DELAY_S: float = 2.0
     
     def __init__(self, transport: OBDTransport, thread_manager: ThreadManager, poll_interval_s: float = 0.05, adapter_pre_initialised: bool = False):
         self.logger = logging.getLogger('OBDProtocol')
@@ -75,6 +78,9 @@ class OBDProtocol:
                     continue
 
                 if not self._initialize_protocol():
+                    # Back off rather than retry at once (issue-907de6de).
+                    self.thread_manager.update_heartbeat('obd_protocol')
+                    self.shutdown_event.wait(self._INIT_RETRY_DELAY_S)
                     continue
                 
                 while self.transport.is_connected() and not self.shutdown_event.is_set():
@@ -134,8 +140,11 @@ class OBDProtocol:
             self.thread_manager.update_heartbeat('obd_protocol')
 
             response = self._send_command(b"0100")
-            if not response or response.startswith('7F'):
-                raise Exception("No connection to vehicle")
+            # Only a positive 0100 reply proves the vehicle answered;
+            # NO DATA, '?' and 7F replies do not (issue-907de6de).
+            normalised = re.sub(r'\s', '', (response or '').upper())
+            if '4100' not in normalised:
+                raise Exception(f"No valid 0100 response: {response!r}")
 
             self._adapter_initialised = True
             return True
@@ -173,6 +182,9 @@ class OBDProtocol:
                 if len(hex_str) < 8:
                     return None
                 data = bytes.fromhex(hex_str)
+                # Decode only a mode 01 reply for PID 0C (issue-907de6de).
+                if len(data) < 4 or data[0] != 0x41 or data[1] != self.RPM_PID:
+                    return None
 
                 return OBDResponse(
                     pid=self.RPM_PID,

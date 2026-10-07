@@ -25,6 +25,8 @@ class RFCOMMTransport(OBDTransport):
     # socket.timeout is an OSError subclass, so it must be listed
     # separately to keep being caught first.
     _TIMEOUT_ERRORS = (socket.timeout,)
+    # Bluetooth adapter diagnoses apply to this transport (issue-907de6de).
+    _ADAPTER_CHECKS = True
 
     def __init__(self, mac_address: str, channel: int = 1, retry_delay: float = 5.0):
         super().__init__()

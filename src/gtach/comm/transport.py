@@ -66,6 +66,9 @@ _CONNECT_FAULT_CAUSES = {
 # iteration 2).
 _SILENT_LINK_CAUSE = 'adapter stopped responding'
 
+# Recorded when the peer closes the link (EOF read) (issue-907de6de).
+_PEER_CLOSED_CAUSE = 'adapter closed the connection'
+
 # Reported after sustained consecutive connect failures with a
 # controller present. No single errno identifies a wedged controller;
 # persistence is the only signal available, and it is second-order —
@@ -195,6 +198,10 @@ class OBDTransport(ABC):
     # behaviour.
     _MAX_CONSECUTIVE_CONNECT_FAILURES: int = 6
 
+    # Only Bluetooth transports may report adapter faults ('no
+    # bluetooth controller', the wedge cause) (audit A05). RFCOMM opts in.
+    _ADAPTER_CHECKS: bool = False
+
     def __init__(self):
         # OBDTransport is abstract. The four handle primitives below are
         # deliberately NOT @abstractmethod: SimTransport overrides the
@@ -312,7 +319,7 @@ class OBDTransport(ABC):
             A short cause string, never empty.
         """
         try:
-            if not _bluetooth_adapter_present():
+            if self._ADAPTER_CHECKS and not _bluetooth_adapter_present():
                 return 'no bluetooth controller'
 
             code = getattr(exc, 'errno', None)
@@ -368,7 +375,8 @@ class OBDTransport(ABC):
             # The counter is NOT reset here. Unlike the read-timeout
             # counter, this one latches: the condition persists until a
             # connect succeeds, and the cause should keep reporting it.
-            if (failures >= self._MAX_CONSECUTIVE_CONNECT_FAILURES
+            if (self._ADAPTER_CHECKS
+                    and failures >= self._MAX_CONSECUTIVE_CONNECT_FAILURES
                     and cause != 'no bluetooth controller'
                     and _bluetooth_adapter_present()):
                 cause = _WEDGED_LINK_CAUSE
@@ -487,13 +495,17 @@ class OBDTransport(ABC):
                 data = self._read(handle, 1024)
                 if not data:
                     if self._EMPTY_READ_IS_EOF:
-                        # Connection closed by the other end
-                        with self._lock:
-                            self._state = TransportState.DISCONNECTED
+                        # Connection closed by the other end: close the
+                        # handle and record why (issue-907de6de).
+                        self.drop_link(cause=_PEER_CLOSED_CAUSE)
                         logger.error("Connection closed by device")
                         return None
-                    # A timed-out read on an open port: return what
-                    # arrived, as the serial implementation always did.
+                    # A timed-out read on an open port. With nothing
+                    # buffered it is a timeout, so serial dead-peer
+                    # detection works (issue-907de6de); otherwise return
+                    # what arrived, as the serial implementation always did.
+                    if not buf:
+                        return self._record_timeout(command, timeout)
                     break
                 buf += data
                 if b'>' in buf:
