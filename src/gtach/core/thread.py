@@ -50,6 +50,7 @@ class ThreadInfo:
     """Thread information and state tracking with synchronization"""
     thread: threading.Thread
     status: ThreadStatus
+    # time.monotonic() seconds, not wall-clock time (issue-b9ee7428).
     last_heartbeat: float
     restart_count: int = 0
     last_error: Optional[Exception] = None
@@ -127,7 +128,7 @@ class ThreadManager:
             thread_info = ThreadInfo(
                 thread=thread,
                 status=ThreadStatus.STARTING,
-                last_heartbeat=time.time()
+                last_heartbeat=time.monotonic()
             )
             thread_info.stop_func = stop_func
             self.threads[name] = thread_info
@@ -143,7 +144,7 @@ class ThreadManager:
                 return
 
             thread_info = self.threads[name]
-            current_time = time.time()
+            current_time = time.monotonic()
 
             # Atomic status transition
             if thread_info.status == ThreadStatus.STARTING:
@@ -265,7 +266,7 @@ class ThreadManager:
                     # Update thread info atomically
                     thread_info.thread = new_thread
                     thread_info.status = ThreadStatus.STARTING
-                    thread_info.last_heartbeat = time.time()
+                    thread_info.last_heartbeat = time.monotonic()
                     thread_info.last_error = None
 
                     # Start the new thread
@@ -332,7 +333,7 @@ class ThreadManager:
     
     def shutdown(self, timeout: float = 10.0) -> None:
         """Shutdown thread manager with proper resource cleanup and verification"""
-        shutdown_start = time.time()
+        shutdown_start = time.monotonic()
         self.logger.info("Initiating ThreadManager shutdown")
         
         # Signal shutdown to all components
@@ -356,7 +357,7 @@ class ThreadManager:
             
         # Stop all managed threads with proper state transitions
         with self._cleanup_lock:
-            remaining_timeout = timeout - (time.time() - shutdown_start)
+            remaining_timeout = timeout - (time.monotonic() - shutdown_start)
             thread_count = len(self.threads)
             budgeted_per_thread = remaining_timeout / max(1, thread_count)
             per_thread_timeout = max(1.0, budgeted_per_thread)
@@ -391,7 +392,7 @@ class ThreadManager:
                     
         # Resource cleanup verification
         total_threads = len(self.threads)
-        cleanup_time = time.time() - shutdown_start
+        cleanup_time = time.monotonic() - shutdown_start
         
         self.logger.info(
             f"ThreadManager shutdown complete: {stopped_count}/{total_threads} threads stopped, "

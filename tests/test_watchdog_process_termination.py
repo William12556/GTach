@@ -170,7 +170,7 @@ def _aged_thread(manager: ThreadManager, name: str, age: float) -> None:
     thread = threading.Thread(target=lambda: None, name=name, daemon=True)
     manager.register_thread(name, thread)
     with manager._lock:
-        manager.threads[name].last_heartbeat = time.time() - age
+        manager.threads[name].last_heartbeat = time.monotonic() - age
 
 
 class TestAdvisoryTier:

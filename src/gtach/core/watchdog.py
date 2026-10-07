@@ -43,8 +43,9 @@ class RecoveryStats:
 class ThreadHealth:
     """Track thread health and recovery history"""
     name: str
-    last_warning_time: float = 0.0
-    last_recovery_time: float = 0.0
+    # -inf means never; monotonic time starts near zero at boot (issue-b9ee7428).
+    last_warning_time: float = float('-inf')
+    last_recovery_time: float = float('-inf')
     consecutive_failures: int = 0
     recovery_attempts: int = 0
     current_level: RecoveryLevel = RecoveryLevel.WARNING
@@ -154,7 +155,7 @@ class WatchdogMonitor:
         registration activity for the duration of the recovery
         (core review §4.1, recommendation #2).
         """
-        current_time = time.time()
+        current_time = time.monotonic()
 
         # Phase 1 — collect under the lock. No blocking call here.
         pending = []
@@ -209,7 +210,7 @@ class WatchdogMonitor:
 
     def _handle_warning_timeout(self, name: str, health: ThreadHealth, timeout: float) -> None:
         """Handle warning-level timeout"""
-        current_time = time.time()
+        current_time = time.monotonic()
         
         # Only warn once every 30 seconds to avoid spam
         if current_time - health.last_warning_time > 30.0:
@@ -224,7 +225,7 @@ class WatchdogMonitor:
     
     def _handle_recovery_timeout(self, name: str, health: ThreadHealth, timeout: float) -> None:
         """Handle recovery-level timeout with escalating attempts"""
-        current_time = time.time()
+        current_time = time.monotonic()
         
         # Skip if we recently attempted recovery
         if current_time - health.last_recovery_time < 10.0:
@@ -404,9 +405,14 @@ class WatchdogMonitor:
             )
     
     def get_thread_health_status(self) -> Dict[str, Dict[str, Any]]:
-        """Get current health status for all monitored threads"""
+        """Get current health status for all monitored threads.
+
+        Returns:
+            Mapping of thread name to status fields. 'last_heartbeat' is a
+            time.monotonic() value, not wall-clock time (issue-b9ee7428).
+        """
         status = {}
-        current_time = time.time()
+        current_time = time.monotonic()
         
         with self.thread_manager._lock:
             # Check all threads in thread manager
