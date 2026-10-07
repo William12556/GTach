@@ -117,7 +117,7 @@ resolution:
   change_ref: "change-907de6de"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "OBD init now requires a positive 0100 reply and backs off 2 s on shutdown_event after a failure, a peer close drops the link with the cause 'adapter closed the connection', Bluetooth adapter diagnoses apply only to RFCOMM, an empty serial read with nothing buffered counts as a timeout, and RPM is decoded only from PID 0C (commit 41dd663da6e046be30d1d7a9d4f5b7003752a4ae)."
 
 verification:
   verified_date: ""
@@ -157,6 +157,12 @@ version_history:
     changes:
       - "Initial issue document from audit-36b6ea95 A02-A06, A19."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in 41dd663da6e046be30d1d7a9d4f5b7003752a4ae; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -172,6 +178,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Reconnect-path defects A02-A06, A19. |
+| 1.1 | 2026-10-07 | Fix implemented in 41dd663da6e046be30d1d7a9d4f5b7003752a4ae; awaiting on-device verification. |
 
 ---
 

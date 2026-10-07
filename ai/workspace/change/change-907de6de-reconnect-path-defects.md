@@ -19,7 +19,7 @@ change_info:
   title: "Require a 41 00 answer to 0100; back off 2 s after init failure; drop_link with a cause on peer close; make adapter classification opt-in (RFCOMM only); count an empty serial read as a timeout; check the PID byte in RPM decoding"
   date: "2026-10-07"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -179,8 +179,8 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -210,6 +210,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in 41dd663da6e046be30d1d7a9d4f5b7003752a4ae."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -226,6 +232,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Reconnect-path corrections A02-A06, A19. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
+| 1.2 | 2026-10-07 | Implemented in 41dd663da6e046be30d1d7a9d4f5b7003752a4ae. |
 
 ---
 

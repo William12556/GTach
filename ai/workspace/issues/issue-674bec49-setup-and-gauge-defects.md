@@ -122,7 +122,7 @@ resolution:
   change_ref: "change-674bec49"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "Setup completion and setup re-entry now stop the active SetupDisplayManager without joining the calling thread, the gauge full scale follows the configured redline (7000 to 9000, unchanged at redline 6000), WELCOME uses a cached device-presence flag instead of per-frame devices.yaml reads, and setup error messages persist until the next tap and show their own fitted text on WELCOME (commit 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a)."
 
 verification:
   verified_date: ""
@@ -162,6 +162,12 @@ version_history:
     changes:
       - "Initial issue document from audit-36b6ea95 C01, C05, C06, C08."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -177,6 +183,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Setup lifecycle, gauge range, per-frame reads, hidden errors. |
+| 1.1 | 2026-10-07 | Fix implemented in 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a; awaiting on-device verification. |
 
 ---
 

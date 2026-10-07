@@ -270,7 +270,7 @@ findings:
         reports an initialised link while the ECU is not answering, and the
         failure appears only as missing RPM samples. Remediation: require a
         '41 00'/'4100' response and treat the ELM error strings as failures.
-      issue_ref: ""
+      issue_ref: "issue-907de6de"
     - location: "src/gtach/comm/obd.py:77-78"
       description: >-
         [A03] When initialisation fails, the outer loop continues immediately
@@ -278,7 +278,7 @@ findings:
         error every iteration while the adapter answers but the vehicle does
         not. This busy-loops the adapter, floods logs and wastes CPU on the
         Pi Zero. Remediation: wait (on shutdown_event) before retrying.
-      issue_ref: ""
+      issue_ref: "issue-907de6de"
     - location: "src/gtach/comm/transport.py:474-480,341-345"
       description: >-
         [A04] On an empty read (peer closed), send_command sets DISCONNECTED
@@ -287,7 +287,7 @@ findings:
         closing the old one, so one socket is leaked per peer-initiated close,
         and the DISCONNECTED screen shows no cause in this case. Remediation:
         call _discard_handle() and set a cause in that branch.
-      issue_ref: ""
+      issue_ref: "issue-907de6de"
     - location: "src/gtach/comm/transport.py:289-322,364-367"
       description: >-
         [A05] The connect-error classification is Bluetooth-specific but runs
@@ -296,7 +296,7 @@ findings:
         connects to a TCP emulator the cause becomes 'bluetooth wedged - reset
         required', which sends the operator to the wrong remedy. Remediation:
         let subclasses opt in to the adapter checks (RFCOMM only).
-      issue_ref: ""
+      issue_ref: "issue-907de6de"
     - location: "src/gtach/comm/serial_transport.py:27-32; src/gtach/comm/transport.py:481-498"
       description: >-
         [A06] pyserial returns b'' on timeout, which the base class treats as a
@@ -305,7 +305,7 @@ findings:
         therefore never trip. An adapter that powers off behind a still-open
         UART is polled forever with no drop_link and no reconnect.
         Remediation: count an empty serial response as a timeout.
-      issue_ref: ""
+      issue_ref: "issue-907de6de"
     - location: "src/gtach/comm/system_bluetooth.py:51-58,76-79; src/gtach/comm/pairing.py:329-334,447-451"
       description: >-
         [A07] BluetoothSocket.settimeout() before connect() only stores the
@@ -376,7 +376,7 @@ findings:
         completion and stop the previous SetupDisplayManager on re-entry.
         The watchdog restart cycle is removed by change-860fd5f7 (dead started
         threads are marked STOPPED); the remaining C01 items are open.
-      issue_ref: ""
+      issue_ref: "issue-674bec49"
     - location: "src/gtach/display/setup.py:775-791"
       description: >-
         [C02] 'current_continue' runs a synchronous RFCOMMTransport.connect()
@@ -417,7 +417,7 @@ findings:
         models.py:56-61) cannot show its redline mark or any RPM beyond 7000,
         so the gauge saturates below redline. Remediation: derive max_rpm and
         tick range from rpm_bands.redline_rpm.
-      issue_ref: ""
+      issue_ref: "issue-674bec49"
     - location: "src/gtach/display/setup.py:300-301,679,820-832"
       description: >-
         [C06] DeviceStore() — a YAML file read and parse — is constructed
@@ -427,7 +427,7 @@ findings:
         Pi Zero 2W. That read also happens inside _render_cache_lock and
         widens D01's window. Remediation: cache has_device and refresh it on
         state change.
-      issue_ref: ""
+      issue_ref: "issue-674bec49"
     - location: "src/gtach/display/setup.py:332-337,461-468"
       description: >-
         [C08] On the uncached DEVICE_LIST screen, error_message is cleared
@@ -438,7 +438,7 @@ findings:
         effectively invisible to the operator. Remediation: clear errors on
         the next user action or after a timeout, and render the actual
         message.
-      issue_ref: ""
+      issue_ref: "issue-674bec49"
     - location: "src/gtach/display/setup_components/state/coordinator.py:67-70"
       description: >-
         [D04] get_state() returns the live SetupState under the lock, so the
@@ -626,6 +626,7 @@ findings:
       description: >-
         [A19] The PID byte (data[1]) is never checked against 0x0C, so a
         stray '41 xx' response from another PID would be decoded as RPM.
+      issue_ref: "issue-907de6de"
     - location: "src/gtach/core/thread.py:204-207,343"
       description: >-
         [B06] _active_futures is mutated from done-callbacks on worker threads
@@ -925,6 +926,8 @@ traceability:
     - "issue-fbe7e98a"
     - "issue-860fd5f7"
     - "issue-70789d75"
+    - "issue-907de6de"
+    - "issue-674bec49"
   related_audits:
     - audit_ref: "audit-b4e8c012"
       relationship: "follow_up"
@@ -961,6 +964,10 @@ version_history:
     date: "2026-10-07"
     changes:
       - "Phase 1 implemented: issue refs for D01, X01, D03, D06, C04, C02, A01/B02, B01, B05, B03, D02; D12 added"
+  - version: "1.4"
+    date: "2026-10-07"
+    changes:
+      - "Phase 2 implemented: issue refs for A02-A06, A19, C01, C05, C06, C08"
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -1194,6 +1201,7 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 | 1.1 | 2026-10-07 | Added finding B13 (high); B04 raised to high; G01 lowered to medium; E01 corrected (fps_limit 30 in effect); added Sections 6 and 7 |
 | 1.2 | 2026-10-07 | Phase 0 implemented: issue refs for B04, A11, B13; F05 and E03 committed directly |
 | 1.3 | 2026-10-07 | Phase 1 implemented: issue refs for D01, X01, D03, D06, C04, C02, A01/B02, B01, B05, B03, D02; D12 added |
+| 1.4 | 2026-10-07 | Phase 2 implemented: issue refs for A02-A06, A19, C01, C05, C06, C08 |
 
 ---
 

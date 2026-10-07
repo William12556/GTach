@@ -19,7 +19,7 @@ change_info:
   title: "Stop the setup manager on completion, cancel and re-entry without self-join; derive the gauge range from the redline; cache device presence; keep setup errors until the next tap and show their text"
   date: "2026-10-07"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -201,8 +201,8 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -234,6 +234,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -250,6 +256,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. C01, C05, C06, C08. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
+| 1.2 | 2026-10-07 | Implemented in 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a. |
 
 ---
 
