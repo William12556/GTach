@@ -11,7 +11,9 @@ Created: 2026 October 07
 3. [Findings](<#3. findings>)
 4. [Coverage Record](<#4. coverage record>)
 5. [Limitations](<#5. limitations>)
-6. [Version History](<#version history>)
+6. [On-Device Verification](<#6. on-device verification>)
+7. [Remediation Plan](<#7. remediation plan>)
+8. [Version History](<#version history>)
 
 ---
 
@@ -30,15 +32,15 @@ Created: 2026 October 07
 | Severity | Count |
 |---|---|
 | Critical | 1 |
-| High | 5 |
+| High | 6 |
 | Medium | 29 |
 | Low | 48 |
-| **Total** | **83** |
+| **Total** | **84** |
 
 **Top 5 risks:**
 
 1. **Setup-mode deadlock (critical, D01).** Three locks in `SetupDisplayManager` and `SetupStateCoordinator` are taken in opposite orders by the display thread and the touch thread. A tap on a cached setup screen can deadlock both threads. The display then stops, and after 45 s the watchdog terminates the process.
-2. **Touch input may be absent on a fresh install (high, suspected, G01).** The `hyperpixel2r` touch library is declared nowhere and neither installer installs it. `install.sh` also omits the `[pi]` extra. The touch layer then falls back silently to a mock, so no touch input reaches the application.
+2. **A wall-clock step shuts the application down (high, B13; added in version 1.1).** Heartbeats and the watchdog use `time.time()`. A forward clock correction of more than 45 s makes the display thread appear stalled, and the watchdog initiates a graceful shutdown; systemd then restarts the service. Observed on the device on 2026-10-07 (Section 6). G01, previously listed here, was lowered to medium after on-device verification.
 3. **Watchdog hard recovery cannot recover (high, B01).** The restart path calls `OBDProtocol.stop()` while holding the ThreadManager lock. `stop()` sets a shutdown flag that is never cleared, so the restarted OBD thread exits immediately. For the display thread, a second render loop is started while the stalled first one may still be alive.
 4. **The panel can freeze while the application reports healthy (high, suspected, D02).** One failed page-flip pan disables page flipping without moving scan-out back. Every later frame is then written to the half of the framebuffer that is not displayed.
 5. **Bluetooth verification runs under the async manager lock (high, D03).** On pairing success, a callback runs an RFCOMM connect and ATZ (up to about 15 s) while holding the async-operation lock. During that time the setup thread, and the display thread on the discovery screen, block.
@@ -211,6 +213,38 @@ findings:
         has no caller). Remediation: copy the operation under the lock and
         invoke callbacks after release; run verification as its own operation.
       issue_ref: ""
+    - location: "src/gtach/core/thread.py:130,146,268,335-394; src/gtach/core/watchdog.py:157,212,227,409; src/gtach/app.py:59"
+      description: >-
+        [B13] Heartbeats, recovery timing and the watchdog use wall-clock
+        time.time(). The Pi Zero 2W has no RTC, so it boots with the last
+        saved time and NTP later steps the clock. A forward step of more than
+        45 s makes the critical 'display' thread appear stalled; the watchdog
+        escalates to _initiate_graceful_shutdown (watchdog.py:249-253), the
+        process exits with status 0 and systemd restarts it 5 s later. Every
+        boot with network access therefore produces one restart and about
+        10 s without RPM indication. A backward step makes heartbeats appear
+        newer than the current time, so a genuine stall goes undetected until
+        the clock catches up. Observed on the device on 2026-10-07: the clock
+        moved from 2026-10-02 14:52 to 2026-10-07 07:18, the service exited
+        cleanly with no logged cause (B04) and was restarted (Section 6).
+        Added in version 1.1; extends C16. Remediation: use time.monotonic()
+        for all heartbeat, recovery and shutdown-deadline arithmetic in
+        ThreadManager and WatchdogMonitor, and add a regression test that
+        steps time.time() and asserts no shutdown.
+      issue_ref: ""
+    - location: "src/gtach/main.py:61-114; src/gtach/app.py:187-211"
+      description: >-
+        [B04] After startup, start.log's handler is raised to CRITICAL+1 and
+        debug.log stays at CRITICAL+1 unless debug is toggled on. No other
+        handler exists, so every runtime ERROR and CRITICAL record — watchdog
+        escalation, link loss, render faults — is discarded in production.
+        Field faults cannot be diagnosed after the fact. Remediation: keep an
+        always-on WARNING-level rotating handler, or let debug.log carry
+        WARNING and above by default. Severity raised from medium to high in
+        version 1.1: confirmed on the device, where an unexplained restart
+        left no record (Section 6).
+      issue_ref: ""
+  medium:
     - location: "pyproject.toml:33-53; bin/install.sh:248; bin/pi-install.sh:241-243; src/gtach/display/touch_interface.py:64-69,291-305"
       description: >-
         [G01] Real touch input needs both RPi.GPIO and the hyperpixel2r Python
@@ -223,10 +257,11 @@ findings:
         docs/pi-setup.md says "GTach does not use touch input", which
         contradicts the code. Remediation: declare hyperpixel2r in the pi
         extra, install with [pi] in both installers, and log the mock fallback
-        at ERROR on a Raspberry Pi (suspected: the current device may carry a
-        hand-installed package in its long-lived venv).
+        at ERROR on a Raspberry Pi. Severity lowered from high to medium in
+        version 1.1: the audited device has hyperpixel2r 0.0.1 and RPi.GPIO
+        0.7.1 in its venv and loads the real touch library (Section 6). The
+        packaging gap remains; a fresh install is untested.
       issue_ref: ""
-  medium:
     - location: "src/gtach/comm/obd.py:136-138"
       description: >-
         [A02] _initialize_protocol treats any non-empty 0100 response not
@@ -317,16 +352,6 @@ findings:
         thread, and the watchdog follows the new thread only because the
         heartbeat key happens to match. Remediation: stop_thread('transport')
         on re-entry, or let register_thread replace dead threads.
-      issue_ref: ""
-    - location: "src/gtach/main.py:61-114; src/gtach/app.py:187-211"
-      description: >-
-        [B04] After startup, start.log's handler is raised to CRITICAL+1 and
-        debug.log stays at CRITICAL+1 unless debug is toggled on. No other
-        handler exists, so every runtime ERROR and CRITICAL record — watchdog
-        escalation, link loss, render faults — is discarded in production.
-        Field faults cannot be diagnosed after the fact. Remediation: keep an
-        always-on WARNING-level rotating handler, or let debug.log carry
-        WARNING and above by default.
       issue_ref: ""
     - location: "src/gtach/core/thread.py:291-331,382-390"
       description: >-
@@ -456,9 +481,10 @@ findings:
         ConfigManager and DeviceStore write into the tracked repository
         config/. As a result, config/config.yaml values (display.fps_limit 30,
         engine_profile, rpm_bands, splash.*, every bluetooth.* and OBD key)
-        have no effect, and the Pi runs at DisplayManager's default 60 fps,
-        which ConfigValidator itself flags as too high for a Pi
-        (config.py:398-399). Remediation: one file, one schema, one owner;
+        have no effect. DisplayManager takes fps_limit from its own file
+        (30 on the audited device; corrected in version 1.1, see Section 6),
+        and falls back to 60, which ConfigValidator flags as too high for a Pi
+        (config.py:398-399), only when that file lacks the key. Remediation: one file, one schema, one owner;
         inject the loaded config into DisplayManager, the transports and
         pairing.
       issue_ref: ""
@@ -852,15 +878,16 @@ findings:
 
 metrics:
   items_audited: 90
-  findings_total: 83
+  findings_total: 84
   findings_by_severity:
     critical: 1
-    high: 5
+    high: 6
     medium: 29
     low: 48
 
 recommendations:
-  - "Promote D01, A01/B02, B01, D02, D03 and G01 to issue T-Docs via P03 (P02.6); D01 first."
+  - "Promote D01, A01/B02, B01, B13, B04, D02 and D03 to issue T-Docs via P03 (P02.6); see Section 7 for order."
+  - "Use time.monotonic() for heartbeat, recovery and shutdown timing (B13)."
   - "Adopt a no-callback-under-lock rule and document the lock order (X01); fix D01, D03, D06, C04 and B01 under it."
   - "Restore field diagnosability before further hardware debugging: keep WARNING-and-above logging always on (B04) and add exc_info=True to every broad handler (A11)."
   - "Unify configuration into one file, schema and owner, injected into DisplayManager, the transports and pairing (E01, G07, X04)."
@@ -897,6 +924,13 @@ version_history:
     date: "2026-10-07"
     changes:
       - "Initial audit"
+  - version: "1.1"
+    date: "2026-10-07"
+    changes:
+      - "Added finding B13 (wall-clock watchdog timing), high"
+      - "B04 raised to high; G01 lowered to medium"
+      - "E01 corrected: fps_limit 30 in effect on the device"
+      - "Added Sections 6 (on-device verification) and 7 (remediation plan)"
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -1082,11 +1116,52 @@ Other limitations:
 
 ---
 
+## 6. On-Device Verification
+
+Checks run on `gtach.local` on 2026-10-07 with `bin/gtach-audit-checks.sh` (read-only). Raw output: `ai/workspace/audit/gtach-audit-checks-20261007-072535.txt`. Device state: GTach 0.4.3, Python 3.9.2, kernel 6.1.21-v8+.
+
+| Finding | Result | Evidence |
+|---|---|---|
+| G01 | Not reproduced on this device; severity lowered to medium | `hyperpixel2r` 0.0.1 and `RPi.GPIO` 0.7.1 installed in `/opt/gtach/venv`; `start.log`: "HyperPixel2R library imported successfully". `gpiozero` absent (declared, unused). Fresh-install behaviour untested. |
+| E01 | Confirmed, with correction | DisplayManager reads `/opt/gtach/config.yaml` (`fps_limit: 30`, `mode: RADIAL`). ConfigManager's `/root/.local/share/obdii/config/config.yaml` is unchanged since 2026-04-24 (`mode: DIGITAL`, `fps_limit: 60`) and is not applied. DeviceStore reads `/opt/gtach/config/devices.yaml`. Unreferenced leftovers: `/etc/obdii/config.yaml`, `/etc/obdii/devices.yaml`, `/root/config.yaml`, `/root/config/devices.yaml`. |
+| B04 | Confirmed; severity raised to high | `start.log` closed at "Startup complete"; `debug.log` 0 bytes; installed `main.py:104` and `app.py:209,262` set handlers to `CRITICAL + 1`; no stream, syslog or journal handler. |
+| E03 | Observed | Journal: `stty: 'standard input': Inappropriate ioctl for device` at process exit. |
+| B13 | Observed (new finding) | Journal for the current boot: service started at a restored time of 2026-10-02 14:52:25; exited with status 0 ("Succeeded") at 2026-10-07 07:18:29 after 10 s of CPU; restarted 5 s later. No log record of the cause. The coincidence of the clock step and the exit is inferred; confirm with `journalctl -b -o short-monotonic` filtered to gtach and timesyncd entries. |
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
+## 7. Remediation Plan
+
+Phases are ordered by dependency: diagnosability and test isolation first, then concurrency and lifecycle defects, then contained correctness fixes. Each source change requires a regression test (CLAUDE.md §4 rule 3).
+
+| Phase | Findings | Action |
+|---|---|---|
+| 0 — Diagnosability and timing | B04, A11, B13, E03, F05 | Keep an always-on WARNING-level rotating log; add `exc_info=True` to broad handlers; use `time.monotonic()` for heartbeat, recovery and shutdown timing; skip `stty` when stdin is not a TTY; isolate tests from the working tree (`OBDII_HOME` to `tmp_path`, singleton reset). |
+| 1a — Setup deadlock | D01, X01 | Snapshot under lock, call out after release; document the lock order in CLAUDE.md §4. |
+| 1b — Callback stalls | D03, D06, C04, C02 | Apply the same rule; run the RFCOMM probe and verification as async operations. |
+| 1c — Thread lifecycle | A01/B02, B01, B05, B03 | Test `shutdown_event` in the inner loop; make SimTransport honour `disconnect()`; call `stop_func` outside the lock; make OBDProtocol restartable; replace dead registry entries. |
+| 1d — Page flip | D02 | Pan back to buffer 0 before disabling page flipping. |
+| 2a — Reconnect path | A02, A03, A04, A05, A06, A19 | Require `41 00`; back off on init failure; discard the handle on EOF; RFCOMM-only adapter classification; empty serial read counts as timeout; check the PID byte. |
+| 2b — Setup and display | C01, C05, C06, C08 | Mark setup thread stopped on completion; derive gauge range from redline; cache device presence; persist error messages. |
+| 3 — Configuration | E01, G07, X04, A09, E02 | Requires an approved design document before implementation. Retain `/opt/gtach/config.yaml` values as the effective configuration. |
+| 4 — Tests | F01–F04 | Regression test with each fix; one SimTransport lifecycle test (start, link loss, reconnect, shutdown). |
+| 5 — Hygiene and packaging | G01, G02 (directives only), G03, G04, G05, G06, dead-code findings, mypy | Declare `hyperpixel2r` in `[pi]` and install with `[pi]`; systemd hardening and `TimeoutStopSec`; one formatting change after the line-length decision; stop packaging backup files; remove dead code. |
+| Record only | E06, G09, D10, C03 | Record trust assumptions; no change required at present. |
+
+Manual device housekeeping (outside the codebase): remove the unreferenced configuration files listed in Section 6 at the owner's discretion.
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
 ## Version History
 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial audit |
+| 1.1 | 2026-10-07 | Added finding B13 (high); B04 raised to high; G01 lowered to medium; E01 corrected (fps_limit 30 in effect); added Sections 6 and 7 |
 
 ---
 
