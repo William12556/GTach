@@ -57,7 +57,7 @@ class SetupStateCoordinator:
         
         # Control visibility state
         self._controls_visible = True
-        self._last_interaction_time = time.time()
+        self._last_interaction_time = time.monotonic()
         self._control_auto_hide_delay = 3.0
         self._control_fade_duration = 0.5
         self._control_alpha = 255
@@ -302,7 +302,7 @@ class SetupStateCoordinator:
     def register_interaction(self) -> None:
         """Register user interaction for control auto-hide"""
         with self._control_visibility_lock:
-            self._last_interaction_time = time.time()
+            self._last_interaction_time = time.monotonic()
             if not self._controls_visible:
                 self._controls_visible = True
                 self.logger.debug("Controls made visible due to user interaction")
@@ -311,7 +311,7 @@ class SetupStateCoordinator:
         """Update control visibility based on interaction timing"""
         try:
             with self._control_visibility_lock:
-                current_time = time.time()
+                current_time = time.monotonic()
                 time_since_interaction = current_time - self._last_interaction_time
                 
                 if force_visible:

@@ -17,7 +17,7 @@ import logging
 import atexit
 import threading
 from pathlib import Path
-from typing import NoReturn
+from typing import Optional
 import argparse
 from .core import ThreadManager, WatchdogMonitor
 from .comm import OBDProtocol, select_transport
@@ -36,7 +36,7 @@ class GTachApplication:
     # anyway so systemd (Restart=always) can relaunch it.
     _EXIT_BACKSTOP_SEC: float = 20.0
 
-    def __init__(self, config_path: str = None, debug: bool = False, args=None):
+    def __init__(self, config_path: Optional[str] = None, debug: bool = False, args=None):
         """Initialize application components"""
         # The single configuration store, injected into DisplayManager
         # (issue-5fbff586).
@@ -54,6 +54,8 @@ class GTachApplication:
         self._stop_event = threading.Event()
         # Armed at most once per process (issue-d140121d).
         self._backstop_armed = False
+        # Guards the _obd_started check-and-set (issue-4005360c).
+        self._obd_lock = threading.Lock()
 
         self._thread_manager = ThreadManager()
         self._watchdog = WatchdogMonitor(
@@ -385,12 +387,10 @@ class GTachApplication:
             # setup.
             self._display._reset_callback = self._on_reset_pi
             # Period for the DISCONNECTED screen's retry arc, guarded
-            # the same way and for the same reason. Yields None today —
-            # reconnect_indefinitely is started without a retry_delay,
-            # so its 5.0 s default applies and the arc's own fallback
-            # is that same 5.0. Reading the attribute rather than
-            # hard-coding it means the arc follows any future
-            # configured value without further wiring (issue-4f1e82b7).
+            # the same way and for the same reason. OBDTransport.retry_delay
+            # is the value passed to reconnect_indefinitely, so the arc
+            # follows the real retry period (issue-4f1e82b7,
+            # issue-4005360c).
             self._display._retry_interval_callback = (
                 lambda: getattr(
                     getattr(self, '_transport', None), 'retry_delay', None
@@ -424,10 +424,12 @@ class GTachApplication:
     
     def _on_setup_complete(self) -> None:
         """Called by SetupDisplayManager when setup finishes"""
-        if getattr(self, '_obd_started', False):
+        with self._obd_lock:
+            already_started = getattr(self, '_obd_started', False)
+            self._obd_started = True
+        if already_started:
             self.logger.warning("_on_setup_complete called more than once — ignoring")
             return
-        self._obd_started = True
         self.logger.info("Setup complete — transitioning to normal mode")
         # Stop the finished setup manager; stop_setup does not join the
         # calling (setup) thread (issue-674bec49).
@@ -457,7 +459,8 @@ class GTachApplication:
                 self._thread_manager.stop_thread('transport', timeout=2.0)
                 self._thread_manager.stop_thread('obd_protocol', timeout=2.0)
 
-            self._obd_started = False
+            with self._obd_lock:
+                self._obd_started = False
             # Re-enter setup
             self._start_setup_mode()
         except Exception as e:
@@ -476,7 +479,8 @@ class GTachApplication:
         # is named (issue-2ac1c602).
         transport_thread = threading.Thread(
             target=self._transport.reconnect_indefinitely,
-            kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport')},
+            kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport'),
+                    'retry_delay': self._transport.retry_delay},
             name='transport', daemon=True
         )
         self._thread_manager.register_thread('transport', transport_thread, stop_func=self._transport.disconnect)
@@ -509,12 +513,9 @@ class GTachApplication:
         self._display._link_cause_callback = self._disconnected_cause
         self._display._reset_callback = self._on_reset_pi
         # Period for the DISCONNECTED screen's retry arc, guarded the
-        # same way and for the same reason. Yields None today —
-        # reconnect_indefinitely is started without a retry_delay, so
-        # its 5.0 s default applies and the arc's own fallback is that
-        # same 5.0. Reading the attribute rather than hard-coding it
-        # means the arc follows any future configured value without
-        # further wiring (issue-4f1e82b7).
+        # same way and for the same reason. OBDTransport.retry_delay is
+        # the value passed to reconnect_indefinitely, so the arc follows
+        # the real retry period (issue-4f1e82b7, issue-4005360c).
         self._display._retry_interval_callback = (
             lambda: getattr(
                 getattr(self, '_transport', None), 'retry_delay', None
@@ -538,7 +539,8 @@ class GTachApplication:
         # is named (issue-2ac1c602).
         transport_thread = threading.Thread(
             target=self._transport.reconnect_indefinitely,
-            kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport')},
+            kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport'),
+                    'retry_delay': self._transport.retry_delay},
             name='transport', daemon=True
         )
         self._thread_manager.register_thread('transport', transport_thread, stop_func=self._transport.disconnect)
@@ -548,7 +550,7 @@ class GTachApplication:
         
         self.logger.info("Background components initialized while splash screen displays")
 
-    def run(self) -> NoReturn:
+    def run(self) -> None:
         """Run application main loop"""
         try:
             self.start()

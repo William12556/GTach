@@ -104,6 +104,7 @@ class TestStopSetup:
 def _app():
     app = object.__new__(GTachApplication)
     app.logger = logging.getLogger('test.setup_and_gauge')
+    app._obd_lock = threading.Lock()  # issue-4005360c
     return app
 
 

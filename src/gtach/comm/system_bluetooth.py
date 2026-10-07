@@ -118,6 +118,7 @@ class SystemBluetoothManager:
             return stdout
         except subprocess.TimeoutExpired:
             process.kill()
+            process.communicate()  # reap the child (issue-4005360c)
             raise BluetoothTimeoutError("bluetoothctl command timed out")
         except Exception as e:
             raise BluetoothError(f"bluetoothctl command failed: {e}")
@@ -164,6 +165,7 @@ class SystemBluetoothManager:
     def _discover_via_bluetoothctl(self, duration: int) -> dict:
         """Fallback: parse live bluetoothctl scan output."""
         devices = {}
+        devices_lock = threading.Lock()  # the reader thread writes devices
         dev_re = re.compile(r'\[NEW\]\s+Device\s+([0-9A-Fa-f:]{17})\s+(.+)')
         try:
             process = subprocess.Popen(
@@ -180,8 +182,13 @@ class SystemBluetoothManager:
             def _reader():
                 for line in process.stdout:
                     m = dev_re.search(line)
-                    if m and m.group(1) not in devices:
-                        devices[m.group(1)] = m.group(2).strip()
+                    if not m:
+                        continue
+                    with devices_lock:
+                        added = m.group(1) not in devices
+                        if added:
+                            devices[m.group(1)] = m.group(2).strip()
+                    if added:
                         self.logger.debug(f"btctl found: {m.group(2).strip()} ({m.group(1)})")
 
             t = threading.Thread(target=_reader, daemon=True)
@@ -193,10 +200,18 @@ class SystemBluetoothManager:
             except Exception:
                 pass
             process.terminate()
+            # Reap the child; kill it if terminate was not enough
+            # (issue-4005360c).
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
             t.join(timeout=3)
         except Exception as e:
             self.logger.error(f"bluetoothctl fallback failed: {e}", exc_info=True)
-        return devices
+        with devices_lock:
+            return dict(devices)
 
     def pair_device(self, mac_address: str) -> bool:
         try:

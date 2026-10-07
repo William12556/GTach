@@ -85,7 +85,7 @@ class TouchEvent:
         event_type: Type of touch event (TouchEventType)
         x: Normalized X coordinate (0.0 to 1.0)
         y: Normalized Y coordinate (0.0 to 1.0)
-        timestamp: Event timestamp in seconds since epoch
+        timestamp: Event timestamp, time.monotonic() seconds (issue-4005360c)
     """
     event_type: TouchEventType
     x: float
@@ -95,7 +95,7 @@ class TouchEvent:
     def __post_init__(self):
         """Initialize timestamp if not provided"""
         if self.timestamp == 0.0:
-            self.timestamp = time.time()
+            self.timestamp = time.monotonic()
         
         # Clamp coordinates to valid range
         self.x = max(0.0, min(1.0, self.x))

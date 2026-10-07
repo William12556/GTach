@@ -2601,7 +2601,7 @@ class DisplayManager:
     def handle_touch_event(self, pos: Tuple[int, int]) -> Optional[object]:
         """Handle touch events using touch coordinator"""
         try:
-            self.logger.info(f"Touch event at {pos}")
+            self.logger.debug(f"Touch event at {pos}")
             
             if self._in_setup_mode and self._setup_manager:
                 # Route to setup manager

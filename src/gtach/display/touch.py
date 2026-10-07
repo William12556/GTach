@@ -111,7 +111,7 @@ class TouchHandler:
     def _process_touch(self, touch_id: int, x: int, y: int, state: bool, timestamp: float = None) -> None:
         """Process touch events with gesture recognition integration"""
         try:
-            current_time = timestamp if timestamp else time.time()
+            current_time = timestamp if timestamp else time.monotonic()
             
             if state:  # Touch down/move
                 if self._touch_start is None:  # Only record on first touch down

@@ -291,6 +291,14 @@ class ConfigStore:
                     f"Invalid value for {key}: {data[key]!r}; using default {getattr(defaults, key)!r}")
         if values.get('mode') in LEGACY_MODE_VALUES:
             values['mode'] = 'RADIAL'
+        # Out-of-range values are replaced too (issue-4005360c).
+        for key, (low, high) in (('fps_limit', FPS_LIMIT_RANGE),
+                                 ('touch_long_press', TOUCH_LONG_PRESS_RANGE)):
+            if key in values and not low <= values[key] <= high:
+                self.logger.warning(
+                    f"Out-of-range value for {key}: {values[key]!r}; "
+                    f"using default {getattr(defaults, key)!r}")
+                del values[key]
 
         unknown = {k: v for k, v in data.items() if k not in CONFIG_KEYS}
         with self._lock:

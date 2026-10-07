@@ -218,7 +218,7 @@ class TouchEventCoordinator(TouchEventInterface):
                 if not self.validate_coordinates(pos):
                     return None
                 
-                current_time = time.time()
+                current_time = time.monotonic()
                 
                 # Update touch state
                 self._touch_state = {
@@ -299,7 +299,7 @@ class TouchEventCoordinator(TouchEventInterface):
                 if not self._touch_state['active']:
                     return None
                 
-                current_time = time.time()
+                current_time = time.monotonic()
                 touch_duration = current_time - self._touch_state['start_time']
                 
                 # End slider interaction

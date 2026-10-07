@@ -192,9 +192,10 @@ class DeviceSurfaceRenderer:
             type_surface = type_font.render(device_type_text, True, self.colors['text_dim'])
             item_surface.blit(type_surface, (24, 26))
             
-            # Signal strength indicator
-            if hasattr(device, 'rssi') and device.rssi is not None:
-                signal_bars = self.get_signal_bars(device.rssi)
+            # Signal strength indicator (setup model field signal_strength;
+            # there is no rssi attribute, issue-4005360c)
+            if hasattr(device, 'signal_strength') and device.signal_strength is not None:
+                signal_bars = self.get_signal_bars(device.signal_strength)
                 signal_x = item_width - 35
                 signal_y = item_height // 2 - 8
                 
@@ -207,7 +208,7 @@ class DeviceSurfaceRenderer:
                 # Signal strength text
                 signal_font = get_label_small_font()
                 
-                rssi_text = f"{device.rssi}dBm"
+                rssi_text = f"{device.signal_strength}dBm"
                 rssi_surface = signal_font.render(rssi_text, True, self.colors['text_dim'])
                 rssi_rect = rssi_surface.get_rect()
                 rssi_x = signal_x + 16 - rssi_rect.width // 2
@@ -348,8 +349,8 @@ class DeviceSurfaceRenderer:
             item_surface.blit(type_surface_alpha, (int(24 * scale_factor), int(26 * scale_factor)))
             
             # Signal strength indicator (scaled)
-            if hasattr(device, 'rssi') and device.rssi is not None:
-                signal_bars = self.get_signal_bars(device.rssi)
+            if hasattr(device, 'signal_strength') and device.signal_strength is not None:
+                signal_bars = self.get_signal_bars(device.signal_strength)
                 signal_x = int((item_width - 35) * scale_factor)
                 signal_y = int((item_height // 2 - 8) * scale_factor)
                 
@@ -367,7 +368,7 @@ class DeviceSurfaceRenderer:
                 # Signal strength text (scaled)
                 signal_font = get_font_manager().get_font(small_text_font_size)
                 
-                rssi_text = f"{device.rssi}dBm"
+                rssi_text = f"{device.signal_strength}dBm"
                 rssi_surface = signal_font.render(rssi_text, True, self.colors['text_dim'])
                 rssi_surface_alpha = pygame.Surface(rssi_surface.get_size(), pygame.SRCALPHA)
                 rssi_surface_alpha.blit(rssi_surface, (0, 0))

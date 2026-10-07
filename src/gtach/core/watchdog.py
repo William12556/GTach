@@ -364,7 +364,7 @@ class WatchdogMonitor:
         try:
             # Give a brief moment for logging to complete
             time.sleep(0.5)
-        except:
+        except Exception:
             pass
         
         # Force process termination

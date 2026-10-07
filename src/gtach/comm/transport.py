@@ -124,12 +124,12 @@ class TransportError(Exception):
     pass
 
 
-class ConnectionError(TransportError):
+class TransportConnectionError(TransportError):
     """Exception raised for connection-related errors."""
     pass
 
 
-class TimeoutError(TransportError):
+class TransportTimeoutError(TransportError):
     """Exception raised for timeout-related errors."""
     pass
 
@@ -565,6 +565,15 @@ class OBDTransport(ABC):
             # decision is captured above and acted on here.
             self.drop_link()
         return None
+
+    @property
+    def retry_delay(self) -> float:
+        """Seconds between reconnect attempts (issue-4005360c).
+
+        Returns:
+            The transport's configured delay, 5.0 if it has none.
+        """
+        return getattr(self, '_retry_delay', 5.0)
 
     def is_connected(self) -> bool:
         """Check if the transport is currently connected.

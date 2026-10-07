@@ -42,8 +42,17 @@ class TCPTransport(OBDTransport):
         """Open a TCP socket to the configured host and port."""
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(10)
-        sock.connect((self._host, self._port))
-        sock.settimeout(None)
+        # Close the socket if connect fails; nothing else holds it
+        # (issue-4005360c, as rfcomm.py).
+        try:
+            sock.connect((self._host, self._port))
+            sock.settimeout(None)
+        except BaseException:
+            try:
+                sock.close()
+            except Exception:
+                pass
+            raise
         return sock
 
     def _close(self, handle) -> None:

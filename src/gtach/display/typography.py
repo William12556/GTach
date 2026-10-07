@@ -153,6 +153,7 @@ class FontManager:
         self.logger = logging.getLogger('FontManager')
         self._font_cache: Dict[int, pygame.font.Font] = {}
         self._plain_font_cache: Dict[int, pygame.font.Font] = {}
+        self._bold_font_cache: Dict[int, pygame.font.Font] = {}
         self._cache_lock = threading.RLock()
         self._initialized = False
 
@@ -302,6 +303,37 @@ class FontManager:
 
             return self._plain_font_cache[validated_size]
 
+    def get_bold_font(self, size: int) -> pygame.font.Font:
+        """Get a bold font that is its own object, cached separately.
+
+        get_font's cached instance is shared, so setting bold on it
+        changed every user of that size (issue-4005360c).
+
+        Args:
+            size: Font size in pixels, clamped as for get_font()
+
+        Returns:
+            A bold pygame.font.Font object in the same face as get_font
+        """
+        validated_size = self._validate_font_size(size)
+        self.get_font(validated_size)  # validates the font system
+        with self._cache_lock:
+            if validated_size not in self._bold_font_cache:
+                font = None
+                if self._michroma_path:
+                    try:
+                        font = pygame.font.Font(self._michroma_path, validated_size)
+                    except Exception as e:
+                        self.logger.warning(
+                            f"Michroma font load failed at size {validated_size}, "
+                            f"using system default: {e}", exc_info=True
+                        )
+                if font is None:
+                    font = pygame.font.Font(None, validated_size)
+                font.set_bold(True)
+                self._bold_font_cache[validated_size] = font
+            return self._bold_font_cache[validated_size]
+
     def get_font_for_category(self, category: FontCategory, scale: float = 1.0) -> pygame.font.Font:
         """
         Get a font for a specific category with optional scaling.
@@ -408,6 +440,7 @@ class FontManager:
         with self._cache_lock:
             self._font_cache.clear()
             self._plain_font_cache.clear()
+            self._bold_font_cache.clear()
             self.logger.debug("Font cache cleared")
     
     def get_cache_info(self) -> Dict[str, int]:
@@ -746,10 +779,7 @@ def get_small_font(scale: float = 1.0) -> Optional[pygame.font.Font]:
 
 def get_rpm_large_font() -> Optional[pygame.font.Font]:
     """Get font for large RPM display (digital mode). Bold for readability."""
-    font = get_font_manager().get_font(TypographyConstants.FONT_RPM_LARGE)
-    if font:
-        font.set_bold(True)
-    return font
+    return get_font_manager().get_bold_font(TypographyConstants.FONT_RPM_LARGE)
 
 
 def get_rpm_medium_font() -> Optional[pygame.font.Font]:

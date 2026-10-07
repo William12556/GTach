@@ -95,6 +95,8 @@ class SimBluetoothPairing:
         """
         try:
             self._discovery_active = True
+            # A previous cancel must not cancel this run (issue-4005360c).
+            self._cancel_discovery.clear()
             self.logger.info("SimBluetoothPairing: starting discovery")
 
             # Progress updates at 0%, 33%, 66%, 100%
@@ -170,6 +172,8 @@ class SimBluetoothPairing:
         """
         try:
             self._pairing_active = True
+            # A previous cancel must not cancel this run (issue-4005360c).
+            self._cancel_pairing.clear()
             self.logger.info(f"SimBluetoothPairing: starting pairing with {device.name}")
 
             # Step 1: Connecting

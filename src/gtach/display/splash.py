@@ -15,6 +15,7 @@ import logging
 import math
 import threading
 import time
+from collections import deque
 from typing import Tuple, Optional
 
 # Import configuration classes  
@@ -119,7 +120,9 @@ class SplashScreen:
         self._font_cache_lock = threading.Lock()  # Thread-safe font cache access
         
         # Performance monitoring for font operations
-        self._font_render_times = []  # Track font rendering performance
+        # Track font rendering performance; bounded (issue-4005360c)
+        self._font_render_times = deque(maxlen=100)
+        self._last_progress_log = float('-inf')  # monotonic
         self._total_render_time = 0.0
         
         # Color scheme - professional dark theme. Deliberately excluded
@@ -170,7 +173,7 @@ class SplashScreen:
         """
         with self._lock:
             if self._start_time is None:
-                self._start_time = time.time()
+                self._start_time = time.monotonic()
                 self._last_update = self._start_time
                 self._completion_event.clear()
                 self.logger.debug(f"Splash screen timer started (duration: {self.duration}s)")
@@ -209,7 +212,7 @@ class SplashScreen:
             if self._start_time is None:
                 return False
             
-            elapsed = time.time() - self._start_time
+            elapsed = time.monotonic() - self._start_time
             is_done = elapsed >= self.duration
             
             # Set completion event for potential waiters
@@ -239,7 +242,7 @@ class SplashScreen:
         # Calculate remaining time if timeout specified
         effective_timeout = timeout
         if timeout is not None and self._start_time is not None:
-            elapsed = time.time() - self._start_time
+            elapsed = time.monotonic() - self._start_time
             remaining = max(0, self.duration - elapsed)
             effective_timeout = min(timeout, remaining)
         
@@ -258,7 +261,7 @@ class SplashScreen:
         Returns:
             pygame.font.Font object or None if unavailable
         """
-        start_time = time.time()
+        start_time = time.monotonic()
         
         try:
             with self._font_cache_lock:
@@ -300,7 +303,7 @@ class SplashScreen:
             return None
         finally:
             # Track performance
-            render_time = time.time() - start_time
+            render_time = time.monotonic() - start_time
             self._font_render_times.append(render_time)
             self._total_render_time += render_time
             
@@ -328,7 +331,7 @@ class SplashScreen:
         try:
             with self._lock:
                 # Update animation timing
-                current_time = time.time()
+                current_time = time.monotonic()
                 if self._last_update > 0:
                     delta_time = current_time - self._last_update
                     self._animation_time += delta_time
@@ -465,7 +468,7 @@ class SplashScreen:
             
             # Calculate connection animation (pulsing effect)
             if self._start_time:
-                elapsed = time.time() - self._start_time
+                elapsed = time.monotonic() - self._start_time
                 # Animate connection state - start disconnected, connect halfway through
                 connected = elapsed > (self.duration / 2)
             else:
@@ -495,8 +498,8 @@ class SplashScreen:
             
             # Calculate animation progress (0.0 to 1.0)
             if self._start_time:
-                elapsed = time.time() - self._start_time
-                progress = min(1.0, elapsed / self.duration)
+                elapsed = time.monotonic() - self._start_time
+                progress = self._fraction(elapsed)
             else:
                 progress = 0.0
             
@@ -547,8 +550,8 @@ class SplashScreen:
         try:
             # Calculate progress for text display
             if self._start_time:
-                elapsed = time.time() - self._start_time
-                progress = min(1.0, elapsed / self.duration)
+                elapsed = time.monotonic() - self._start_time
+                progress = self._fraction(elapsed)
             else:
                 progress = 0.0
             
@@ -557,9 +560,11 @@ class SplashScreen:
             filled_length = int(bar_length * progress)
             bar = '█' * filled_length + '░' * (bar_length - filled_length)
             
-            # Log progress periodically (every 0.5 seconds)
-            if int(self._animation_time * 2) % 1 == 0:  # Every 0.5s
-                self.logger.info(f"{self._app_title} - Loading: [{bar}] {int(progress * 100)}%")
+            # Log progress at most every 0.5 s (issue-4005360c)
+            now = time.monotonic()
+            if now - self._last_progress_log >= 0.5:
+                self._last_progress_log = now
+                self.logger.debug(f"{self._app_title} - Loading: [{bar}] {int(progress * 100)}%")
             
             return True
             
@@ -567,6 +572,15 @@ class SplashScreen:
             self.logger.error(f"Text fallback rendering failed: {e}", exc_info=True)
             return True  # Fallback should never fail completely
     
+    def _fraction(self, elapsed: float) -> float:
+        """Elapsed time as a fraction of the duration, capped at 1.0.
+
+        A zero or negative duration counts as complete (issue-4005360c).
+        """
+        if self.duration <= 0:
+            return 1.0
+        return min(1.0, elapsed / self.duration)
+
     def get_progress(self) -> float:
         """
         Get current splash screen progress as a percentage.
@@ -581,8 +595,8 @@ class SplashScreen:
             if self._start_time is None:
                 return 0.0
             
-            elapsed = time.time() - self._start_time
-            return min(1.0, elapsed / self.duration)
+            elapsed = time.monotonic() - self._start_time
+            return self._fraction(elapsed)
     
     def get_remaining_time(self) -> float:
         """
@@ -598,7 +612,7 @@ class SplashScreen:
             if self._start_time is None:
                 return self.duration
             
-            elapsed = time.time() - self._start_time
+            elapsed = time.monotonic() - self._start_time
             return max(0.0, self.duration - elapsed)
     
     def set_custom_text(self, title: Optional[str] = None, 

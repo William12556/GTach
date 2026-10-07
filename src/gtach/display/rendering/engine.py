@@ -948,9 +948,12 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                         self.fb.close()
                     else:
                         self.fb.close()
+                    # The write path checks for None (issue-4005360c).
+                    self.fb = None
 
                 if self.fb_dev:
                     self.fb_dev.close()
+                    self.fb_dev = None
                 
                 if self.pygame_available:
                     pygame.quit()

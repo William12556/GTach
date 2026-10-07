@@ -290,6 +290,7 @@ class TestReEnterSetup:
     def test_stops_transport_then_obd_through_manager(self):
         app = object.__new__(GTachApplication)
         app.logger = logging.getLogger('test.thread_lifecycle')
+        app._obd_lock = threading.Lock()  # issue-4005360c
         stops = []
         direct = []
         app._thread_manager = types.SimpleNamespace(

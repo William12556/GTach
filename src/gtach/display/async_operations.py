@@ -44,7 +44,7 @@ class AsyncOperation:
     progress: float = 0.0
     result: Any = None
     error: Optional[Exception] = None
-    start_time: float = field(default_factory=time.time)
+    start_time: float = field(default_factory=time.monotonic)  # monotonic (issue-4005360c)
     end_time: Optional[float] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -189,7 +189,7 @@ class AsyncOperationManager:
             operation = self.operations.get(operation_id)
             if operation and operation.status == OperationStatus.PENDING:
                 operation.status = OperationStatus.CANCELLED
-                operation.end_time = time.time()
+                operation.end_time = time.monotonic()
                 self.logger.info(f"Cancelled operation {operation_id}")
                 return True
         
@@ -213,7 +213,7 @@ class AsyncOperationManager:
         Args:
             max_age_seconds: Maximum age for completed operations
         """
-        current_time = time.time()
+        current_time = time.monotonic()
         to_remove = []
         
         with self._operations_lock:
@@ -280,7 +280,7 @@ class AsyncOperationManager:
                             operation.status = OperationStatus.COMPLETED
                             operation.result = result
                             operation.progress = 1.0
-                            operation.end_time = time.time()
+                            operation.end_time = time.monotonic()
                     
                     self.logger.debug(f"Operation {operation_id} completed successfully")
                     
@@ -291,7 +291,7 @@ class AsyncOperationManager:
                         if operation:
                             operation.status = OperationStatus.FAILED
                             operation.error = e
-                            operation.end_time = time.time()
+                            operation.end_time = time.monotonic()
                     
                     self.logger.error(f"Operation {operation_id} failed: {e}", exc_info=True)
                 
