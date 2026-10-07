@@ -169,15 +169,20 @@ class TestDisableStackDumps:
     def test_close_failure_still_clears_state(self, fh, stacks_path, capsys):
         """Otherwise a failed close would permanently block re-arming."""
         gtach_main.enable_stack_dumps()
+        handle = gtach_main._stacks_file
+        original_close = handle.close
 
         def _boom():
             raise OSError('close exploded')
 
-        gtach_main._stacks_file.close = _boom
+        handle.close = _boom
         gtach_main.disable_stack_dumps()
 
         assert gtach_main._stacks_file is None
         assert 'WARNING' in capsys.readouterr().err
+
+        handle.close = original_close
+        handle.close()
 
 
 class TestArmingCycle:
