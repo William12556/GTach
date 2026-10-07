@@ -4,9 +4,10 @@
 # Usage:
 #   ./pull_logs.sh
 #
-# Deletes all existing files in logs/, then pulls every *.log and rotated
-# log (*.log.N) from /opt/gtach on root@gtach.local and saves them to logs/
-# in the local repository. Edit PI= below if the address changes.
+# Pulls every *.log and rotated log (*.log.N) from /opt/gtach on
+# root@gtach.local into a temporary directory; only if that succeeds
+# are the contents of logs/ in the local repository replaced. Edit PI=
+# below if the address changes.
 
 set -e
 
@@ -18,10 +19,16 @@ LOG_DIR="$PROJECT_ROOT/logs"
 
 mkdir -p "$LOG_DIR"
 
-echo "==> Removing old logs from $LOG_DIR ..."
-rm -f "$LOG_DIR"/*
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
 
 echo "==> Pulling logs from $PI:$REMOTE_DIR ..."
-scp "$PI:$REMOTE_DIR/*.log" "$PI:$REMOTE_DIR/*.log.*" "$LOG_DIR/"
+# One remote glob: matches live and rotated logs, and succeeds when
+# there are no rotated logs (issue-52653cd6).
+scp "$PI:$REMOTE_DIR/*.log*" "$tmp/"
+
+echo "==> Replacing old logs in $LOG_DIR ..."
+rm -f "$LOG_DIR"/*
+mv "$tmp"/* "$LOG_DIR/"
 
 echo "==> Logs saved to $LOG_DIR"

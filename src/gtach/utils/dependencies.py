@@ -15,7 +15,6 @@ import sys
 import os
 import logging
 import importlib.util
-import subprocess
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -172,13 +171,13 @@ class DependencyValidator:
                 description="Serial communication for OBD-II interface"
             ),
             
-            # Bluetooth communication
+            # System metrics
             DependencyInfo(
-                name="PyBluez",
-                import_name="bluetooth",
-                dependency_type=DependencyType.OPTIONAL,
-                install_hint="pip install pybluez",
-                description="Bluetooth communication support"
+                name="psutil",
+                import_name="psutil",
+                dependency_type=DependencyType.REQUIRED,
+                install_hint="pip install psutil",
+                description="Process and memory metrics"
             ),
             
             # Raspberry Pi GPIO (Pi-specific)
@@ -199,16 +198,6 @@ class DependencyValidator:
                 platforms=["raspberry_pi"],
                 install_hint="Follow HyperPixel2R installation guide",
                 description="HyperPixel 2.1 Round display driver"
-            ),
-            
-            # Development dependencies
-            DependencyInfo(
-                name="Requests",
-                import_name="requests",
-                dependency_type=DependencyType.DEVELOPMENT,
-                platforms=["development"],
-                install_hint="pip install requests",
-                description="HTTP library for development tools"
             ),
             
             # Math libraries
@@ -582,12 +571,11 @@ class DependencyValidator:
         return venv_info
     
     def _get_package_version_alt(self, import_name: str) -> Optional[str]:
-        """Alternative method to get package version using pkg_resources or importlib.metadata"""
+        """Alternative method to get package version using importlib.metadata only"""
         # Map import names to package names for version detection
         import_to_package = {
             'yaml': 'PyYAML',
             'serial': 'pyserial',
-            'bluetooth': 'pybluez',
             'pygame': 'pygame',
             # Add more mappings as needed
         }
@@ -600,28 +588,6 @@ class DependencyValidator:
                 import importlib.metadata
                 return importlib.metadata.version(package_name)
         except (ImportError, Exception):
-            pass
-        
-        # Try pkg_resources (fallback)
-        try:
-            import pkg_resources
-            return pkg_resources.get_distribution(package_name).version
-        except (ImportError, Exception):
-            pass
-        
-        # Try pip show command as last resort
-        try:
-            result = subprocess.run(
-                [sys.executable, '-m', 'pip', 'show', package_name],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            if result.returncode == 0:
-                for line in result.stdout.split('\n'):
-                    if line.startswith('Version:'):
-                        return line.split(':', 1)[1].strip()
-        except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
             pass
         
         return None

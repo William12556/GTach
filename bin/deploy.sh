@@ -2,7 +2,7 @@
 # deploy.sh — Mac-side build and deploy to the Pi.
 #
 # Usage:
-#   ./deploy.sh           Full deploy: build, transfer all files, install, restart service.
+#   ./deploy.sh           Full deploy: build, transfer all files, stop service, install, reboot.
 #   ./deploy.sh --stage   Stage update: build, transfer wheel to Pi drop directory only.
 #                         Use 'Check for updates' in GTach OPTIONS to install.
 #
@@ -53,11 +53,8 @@ if [ "$MODE" = "stage" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Full deploy — stop service, transfer all files, install, start service
+# Full deploy — transfer all files, then stop service, install, reboot
 # ---------------------------------------------------------------------------
-echo "==> Stopping GTach service on Pi..."
-ssh "$PI" "systemctl stop gtach || true"
-
 echo "==> Ensuring $INSTALL_DIR exists on Pi..."
 ssh "$PI" "mkdir -p $INSTALL_DIR"
 
@@ -77,11 +74,13 @@ scp "$SCRIPT_DIR/vendor/hyperpixel2r/hyperpixel2r-init" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/vendor/hyperpixel2r/hyperpixel2r-rotate" "${PI}:${INSTALL_DIR}/"
 scp "$SCRIPT_DIR/vendor/hyperpixel2r/hyperpixel2r-init.service" "${PI}:${INSTALL_DIR}/"
 
+# Stop only after every copy succeeded, so a failed transfer leaves
+# the running service untouched (issue-52653cd6).
+echo "==> Stopping GTach service on Pi..."
+ssh "$PI" "systemctl stop gtach || true"
+
 echo "==> Running install on Pi..."
 ssh "$PI" "$INSTALL_DIR/install.sh /tmp/$WHEEL_NAME"
-
-echo "==> Starting GTach service..."
-ssh "$PI" "systemctl start gtach"
 
 echo "==> Rebooting Pi..."
 ssh "$PI" "reboot" || true

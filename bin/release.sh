@@ -67,11 +67,22 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
 fi
 
 # ---------------------------------------------------------------------------
+# Pushed commit check — the release must point at a commit on origin
+# (issue-52653cd6)
+# ---------------------------------------------------------------------------
+git fetch -q origin
+if ! git branch -r --contains HEAD | grep -q 'origin/'; then
+    echo "ERROR: HEAD $(git rev-parse --short HEAD) is not on origin; push it first"
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
 # Release
 # ---------------------------------------------------------------------------
 echo "==> Creating release $TAG"
 
 gh release create "$TAG" \
+    --target "$(git rev-parse HEAD)" \
     --title "$TAG" \
     --notes "GTach $TAG" \
     --latest \

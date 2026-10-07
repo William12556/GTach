@@ -18,6 +18,18 @@ install_wheel() {
     "$VENV/bin/pip" install --force-reinstall --no-deps "$1" >/dev/null 2>&1
 }
 
+install_and_check() {
+    # Install, then verify the environment's dependencies are consistent
+    # (issue-52653cd6). On a pip check failure its output is logged.
+    install_wheel "$1" || return 1
+    local out
+    if ! out="$("$VENV/bin/pip" check 2>&1)"; then
+        log "ERROR: pip check failed after installing $(basename "$1"):"
+        log "$out"
+        return 1
+    fi
+}
+
 valid_wheel() {
     "$VENV/bin/python" - "$1" <<'PY' 2>/dev/null
 import sys, zipfile
@@ -32,7 +44,7 @@ if [ -f "$PROBATION" ]; then
     case "$count" in (''|*[!0-9]*) count=0;; esac
     if [ "$count" -ge "$THRESHOLD" ]; then
         log "probation exceeded ($count) — rolling back"
-        if [ -f "$PREVIOUS" ] && install_wheel "$PREVIOUS"; then
+        if [ -f "$PREVIOUS" ] && install_and_check "$PREVIOUS"; then
             cp -f "$PREVIOUS" "$INSTALLED"
             log "rolled back to previous wheel"
         else
@@ -52,13 +64,14 @@ if [ -f "$PENDING" ]; then
     if [ -n "$wheel_name" ] && [ -f "$wheel_path" ]; then
         if valid_wheel "$wheel_path"; then
             [ -f "$INSTALLED" ] && cp -f "$INSTALLED" "$PREVIOUS"
-            if install_wheel "$wheel_path"; then
+            if install_and_check "$wheel_path"; then
                 cp -f "$wheel_path" "$INSTALLED"
                 echo 0 > "$PROBATION"
                 log "installed $wheel_name; probation started"
             else
                 log "ERROR: install failed — restoring previous"
-                [ -f "$PREVIOUS" ] && install_wheel "$PREVIOUS" && cp -f "$PREVIOUS" "$INSTALLED"
+                [ -f "$PREVIOUS" ] && install_and_check "$PREVIOUS" && cp -f "$PREVIOUS" "$INSTALLED"
+                rm -f "$PROBATION"
             fi
         else
             log "ERROR: $wheel_name failed zip validation — skipping"

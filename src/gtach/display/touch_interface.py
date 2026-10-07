@@ -298,7 +298,7 @@ class HyperPixelTouchInterface(TouchInterface):
                 return
             except Exception as e:
                 self.logger.warning(f"Failed to start real HyperPixel hardware: {e}")
-                self.logger.info("Falling back to mock implementation for development")
+                self._mock_fallback_log()("Falling back to mock implementation for development")
         
         # Fall back to mock implementation
         try:
@@ -351,6 +351,20 @@ class HyperPixelTouchInterface(TouchInterface):
             self.logger.error(f"Real HyperPixel hardware initialization failed: {e}", exc_info=True)
             raise RuntimeError(f"Real HyperPixel hardware startup failed: {e}")
     
+    def _mock_fallback_log(self):
+        """Logger method for the mock-fallback messages.
+
+        On a Raspberry Pi the mock means touch input is dead, so it is
+        reported at ERROR; elsewhere it is expected and stays at INFO.
+        Detection failure falls back to INFO (issue-52653cd6).
+        """
+        try:
+            from ..utils.platform import is_raspberry_pi
+            on_pi = is_raspberry_pi()
+        except Exception:
+            on_pi = False
+        return self.logger.error if on_pi else self.logger.info
+
     def _start_mock_implementation(self) -> None:
         """Start the mock implementation for development"""
         try:
@@ -360,7 +374,7 @@ class HyperPixelTouchInterface(TouchInterface):
             self._using_mock = True
             self._development_mode = True
             
-            self.logger.info("🖥️  Using mock HyperPixel implementation for development")
+            self._mock_fallback_log()("🖥️  Using mock HyperPixel implementation for development")
             
             # Set up touch event handler for mock device
             @self._touch_device.on_touch

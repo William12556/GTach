@@ -83,32 +83,30 @@ fi
 
 # ---------------------------------------------------------------- E01
 hdr "E01 — effective configuration files"
-echo "ConfigManager resolves OBDII_HOME, else ~/.local/share/obdii (root: /root/...)."
-echo "DisplayManager reads ./config.yaml relative to the working directory ($APP)."
-echo "DeviceStore reads ./config/devices.yaml relative to the working directory."
+GTACH_HOME_DIR="${GTACH_HOME:-/opt/gtach}"
+echo "ConfigStore reads \$GTACH_HOME/config.yaml (default /opt/gtach): $GTACH_HOME_DIR/config.yaml."
+echo "DeviceStore reads $GTACH_HOME_DIR/config/devices.yaml (/opt/gtach/config/devices.yaml on the Pi)."
 
 sub "Candidate files"
 for f in \
-    /root/.local/share/obdii/config/config.yaml \
-    /opt/obdii/config/config.yaml \
-    /usr/local/share/obdii/config/config.yaml \
-    "$APP/config.yaml" \
-    "$APP/config/config.yaml" \
-    "$APP/config/devices.yaml" \
-    /root/.local/share/obdii/config/devices.yaml; do
+    "$GTACH_HOME_DIR/config.yaml" \
+    "$GTACH_HOME_DIR/config/devices.yaml"; do
     file_info "$f"
 done
+if [ -e /root/.local/share/obdii ]; then
+    echo "/root/.local/share/obdii — legacy, unused"
+fi
 
 sub "Other config.yaml / devices.yaml files on the system (excluding the venv)"
 find / -xdev \( -path /proc -o -path "$APP/venv" \) -prune -o \
     \( -name config.yaml -o -name devices.yaml \) -type f -print 2>/dev/null \
     | grep -vE '/(site-packages|dist-packages)/' | sort
 
-sub "fps_limit in the file DisplayManager reads"
-if [ -f "$APP/config.yaml" ]; then
-    grep -nE '^\s*fps_limit' "$APP/config.yaml" || echo "fps_limit not set — DisplayManager default (60) applies."
+sub "fps_limit in the file ConfigStore reads"
+if [ -f "$GTACH_HOME_DIR/config.yaml" ]; then
+    grep -nE '^\s*fps_limit' "$GTACH_HOME_DIR/config.yaml" || echo "fps_limit not set — ConfigStore default (30) applies."
 else
-    echo "$APP/config.yaml absent — DisplayManager defaults apply (fps_limit 60)."
+    echo "$GTACH_HOME_DIR/config.yaml absent — ConfigStore defaults apply (fps_limit 30)."
 fi
 
 # ---------------------------------------------------------------- B04

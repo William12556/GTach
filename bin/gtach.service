@@ -1,8 +1,12 @@
 [Unit]
 Description=GTach OBD-II Tachometer
 After=local-fs.target bluetooth.service gtach-boot-splash.service hyperpixel2r-init.service
-StartLimitIntervalSec=60
-StartLimitBurst=3
+# Pull in Bluetooth rather than only ordering after it.
+Wants=bluetooth.service
+# Five starts in two minutes before systemd gives up, so a preflight
+# rollback plus restarts does not exhaust the limit (issue-52653cd6).
+StartLimitIntervalSec=120
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -12,6 +16,17 @@ ExecStartPre=-/opt/gtach/gtach-preflight.sh
 ExecStart=/opt/gtach/venv/bin/gtach
 Restart=always
 RestartSec=5
+# Bound the stop; the application's own exit backstop is 20 s.
+TimeoutStopSec=30
+# Hardening for the root service. GTach writes only under /opt/gtach.
+# No privilege gain through setuid or file capabilities.
+NoNewPrivileges=yes
+# Private /tmp and /var/tmp.
+PrivateTmp=yes
+# /home, /root and /run/user are inaccessible.
+ProtectHome=yes
+# /usr, /boot, /efi and /etc are read-only.
+ProtectSystem=full
 
 [Install]
 WantedBy=multi-user.target

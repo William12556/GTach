@@ -245,7 +245,9 @@ else
 fi
 
 echo "==> Installing from $WHEEL_PATH"
-"$VENV_DIR/bin/pip" install "$WHEEL_PATH"
+# [pi] brings RPi.GPIO and hyperpixel2r (touch); piwheels serves
+# prebuilt ARM wheels, as in pi-install.sh (issue-52653cd6).
+"$VENV_DIR/bin/pip" install --extra-index-url https://www.piwheels.org/simple/ "${WHEEL_PATH}[pi]"
 
 # ---------------------------------------------------------------------------
 # Version verification

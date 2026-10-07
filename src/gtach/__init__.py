@@ -10,7 +10,12 @@
 from .app import GTachApplication
 from .main import main
 
-__version__ = '0.4.3'
+# pyproject.toml is the single version source (issue-52653cd6).
+from importlib.metadata import version as _version, PackageNotFoundError
+try:
+    __version__ = _version('gtach')
+except PackageNotFoundError:
+    __version__ = '0+unknown'
 __author__ = "William Watson"
 
 __all__ = [

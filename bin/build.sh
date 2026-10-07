@@ -65,33 +65,6 @@ p.write_text(t)
 
 echo "==> Building gtach version $VERSION (was $PREV_VERSION)"
 
-# Update __init__.py with version
-echo "==> Updating version in __init__.py..."
-cat > src/gtach/__init__.py << 'INITEOF'
-# Copyright (c) 2025 William Watson
-#
-# This file is part of GTach.
-#
-# GTach is licensed under the MIT License.
-# See the LICENSE file in the project root for full license text.
-
-"""GTach application package."""
-
-from .app import GTachApplication
-from .main import main
-
-INITEOF
-echo "__version__ = '$VERSION'" >> src/gtach/__init__.py
-cat >> src/gtach/__init__.py << 'INITEOF'
-__author__ = "William Watson"
-
-__all__ = [
-    'GTachApplication',
-    'main',
-    '__version__'
-]
-INITEOF
-
 # Clean previous builds
 echo "==> Cleaning previous builds..."
 rm -rf dist/ build/ *.egg-info/ src/*.egg-info/
