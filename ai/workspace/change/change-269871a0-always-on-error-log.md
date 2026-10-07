@@ -246,6 +246,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-269871a0 iteration 1."
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson before implementation; entry recorded retrospectively."
   - version: "1.2"
     date: "2026-10-07"
     author: "Claude Code"
@@ -267,6 +272,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Always-on error.log; exc_info on broad handlers; policy test. |
+| 1.1 | 2026-10-07 | Approved for implementation (recorded retrospectively). |
 | 1.2 | 2026-10-07 | Implemented in 5f3c50be158bf2bea57f47edf7383062032c3213. |
 
 ---

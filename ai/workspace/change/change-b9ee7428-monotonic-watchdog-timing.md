@@ -218,6 +218,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-b9ee7428 iteration 1."
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson before implementation; entry recorded retrospectively."
   - version: "1.2"
     date: "2026-10-07"
     author: "Claude Code"
@@ -239,6 +244,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Monotonic clock for core/ timing; ThreadHealth defaults. |
+| 1.1 | 2026-10-07 | Approved for implementation (recorded retrospectively). |
 | 1.2 | 2026-10-07 | Implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a. |
 
 ---
