@@ -69,6 +69,7 @@ def _manager(coordinator=None) -> SetupDisplayManager:
     manager._last_rendered_screen = None
     manager._screen_needs_refresh = True
     manager._render_cache_lock = threading.Lock()
+    manager._has_device = False  # cached presence (issue-674bec49)
     manager.colors = {'background': (216, 200, 146), 'text': (0, 0, 0)}
     return manager
 

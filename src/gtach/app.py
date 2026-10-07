@@ -386,6 +386,14 @@ class GTachApplication:
             self.logger.info("Reusing existing DisplayManager for setup re-entry")
 
         # Initialize setup manager while splash is showing
+        # Stop any previous setup manager before replacing it
+        # (issue-674bec49).
+        manager = getattr(self, '_setup_manager', None)
+        if manager:
+            try:
+                manager.stop_setup()
+            except Exception as e:
+                self.logger.error(f'Stopping setup manager failed: {e}', exc_info=True)
         self._setup_manager = SetupDisplayManager(
             self._display.rendering_engine.main_surface,
             self._thread_manager,
@@ -405,6 +413,14 @@ class GTachApplication:
             return
         self._obd_started = True
         self.logger.info("Setup complete — transitioning to normal mode")
+        # Stop the finished setup manager; stop_setup does not join the
+        # calling (setup) thread (issue-674bec49).
+        manager = getattr(self, '_setup_manager', None)
+        if manager:
+            try:
+                manager.stop_setup()
+            except Exception as e:
+                self.logger.error(f'Stopping setup manager failed: {e}', exc_info=True)
         self._display.exit_setup_mode()
         self._start_obd()
 

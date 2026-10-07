@@ -80,6 +80,8 @@ class SetupDisplayManager:
         self.device_renderer = DeviceSurfaceRenderer()
         self._on_complete = on_complete
         self._probe_in_flight = False
+        # Cached device presence; no per-frame file reads (issue-674bec49).
+        self._has_device = False
         
         # UI state and threading
         self.touch_regions = []  # Protected by _touch_regions_lock
@@ -117,6 +119,8 @@ class SetupDisplayManager:
     
     def _on_screen_transition(self, old_screen: SetupScreen, new_screen: SetupScreen) -> None:
         """Handle screen transitions from state coordinator"""
+        if new_screen == SetupScreen.WELCOME:
+            self._refresh_has_device()
         self._invalidate_render_cache(new_screen)
         self.logger.debug(f"Screen transition handled: {old_screen.name} -> {new_screen.name}")
     
@@ -137,9 +141,8 @@ class SetupDisplayManager:
         self.logger.info("Starting Bluetooth setup")
         
         # Determine starting screen through state coordinator
-        from ..comm.device_store import DeviceStore
-        device_store = DeviceStore()
-        if device_store.get_primary_device() is None:
+        self._refresh_has_device()
+        if not self._has_device:
             self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
         else:
             self.state_coordinator.transition_to_screen(SetupScreen.CURRENT_DEVICE)
@@ -153,9 +156,51 @@ class SetupDisplayManager:
         """Stop the setup process and cancel all async operations"""
         self._shutdown_event.set()
         self.bluetooth_interface.cancel_operations()
-        if self._setup_thread:
+        # on_complete runs on the setup thread, so never join it from
+        # itself (issue-674bec49).
+        if self._setup_thread and self._setup_thread is not threading.current_thread():
             self._setup_thread.join(timeout=5.0)
         self.logger.info("Setup stopped - all operations cancelled")
+
+    def _refresh_has_device(self) -> None:
+        """Re-read whether a primary device is stored.
+
+        Called at start_setup and on entry to WELCOME, so rendering never
+        reads devices.yaml per frame (issue-674bec49).
+        """
+        try:
+            from ..comm.device_store import DeviceStore
+            self._has_device = DeviceStore().get_primary_device() is not None
+        except Exception as e:
+            self.logger.error(f"Device presence check failed: {e}", exc_info=True)
+            self._has_device = False
+
+    def _fit_text(self, font, text: str, max_width: int = 400) -> str:
+        """Shorten text to fit max_width pixels in font.
+
+        Returns the full text if it fits; otherwise the first sentence
+        (up to and including the first '. ') if that fits; otherwise the
+        text truncated from the end with an ellipsis.
+
+        Args:
+            font: A pygame font.
+            text: The text to fit.
+            max_width: Maximum rendered width in pixels.
+
+        Returns:
+            The text to render.
+        """
+        if font.size(text)[0] <= max_width:
+            return text
+        stop = text.find('. ')
+        if stop != -1:
+            sentence = text[:stop + 1]
+            if font.size(sentence)[0] <= max_width:
+                return sentence
+        shortened = text
+        while shortened and font.size(shortened + '…')[0] > max_width:
+            shortened = shortened[:-1]
+        return shortened + '…'
     
     def _setup_loop(self) -> None:
         """Main setup processing loop"""
@@ -300,12 +345,9 @@ class SetupDisplayManager:
                 surface.blit(text, text_rect)
                 y_pos += 32
 
-        # Check if a device is already stored — show Cancel button if so
-        from ..comm.device_store import DeviceStore
-        has_device = DeviceStore().get_primary_device() is not None
-
+        # Show Cancel if a device is stored (cached; issue-674bec49)
         btn_font = get_button_font()
-        if has_device:
+        if self._has_device:
             # Two-button layout: Start Setup + Cancel
             start_btn = pygame.Rect(110, 270, 260, 75)
             pygame.draw.rect(surface, self.colors['primary'], start_btn, border_radius=10)
@@ -337,7 +379,8 @@ class SetupDisplayManager:
         if state.error_message:
             font_small = get_label_small_font()
             if font_small:
-                msg = font_small.render("No devices found", True, self.colors['warning'])
+                text = self._fit_text(font_small, state.error_message)
+                msg = font_small.render(text, True, self.colors['warning'])
                 surface.blit(msg, msg.get_rect(center=(240, 440)))
 
         self._update_touch_regions_safe(new_regions)
@@ -468,8 +511,6 @@ class SetupDisplayManager:
                 error_text = font_minimal.render(state.error_message, True, self.colors['danger'])
                 error_rect = error_text.get_rect(center=(240, 118))
                 surface.blit(error_text, error_rect)
-                # Clear error message after rendering
-                self.state_coordinator.update_state(error_message=None)
 
         # Back and Retry buttons — 130x60 each, bottom at y=400
         back_btn = pygame.Rect(80, 340, 130, 60)
@@ -733,6 +774,10 @@ class SetupDisplayManager:
                             hit = (region[0], region)
                             break
             if hit is not None:
+                # Errors persist until the next tap on a region; cleared
+                # after the lock is released (issue-674bec49).
+                if self.state_coordinator.get_state().error_message:
+                    self.state_coordinator.update_state(error_message=None)
                 return self._handle_touch_action(*hit)
         except Exception as e:
             self.logger.error(f"Error handling touch event: {e}", exc_info=True)
@@ -831,9 +876,7 @@ class SetupDisplayManager:
         """Update touch regions for cached screens"""
         state = self.state_coordinator.get_state()
         if state.current_screen == SetupScreen.WELCOME:
-            from ..comm.device_store import DeviceStore
-            has_device = DeviceStore().get_primary_device() is not None
-            if has_device:
+            if self._has_device:
                 start_btn = pygame.Rect(110, 270, 260, 75)
                 cancel_btn = pygame.Rect(110, 360, 260, 75)
                 self._update_touch_regions_safe([("start", start_btn), ("cancel_setup", cancel_btn)])

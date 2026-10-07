@@ -1114,6 +1114,23 @@ class DisplayManager:
             # Fallback to band 0, black
             return (0, (0, 0, 0))
 
+    def _gauge_max_rpm(self) -> int:
+        """Return the gauge's full-scale RPM.
+
+        max_rpm = min(9000, max(7000, ceil((redline + 500) / 1000) * 1000)),
+        so the configured redline is always on the dial. Redline 6000
+        (abarth_595_turismo) yields 7000, the previous fixed value
+        (issue-674bec49). A missing configuration counts as 6000.
+
+        Returns:
+            The full-scale RPM, a multiple of 1000 from 7000 to 9000.
+        """
+        try:
+            redline = self.config.rpm_bands.redline_rpm
+        except Exception:
+            redline = 6000
+        return min(9000, max(7000, math.ceil((redline + 500) / 1000) * 1000))
+
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
         try:
@@ -1127,8 +1144,10 @@ class DisplayManager:
                 # _render_normal_modes before the link test rather than
                 # here. See that method for why.
                 rpm = self._condition_rpm(getattr(self, '_last_rpm', 0))
-            # Clamp RPM to valid range
-            rpm = max(0, min(7000, rpm))
+            # Clamp RPM to the gauge range, which covers the configured
+            # redline (issue-674bec49)
+            max_rpm = self._gauge_max_rpm()
+            rpm = max(0, min(max_rpm, rpm))
 
             # Get back buffer surface
             surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
@@ -1161,7 +1180,6 @@ class DisplayManager:
             center = (240, 240)
             outer_radius = 232
             inner_radius = 100
-            max_rpm = 7000
 
             # Angle conversion: clock degrees to canvas radians
             # Active arc: 210 deg (7 o'clock) to 150 deg (5 o'clock) via top = 300 deg sweep
@@ -1249,28 +1267,27 @@ class DisplayManager:
             # 6. Draw inner arc edge ring (subtle dark stroke)
             pygame.draw.circle(surface, palette.edge, center, inner_radius, 2)
 
-            # 7. Draw major tick marks and numerals (1000-7000 RPM)
+            # 7. Draw major tick marks and numerals (1000 RPM to max_rpm)
             tick_font = get_font_manager().get_font(52)
-            for rpm_tick in range(1000, 8000, 1000):
-                if rpm_tick <= max_rpm:
-                    angle_rad = rpm_to_angle_rad(rpm_tick)
-                    # Tick mark - 28px long radial line on outer edge
-                    tick_start_x = center[0] + (outer_radius - 28) * math.cos(angle_rad)
-                    tick_start_y = center[1] + (outer_radius - 28) * math.sin(angle_rad)
-                    tick_end_x = center[0] + outer_radius * math.cos(angle_rad)
-                    tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
-                    pygame.draw.line(surface, palette.tick,
-                                   (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 7)
+            for rpm_tick in range(1000, max_rpm + 1, 1000):
+                angle_rad = rpm_to_angle_rad(rpm_tick)
+                # Tick mark - 28px long radial line on outer edge
+                tick_start_x = center[0] + (outer_radius - 28) * math.cos(angle_rad)
+                tick_start_y = center[1] + (outer_radius - 28) * math.sin(angle_rad)
+                tick_end_x = center[0] + outer_radius * math.cos(angle_rad)
+                tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
+                pygame.draw.line(surface, palette.tick,
+                               (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 7)
 
-                    # Numeral - positioned 58px inward from outer radius
-                    if tick_font:
-                        numeral = str(rpm_tick // 1000)
-                        num_x = center[0] + (outer_radius - 58) * math.cos(angle_rad)
-                        num_y = center[1] + (outer_radius - 58) * math.sin(angle_rad)
-                        self.rendering_engine.render_text(
-                            RenderTarget.BACK_BUFFER, numeral, tick_font, palette.tick,
-                            (int(num_x), int(num_y)), center=True
-                        )
+                # Numeral - positioned 58px inward from outer radius
+                if tick_font:
+                    numeral = str(rpm_tick // 1000)
+                    num_x = center[0] + (outer_radius - 58) * math.cos(angle_rad)
+                    num_y = center[1] + (outer_radius - 58) * math.sin(angle_rad)
+                    self.rendering_engine.render_text(
+                        RenderTarget.BACK_BUFFER, numeral, tick_font, palette.tick,
+                        (int(num_x), int(num_y)), center=True
+                    )
 
             # 8. Draw band boundary marks at thresholds.
             #    7 px, matching the major ticks: with the sweep drawn in
@@ -1335,8 +1352,8 @@ class DisplayManager:
             #
             # 72 px, not FONT_RPM_LARGE's 180: the disc is r=99, which
             # admits a 198 px chord, and three glyphs at 72 px measure
-            # roughly 120 x 72. The RPM is clamped to 7000 above, so the
-            # string is never wider than three glyphs.
+            # roughly 120 x 72. The RPM is clamped to max_rpm (at most
+            # 9000) above, so the string is never wider than three glyphs.
             readout_font = get_font_manager().get_font(72)
             if readout_font:
                 self.rendering_engine.render_text(
