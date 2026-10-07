@@ -12,6 +12,7 @@ import argparse
 import errno as _errno
 import logging
 import os
+import select
 import threading
 import time
 from abc import ABC
@@ -246,6 +247,47 @@ class OBDTransport(ABC):
         """Apply a read timeout to the handle. Override if it differs."""
         handle.settimeout(timeout)
 
+    # Upper bound on reads per discard, so a peer that streams without
+    # pause cannot hold a command in the discard step.
+    _DISCARD_MAX_READS: int = 64
+
+    def _discard_input(self, handle) -> int:
+        """Discard bytes already waiting on the handle.
+
+        Called by send_command before each write. A reply that arrived
+        after its own command timed out would otherwise be read as the
+        reply to the next command, and every later command would read
+        its predecessor's reply (issue-dc52c4e4). Nothing for the new
+        command can be pending before it is written, so only stale
+        bytes are discarded.
+
+        The default suits stream sockets: read while select() reports
+        the handle readable without waiting. An empty read means the
+        peer closed; it is left for the read loop to detect. Handles
+        that select() cannot take (test doubles, a closed socket)
+        discard nothing. Override where the handle offers its own
+        buffer reset.
+
+        Args:
+            handle: The handle captured by send_command.
+
+        Returns:
+            The number of bytes discarded.
+        """
+        discarded = 0
+        try:
+            for _ in range(self._DISCARD_MAX_READS):
+                readable, _, _ = select.select([handle], [], [], 0)
+                if not readable:
+                    break
+                data = handle.recv(4096)
+                if not data:
+                    break
+                discarded += len(data)
+        except (TypeError, ValueError, AttributeError, OSError):
+            pass
+        return discarded
+
     def _describe(self) -> str:
         """Describe the endpoint, for log messages."""
         return self.__class__.__name__
@@ -476,6 +518,12 @@ class OBDTransport(ABC):
             encoded_cmd = (command.strip() + "\r").encode("ascii")
             logger.debug("TX: %r", encoded_cmd)
 
+            # Discard any late reply to an earlier command, so this
+            # command reads only its own reply (issue-dc52c4e4).
+            stale = self._discard_input(handle)
+            if stale:
+                logger.debug("Discarded %d stale bytes before %r", stale, command)
+
             # Set timeout for response, before the write so the write
             # itself is bounded too (change-860fd5f7).
             self._set_timeout(handle, timeout)
@@ -508,6 +556,16 @@ class OBDTransport(ABC):
                 buf += data
                 if b">" in buf:
                     break
+
+            # The reply ends at the first prompt. Bytes after it belong
+            # to no command and are dropped (issue-dc52c4e4).
+            prompt = buf.find(b">")
+            if prompt >= 0:
+                if buf[prompt + 1 :].strip():
+                    logger.debug(
+                        "Dropped %r after prompt for %r", buf[prompt + 1 :], command
+                    )
+                buf = buf[:prompt]
 
             # Decode and strip the response
             response = buf.decode("ascii", errors="ignore").strip()

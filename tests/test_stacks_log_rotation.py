@@ -46,6 +46,7 @@ class _FakeFaulthandler:
 
     def __init__(self):
         self.calls = []
+        self.register_args = []
 
     def enable(self, file=None):
         self.calls.append("enable")
@@ -58,6 +59,13 @@ class _FakeFaulthandler:
 
     def cancel_dump_traceback_later(self):
         self.calls.append("cancel_dump_traceback_later")
+
+    def register(self, signum, file=None, all_threads=True, chain=False):
+        self.calls.append("register")
+        self.register_args.append((signum, file, all_threads, chain))
+
+    def unregister(self, signum):
+        self.calls.append("unregister")
 
 
 @pytest.fixture
@@ -123,7 +131,7 @@ class TestHeader:
 
         monkeypatch.setattr(gtach_main, "_stacks_header", _tracking_header)
         monkeypatch.setattr(
-            armed.fake, "dump_traceback_later", lambda *a, **k: order.append("arm")
+            armed.fake, "register", lambda *a, **k: order.append("arm")
         )
 
         gtach_main.enable_stack_dumps()
@@ -162,7 +170,7 @@ class TestHeader:
 
         assert gtach_main.enable_stack_dumps() is True
 
-        assert armed.fake.calls == ["enable", "dump_traceback_later"]
+        assert armed.fake.calls == ["enable", "register"]
         assert "WARNING" in capsys.readouterr().err
 
     def test_second_arm_without_disable_writes_one_header(self, armed):
@@ -267,7 +275,7 @@ class TestRotation:
         assert gtach_main.enable_stack_dumps() is True
 
         assert gtach_main._stacks_rotated is True
-        assert armed.fake.calls == ["enable", "dump_traceback_later"]
+        assert armed.fake.calls == ["enable", "register"]
         assert armed.path.read_text().startswith("=== gtach ")
         assert "WARNING" in capsys.readouterr().err
 
@@ -300,17 +308,14 @@ class TestNoPythonSideTimer:
         assert "threading" not in code
         assert "time.sleep" not in code
 
-    def test_dump_interval_unchanged(self, armed, monkeypatch):
-        recorded = []
-        monkeypatch.setattr(
-            armed.fake,
-            "dump_traceback_later",
-            lambda timeout, repeat=False, file=None: recorded.append((timeout, repeat)),
-        )
+    def test_dump_is_on_request(self, armed):
+        """SIGUSR1 replaces the 15 s repeat timer (issue-fe755cfd)."""
+        import signal
 
         gtach_main.enable_stack_dumps()
 
-        assert recorded == [(15, True)]
+        assert [args[0] for args in armed.fake.register_args] == [signal.SIGUSR1]
+        assert "dump_traceback_later" not in armed.fake.calls
 
     def test_stacks_log_path_and_backup_count(self):
         assert gtach_main._STACKS_LOG == "/opt/gtach/stacks.log"

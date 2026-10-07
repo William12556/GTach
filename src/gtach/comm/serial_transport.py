@@ -90,6 +90,23 @@ class SerialTransport(OBDTransport):
         """Apply the read timeout. pyserial uses an attribute."""
         handle.timeout = timeout
 
+    def _discard_input(self, handle) -> int:
+        """Discard waiting input with pyserial's own buffer reset.
+
+        Args:
+            handle: The open port.
+
+        Returns:
+            The number of bytes discarded (issue-dc52c4e4).
+        """
+        try:
+            waiting = int(handle.in_waiting)
+        except (TypeError, ValueError, AttributeError):
+            return 0
+        if waiting:
+            handle.reset_input_buffer()
+        return waiting
+
     def _discover_port(self) -> Optional[str]:
         """Discover available serial ports matching known OBD adapter patterns.
 

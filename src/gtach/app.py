@@ -247,7 +247,7 @@ class GTachApplication:
         """Activate or suppress runtime diagnostics.
 
         Toggles debug.log's handler level and, on the same signal, arms
-        or disarms the periodic all-thread stack dumps written to
+        or disarms the on-request all-thread stack dumps written to
         stacks.log. This is the signal that turns debug on in the field
         — bin/gtach.service passes no --debug, so the startup flag
         never fires in production (issue-2ac1c602 iteration 3).

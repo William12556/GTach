@@ -39,6 +39,14 @@ class OBDProtocol:
     # Wait after a failed initialisation before retrying (issue-907de6de).
     _INIT_RETRY_DELAY_S: float = 2.0
 
+    # Timeout for the initialisation 0100. After ATSP0 the adapter
+    # searches for the vehicle protocol before answering
+    # ('SEARCHING...'), which takes over 1 s on the emulator and can
+    # take several seconds on a vehicle. With the transport's 1.0 s
+    # margin the read is bounded at 6 s, below the watchdog's 15 s
+    # warning threshold (issue-dc52c4e4).
+    _INIT_0100_TIMEOUT_S: float = 5.0
+
     def __init__(
         self,
         transport: OBDTransport,
@@ -156,7 +164,7 @@ class OBDProtocol:
             self._send_command(b"ATSP0")  # Auto protocol
             self.thread_manager.update_heartbeat("obd_protocol")
 
-            response = self._send_command(b"0100")
+            response = self._send_command(b"0100", timeout=self._INIT_0100_TIMEOUT_S)
             # Only a positive 0100 reply proves the vehicle answered;
             # NO DATA, '?' and 7F replies do not (issue-907de6de).
             normalised = re.sub(r"\s", "", (response or "").upper())
