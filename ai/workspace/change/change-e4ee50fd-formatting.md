@@ -19,7 +19,7 @@ change_info:
   title: "Configure flake8 for 88 columns and black compatibility, update CLAUDE.md §7, and apply black and isort once to src/gtach, tests and bin/*.py"
   date: "2026-10-07"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -141,6 +141,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-e4ee50fd iteration 1."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -156,6 +162,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. 88 columns; single formatting pass. |
+| 1.1 | 2026-10-07 | Approved for implementation. |
 
 ---
 

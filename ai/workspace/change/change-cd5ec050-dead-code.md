@@ -19,7 +19,7 @@ change_info:
   title: "Delete the backup modules and unreachable code listed in the audit, the in-process restart remnants, and unused imports and variables; adjust tests and CLAUDE.md"
   date: "2026-10-07"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -195,6 +195,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-cd5ec050 iteration 1."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -210,6 +216,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Dead code and backup modules removed. |
+| 1.1 | 2026-10-07 | Approved for implementation. |
 
 ---
 

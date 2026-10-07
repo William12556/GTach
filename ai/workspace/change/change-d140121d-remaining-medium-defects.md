@@ -19,7 +19,7 @@ change_info:
   title: "Apply the socket timeout before connect; non-blocking pairing shutdown and correct chunk duration; get_state returns a copy and all setup-state writes go through the coordinator; lock the async-operations map; arm the exit backstop on every shutdown and stop touch, async and pairing threads"
   date: "2026-10-07"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -234,6 +234,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-d140121d iteration 1."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -249,6 +255,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. A07, A08, A17, C14, D04, D05, X02. |
+| 1.1 | 2026-10-07 | Approved for implementation. |
 
 ---
 
