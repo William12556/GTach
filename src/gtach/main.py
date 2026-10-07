@@ -12,7 +12,6 @@ import datetime
 import faulthandler
 import logging
 import os
-import signal
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -25,12 +24,6 @@ _error_handler: Optional[logging.Handler] = None
 # Kept referenced so faulthandler's fd stays open for the process
 # lifetime; faulthandler writes to the file descriptor directly.
 _stacks_file = None
-# Signal that requests an all-thread dump while stack dumps are armed
-# (issue-fe755cfd). None where faulthandler.register or SIGUSR1 is
-# unavailable (Windows); fatal-error capture is still armed there.
-_DUMP_SIGNAL = (
-    getattr(signal, "SIGUSR1", None) if hasattr(faulthandler, "register") else None
-)
 # Rotation is once per PROCESS, not once per arm. Arming occurs on
 # every OPTIONS toggle-on, and rotating each time would push a
 # just-captured reproduction off the end of the backup chain — the
@@ -44,9 +37,9 @@ _LOG_DATE_FMT = "%Y-%m-%d %H:%M:%S"
 _START_LOG = "/opt/gtach/start.log"
 _DEBUG_LOG = "/opt/gtach/debug.log"
 _STACKS_LOG = "/opt/gtach/stacks.log"
-# Dumps are written on request (SIGUSR1) and on fatal errors only
-# (issue-fe755cfd), so each run's file is small. Three backups plus the
-# live file bound cross-run accumulation at four files — enough to
+# Dumps are written on fatal errors and on request (SIGUSR1, written by
+# gtach.utils.stack_dump; issue-1a8f40ea), so each run's file is small.
+# Three backups plus the live file bound cross-run accumulation at four files — enough to
 # span a watchdog restart and the run before it, which is the span
 # issue-2ac1c602's verification needs.
 _STACKS_BACKUPS = 3
@@ -211,22 +204,18 @@ def _stacks_header() -> str:
 
 
 def enable_stack_dumps() -> bool:
-    """Arm on-request all-thread stack dumps and fatal-error capture.
+    """Arm fatal-error capture to stacks.log.
 
-    While armed, SIGUSR1 appends one all-thread dump to stacks.log
-    (kill -USR1 <MainPID>), and a fatal error (segmentation fault,
-    abort) writes its traceback there. faulthandler's signal handler
-    does not need the GIL, so a dump still lands while every Python
-    thread is stalled (issue-2ac1c602).
+    While armed, a fatal error (segmentation fault, abort) writes the
+    traceback of every thread to stacks.log.
 
-    The dump was previously taken every 15 s by
-    faulthandler.dump_traceback_later(repeat=True). That timer reads
-    running threads' frames from a C thread without the GIL, and on
-    the Pi the process terminated on dump ticks (issue-fe755cfd). An
-    on-request dump carries the same hazard only when an operator asks
-    for it. SIGUSR1 is registered only while armed: sent with debug off
-    it takes its default action and terminates the process, after
-    which systemd restarts it.
+    faulthandler's all-thread dumps for live processes are not used:
+    the 15 s dump_traceback_later timer (issue-fe755cfd) and the
+    SIGUSR1 faulthandler.register dump (issue-1a8f40ea) both walk
+    running threads' frames without the GIL, and both terminated the
+    process on the Pi. On-request dumps are written by the Python-level
+    handler in gtach.utils.stack_dump, installed by main() for the
+    process lifetime and independent of this function.
 
     The dumps were originally written to
     sys.stderr, which under systemd is the journal rather than the
@@ -244,7 +233,7 @@ def enable_stack_dumps() -> bool:
     signal.
 
     Idempotent: a second call while already armed opens no second file
-    handle and registers no second handler. Safe to call from a thread other
+    handle and enables no second handler. Safe to call from a thread other
     than the one that ran setup_logging — faulthandler's own calls are
     thread-safe, and _stacks_file, the only shared state, transitions
     by single assignment.
@@ -305,10 +294,6 @@ def enable_stack_dumps() -> bool:
                 file=sys.stderr,
             )
         faulthandler.enable(file=_stacks_file)
-        if _DUMP_SIGNAL is not None:
-            faulthandler.register(
-                _DUMP_SIGNAL, file=_stacks_file, all_threads=True, chain=False
-            )
         return True
     except OSError as e:
         print(f"[gtach] WARNING: could not open {_STACKS_LOG}: {e}", file=sys.stderr)
@@ -317,12 +302,11 @@ def enable_stack_dumps() -> bool:
 
 
 def disable_stack_dumps() -> None:
-    """Unregister the on-request dump and close stacks.log.
+    """Disarm fatal-error capture and close stacks.log.
 
     A no-op when nothing is armed. The teardown order is load-bearing:
-    the SIGUSR1 handler is unregistered and faulthandler disabled
-    BEFORE the file is closed, because a dump written to a closed
-    descriptor would fault inside the signal handler.
+    faulthandler is disabled BEFORE the file is closed, because a fatal
+    error written to a closed descriptor would itself fault.
 
     Errors closing the file are swallowed, but _stacks_file is set to
     None regardless so that a subsequent enable_stack_dumps can re-arm.
@@ -332,8 +316,6 @@ def disable_stack_dumps() -> None:
     if _stacks_file is None:
         return
 
-    if _DUMP_SIGNAL is not None:
-        faulthandler.unregister(_DUMP_SIGNAL)
     faulthandler.disable()
     try:
         _stacks_file.close()
@@ -373,6 +355,11 @@ def main() -> int:
     # GTACH_HOME (issue-5fbff586).
     config_file = args.config
     setup_logging(args.debug)
+    # On-request stack dumps for the process lifetime, independent of
+    # debug; SIGUSR1 never terminates the process (issue-1a8f40ea).
+    from .utils import stack_dump
+
+    stack_dump.install(lambda: _STACKS_LOG)
 
     if args.validate_dependencies:
         from .utils import validate_dependencies

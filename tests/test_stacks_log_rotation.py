@@ -131,7 +131,7 @@ class TestHeader:
 
         monkeypatch.setattr(gtach_main, "_stacks_header", _tracking_header)
         monkeypatch.setattr(
-            armed.fake, "register", lambda *a, **k: order.append("arm")
+            armed.fake, "enable", lambda *a, **k: order.append("arm")
         )
 
         gtach_main.enable_stack_dumps()
@@ -170,7 +170,7 @@ class TestHeader:
 
         assert gtach_main.enable_stack_dumps() is True
 
-        assert armed.fake.calls == ["enable", "register"]
+        assert armed.fake.calls == ["enable"]
         assert "WARNING" in capsys.readouterr().err
 
     def test_second_arm_without_disable_writes_one_header(self, armed):
@@ -275,7 +275,7 @@ class TestRotation:
         assert gtach_main.enable_stack_dumps() is True
 
         assert gtach_main._stacks_rotated is True
-        assert armed.fake.calls == ["enable", "register"]
+        assert armed.fake.calls == ["enable"]
         assert armed.path.read_text().startswith("=== gtach ")
         assert "WARNING" in capsys.readouterr().err
 
@@ -308,13 +308,15 @@ class TestNoPythonSideTimer:
         assert "threading" not in code
         assert "time.sleep" not in code
 
-    def test_dump_is_on_request(self, armed):
-        """SIGUSR1 replaces the 15 s repeat timer (issue-fe755cfd)."""
-        import signal
+    def test_no_faulthandler_live_dump(self, armed):
+        """Neither the 15 s timer nor faulthandler.register is armed.
 
+        Both crashed the process on the Pi (issue-fe755cfd,
+        issue-1a8f40ea); on-request dumps are gtach.utils.stack_dump's.
+        """
         gtach_main.enable_stack_dumps()
 
-        assert [args[0] for args in armed.fake.register_args] == [signal.SIGUSR1]
+        assert "register" not in armed.fake.calls
         assert "dump_traceback_later" not in armed.fake.calls
 
     def test_stacks_log_path_and_backup_count(self):

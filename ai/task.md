@@ -23,8 +23,8 @@ Each issue and change T-Doc stays active until its steps pass; record the result
 
 | Phase | Issue | Step | Pass criterion | Status |
 |---|---|---|---|---|
-| Phase 0 | `b9ee7428` | Power the Pi off for more than a minute, then boot with Wi-Fi available. | `journalctl -u gtach -b` shows no 'Succeeded' or 'Scheduled restart' entries. | Pending |
-| Phase 0 | `269871a0` | With debug off, power the OBD adapter off for 30 s; then restart the service. | `error.log` records the event with a traceback, and the earlier records survive the restart. | Pending |
+| Phase 0 | `b9ee7428` | Power the Pi off for more than a minute, then boot with Wi-Fi available. | `journalctl -u gtach -b` shows no 'Succeeded' or 'Scheduled restart' entries. | Passed 2026-10-07 (Session C); NTP stepped the clock ~13 min forward at 37 s, no restart (C1) |
+| Phase 0 | `269871a0` | With debug off, power the OBD adapter off for 30 s; then restart the service. | `error.log` records the event with a traceback, and the earlier records survive the restart. | Passed 2026-10-07 (Session D): link loss 15:29:54 and connect refusals recorded with debug off; message-only, as these pass through narrow OSError handlers outside the exc_info policy; broad-handler tracebacks recorded with debug off earlier the same day; 12:58 records survive restart |
 | Phase 1 | `e9216e17` | Enter setup; tap Start Setup and Cancel on WELCOME repeatedly for one minute. | Display stays responsive; `error.log` shows no watchdog shutdown. | Pending |
 | Phase 1 | `fbe7e98a` | DISCONNECTED → Setup; complete a full pairing; then CURRENT_DEVICE → Continue with the adapter powered off. | Display stays responsive throughout. | Pending |
 | Phase 1 | `860fd5f7` | On the development host, run `gtach --transport simtcp` and send SIGTERM. | Process exits within a few seconds. | Pending |
@@ -32,7 +32,7 @@ Each issue and change T-Doc stays active until its steps pass; record the result
 | Phase 2 | `907de6de` | With the ELM327 emulator and the vehicle off (0100 → NO DATA). | No init-success log; init retried every 2 s. | Pending |
 | Phase 2 | `907de6de` | Stop the emulator so it closes the socket. | DISCONNECTED screen shows 'adapter closed the connection'. | Pending |
 | Phase 2 | `674bec49` | Run with the current profile (abarth_595_turismo, redline 6000). | Gauge looks unchanged. | Passed 2026-10-07 (Session A) |
-| Phase 2 | `674bec49` | With debug on: Cancel on WELCOME; separately DISCONNECTED → Setup; after each, request a dump with `kill -USR1 <MainPID>` (periodic dumps removed by `change-fe755cfd`). | `stacks.log` shows at most one SetupManager thread after each. | Pending |
+| Phase 2 | `674bec49` | With debug on: guide Session E steps E2, E3, E5, E8 (log-based setup thread check). | Setup thread count never above 1; 0 after Cancel and after pairing. | Pending |
 | Phase 2 | `674bec49` | Fail a Continue probe (adapter off). | 'Device not available' shows on WELCOME until the next tap. | Pending |
 | Phase 3 | `5fbff586` | After deployment, use the existing `/opt/gtach/config.yaml`. | Display settings still apply. | Passed 2026-10-07 (Session A) |
 | Phase 3 | `5fbff586` | Run `/opt/gtach/venv/bin/gtach --validate-config`; then set `fps_limit: 0` and run it again (restore afterwards). | Prints 'Config valid'; then exits 1. | Passed 2026-10-07 (Session A); script C5a/C5b |
@@ -41,9 +41,10 @@ Each issue and change T-Doc stays active until its steps pass; record the result
 | Phase 5 | `52653cd6` | Run `./bin/deploy.sh`. | Service starts; touch works. | Passed 2026-10-07 (Session A) |
 | Phase 5 | `52653cd6` | Run `systemd-analyze security gtach` and `time systemctl stop gtach`. | New directives listed; stop under 30 s. | Passed 2026-10-07 (Session A); script C8a, stop 3.0 s (C10) |
 | Phase 5 | `52653cd6` | Inspect `error.log` after start. | No mock-fallback ERROR. | Passed 2026-10-07 (Session A); script C7c |
-| Phase 5 | `d140121d` | Complete a full pairing; then `time systemctl stop gtach` during discovery. | Pairing works; stop well under 30 s. | Pending |
+| Phase 5 | `d140121d` | Complete a full pairing; then `time systemctl stop gtach` during discovery. | Pairing works; stop well under 30 s. | Passed 2026-10-07 (Session B): stop during discovery 0.41 s (the issue's step covers the stop only; pairing is covered under fbe7e98a) |
 | Phase 5 | `4005360c` | Open DEVICE_LIST; run simbt discovery after a Cancel. | Signal bars show; discovery works after the Cancel. | Pending |
 | Phase 5 | `cd5ec050` | Deploy and use normally. | No regression (no step specific to this change). | Pending |
+| Follow-up | `1a8f40ea` | Guide Session E step E9: SIGUSR1 five times with debug on, once with debug off (0.4.7). | One dump per request; NRestarts unchanged. Closes `fe755cfd` with it. | Pending |
 
 ---
 

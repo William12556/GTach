@@ -19,7 +19,7 @@ issue_info:
   title: "With debug on, faulthandler.dump_traceback_later(15, repeat=True) terminates gtach on a dump tick; systemd restarts it repeatedly"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "closed"
+  status: "open"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -92,7 +92,7 @@ verification:
   verified_date: "2026-10-07"
   verified_by: "William Watson"
   test_results: "Pi 0.4.6 with --debug from boot, 2026-10-07 14:51-15:01: 9 min continuous, NRestarts=0, no fatal record in stacks.log; kill -USR1 appended one all-thread dump. Earlier runs with the periodic dump terminated within 45-240 s."
-  closure_notes: "Closed after on-device verification."
+  closure_notes: "Reopened 2026-10-07: the SIGUSR1 dump of change-fe755cfd also crashed the process (issue-1a8f40ea). Remaining work under change-1a8f40ea."
 
 prevention:
   preventive_measures: "No timer-driven cross-thread dumps."
@@ -128,6 +128,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Verified on device; closed."
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "William Watson"
+    changes:
+      - "Reopened: on-request faulthandler dump also crashes; see issue-1a8f40ea."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -145,6 +150,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. |
 | 1.1 | 2026-10-07 | Verified on device; closed. |
+| 1.2 | 2026-10-07 | Reopened; see issue-1a8f40ea. |
 
 ---
 

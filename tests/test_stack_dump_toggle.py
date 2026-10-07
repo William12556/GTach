@@ -21,7 +21,6 @@ disable_stack_dumps must observe is only assertable against a recorder.
 """
 
 import logging
-import signal
 import sys
 import types
 
@@ -107,16 +106,14 @@ class TestEnableStackDumps:
         assert gtach_main.enable_stack_dumps() is True
         assert stacks_path.exists()
         assert gtach_main._stacks_file is not None
-        assert fh.calls == ["enable", "register"]
+        assert fh.calls == ["enable"]
 
-    def test_registers_sigusr1_all_threads(self, fh, stacks_path):
-        """On-request dump replaces the periodic timer (issue-fe755cfd)."""
+    def test_no_faulthandler_live_dump(self, fh, stacks_path):
+        """C-level live dumps crashed the Pi (issue-fe755cfd, issue-1a8f40ea)."""
         gtach_main.enable_stack_dumps()
-        signum, target, all_threads, chain = fh.register_args[0]
-        assert signum == signal.SIGUSR1
-        assert target is gtach_main._stacks_file
-        assert all_threads is True
-        assert chain is False
+        gtach_main.disable_stack_dumps()
+        assert "register" not in fh.calls
+        assert "unregister" not in fh.calls
 
     def test_no_periodic_timer(self, fh, stacks_path):
         """A repeat timer terminated the process on the Pi (issue-fe755cfd)."""
@@ -133,7 +130,7 @@ class TestEnableStackDumps:
 
         assert gtach_main._stacks_file is first
         # No second arming of either faulthandler entry point.
-        assert fh.calls == ["enable", "register"]
+        assert fh.calls == ["enable"]
 
     def test_unwritable_path_returns_false(self, fh, tmp_path, monkeypatch, capsys):
         monkeypatch.setattr(
@@ -173,9 +170,7 @@ class TestDisableStackDumps:
         handle.close = _tracking_close
         gtach_main.disable_stack_dumps()
 
-        cancel_index = fh.calls.index("unregister")
         disable_index = fh.calls.index("disable")
-        assert cancel_index < disable_index
         assert closed_at[0] > disable_index
 
     def test_no_op_when_not_armed(self, fh):
@@ -216,7 +211,7 @@ class TestArmingCycle:
         assert gtach_main.enable_stack_dumps() is True
         assert gtach_main._stacks_file is not None
         assert gtach_main._stacks_file is not first
-        assert fh.calls.count("register") == 2
+        assert fh.calls.count("enable") == 2
 
     def test_off_on_off(self, fh, stacks_path):
         gtach_main.disable_stack_dumps()
@@ -379,7 +374,7 @@ class TestStartupThenToggle:
         GTachApplication.toggle_debug_logging(_toggle_host(), True)
 
         assert gtach_main._stacks_file is first
-        assert fh.calls.count("register") == 1
+        assert fh.calls.count("enable") == 1
 
 
 class TestIterationOneUntouched:
