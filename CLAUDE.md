@@ -81,7 +81,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 3. **Testing**: `pytest` (`pytest-cov` configured). New features require tests; bug fixes require regression
    tests; cover edge cases and error paths.
 4. **Concurrency**: stdlib `threading` only; guard all shared state with `threading.Lock`. No async framework.
-5. **Hardware dependencies**: conditional import (`try/except ImportError`) for `RPi.GPIO` and `gpiozero`.
+5. **Hardware dependencies**: conditional import (`try/except ImportError`) for `RPi.GPIO` and `hyperpixel2r`.
 6. **Error handling**: log unexpected exceptions with `logger.error(msg, exc_info=True)`.
 7. **Naming / style**: PEP 8 — `snake_case` functions/variables, `PascalCase` classes,
    `UPPER_SNAKE_CASE` constants; f-strings for formatting.
@@ -202,6 +202,7 @@ ai/workspace/
 | 1.5 | 2026-10-07 | Hardware row: RPi.GPIO and hyperpixel2r in the .[pi] extra (change-52653cd6) |
 | 1.6 | 2026-10-07 | Rule 8: file-serialising lock may span that file's I/O (change-4005360c) |
 | 1.7 | 2026-10-07 | §7 line length: 88 for black, isort and flake8 (change-e4ee50fd) |
+| 1.8 | 2026-10-07 | Rule 5: hyperpixel2r replaces gpiozero (removed by change-52653cd6) |
 
 ---
 

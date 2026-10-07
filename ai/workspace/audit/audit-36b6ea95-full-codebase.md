@@ -992,8 +992,11 @@ notes: >-
   Recorded without change: C03 (accepted risk), D10 (no impact), E06 and G09
   (trust assumptions: root-owned /opt/gtach/updates; GitHub TLS for
   provisioning), A14 and B11 (open, low), F04 (open, low). F05 committed
-  directly in 10954e9. X03 resolved by issue-907de6de. F01/F02 addressed by
-  tests added in Phases 0-5. mypy deferred to a later phase.
+  directly in 10954e9. X03 resolved by issue-907de6de. F02 addressed by
+  the regression tests added in Phases 0-5. F01 partly addressed: the
+  SimTransport lifecycle test was added in Phase 4 (commit "test: SimTransport
+  lifecycle test; doc corrections (audit-36b6ea95 Phase 4)"); measured coverage
+  was not re-run. mypy deferred to a later phase.
 
 version_history:
   - version: "1.0"
@@ -1027,6 +1030,10 @@ version_history:
     date: "2026-10-07"
     changes:
       - "Phase 5 implemented"
+  - version: "1.7"
+    date: "2026-10-07"
+    changes:
+      - "Phase 4 completed: SimTransport lifecycle test"
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -1263,6 +1270,7 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 | 1.4 | 2026-10-07 | Phase 2 implemented: issue refs for A02-A06, A19, C01, C05, C06, C08 |
 | 1.5 | 2026-10-07 | Phase 3 implemented: issue refs for E01, E02, E04, E08, G07, X04, A09, A10 |
 | 1.6 | 2026-10-07 | Phase 5 implemented |
+| 1.7 | 2026-10-07 | Phase 4 completed: SimTransport lifecycle test |
 
 ---
 
