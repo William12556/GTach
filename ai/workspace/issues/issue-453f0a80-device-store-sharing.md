@@ -90,7 +90,7 @@ resolution:
   change_ref: "change-453f0a80"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "All production code now uses one shared DeviceStore from get_device_store(), stored at gtach_home()/config/devices.yaml, with every public method under a lock and saves fsync'd before the rename, and config/devices.yaml is removed from the repository (commit 3747d2fd16f15cecb30316b47cee8bfd7b8e5d1f)."
 
 verification:
   verified_date: ""
@@ -131,6 +131,12 @@ version_history:
     changes:
       - "Initial issue document from audit-36b6ea95 A09, A10, G07."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in 3747d2fd16f15cecb30316b47cee8bfd7b8e5d1f; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -146,6 +152,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Unshared, unlocked DeviceStore. |
+| 1.1 | 2026-10-07 | Fix implemented in 3747d2fd16f15cecb30316b47cee8bfd7b8e5d1f; awaiting on-device verification. |
 
 ---
 

@@ -133,7 +133,7 @@ resolution:
   change_ref: "change-5fbff586"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "GTACH_HOME/config.yaml (flat schema, default /opt/gtach) is now the only configuration file, owned by a new ConfigStore that is injected into DisplayManager and checked strictly by --validate-config, with pairing timeouts as constants, acknowledgement state under GTACH_HOME, and the ConfigManager stack, OBDIIHome resolver, config/config.yaml and the RWLock tests removed (commit f5ab73a994fe898d521f26fdd41225a53c69f90c)."
 
 verification:
   verified_date: ""
@@ -175,6 +175,12 @@ version_history:
     changes:
       - "Initial issue document from audit-36b6ea95 E01 cluster with design decisions of 2026-10-07."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in f5ab73a994fe898d521f26fdd41225a53c69f90c; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -190,6 +196,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Configuration split, unvalidatable, obsolete code. |
+| 1.1 | 2026-10-07 | Fix implemented in f5ab73a994fe898d521f26fdd41225a53c69f90c; awaiting on-device verification. |
 
 ---
 

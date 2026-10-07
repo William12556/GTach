@@ -156,6 +156,7 @@ notes: "Human verification on the Pi: after the upgrade the paired adapter is st
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial prompt implementing change-453f0a80 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-07 | Implemented; closed |
 
 ---
 

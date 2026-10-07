@@ -19,7 +19,7 @@ change_info:
   title: "DeviceStore defaults to gtach_home()/config/devices.yaml, guards its state with a lock, fsyncs before replace, and is obtained through get_device_store(); all production call sites use the accessor; the tracked config/devices.yaml is removed"
   date: "2026-10-07"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -168,8 +168,8 @@ implementation:
   deployment_notes: "No action on the Pi; the path is unchanged there."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -202,6 +202,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in 3747d2fd16f15cecb30316b47cee8bfd7b8e5d1f."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -218,6 +224,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Shared, locked DeviceStore under GTACH_HOME. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
+| 1.2 | 2026-10-07 | Implemented in 3747d2fd16f15cecb30316b47cee8bfd7b8e5d1f. |
 
 ---
 

@@ -332,7 +332,7 @@ findings:
         transport.py:677, sim_bluetooth.py:211). A long-lived instance can save
         stale data over another instance's write. Remediation: one shared,
         lock-guarded instance with an absolute path from configuration.
-      issue_ref: ""
+      issue_ref: "issue-453f0a80"
     - location: "src/gtach/comm/transport.py:386,527; src/gtach/comm/obd.py:144,158,184; src/gtach/comm/pairing.py:216,222,241,372,426,507,549; src/gtach/comm/device_store.py:71,138,185,205,232,257; src/gtach/comm/system_bluetooth.py:154,194,208"
       description: >-
         [A11] Unexpected exceptions are logged without exc_info=True, breaking
@@ -489,7 +489,7 @@ findings:
         (config.py:398-399), only when that file lacks the key. Remediation: one file, one schema, one owner;
         inject the loaded config into DisplayManager, the transports and
         pairing.
-      issue_ref: ""
+      issue_ref: "issue-5fbff586"
     - location: "src/gtach/main.py:328-335; src/gtach/utils/config.py:1228-1247"
       description: >-
         [E02] `--validate-config` exits 0 for any file. load_config logs
@@ -497,7 +497,7 @@ findings:
         any exception returns defaults instead of raising, so the CLI check
         can never fail. Remediation: add a strict validation path that
         returns errors to the CLI.
-      issue_ref: ""
+      issue_ref: "issue-5fbff586"
     - location: "tests/"
       description: >-
         [F01] Critical paths are thinly covered: comm/obd.py 20% (protocol
@@ -579,6 +579,7 @@ findings:
         empty or truncated file on some filesystems, losing the pairing
         (suspected). Remediation: flush and fsync before the replace, as
         ConfigManager already does.
+      issue_ref: "issue-453f0a80"
     - location: "src/gtach/comm/tcp_transport.py:43-47"
       description: >-
         [A12] The TCP socket is not closed when connect raises. RFCOMM fixed
@@ -768,6 +769,7 @@ findings:
         accepts the retired 'DIGITAL' mode, a DisplayConfig mode default of
         "DIGITAL", print() in place of logging, a re-imported datetime (F811)
         and a shadowed `field` (F402). RWLock is live and tested.
+      issue_ref: "issue-5fbff586"
     - location: "src/gtach/utils/dependencies.py:139-245,584-627"
       description: >-
         [E05] The dependency validator checks pybluez and requests, which are
@@ -793,6 +795,7 @@ findings:
         effect of a capability probe. Any path containing 'src/gtach' counts
         as development, which redirects ConfigManager to the repository
         root.
+      issue_ref: "issue-5fbff586"
     - location: "tests/test_link_loss_recovery.py:185-191,315-343; tests/test_connect_error_classification.py:432-441,513-520,573-578; tests/test_disconnected_screen.py:175-181,314-336,517-524; tests/test_touch_dispatch.py:136-151,244-270; tests/test_stack_dump_toggle.py:244-250; tests/test_stacks_log_rotation.py:293-302,321-326; tests/utils/test_rwlock.py:368-488"
       description: >-
         [F03] Many tests assert on source text rather than behaviour, so they
@@ -859,6 +862,7 @@ findings:
         bluetooth.saved_devices and display.rpm_bands/engine_profile, which no
         reader consumes (E01). Both tracked files are rewritten at runtime in
         development.
+      issue_ref: "issue-5fbff586"
     - location: "bin/deploy.sh:172-201; bin/pull_logs.sh:101-104; bin/gen_splash.py:208-211; bin/release.sh:302; bin/gtach-preflight.sh:222"
       description: >-
         [G08] Script defects. deploy.sh stops the service, then transfers
@@ -893,6 +897,7 @@ findings:
         file, whereas config/config.yaml nests it under display:.
         --obd-host, --obd-port and --serial-port exist only as CLI flags.
         bluetooth.pairing.* is read but never defined or written. See E01.
+      issue_ref: "issue-5fbff586"
 
 metrics:
   items_audited: 90
@@ -928,6 +933,8 @@ traceability:
     - "issue-70789d75"
     - "issue-907de6de"
     - "issue-674bec49"
+    - "issue-5fbff586"
+    - "issue-453f0a80"
   related_audits:
     - audit_ref: "audit-b4e8c012"
       relationship: "follow_up"
@@ -968,6 +975,10 @@ version_history:
     date: "2026-10-07"
     changes:
       - "Phase 2 implemented: issue refs for A02-A06, A19, C01, C05, C06, C08"
+  - version: "1.5"
+    date: "2026-10-07"
+    changes:
+      - "Phase 3 implemented: issue refs for E01, E02, E04, E08, G07, X04, A09, A10"
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -1202,6 +1213,7 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 | 1.2 | 2026-10-07 | Phase 0 implemented: issue refs for B04, A11, B13; F05 and E03 committed directly |
 | 1.3 | 2026-10-07 | Phase 1 implemented: issue refs for D01, X01, D03, D06, C04, C02, A01/B02, B01, B05, B03, D02; D12 added |
 | 1.4 | 2026-10-07 | Phase 2 implemented: issue refs for A02-A06, A19, C01, C05, C06, C08 |
+| 1.5 | 2026-10-07 | Phase 3 implemented: issue refs for E01, E02, E04, E08, G07, X04, A09, A10 |
 
 ---
 
