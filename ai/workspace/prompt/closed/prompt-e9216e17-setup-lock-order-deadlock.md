@@ -188,6 +188,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial prompt implementing change-e9216e17 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-07 | Implemented; closed |
 
 ---
 

@@ -129,7 +129,7 @@ resolution:
   change_ref: "change-e9216e17"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "The setup state coordinator now notifies callbacks after releasing _state_lock, render holds _render_cache_lock only to read the cached surface, and handle_touch_event dispatches the touch action after releasing _touch_regions_lock, removing the three-lock cycle (commit f22640a18710bcce996835fe997979672ae6244b)."
 
 verification:
   verified_date: ""
@@ -169,6 +169,12 @@ version_history:
     changes:
       - "Initial issue document from audit-36b6ea95 D01 and X01."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in f22640a18710bcce996835fe997979672ae6244b; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -184,6 +190,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Three-lock cycle between display and touch threads in setup mode. |
+| 1.1 | 2026-10-07 | Fix implemented in f22640a18710bcce996835fe997979672ae6244b; awaiting on-device verification. |
 
 ---
 

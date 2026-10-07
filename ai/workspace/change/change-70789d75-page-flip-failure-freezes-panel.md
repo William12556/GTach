@@ -19,7 +19,7 @@ change_info:
   title: "Single-buffer writes target the displayed half (buffer_index * fb_size); on pan failure rewrite the current frame there; log pan failure at WARNING"
   date: "2026-10-07"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -119,8 +119,8 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -148,6 +148,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in b814ed9ce2786808fc708578ab45e158ef53adc1."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -164,6 +170,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Write to the displayed half after a pan failure. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
+| 1.2 | 2026-10-07 | Implemented in b814ed9ce2786808fc708578ab45e158ef53adc1. |
 
 ---
 

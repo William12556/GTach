@@ -33,9 +33,9 @@ Created: 2026 October 07
 |---|---|
 | Critical | 1 |
 | High | 6 |
-| Medium | 29 |
+| Medium | 30 |
 | Low | 48 |
-| **Total** | **84** |
+| **Total** | **85** |
 
 **Top 5 risks:**
 
@@ -143,7 +143,7 @@ findings:
         locks after release; do not hold _render_cache_lock across get_state()
         or _update_touch_regions_safe(); document a single lock order
         (suspected: the interleaving frequency must be confirmed on hardware).
-      issue_ref: ""
+      issue_ref: "issue-e9216e17"
   high:
     - location: "src/gtach/comm/obd.py:80-103; src/gtach/comm/sim_transport.py:62-68; src/gtach/app.py:432-453,572-584"
       description: >-
@@ -161,7 +161,7 @@ findings:
         any future reordering reintroduces the hang. Remediation: test
         shutdown_event in the inner loop, make SimTransport honour disconnect(),
         and add a regression test (F02).
-      issue_ref: ""
+      issue_ref: "issue-860fd5f7"
     - location: "src/gtach/core/thread.py:209-273; src/gtach/core/watchdog.py:313-334; src/gtach/comm/obd.py:59-65"
       description: >-
         [B01] The watchdog's hard recovery cannot recover a stalled thread.
@@ -180,7 +180,7 @@ findings:
         after the old thread is confirmed dead; make OBDProtocol restartable
         (clear the event on start), or exclude it from restart and escalate
         instead.
-      issue_ref: ""
+      issue_ref: "issue-860fd5f7"
     - location: "src/gtach/display/rendering/engine.py:798-818"
       description: >-
         [D02] Page-flip failure path. After at least one successful flip
@@ -195,7 +195,7 @@ findings:
         back to 0 (or keep writing into the displayed half) before disabling
         page flipping, and add a test (suspected: requires a transient
         FBIOPAN_DISPLAY error).
-      issue_ref: ""
+      issue_ref: "issue-70789d75"
     - location: "src/gtach/display/setup_components/bluetooth/interface.py:313-361; src/gtach/display/async_operations.py:298-306,330-338"
       description: >-
         [D03] AsyncOperationManager invokes progress and completion callbacks
@@ -212,7 +212,7 @@ findings:
         and the operations dict is never pruned (cleanup_completed_operations
         has no caller). Remediation: copy the operation under the lock and
         invoke callbacks after release; run verification as its own operation.
-      issue_ref: ""
+      issue_ref: "issue-fbe7e98a"
     - location: "src/gtach/core/thread.py:130,146,268,335-394; src/gtach/core/watchdog.py:157,212,227,409; src/gtach/app.py:59"
       description: >-
         [B13] Heartbeats, recovery timing and the watchdog use wall-clock
@@ -352,7 +352,7 @@ findings:
         thread, and the watchdog follows the new thread only because the
         heartbeat key happens to match. Remediation: stop_thread('transport')
         on re-entry, or let register_thread replace dead threads.
-      issue_ref: ""
+      issue_ref: "issue-860fd5f7"
     - location: "src/gtach/core/thread.py:291-331,382-390"
       description: >-
         [B05] stop_thread and shutdown never call the registered stop_func.
@@ -361,7 +361,7 @@ findings:
         having been signalled beforehand. Threads that no app code signals
         are joined to timeout. Remediation: call stop_func (outside the lock)
         before joining.
-      issue_ref: ""
+      issue_ref: "issue-860fd5f7"
     - location: "src/gtach/display/setup.py:159-174,769-773; src/gtach/app.py:411-459"
       description: >-
         [C01] On SetupScreen.COMPLETE the setup loop calls on_complete and
@@ -374,6 +374,8 @@ findings:
         replaces _setup_manager without calling stop_setup(), which leaves the
         old setup thread running. Remediation: mark the thread STOPPED on
         completion and stop the previous SetupDisplayManager on re-entry.
+        The watchdog restart cycle is removed by change-860fd5f7 (dead started
+        threads are marked STOPPED); the remaining C01 items are open.
       issue_ref: ""
     - location: "src/gtach/display/setup.py:775-791"
       description: >-
@@ -385,7 +387,7 @@ findings:
         never connect, so Continue always fails on the development host.
         Remediation: run the probe as an async operation with a progress
         state.
-      issue_ref: ""
+      issue_ref: "issue-fbe7e98a"
     - location: "src/gtach/display/touch.py:83-150; src/gtach/display/manager.py:313-455,2064-2135,2606-2617"
       description: >-
         [C03] Touch callbacks (hyperpixel2r/mock thread) and the update worker
@@ -406,7 +408,7 @@ findings:
         2-7 s of joins, and the RFCOMM probe (C02). Any path that registers or
         unregisters a callback from inside a callback would self-deadlock.
         Remediation: copy the callback under the lock and invoke it outside.
-      issue_ref: ""
+      issue_ref: "issue-fbe7e98a"
     - location: "src/gtach/display/manager.py:1131,1164"
       description: >-
         [C05] RPM is clamped to a hard-coded 7000 and the arc is scaled to
@@ -463,7 +465,7 @@ findings:
         The UI freezes immediately after the operator taps Setup.
         Remediation: resolve the hit under the lock and invoke the callback
         after release.
-      issue_ref: ""
+      issue_ref: "issue-fbe7e98a"
     - location: "src/gtach/utils/config.py:1100-1145; src/gtach/utils/home.py:67-107; src/gtach/app.py:134; src/gtach/display/manager.py:80,511-644; src/gtach/comm/device_store.py:32"
       description: >-
         [E01] Configuration is split across unrelated files, and the main one
@@ -538,7 +540,7 @@ findings:
         deadlock; D03, D06, B01 and C04 are the realised stalls. Remediation:
         adopt a project rule against calling out under a lock and document
         the remaining permitted orders in CLAUDE.md §4.
-      issue_ref: ""
+      issue_ref: "issue-e9216e17"
     - location: "src/gtach/app.py:558-588; src/gtach/core/thread.py:333-404"
       description: >-
         [X02] The shutdown sequence has no overall deadline. It runs
@@ -554,6 +556,21 @@ findings:
         always reached (A01). Remediation: one shutdown deadline, stop every
         component that owns a thread, and arm the backstop on every exit path.
       issue_ref: ""
+    - location: "src/gtach/display/async_operations.py:319-338; src/gtach/display/setup_components/bluetooth/interface.py (on_bluetooth_init_complete, on_discovery_complete, on_pairing_complete)"
+      description: >-
+        [D12] Setup completion handlers are invoked on every progress update
+        and treat RUNNING as a terminal outcome. AsyncOperationManager passes
+        the same progress_callback for progress reports and for completion,
+        and _update_operation_progress invokes it with status RUNNING. The
+        three BluetoothSetupInterface handlers branch only on COMPLETED and
+        FAILED and send every other status to their failure path: the first
+        progress report of Bluetooth initialisation sets pairing to None and
+        sets _pairing_ready, so ensure_pairing_initialized can see an
+        uninitialised adapter; discovery and pairing progress reports remove
+        the operation from _active_operations while it is still running.
+        Remediation: return early on PENDING and RUNNING in each handler.
+        Added in version 1.3.
+      issue_ref: "issue-fbe7e98a"
   low:
     - location: "src/gtach/comm/device_store.py:131-135"
       description: >-
@@ -878,11 +895,11 @@ findings:
 
 metrics:
   items_audited: 90
-  findings_total: 84
+  findings_total: 85
   findings_by_severity:
     critical: 1
     high: 6
-    medium: 29
+    medium: 30
     low: 48
 
 recommendations:
@@ -904,6 +921,10 @@ traceability:
   issue_refs:
     - "issue-b9ee7428"
     - "issue-269871a0"
+    - "issue-e9216e17"
+    - "issue-fbe7e98a"
+    - "issue-860fd5f7"
+    - "issue-70789d75"
   related_audits:
     - audit_ref: "audit-b4e8c012"
       relationship: "follow_up"
@@ -936,6 +957,10 @@ version_history:
     date: "2026-10-07"
     changes:
       - "Phase 0 implemented: issue refs for B04, A11, B13; F05 and E03 committed directly"
+  - version: "1.3"
+    date: "2026-10-07"
+    changes:
+      - "Phase 1 implemented: issue refs for D01, X01, D03, D06, C04, C02, A01/B02, B01, B05, B03, D02; D12 added"
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -1168,6 +1193,7 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 | 1.0 | 2026-10-07 | Initial audit |
 | 1.1 | 2026-10-07 | Added finding B13 (high); B04 raised to high; G01 lowered to medium; E01 corrected (fps_limit 30 in effect); added Sections 6 and 7 |
 | 1.2 | 2026-10-07 | Phase 0 implemented: issue refs for B04, A11, B13; F05 and E03 committed directly |
+| 1.3 | 2026-10-07 | Phase 1 implemented: issue refs for D01, X01, D03, D06, C04, C02, A01/B02, B01, B05, B03, D02; D12 added |
 
 ---
 

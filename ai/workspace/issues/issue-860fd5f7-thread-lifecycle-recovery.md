@@ -145,7 +145,7 @@ resolution:
   change_ref: "change-860fd5f7"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "In-process thread restart is removed in favour of process restart, obd_protocol is critical, exited started threads are marked STOPPED, stop_thread calls stop_func, dead entries are replaced, the OBD loop honours its stop signal with a heartbeat per command and a monotonic per-command deadline, SimTransport reports its real state, and setup re-entry stops transport then obd_protocol through stop_thread (commit f5d58f524eec17374c9cda9cad449616e4f65ba9)."
 
 verification:
   verified_date: ""
@@ -186,6 +186,12 @@ version_history:
     changes:
       - "Initial issue document from audit-36b6ea95 A01/B02, B01, B05, B03; Option 1 resolution decided."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in f5d58f524eec17374c9cda9cad449616e4f65ba9; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -201,6 +207,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Unsafe in-process restart, OBD stop signal, stop_func, dead registry entries; Option 1 resolution. |
+| 1.1 | 2026-10-07 | Fix implemented in f5d58f524eec17374c9cda9cad449616e4f65ba9; awaiting on-device verification. |
 
 ---
 

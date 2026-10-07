@@ -19,7 +19,7 @@ change_info:
   title: "Invoke callbacks after releasing the lock in AsyncOperationManager, TouchCoordinator.handle_touch_down and _emit_touch_event; ignore non-terminal status in setup completion handlers; run the CURRENT_DEVICE Continue probe as an async operation"
   date: "2026-10-07"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -219,8 +219,8 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -250,6 +250,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in 523bb218bead9e868b624d8facca4b233489ce4d."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -266,6 +272,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Callbacks outside locks; completion-handler guard (D12); asynchronous Continue probe. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
+| 1.2 | 2026-10-07 | Implemented in 523bb218bead9e868b624d8facca4b233489ce4d. |
 
 ---
 

@@ -142,7 +142,7 @@ resolution:
   change_ref: "change-fbe7e98a"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "Async operation, touch-coordinator button and touch-interface callbacks now run after their locks are released, the setup completion handlers ignore PENDING and RUNNING progress updates, and the Continue reachability probe runs on an async worker instead of the touch thread (commit 523bb218bead9e868b624d8facca4b233489ce4d)."
 
 verification:
   verified_date: ""
@@ -182,6 +182,12 @@ version_history:
     changes:
       - "Initial issue document from audit-36b6ea95 D03, D06, C04, C02, plus new finding D12."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in 523bb218bead9e868b624d8facca4b233489ce4d; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -197,6 +203,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Callbacks under lock; blocking Continue probe; completion handlers firing on progress (D12, new). |
+| 1.1 | 2026-10-07 | Fix implemented in 523bb218bead9e868b624d8facca4b233489ce4d; awaiting on-device verification. |
 
 ---
 

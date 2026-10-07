@@ -96,7 +96,7 @@ resolution:
   change_ref: "change-70789d75"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "After a failed pan the current and all later frames are written to the displayed framebuffer half (buffer_index * fb_size), and the one-time pan failure is logged at WARNING (commit b814ed9ce2786808fc708578ab45e158ef53adc1)."
 
 verification:
   verified_date: ""
@@ -135,6 +135,12 @@ version_history:
     changes:
       - "Initial issue document from audit-36b6ea95 D02."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in b814ed9ce2786808fc708578ab45e158ef53adc1; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -150,6 +156,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Frames written to the undisplayed half after a pan failure. |
+| 1.1 | 2026-10-07 | Fix implemented in b814ed9ce2786808fc708578ab45e158ef53adc1; awaiting on-device verification. |
 
 ---
 

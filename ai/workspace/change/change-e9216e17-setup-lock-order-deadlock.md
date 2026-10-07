@@ -19,7 +19,7 @@ change_info:
   title: "Notify coordinator callbacks after releasing _state_lock; hold _render_cache_lock only to read the cache; dispatch setup touch actions after releasing _touch_regions_lock; add a no-call-out-under-lock rule to CLAUDE.md"
   date: "2026-10-07"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "critical"
   iteration: 1
   coupled_docs:
@@ -172,8 +172,8 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -203,6 +203,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in f22640a18710bcce996835fe997979672ae6244b."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -219,6 +225,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Remove all three edges of the setup lock cycle; CLAUDE.md lock rule. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
+| 1.2 | 2026-10-07 | Implemented in f22640a18710bcce996835fe997979672ae6244b. |
 
 ---
 
