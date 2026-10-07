@@ -502,7 +502,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         except Exception as e:
             if not self._pan_failed_logged:
                 self._pan_failed_logged = True
-                self.logger.info(f"Page flip failed, reverting to direct write: {e}")
+                self.logger.warning(f"Page flip failed, reverting to direct write: {e}")
             return False
 
     def create_surface(self, size: Tuple[int, int],
@@ -807,6 +807,11 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                         self.buffer_index = target
                     else:
                         self.page_flip = False
+                        # The frame went to the hidden half; write it
+                        # again to the half still displayed
+                        # (issue-70789d75).
+                        self.fb.seek(self.buffer_index * self.fb_size)
+                        self.fb.write(payload)
                 else:
                     # Single buffer. Beginning the write at the start
                     # of blanking narrows the window in which the
@@ -814,7 +819,10 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                     # (recommendation 3).
                     if self.vsync_available:
                         self._wait_for_vsync()
-                    self.fb.seek(0)
+                    # buffer_index is 0 unless a pan succeeded, and
+                    # still names the displayed half after a failed
+                    # pan (issue-70789d75).
+                    self.fb.seek(self.buffer_index * self.fb_size)
                     self.fb.write(payload)
 
                 # Update statistics

@@ -189,3 +189,42 @@ def test_compensation_is_announced_once_per_session(engine, caplog):
                      if 'Vertical offset compensation active' in r.getMessage()]
     assert len(announcements) == 1
     assert announcements[0].levelno == logging.INFO
+
+
+def _flip_engine(engine, monkeypatch):
+    """The fixture engine with the second half displayed and pans failing."""
+    engine.page_flip = True
+    engine.buffer_index = 1
+    monkeypatch.setattr(engine, '_pan_display', lambda index: False)
+    return engine
+
+
+def test_failed_pan_writes_the_frame_to_the_displayed_half(engine, monkeypatch):
+    """issue-70789d75: the current frame reaches the half on screen."""
+    eng = _flip_engine(engine, monkeypatch)
+
+    assert eng.write_to_framebuffer() is True
+
+    assert eng.page_flip is False
+    assert eng.buffer_index == 1
+    # First the hidden half (0), then the displayed half again.
+    assert eng.fb.seeks == [0, FB_SIZE]
+    assert eng.fb.writes[1] == eng.fb.writes[0]
+
+
+def test_frames_after_a_failed_pan_go_to_the_displayed_half(engine, monkeypatch):
+    eng = _flip_engine(engine, monkeypatch)
+    eng.write_to_framebuffer()
+
+    assert eng.write_to_framebuffer() is True
+
+    assert eng.fb.seeks[-1] == FB_SIZE
+
+
+def test_single_buffer_without_page_flip_writes_at_zero(engine):
+    engine.page_flip = False
+    engine.buffer_index = 0
+
+    assert engine.write_to_framebuffer() is True
+
+    assert engine.fb.seeks == [0]
