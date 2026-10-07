@@ -304,11 +304,11 @@ verification:
 traceability:
   design_updates:
     - design_ref: "design-b4c5d6e7-component_utils_config_manager"
-      sections_updated: []
-      update_date: ""
+      sections_updated: ["all (rewritten as version 2.0, ConfigStore)"]
+      update_date: "2026-10-07"
     - design_ref: "design-f8a9b0c1-component_utils_home"
-      sections_updated: []
-      update_date: ""
+      sections_updated: ["all (rewritten as version 2.0, gtach_home)"]
+      update_date: "2026-10-07"
   related_changes:
     - change_ref: "change-453f0a80"
       relationship: "related. Implemented after this change."

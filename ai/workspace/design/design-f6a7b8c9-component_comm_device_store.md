@@ -2,6 +2,8 @@
 
 Created: 2025-12-29
 
+> **Superseded** by [design-a6b7c8d9-component_comm_device_store.md](<design-a6b7c8d9-component_comm_device_store.md>) (version 1.1, change-453f0a80). Retained for history.
+
 ---
 
 ## Table of Contents
@@ -424,6 +426,7 @@ flowchart TD
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| 1.1 | 2026-10-07 | William Watson | Marked superseded by design-a6b7c8d9 ([change-453f0a80](<../change/change-453f0a80-device-store-sharing.md>)). |
 
 ---
 

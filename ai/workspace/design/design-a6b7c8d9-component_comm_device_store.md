@@ -27,8 +27,8 @@ document_info:
   tier: 3
   domain: "Communication"
   parent: "design-7d3e9f5a-domain_comm.md"
-  version: "1.0"
-  date: "2026-03-24"
+  version: "1.1"
+  date: "2026-10-07"
   author: "William Watson"
 ```
 
@@ -53,9 +53,10 @@ document_info:
 ### 2.3 Responsibilities
 
 **DeviceStore:**
-1. Load and save device configuration from `config/devices.yaml`
+1. Load and save device configuration from `gtach_home()/config/devices.yaml` (default `/opt/gtach/config/devices.yaml`) ([change-453f0a80](<../change/change-453f0a80-device-store-sharing.md>))
 2. Return the primary device MAC address for use by `RFCOMMTransport`
 3. Fall back to in-memory storage if `yaml` is unavailable
+4. Serialise all access with an internal `threading.Lock`; one shared instance is obtained through `get_device_store()`
 
 **BluetoothDevice:**
 1. Represent ELM327 adapter identity and connection metadata
@@ -225,10 +226,11 @@ from .models import BluetoothDevice
 
 class DeviceStore:
 
-    def __init__(self, config_path: str = "config/devices.yaml") -> None: ...
+    def __init__(self, config_path: Optional[str] = None) -> None: ...
+        # default: str(gtach_home() / 'config' / 'devices.yaml')
 
     def save_device(self, device: BluetoothDevice,
-                    is_primary: bool = True) -> None: ...
+                    is_primary: bool = True) -> bool: ...
 
     def get_primary_device(self) -> Optional[BluetoothDevice]: ...
 
@@ -237,7 +239,19 @@ class DeviceStore:
     def remove_device(self, mac_address: str) -> bool: ...
 
     def get_device_by_mac(self, mac_address: str) -> Optional[BluetoothDevice]: ...
+
+
+def get_device_store() -> DeviceStore: ...
+    # Process-wide shared instance, created on first use through the
+    # module-level name DeviceStore.
+
+def reset_device_store() -> None: ...
+    # Discard the shared instance (tests).
 ```
+
+### 5.3 Concurrency
+
+Every public method holds the instance lock for its whole read or read-modify-save, including the file write, so that concurrent callers never interleave a load and a save. Public methods delegate to unlocked `_..._locked` helpers and never call each other under the lock. No callback or foreign component is called under the lock. The file I/O under the lock is a deliberate exception to the "no blocking I/O" part of CLAUDE.md §4 rule 8: the lock protects exactly that file.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -282,6 +296,7 @@ paired_devices:
 | `yaml` not installed | In-memory config; log WARNING; persistence disabled |
 | Config file not found | Create default config; save |
 | YAML parse error | Log ERROR; use default in-memory config |
+| Save | Write temporary file, flush, `os.fsync`, `os.replace` (audit A10) |
 | Save failure | Log ERROR; data remains in memory |
 | `get_primary_device` with missing/corrupt data | Log error; return None |
 
@@ -350,6 +365,7 @@ classes:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-24 | William Watson | Initial component design; corrects cross-domain BluetoothDevice import; rationalises fields and interface |
+| 1.1 | 2026-10-07 | William Watson | [change-453f0a80](<../change/change-453f0a80-device-store-sharing.md>): location under gtach_home(); internal lock; get_device_store()/reset_device_store(); fsync before replace. Matches commit 3747d2f. Supersedes design-f6a7b8c9. |
 
 ---
 

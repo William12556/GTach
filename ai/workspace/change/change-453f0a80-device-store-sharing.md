@@ -177,9 +177,12 @@ verification:
 
 traceability:
   design_updates:
+    - design_ref: "design-a6b7c8d9-component_comm_device_store"
+      sections_updated: ["2.3", "5.2", "5.3 (new)", "7.0", "version 1.1"]
+      update_date: "2026-10-07"
     - design_ref: "design-f6a7b8c9-component_comm_device_store"
-      sections_updated: []
-      update_date: ""
+      sections_updated: ["marked superseded by design-a6b7c8d9"]
+      update_date: "2026-10-07"
   related_changes:
     - change_ref: "change-5fbff586"
       relationship: "blocked_by"

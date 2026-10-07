@@ -1,4 +1,4 @@
-# Component Design: OBDII_HOME Utilities
+# Component Design: GTach Home Directory
 
 Created: 2025-12-29
 
@@ -8,7 +8,7 @@ Created: 2025-12-29
 
 - [1.0 Document Information](<#1.0 document information>)
 - [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 Function Specifications](<#3.0 function specifications>)
+- [3.0 Function Specification](<#3.0 function specification>)
 - [4.0 Path Resolution](<#4.0 path resolution>)
 - [5.0 Visual Documentation](<#5.0 visual documentation>)
 - [Version History](<#version history>)
@@ -22,17 +22,19 @@ document_info:
   document_id: "design-f8a9b0c1-component_utils_home"
   tier: 3
   domain: "Utilities"
-  component: "OBDII_HOME Utilities"
+  component: "gtach_home"
   parent: "design-9a1f3c7e-domain_utils.md"
   source_file: "src/gtach/utils/home.py"
-  version: "1.0"
-  date: "2025-12-29"
+  version: "2.0"
+  date: "2026-10-07"
   author: "William Watson"
+  change_ref: "change-5fbff586"
 ```
 
 ### 1.1 Parent Reference
 
 - **Domain Design**: [design-9a1f3c7e-domain_utils.md](<design-9a1f3c7e-domain_utils.md>)
+- **Source Change**: [change-5fbff586](<../change/change-5fbff586-configuration-split.md>)
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -42,96 +44,28 @@ document_info:
 
 ### 2.1 Purpose
 
-OBDII_HOME utilities provide standardized path management for application files including configuration, logs, and data storage with environment variable override support.
+`gtach_home()` is the single location rule for every file GTach reads or writes at runtime. It replaces the former `OBDIIHome` resolver, which searched several locations, treated any path containing `src/gtach` as development, and created directories as a side effect (audit-36b6ea95 E08).
 
 ### 2.2 Responsibilities
 
-1. Resolve application home directory
-2. Provide config file path resolution
-3. Ensure directory structure exists
-4. Support environment variable override
+1. Return `$GTACH_HOME` when set and non-empty.
+2. Otherwise return `/opt/gtach`, the installed location on the Pi.
+3. Create nothing; callers create directories when they write.
 
 [Return to Table of Contents](<#table of contents>)
 
 ---
 
-## 3.0 Function Specifications
-
-### 3.1 get_home_path
+## 3.0 Function Specification
 
 ```python
-def get_home_path() -> Path:
-    """Get application home directory path.
-    
-    Resolution Order:
-        1. $GTACH_HOME environment variable
-        2. ~/.config/gtach/ (default)
-    
-    Returns:
-        Path to application home directory
-    
-    Side Effects:
-        Creates directory if it doesn't exist
-    """
+GTACH_HOME_ENV = 'GTACH_HOME'
+DEFAULT_GTACH_HOME = Path('/opt/gtach')
+
+def gtach_home() -> Path: ...
 ```
 
-### 3.2 get_config_file
-
-```python
-def get_config_file(filename: str = "config.yaml") -> Path:
-    """Get configuration file path.
-    
-    Args:
-        filename: Config filename (default "config.yaml")
-    
-    Returns:
-        Path to config file (may not exist yet)
-    """
-```
-
-### 3.3 get_log_dir
-
-```python
-def get_log_dir() -> Path:
-    """Get log directory path.
-    
-    Returns:
-        Path to logs/ subdirectory
-    
-    Side Effects:
-        Creates directory if it doesn't exist
-    """
-```
-
-### 3.4 get_data_dir
-
-```python
-def get_data_dir() -> Path:
-    """Get data directory path.
-    
-    Returns:
-        Path to data/ subdirectory
-    
-    Side Effects:
-        Creates directory if it doesn't exist
-    """
-```
-
-### 3.5 ensure_directories
-
-```python
-def ensure_directories() -> None:
-    """Ensure all application directories exist.
-    
-    Creates:
-        - Home directory
-        - logs/ subdirectory
-        - data/ subdirectory
-    
-    Permissions:
-        Directories created with 0755
-    """
-```
+The function has no side effects and no caching; changing the environment variable takes effect on the next call.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -139,28 +73,15 @@ def ensure_directories() -> None:
 
 ## 4.0 Path Resolution
 
-### 4.1 Directory Structure
+| File | Path | Owner |
+|---|---|---|
+| Configuration | `gtach_home()/config.yaml` (or `--config`) | `ConfigStore` |
+| Paired devices | `gtach_home()/config/devices.yaml` | `DeviceStore` |
+| Acknowledgement state | `gtach_home()/config/ack_state.yaml` | `AcknowledgementStateManager` |
 
-```
-~/.config/gtach/           # Default home
-├── config.yaml           # Main configuration
-├── devices.yaml          # Bluetooth devices
-├── logs/                 # Log files
-│   └── session_*.log    # Session logs
-└── data/                 # Application data
-```
+Log files (`start.log`, `debug.log`, `error.log`, `stacks.log`) keep their fixed paths under `/opt/gtach` in `main.py` and are not resolved through `gtach_home()`.
 
-### 4.2 Environment Override
-
-```bash
-# Override default location
-export GTACH_HOME=/custom/path/gtach
-
-# All paths will use this base
-get_home_path()      # -> /custom/path/gtach
-get_config_file()    # -> /custom/path/gtach/config.yaml
-get_log_dir()        # -> /custom/path/gtach/logs
-```
+Development and the test suite set `GTACH_HOME` to a directory of their own, so nothing is written into the repository. The systemd service sets nothing and therefore uses `/opt/gtach`.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -168,20 +89,13 @@ get_log_dir()        # -> /custom/path/gtach/logs
 
 ## 5.0 Visual Documentation
 
-### 5.1 Path Resolution Flow
-
 ```mermaid
 flowchart TD
-    START[get_home_path] --> ENV{$GTACH_HOME set?}
-    ENV -->|Yes| CUSTOM[Use $GTACH_HOME]
-    ENV -->|No| DEFAULT[~/.config/gtach]
-    
-    CUSTOM --> EXISTS{Directory exists?}
-    DEFAULT --> EXISTS
-    
-    EXISTS -->|Yes| RETURN[Return Path]
-    EXISTS -->|No| CREATE[Create Directory]
-    CREATE --> RETURN
+    A[gtach_home] --> B{GTACH_HOME set and non-empty?}
+    B -- Yes --> C[Path of GTACH_HOME]
+    B -- No --> D[/opt/gtach]
+    C --> E[ConfigStore, DeviceStore, AcknowledgementStateManager]
+    D --> E
 ```
 
 [Return to Table of Contents](<#table of contents>)
@@ -193,7 +107,8 @@ flowchart TD
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| 2.0 | 2026-10-07 | William Watson | Rewritten for [change-5fbff586](<../change/change-5fbff586-configuration-split.md>): OBDIIHome replaced by gtach_home(); GTACH_HOME with default /opt/gtach; no side effects. DeviceStore location per [change-453f0a80](<../change/change-453f0a80-device-store-sharing.md>). Matches commits f5ab73a and 3747d2f. |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.
