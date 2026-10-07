@@ -86,6 +86,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 6. **Error handling**: log unexpected exceptions with `logger.error(msg, exc_info=True)`.
 7. **Naming / style**: PEP 8 — `snake_case` functions/variables, `PascalCase` classes,
    `UPPER_SNAKE_CASE` constants; f-strings for formatting.
+8. **Locks**: never call out while holding a lock — no callbacks, no calls into another component that may take a lock, no blocking I/O. Snapshot under the lock, act after releasing it (issue-e9216e17).
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -198,6 +199,7 @@ ai/workspace/
 | 1.0 | 2026-09-23 | Merged the root `CLAUDE.md` and `ai/doc/CLAUDE.md` into this file. Kept the full task-invocation text, the error-handling rule and the deploy commands from the root version. Governance numbering updated to 10.5 (T06 issue, T07 change, T03 prompt, P04.12). Removed the non-existent `--macos` flag and the `obd` conditional import. |
 | 1.1 | 2026-09-29 | Governance path updated for the AI-G&O 11.0 layout (`ai/governance/software-engineering/governance.md`). |
 | 1.2 | 2026-10-07 | Logging row: error.log (change-269871a0) |
+| 1.3 | 2026-10-07 | Rule 8: no call-outs under a lock (change-e9216e17) |
 
 ---
 

@@ -71,8 +71,8 @@ class SetupStateCoordinator:
     
     def update_state(self, **kwargs) -> None:
         """Update setup state with thread safety"""
+        changed_fields = []
         with self._state_lock:
-            changed_fields = []
             
             for key, value in kwargs.items():
                 if hasattr(self.state, key):
@@ -83,13 +83,14 @@ class SetupStateCoordinator:
                         self.logger.debug(f"State updated: {key} = {value}")
                 else:
                     self.logger.warning(f"Attempted to update unknown state field: {key}")
-            
-            # Notify callbacks of state changes
-            if changed_fields:
-                self._notify_state_change_callbacks(changed_fields)
+
+        # Notify after releasing _state_lock (issue-e9216e17).
+        if changed_fields:
+            self._notify_state_change_callbacks(changed_fields)
     
     def transition_to_screen(self, screen: SetupScreen, clear_cache: bool = True) -> None:
         """Transition to a new screen with state management"""
+        transitioned = None
         with self._state_lock:
             if self.state.current_screen != screen:
                 old_screen = self.state.current_screen
@@ -110,8 +111,11 @@ class SetupStateCoordinator:
                 elif screen == SetupScreen.COMPLETE:
                     self.state.setup_complete = True
                 
-                # Notify callbacks
-                self._notify_screen_transition_callbacks(old_screen, screen)
+                transitioned = (old_screen, screen)
+
+        # Notify after releasing _state_lock (issue-e9216e17).
+        if transitioned:
+            self._notify_screen_transition_callbacks(*transitioned)
     
     def select_device(self, device: BluetoothDevice) -> None:
         """Select a device for pairing"""
@@ -244,7 +248,10 @@ class SetupStateCoordinator:
         self.logger.debug("State change callback registered")
     
     def _notify_screen_transition_callbacks(self, old_screen: SetupScreen, new_screen: SetupScreen) -> None:
-        """Notify all screen transition callbacks"""
+        """Notify all screen transition callbacks.
+
+        Must be called without _state_lock held (issue-e9216e17).
+        """
         for callback in self._screen_transition_callbacks:
             try:
                 callback(old_screen, new_screen)
@@ -252,7 +259,10 @@ class SetupStateCoordinator:
                 self.logger.error(f"Error in screen transition callback: {e}", exc_info=True)
     
     def _notify_state_change_callbacks(self, changed_fields: List[str]) -> None:
-        """Notify all state change callbacks"""
+        """Notify all state change callbacks.
+
+        Must be called without _state_lock held (issue-e9216e17).
+        """
         for callback in self._state_change_callbacks:
             try:
                 callback(changed_fields)

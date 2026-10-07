@@ -200,15 +200,18 @@ class SetupDisplayManager:
             state = self.state_coordinator.get_state()
             
             # Check cache first
+            # Hold _render_cache_lock only for the read; the work below
+            # takes other locks (issue-e9216e17).
             if not self._screen_needs_refresh:
+                cached_surface = None
                 with self._render_cache_lock:
-                    if state.current_screen in self._screen_render_cache:
-                        cached_surface = self._screen_render_cache[state.current_screen]
-                        surface.blit(cached_surface, (0, 0))
-                        self.logger.debug(f"Using cached render for {state.current_screen.name}")
-                        self._update_cached_screen_touch_regions()
-                        self._draw_circular_border(surface)
-                        return
+                    cached_surface = self._screen_render_cache.get(state.current_screen)
+                if cached_surface is not None:
+                    surface.blit(cached_surface, (0, 0))
+                    self.logger.debug(f"Using cached render for {state.current_screen.name}")
+                    self._update_cached_screen_touch_regions()
+                    self._draw_circular_border(surface)
+                    return
             
             # Create surface for rendering
             cache_surface = surface.copy()
@@ -719,13 +722,17 @@ class SetupDisplayManager:
             # Register interaction for control visibility
             self.state_coordinator.register_interaction()
             
-            # Check touch regions
+            # Find the hit under the lock; dispatch after releasing it
+            # (issue-e9216e17).
+            hit = None
             with self._touch_regions_lock:
                 for region in self.touch_regions:
                     if len(region) >= 2 and isinstance(region[1], pygame.Rect):
                         if region[1].collidepoint(pos):
-                            action = region[0]
-                            return self._handle_touch_action(action, region)
+                            hit = (region[0], region)
+                            break
+            if hit is not None:
+                return self._handle_touch_action(*hit)
         except Exception as e:
             self.logger.error(f"Error handling touch event: {e}", exc_info=True)
         
