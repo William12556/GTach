@@ -231,7 +231,7 @@ findings:
         for all heartbeat, recovery and shutdown-deadline arithmetic in
         ThreadManager and WatchdogMonitor, and add a regression test that
         steps time.time() and asserts no shutdown.
-      issue_ref: ""
+      issue_ref: "issue-b9ee7428"
     - location: "src/gtach/main.py:61-114; src/gtach/app.py:187-211"
       description: >-
         [B04] After startup, start.log's handler is raised to CRITICAL+1 and
@@ -243,7 +243,7 @@ findings:
         WARNING and above by default. Severity raised from medium to high in
         version 1.1: confirmed on the device, where an unexplained restart
         left no record (Section 6).
-      issue_ref: ""
+      issue_ref: "issue-269871a0"
   medium:
     - location: "pyproject.toml:33-53; bin/install.sh:248; bin/pi-install.sh:241-243; src/gtach/display/touch_interface.py:64-69,291-305"
       description: >-
@@ -342,7 +342,7 @@ findings:
         manager.py:259,310,353,388,454,509,644,843,1013,2161) and utils/.
         Remediation: add exc_info=True to every handler that catches
         Exception.
-      issue_ref: ""
+      issue_ref: "issue-269871a0"
     - location: "src/gtach/app.py:472-478; src/gtach/core/thread.py:120-125"
       description: >-
         [B03] On setup re-entry the 'transport' entry is never stopped
@@ -902,7 +902,8 @@ traceability:
   design_refs:
     - ""
   issue_refs:
-    - ""
+    - "issue-b9ee7428"
+    - "issue-269871a0"
   related_audits:
     - audit_ref: "audit-b4e8c012"
       relationship: "follow_up"
@@ -931,6 +932,10 @@ version_history:
       - "B04 raised to high; G01 lowered to medium"
       - "E01 corrected: fps_limit 30 in effect on the device"
       - "Added Sections 6 (on-device verification) and 7 (remediation plan)"
+  - version: "1.2"
+    date: "2026-10-07"
+    changes:
+      - "Phase 0 implemented: issue refs for B04, A11, B13; F05 and E03 committed directly"
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -1162,6 +1167,7 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial audit |
 | 1.1 | 2026-10-07 | Added finding B13 (high); B04 raised to high; G01 lowered to medium; E01 corrected (fps_limit 30 in effect); added Sections 6 and 7 |
+| 1.2 | 2026-10-07 | Phase 0 implemented: issue refs for B04, A11, B13; F05 and E03 committed directly |
 
 ---
 

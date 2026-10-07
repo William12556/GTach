@@ -19,7 +19,7 @@ change_info:
   title: "Replace time.time() with time.monotonic() for heartbeat stamps, watchdog elapsed-time checks and the ThreadManager shutdown budget; default ThreadHealth 'last' times to float('-inf')"
   date: "2026-10-07"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -190,8 +190,8 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -218,6 +218,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-b9ee7428 iteration 1."
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -234,6 +239,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Monotonic clock for core/ timing; ThreadHealth defaults. |
+| 1.2 | 2026-10-07 | Implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a. |
 
 ---
 

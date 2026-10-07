@@ -19,7 +19,7 @@ change_info:
   title: "Add an always-on, size-rotated WARNING-level error.log; add exc_info=True to every ERROR/CRITICAL log call in a broad exception handler, enforced by a policy test"
   date: "2026-10-07"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -215,8 +215,8 @@ implementation:
   deployment_notes: "No service or packaging change. error.log is created on first start."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -246,6 +246,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-269871a0 iteration 1."
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in 5f3c50be158bf2bea57f47edf7383062032c3213."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -262,6 +267,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Always-on error.log; exc_info on broad handlers; policy test. |
+| 1.2 | 2026-10-07 | Implemented in 5f3c50be158bf2bea57f47edf7383062032c3213. |
 
 ---
 

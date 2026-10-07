@@ -169,7 +169,7 @@ resolution:
   change_ref: "change-269871a0"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "setup_logging now adds an always-on WARNING-level error.log (1 MiB x 5, never rotated at start), and all 204 ERROR/CRITICAL calls in broad exception handlers pass exc_info=True, enforced by tests/test_logging_policy.py (commit 5f3c50be158bf2bea57f47edf7383062032c3213)."
 
 verification:
   verified_date: ""
@@ -215,6 +215,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from audit-36b6ea95 B04 and A11, confirmed on device."
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in 5f3c50be158bf2bea57f47edf7383062032c3213; awaiting on-device verification."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -231,6 +236,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. No log sink after startup with debug off (B04); broad handlers log without tracebacks (A11). |
+| 1.1 | 2026-10-07 | Fix implemented in 5f3c50be158bf2bea57f47edf7383062032c3213; awaiting on-device verification. |
 
 ---
 

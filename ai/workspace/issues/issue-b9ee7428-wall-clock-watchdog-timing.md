@@ -162,7 +162,7 @@ resolution:
   change_ref: "change-b9ee7428"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "Heartbeat stamps, all watchdog elapsed-time checks and the ThreadManager shutdown budget now use time.monotonic(), and ThreadHealth's last-warning and last-recovery defaults are float('-inf'), so a wall-clock step no longer changes watchdog decisions (commit 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a)."
 
 verification:
   verified_date: ""
@@ -207,6 +207,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from on-device observation during audit-36b6ea95 verification."
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a; awaiting on-device verification."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -223,6 +228,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Wall-clock step causes watchdog shutdown; monotonic-default trap recorded. |
+| 1.1 | 2026-10-07 | Fix implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a; awaiting on-device verification. |
 
 ---
 
