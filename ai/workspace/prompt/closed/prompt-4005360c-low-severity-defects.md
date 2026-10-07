@@ -123,6 +123,7 @@ notes: "Human verification on the Pi: signal bars show on DEVICE_LIST; simbt dis
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial prompt implementing change-4005360c iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-07 | Implemented; closed |
 
 ---
 

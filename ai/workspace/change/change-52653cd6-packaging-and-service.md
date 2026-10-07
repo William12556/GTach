@@ -19,7 +19,7 @@ change_info:
   title: "Declare and install the touch stack; ERROR on mock fallback on a Pi; harden and bound the service unit; refresh package metadata; single version source; correct deployment scripts; update the audit check script"
   date: "2026-10-07"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -191,8 +191,8 @@ implementation:
   deployment_notes: "The unit file is copied by deploy.sh/install.sh; run `systemctl daemon-reload` (install.sh already does this) and verify."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -222,6 +222,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in f9273e05eca60a5def61c5ecae60c4b46ba1c035."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -238,6 +244,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Packaging, service and scripts. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
+| 1.2 | 2026-10-07 | Implemented in f9273e05eca60a5def61c5ecae60c4b46ba1c035. |
 
 ---
 

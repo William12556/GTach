@@ -114,7 +114,7 @@ resolution:
   change_ref: "change-d140121d"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "BluetoothSocket applies its timeout before connect, pairing shutdown no longer waits on running scans, the setup coordinator owns setup state (get_state returns copies; writes go through update_state and add_discovered_device) with _active_operations locked, and shutdown arms the exit backstop on every path and stops the async workers, the pairing executor and the touch handler (commit 69eb605f2b086d666248bb39a4046032f9eb94d8)."
 
 verification:
   verified_date: ""
@@ -154,6 +154,12 @@ version_history:
     changes:
       - "Initial issue document for Phase 5 remaining medium defects."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in 69eb605f2b086d666248bb39a4046032f9eb94d8; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -169,6 +175,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. A07, A08, A17, C14, D04, D05, X02. |
+| 1.1 | 2026-10-07 | Fix implemented in 69eb605f2b086d666248bb39a4046032f9eb94d8; awaiting on-device verification. |
 
 ---
 

@@ -121,6 +121,7 @@ notes: "Human verification: deploy and use normally; no on-device step specific 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial prompt implementing change-cd5ec050 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-07 | Implemented; closed |
 
 ---
 

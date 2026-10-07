@@ -77,7 +77,7 @@ resolution:
   change_ref: "change-e4ee50fd"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "black and isort are applied at 88 columns to src, tests and bin/*.py, .flake8 sets the same limit, and CLAUDE.md §7 records it, with no change to any file's AST apart from import order (commit d44dca9b0d42de3358427f7851abae2336762557)."
 
 verification:
   verified_date: ""
@@ -115,6 +115,12 @@ version_history:
     changes:
       - "Initial issue document for Phase 5 formatting."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in d44dca9b0d42de3358427f7851abae2336762557; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -130,6 +136,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Formatting at 88 columns. |
+| 1.1 | 2026-10-07 | Fix implemented in d44dca9b0d42de3358427f7851abae2336762557; awaiting on-device verification. |
 
 ---
 

@@ -109,7 +109,7 @@ resolution:
   change_ref: "change-4005360c"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "Fourteen low-severity corrections (TCP socket closed on connect failure, per-run simulated cancel, renamed transport exceptions, reaped bluetoothctl children, no bare except, real retry_delay, Optional annotations, locked _obd_started, range-checked config values, bounded splash timing data, an unshared bold RPM font, monotonic durations, signal_strength in device surfaces, cleared framebuffer handles) and the CLAUDE.md rule 8 file-lock clarification (commit 2ade5a3769ce5396447b6526328a9b153af90182)."
 
 verification:
   verified_date: ""
@@ -148,6 +148,12 @@ version_history:
     changes:
       - "Initial issue document for Phase 5 low-severity defects."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in 2ade5a3769ce5396447b6526328a9b153af90182; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -163,6 +169,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Low-severity correctness defects. |
+| 1.1 | 2026-10-07 | Fix implemented in 2ade5a3769ce5396447b6526328a9b153af90182; awaiting on-device verification. |
 
 ---
 

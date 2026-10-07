@@ -114,7 +114,7 @@ resolution:
   change_ref: "change-52653cd6"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "The pi extra now installs RPi.GPIO and hyperpixel2r (click and gpiozero removed) and install.sh uses it, the mock touch fallback logs ERROR on a Pi, gtach.service gains TimeoutStopSec, wider start limits, Wants=bluetooth.service and four hardening directives, pyproject.toml is the single version source, metadata and dependency checks are current, and deploy, pull_logs, gen_splash, release, preflight and the audit check script are corrected (commit f9273e05eca60a5def61c5ecae60c4b46ba1c035)."
 
 verification:
   verified_date: ""
@@ -153,6 +153,12 @@ version_history:
     changes:
       - "Initial issue document for Phase 5 packaging and service."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in f9273e05eca60a5def61c5ecae60c4b46ba1c035; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -168,6 +174,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Packaging, service and script defects. |
+| 1.1 | 2026-10-07 | Fix implemented in f9273e05eca60a5def61c5ecae60c4b46ba1c035; awaiting on-device verification. |
 
 ---
 

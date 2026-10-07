@@ -139,6 +139,7 @@ notes: "Human verification on the Pi: a full pairing works; `time systemctl stop
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial prompt implementing change-d140121d iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-07 | Implemented; closed |
 
 ---
 

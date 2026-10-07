@@ -261,7 +261,7 @@ findings:
         version 1.1: the audited device has hyperpixel2r 0.0.1 and RPi.GPIO
         0.7.1 in its venv and loads the real touch library (Section 6). The
         packaging gap remains; a fresh install is untested.
-      issue_ref: ""
+      issue_ref: "issue-52653cd6"
     - location: "src/gtach/comm/obd.py:136-138"
       description: >-
         [A02] _initialize_protocol treats any non-empty 0100 response not
@@ -313,7 +313,7 @@ findings:
         configured pairing connection_timeout and the 10 s test timeout are
         ignored on the 'system' backend, and connect blocks for the kernel
         page timeout. Remediation: apply self.timeout when creating the socket.
-      issue_ref: ""
+      issue_ref: "issue-d140121d"
     - location: "src/gtach/comm/pairing.py:75,163-173,579-596"
       description: >-
         [A08] Discovery futures that time out keep running in a two-worker
@@ -322,7 +322,7 @@ findings:
         for the hung workers (wait=True) and __del__ calls it, so garbage
         collection or exit can block (suspected). Remediation: kill the child
         process on timeout and shut down with cancel_futures.
-      issue_ref: ""
+      issue_ref: "issue-d140121d"
     - location: "src/gtach/comm/device_store.py:32"
       description: >-
         [A09] DeviceStore defaults to the CWD-relative path
@@ -448,14 +448,14 @@ findings:
         iterates discovered_devices (setup.py:404-447). This breaks CLAUDE.md
         §4 rule 4. Remediation: route every mutation through update_state()
         and return copies.
-      issue_ref: ""
+      issue_ref: "issue-d140121d"
     - location: "src/gtach/display/setup_components/bluetooth/interface.py:36,88-89,243-244,356-357"
       description: >-
         [D05] _active_operations is mutated from worker callbacks, the setup
         thread (setup.py:180) and the touch thread (setup.py:746,762) without a
         lock. A check-then-start race can launch duplicate discoveries.
         Remediation: guard it with a lock.
-      issue_ref: ""
+      issue_ref: "issue-d140121d"
     - location: "src/gtach/display/input/touch_coordinator.py:211-250,468-484"
       description: >-
         [D06] Button callbacks run while the coordinator RLock is held.
@@ -532,7 +532,7 @@ findings:
         dedicated user in the video/bluetooth/i2c groups with a narrowly
         scoped polkit or sudoers rule for /sbin/reboot, or at minimum add
         systemd hardening directives.
-      issue_ref: ""
+      issue_ref: "issue-52653cd6"
     - location: "src/gtach/display/setup.py:204-211,723-728; src/gtach/display/setup_components/state/coordinator.py:89,114; src/gtach/display/async_operations.py:301-304,333-336; src/gtach/display/touch_interface.py:173-178; src/gtach/display/input/touch_coordinator.py:211-240; src/gtach/core/thread.py:229-235"
       description: >-
         [X01] There is no documented lock hierarchy, and seven sites enter
@@ -555,7 +555,7 @@ findings:
         TimeoutStopSec is the effective bound, and with SimTransport it is
         always reached (A01). Remediation: one shutdown deadline, stop every
         component that owns a thread, and arm the backstop on every exit path.
-      issue_ref: ""
+      issue_ref: "issue-d140121d"
     - location: "src/gtach/display/async_operations.py:319-338; src/gtach/display/setup_components/bluetooth/interface.py (on_bluetooth_init_complete, on_discovery_complete, on_pairing_complete)"
       description: >-
         [D12] Setup completion handlers are invoked on every progress update
@@ -585,6 +585,7 @@ findings:
         [A12] The TCP socket is not closed when connect raises. RFCOMM fixed
         the same defect (rfcomm.py:57-67); TCP relies on CPython reference
         counting. Remediation: mirror the RFCOMM try/close.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/comm/sim_bluetooth.py:71-72,103-118,180-193"
       description: >-
         [A13] The simulated cancel events are never cleared. After one cancel,
@@ -592,6 +593,7 @@ findings:
         always returns False), so simbt testing breaks after the first Cancel.
         Remediation: clear the events at the start of each operation, as
         BluetoothPairing does.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/comm/models.py:20; src/gtach/display/setup_models.py:45; src/gtach/comm/pairing.py:46-70,307-508"
       description: >-
         [A14] Duplication: there are two BluetoothDevice classes, converted
@@ -608,21 +610,25 @@ findings:
         connect_device, disconnect_device and is_device_connected have no
         callers. Unused imports remain in models.py, rfcomm.py,
         serial_transport.py and tcp_transport.py (flake8 F401).
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/comm/transport.py:123-130"
       description: >-
         [A16] ConnectionError and TimeoutError shadow the builtins of the same
         names in any module that imports them. Remediation: rename them
         (TransportConnectionError and so on).
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/comm/pairing.py:165"
       description: >-
         [A17] The chunk duration is computed from self.discovery_timeout
         rather than the effective `timeout`. When discovery_timeout is smaller
         than the chunk count, this yields 0 s scan chunks.
+      issue_ref: "issue-d140121d"
     - location: "src/gtach/comm/system_bluetooth.py:115-117,160-195"
       description: >-
         [A18] bluetoothctl processes are killed or terminated without wait()
         (zombies). The reader thread mutates the `devices` dict, unguarded,
         while the caller returns it.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/comm/obd.py:168-178"
       description: >-
         [A19] The PID byte (data[1]) is never checked against 0x0C, so a
@@ -633,6 +639,7 @@ findings:
         [B06] _active_futures is mutated from done-callbacks on worker threads
         without a lock while shutdown iterates it. This can raise
         "Set changed size during iteration".
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/core/thread.py:191-195; src/gtach/core/watchdog.py:258-311,386"
       description: >-
         [B07] handle_thread_failure passes exc_info=True outside an except
@@ -640,22 +647,26 @@ findings:
         it only sleeps and re-reads the heartbeat. watchdog.py:386 has a bare
         except (E722). There are unused imports (signal in watchdog.py and
         app.py).
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/core/thread.py:67-72"
       description: >-
         [B08] ThreadInfo reads the private Thread._target, _args and _kwargs,
         which CPython does not guarantee. Remediation: store the target
         explicitly at registration.
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/app.py:378-382,512-516; src/gtach/comm/rfcomm.py:33; src/gtach/comm/tcp_transport.py:35; src/gtach/comm/serial_transport.py:38"
       description: >-
         [B09] _retry_interval_callback reads `retry_delay`, but the transports
         define `_retry_delay`, which nothing reads. The callback always yields
         None, and the per-transport retry_delay attributes are dead.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/app.py:38,134,545; src/gtach/main.py:21-22"
       description: >-
         [B10] Type and interface defects: the result of load_config() is
         unused (F841); `config_path: str = None` and
         `_start_handler: logging.Handler = None` are implicit Optionals
         (mypy no_implicit_optional); run() is annotated NoReturn but returns.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/__init__.py:10-13"
       description: >-
         [B11] Importing the package eagerly imports app (pygame and the
@@ -666,12 +677,14 @@ findings:
         [B12] The _obd_started flag is read and written without a lock from
         the setup-completion callback (setup thread or touch thread) and the
         UI re-entry callback.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/display/manager.py:750"
       description: >-
         [C10] `1.0 / self.config.fps_limit` raises ZeroDivisionError on every
         frame if fps_limit is 0 in config. It is caught, and the loop
         degrades to 10 Hz with an error per frame. PerformanceMonitor guards
         the same value (manager.py:182-184), but the loop does not.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/display/navigation_gestures.py:323-331"
       description: >-
         [C11] end_gesture_tracking holds the non-reentrant _gesture_lock and
@@ -679,6 +692,7 @@ findings:
         self-deadlock if ever called. Only cancel_gesture is reachable
         (touch.py:137); the rest of the module is dead (0% coverage).
         Remediation: delete the module or the dead methods.
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/display/manager.py:2137-2217,2601-2604,652-654,1050-1055; src/gtach/display/touch.py:257-316,413-479; src/gtach/display/touch_interface.py:468-795,899-971; src/gtach/display/typography.py:423-690,790-944"
       description: >-
         [C12] Dead code in display/: the RPM sliders and save button, change_mode
@@ -690,6 +704,7 @@ findings:
         helpers. rpm_warning and rpm_danger are persisted but never drawn.
         The comment at manager.py:1050-1055 says _get_band_colour has no
         caller, but it is called at :1148.
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/display/splash.py:301-305,499,551,561,585"
       description: >-
         [C13] _font_render_times grows by one entry per subtitle draw in the
@@ -698,31 +713,37 @@ findings:
         `% 1 == 0` is always true, giving an INFO log per frame without
         pygame. Progress divides by duration, which is 0.0 when the splash is
         disabled.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/display/touch.py:381-390; src/gtach/display/manager.py:670-683; src/gtach/display/touch_interface.py:393-406"
       description: >-
         [C14] TouchHandler.stop() is never called, DisplayManager.stop() does
         not stop the touch interface, and the interface's stop() does not stop
         the real hyperpixel2r device.
+      issue_ref: "issue-d140121d"
     - location: "src/gtach/display/typography.py:747-752; src/gtach/display/manager.py:2626"
       description: >-
         [C15] get_rpm_large_font calls set_bold(True) on the shared cached
         180 px font, mutating it for every user. handle_touch_event logs every
         touch at INFO.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/display/touch_interface.py:97-98; src/gtach/display/touch.py:114; src/gtach/display/splash.py:173,212"
       description: >-
         [C16] Wall-clock time.time() is used for touch durations and splash
         timing. A clock step (NTP sync on a Pi with no RTC) can misclassify a
         press or end or extend the splash. Remediation: use time.monotonic().
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/display/models.py:205-219; src/gtach/display/manager.py:489-499"
       description: >-
         [C17] There are two sets of gesture defaults (80/200/40/1.0/5.0 and
         50/100/30/2.0/3.0). The getattr defaults are dead because
         DisplayConfig always defines the fields.
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/display/setup_components/state/coordinator.py:360-381,501"
       description: >-
         [D07] create_manual_device passes rssi= and omits signal_strength and
         last_seen, so it raises TypeError. get_setup_progress references the
         nonexistent PairingStatus.PAIRING. Both are dead (no callers).
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/display/setup_components/rendering/device_surfaces.py:136-239,196,351,503-557; src/gtach/display/setup_components/layout/circular_positioning.py:56-181,319-573; src/gtach/display/graphics/splash_graphics.py:226-585"
       description: >-
         [D08] device_surfaces reads device.rssi, which the setup
@@ -733,10 +754,12 @@ findings:
         list and performance statistics), and splash_graphics'
         draw_obdii_connector, draw_progress_bar, draw_animated_dots and
         create_gradient_surface.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/display/performance/__init__.py:28-50; src/gtach/display/setup.py:32"
       description: >-
         [D09] get_performance_manager is imported but never called; the
         second PerformanceMonitor singleton API is dead.
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/display/input/interfaces.py:17; src/gtach/display/input/touch_coordinator.py:20; src/gtach/display/rendering/interfaces.py:17; src/gtach/display/rendering/engine.py:25; src/gtach/display/performance/monitor.py:20,23; src/gtach/display/graphics/splash_graphics.py:346,535; src/gtach/display/typography.py:190,262"
       description: >-
         [D10] Hardware-abstraction inconsistency. These modules import pygame
@@ -752,6 +775,7 @@ findings:
         [D11] cleanup() closes fb and fb_dev but does not reset them to None.
         If the display thread outlived its 5 s join (manager.py:673), each
         later frame raises on the closed mmap and logs an error.
+      issue_ref: "issue-4005360c"
     - location: "src/gtach/utils/terminal.py:43-53,84"
       description: >-
         [E03] `os.system('stty sane')` runs through /bin/sh with a PATH lookup
@@ -761,6 +785,7 @@ findings:
         callers) passes a 64-byte buffer for the 160-byte fb_var_screeninfo
         and would write a truncated struct back if used. Remediation: use
         termios restoration only; delete the framebuffer helpers.
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/utils/config.py:229-274,343,552,682-1072,1313,1540"
       description: >-
         [E04] Dead code and stale schema in config.py: SessionManager (never
@@ -777,6 +802,7 @@ findings:
         performance/monitor.py:20), gpiozero (declared, imported nowhere) or
         hyperpixel2r (G01). Its last-resort version check shells out to
         `pip show`.
+      issue_ref: "issue-52653cd6"
     - location: "src/gtach/utils/updater.py:54-62,96-106; bin/gtach-preflight.sh:220-231"
       description: >-
         [E06] A staged wheel is accepted on zip integrity alone, with no hash
@@ -789,6 +815,7 @@ findings:
         import_module_with_mock have no callers. platform.py re-imports sys
         (F811). ack_state.py forward-references RPMBands without a
         TYPE_CHECKING import (F821, mypy name-defined).
+      issue_ref: "issue-cd5ec050"
     - location: "src/gtach/utils/home.py:126-161"
       description: >-
         [E08] _can_create_directory creates the parent directory as a side
@@ -803,6 +830,7 @@ findings:
         test_touch_dispatch.py:260-270 requires `DisplayMode.RADIAL` to stay
         in touch.py, where only dead code references it, so it blocks
         dead-code removal (C12).
+      issue_ref: "issue-cd5ec050"
     - location: "tests/test_device_list_focus.py:211-233"
       description: >-
         [F04] TestSlotContents._slots re-implements slot selection inside the
@@ -822,6 +850,7 @@ findings:
         [F06] The "subprocess only in pi_reset" and "no shell=True" scans miss
         os.system (terminal.py:84, E03). The allow-list includes
         manager_backup.py, an excluded backup that is still packaged (G06).
+      issue_ref: "issue-cd5ec050"
     - location: "bin/gtach.service:4-16"
       description: >-
         [G03] StartLimitBurst=3 within 60 s leaves the unit failed until
@@ -830,6 +859,7 @@ findings:
         TimeoutStopSec, so a hung stop (A01) delays shutdown by the 90 s
         default. After= without Wants=/Requires= orders bluetooth.service and
         hyperpixel2r-init.service but does not pull them in.
+      issue_ref: "issue-52653cd6"
     - location: "pyproject.toml:11-61,135-144"
       description: >-
         [G04] `click>=8.0` is declared and never imported. Metadata is stale:
@@ -838,6 +868,7 @@ findings:
         Classifiers stop at Python 3.11. The mypy override lists unused
         gpiozero.* and obd.* (mypy reports an unused section) and has no entry
         for the untyped hyperpixel2r and bluetooth imports.
+      issue_ref: "issue-52653cd6"
     - location: "pyproject.toml:104-131"
       description: >-
         [G05] Formatting-tool noise, summarised as one item. black and isort
@@ -847,6 +878,7 @@ findings:
         reformat 72 in-scope files and isort 51, and there are 2,088 W293 and
         other whitespace codes. Remediation: choose one limit, configure all
         three tools to it, and run them once in a dedicated change.
+      issue_ref: "issue-e4ee50fd"
     - location: "pyproject.toml:63-64; src/gtach/__init__.py:13; bin/build.sh:58-93"
       description: >-
         [G06] packages.find ships manager_backup.py and
@@ -855,6 +887,7 @@ findings:
         kept in step only because build.sh rewrites __init__.py wholesale;
         pi-install.sh installs from the git tag without running build.sh.
         Both are currently 0.4.3.
+      issue_ref: "issue-52653cd6"
     - location: "config/devices.yaml:2-5; config/config.yaml:7,36-43"
       description: >-
         [G07] devices.yaml's setup.completed, discovery_timeout and first_run
@@ -875,6 +908,7 @@ findings:
         default branch, which need not match the locally built wheel.
         preflight installs with --no-deps, so an update that adds a
         dependency fails at import and is rolled back.
+      issue_ref: "issue-52653cd6"
     - location: "bin/pi-install.sh:47-48,199-204,260-266"
       description: >-
         [G09] The `curl | sudo bash` provisioning downloads the boot overlay,
@@ -935,6 +969,11 @@ traceability:
     - "issue-674bec49"
     - "issue-5fbff586"
     - "issue-453f0a80"
+    - "issue-52653cd6"
+    - "issue-d140121d"
+    - "issue-4005360c"
+    - "issue-cd5ec050"
+    - "issue-e4ee50fd"
   related_audits:
     - audit_ref: "audit-b4e8c012"
       relationship: "follow_up"
@@ -950,6 +989,11 @@ notes: >-
   Every in-scope file was read in full. Tooling ran on Python 3.13 in a Linux
   container. Findings marked (suspected) need hardware or emulator
   confirmation; see Section 5.
+  Recorded without change: C03 (accepted risk), D10 (no impact), E06 and G09
+  (trust assumptions: root-owned /opt/gtach/updates; GitHub TLS for
+  provisioning), A14 and B11 (open, low), F04 (open, low). F05 committed
+  directly in 10954e9. X03 resolved by issue-907de6de. F01/F02 addressed by
+  tests added in Phases 0-5. mypy deferred to a later phase.
 
 version_history:
   - version: "1.0"
@@ -979,6 +1023,10 @@ version_history:
     date: "2026-10-07"
     changes:
       - "Phase 3 implemented: issue refs for E01, E02, E04, E08, G07, X04, A09, A10"
+  - version: "1.6"
+    date: "2026-10-07"
+    changes:
+      - "Phase 5 implemented"
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -1214,6 +1262,7 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 | 1.3 | 2026-10-07 | Phase 1 implemented: issue refs for D01, X01, D03, D06, C04, C02, A01/B02, B01, B05, B03, D02; D12 added |
 | 1.4 | 2026-10-07 | Phase 2 implemented: issue refs for A02-A06, A19, C01, C05, C06, C08 |
 | 1.5 | 2026-10-07 | Phase 3 implemented: issue refs for E01, E02, E04, E08, G07, X04, A09, A10 |
+| 1.6 | 2026-10-07 | Phase 5 implemented |
 
 ---
 

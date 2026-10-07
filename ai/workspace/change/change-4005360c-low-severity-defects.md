@@ -19,7 +19,7 @@ change_info:
   title: "Fourteen small corrections (A12, A13, A16, A18, B07, B09, B10, B12, C10, C13, C15, C16, D08, D11) and a CLAUDE.md rule 8 clarification"
   date: "2026-10-07"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -181,8 +181,8 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-10-07"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
   test_results: ""
@@ -212,6 +212,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Implemented in 2ade5a3769ce5396447b6526328a9b153af90182."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -228,6 +234,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document. Low-severity corrections. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
+| 1.2 | 2026-10-07 | Implemented in 2ade5a3769ce5396447b6526328a9b153af90182. |
 
 ---
 

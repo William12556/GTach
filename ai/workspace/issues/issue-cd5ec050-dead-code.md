@@ -96,7 +96,7 @@ resolution:
   change_ref: "change-cd5ec050"
   resolved_date: ""
   resolved_by: ""
-  fix_description: ""
+  fix_description: "The backup modules, comm/bluetooth.py, navigation_gestures.py and the unreachable code listed in change-cd5ec050 are removed, along with the in-process restart remnants and all flake8 F401, F841, F811, F402 and F541 findings in src/gtach, and the test scans are extended to os.system and os.popen (commit f7899669ddad21b97dc81429595233e1d23d75b0)."
 
 verification:
   verified_date: ""
@@ -135,6 +135,12 @@ version_history:
     changes:
       - "Initial issue document for Phase 5 dead-code removal."
 
+  - version: "1.1"
+    date: "2026-10-07"
+    author: "Claude Code"
+    changes:
+      - "Fix implemented in f7899669ddad21b97dc81429595233e1d23d75b0; awaiting on-device verification."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -150,6 +156,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Dead code and backup modules. |
+| 1.1 | 2026-10-07 | Fix implemented in f7899669ddad21b97dc81429595233e1d23d75b0; awaiting on-device verification. |
 
 ---
 
