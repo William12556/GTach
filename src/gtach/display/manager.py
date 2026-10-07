@@ -627,6 +627,14 @@ class DisplayManager:
         if self.display_thread.is_alive():
             self.logger.warning("Display thread did not stop cleanly within timeout")
 
+        # The touch interface owns a thread of its own (issue-d140121d).
+        touch_handler = getattr(self, 'touch_handler', None)
+        if touch_handler is not None:
+            try:
+                touch_handler.stop()
+            except Exception as e:
+                self.logger.error(f"Error stopping touch handler: {e}", exc_info=True)
+
         # Clean up components
         try:
             self.performance_monitor.stop_monitoring()

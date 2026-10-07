@@ -52,6 +52,10 @@ class BluetoothSocket:
         address, port = address_port
         try:
             self.sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+            # A timeout set before connect must bound the connect too
+            # (issue-d140121d).
+            if self.timeout is not None:
+                self.sock.settimeout(self.timeout)
             self.sock.connect((address, port))
             self.connected = True
         except Exception as e:

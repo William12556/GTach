@@ -86,6 +86,7 @@ def _interface(async_manager, pairing_factory=None, device_store=None):
     iface._state_coordinator = None
     iface.pairing = None
     iface._active_operations = {}
+    iface._ops_lock = threading.Lock()  # issue-d140121d
     iface._pairing_ready = threading.Event()
     return iface
 

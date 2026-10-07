@@ -147,7 +147,8 @@ class BluetoothPairing:
                     # Discover devices for this chunk with timeout protection
                     future = self._executor.submit(
                         bluetooth.discover_devices,
-                        duration=min(chunk_duration, self.discovery_timeout // chunks),
+                        # The effective timeout, not the default (issue-d140121d).
+                        duration=min(chunk_duration, max(1, timeout // chunks)),
                         lookup_names=True,
                         flush_cache=True
                     )
@@ -567,9 +568,10 @@ class BluetoothPairing:
         self._cancel_discovery.set()
         self._cancel_pairing.set()
         
-        # Shutdown thread pool with timeout
+        # Do not wait: a running hcitool or bluetoothctl call would hold
+        # shutdown (and __del__) for its full duration (issue-d140121d).
         try:
-            self._executor.shutdown(wait=True)
+            self._executor.shutdown(wait=False, cancel_futures=True)
         except Exception as e:
             self.logger.error(f"Error shutting down thread pool: {e}", exc_info=True)
             

@@ -67,7 +67,8 @@ class TestStopSetup:
     def _host(self):
         manager = _manager()
         manager._shutdown_event = threading.Event()
-        manager.bluetooth_interface = types.SimpleNamespace(cancel_operations=lambda: None)
+        manager.bluetooth_interface = types.SimpleNamespace(
+            cancel_operations=lambda: None, shutdown=lambda: None)  # issue-d140121d
         manager._setup_thread = None
         return manager
 

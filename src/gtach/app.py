@@ -52,6 +52,8 @@ class GTachApplication:
         # the watchdog's shutdown callback and sets this event, so the
         # attribute must already exist at construction time.
         self._stop_event = threading.Event()
+        # Armed at most once per process (issue-d140121d).
+        self._backstop_armed = False
 
         self._thread_manager = ThreadManager()
         self._watchdog = WatchdogMonitor(
@@ -106,7 +108,18 @@ class GTachApplication:
             f"(force exit in {self._EXIT_BACKSTOP_SEC:.1f}s if not complete)"
         )
         self._stop_event.set()
+        self._arm_exit_backstop()
 
+    def _arm_exit_backstop(self) -> None:
+        """Arm the daemon timer that forces exit if teardown overruns.
+
+        Idempotent: the timer is armed at most once per process, whether
+        the exit started from the watchdog or from shutdown()
+        (issue-d140121d).
+        """
+        if getattr(self, '_backstop_armed', False):
+            return
+        self._backstop_armed = True
         timer = threading.Timer(self._EXIT_BACKSTOP_SEC, self._force_exit)
         timer.daemon = True
         timer.start()
@@ -555,6 +568,8 @@ class GTachApplication:
         self._shutdown_called = True
 
         self.logger.info("Shutting down application")
+        # Bound every exit path, not only the watchdog's (issue-d140121d).
+        self._arm_exit_backstop()
 
         try:
             # Shutdown order is important:
@@ -567,6 +582,13 @@ class GTachApplication:
                 self._watchdog.stop()
             if hasattr(self, '_setup_manager'):
                 self._setup_manager.stop_setup()
+            # The async workers own no other thread's resources; stop
+            # them before the display (issue-d140121d).
+            try:
+                from .display.async_operations import shutdown_async_manager
+                shutdown_async_manager()
+            except Exception as e:
+                self.logger.error(f"Async manager shutdown failed: {e}", exc_info=True)
             if hasattr(self, '_display'):
                 self._display.stop()
             if hasattr(self, '_transport'):

@@ -14,6 +14,7 @@ Handles setup workflow management and state transitions with thread safety.
 import logging
 import threading
 import time
+from dataclasses import replace
 from typing import Optional, List, Dict, Any, Callable
 from ...setup_models import SetupScreen, SetupState, SetupAction, PairingStatus, BluetoothDevice
 
@@ -65,9 +66,33 @@ class SetupStateCoordinator:
         self.logger.info("SetupStateCoordinator initialized")
     
     def get_state(self) -> SetupState:
-        """Get current setup state (thread-safe)"""
+        """Get a copy of the current setup state (thread-safe).
+
+        The copy, including its discovered_devices list, is the caller's;
+        writes go through update_state or add_discovered_device
+        (issue-d140121d).
+        """
         with self._state_lock:
-            return self.state
+            return replace(self.state, discovered_devices=list(self.state.discovered_devices))
+
+    def add_discovered_device(self, device: BluetoothDevice) -> bool:
+        """Append a discovered device unless one with its MAC is present.
+
+        Args:
+            device: The discovered device.
+
+        Returns:
+            True if the device was added.
+        """
+        with self._state_lock:
+            known = {d.mac_address for d in self.state.discovered_devices}
+            added = device.mac_address not in known
+            if added:
+                self.state.discovered_devices = self.state.discovered_devices + [device]
+        # Notify after releasing _state_lock (issue-e9216e17).
+        if added:
+            self._notify_state_change_callbacks(['discovered_devices'])
+        return added
     
     def update_state(self, **kwargs) -> None:
         """Update setup state with thread safety"""

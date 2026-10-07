@@ -154,7 +154,8 @@ class SetupDisplayManager:
     def stop_setup(self) -> None:
         """Stop the setup process and cancel all async operations"""
         self._shutdown_event.set()
-        self.bluetooth_interface.cancel_operations()
+        # shutdown() also releases the pairing executor (issue-d140121d).
+        self.bluetooth_interface.shutdown()
         # on_complete runs on the setup thread, so never join it from
         # itself (issue-674bec49).
         if self._setup_thread and self._setup_thread is not threading.current_thread():
@@ -222,7 +223,7 @@ class SetupDisplayManager:
                     if state.discovered_devices:
                         # Discovery complete — advance to device list
                         self.state_coordinator.transition_to_screen(SetupScreen.DEVICE_LIST)
-                    elif 'device_discovery' not in self.bluetooth_interface._active_operations:
+                    elif not self.bluetooth_interface.has_active_operation('device_discovery'):
                         # No active operation — start discovery
                         self.bluetooth_interface.start_discovery(
                             state,
