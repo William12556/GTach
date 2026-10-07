@@ -35,7 +35,7 @@ from gtach.display.setup_models import SetupScreen
 JOIN_TIMEOUT = 10.0
 
 
-@pytest.fixture(autouse=True, scope='module')
+@pytest.fixture(autouse=True, scope="module")
 def _pygame_ready():
     """Off-screen surfaces only; see tests/test_device_list_focus.py."""
     pygame.init()
@@ -45,7 +45,7 @@ def _pygame_ready():
 def no_device_store(monkeypatch):
     """Keep the cached-WELCOME path off the repository's devices.yaml."""
     stub = types.SimpleNamespace(get_primary_device=lambda: None)
-    monkeypatch.setattr(device_store_module, 'DeviceStore', lambda *a, **k: stub)
+    monkeypatch.setattr(device_store_module, "DeviceStore", lambda *a, **k: stub)
 
 
 def _held(lock) -> bool:
@@ -59,7 +59,7 @@ def _held(lock) -> bool:
 def _manager(coordinator=None) -> SetupDisplayManager:
     """A SetupDisplayManager with only the state render/touch use."""
     manager = object.__new__(SetupDisplayManager)
-    manager.logger = logging.getLogger('test.setup_lock_order')
+    manager.logger = logging.getLogger("test.setup_lock_order")
     manager.display_available = True
     manager.surface = pygame.Surface((480, 480))
     manager.state_coordinator = coordinator or SetupStateCoordinator()
@@ -70,7 +70,7 @@ def _manager(coordinator=None) -> SetupDisplayManager:
     manager._screen_needs_refresh = True
     manager._render_cache_lock = threading.Lock()
     manager._has_device = False  # cached presence (issue-674bec49)
-    manager.colors = {'background': (216, 200, 146), 'text': (0, 0, 0)}
+    manager.colors = {"background": (216, 200, 146), "text": (0, 0, 0)}
     return manager
 
 
@@ -95,17 +95,17 @@ class TestCoordinatorNotifiesOutsideTheLock:
             lambda fields: calls.append((_held(coordinator._state_lock), fields))
         )
 
-        coordinator.update_state(error_message='x')
+        coordinator.update_state(error_message="x")
 
-        assert calls == [(True, ['error_message'])]
+        assert calls == [(True, ["error_message"])]
 
     def test_no_callback_when_nothing_changes(self):
         coordinator = SetupStateCoordinator()
         calls = []
         coordinator.register_screen_transition_callback(
-            lambda old, new: calls.append('transition'))
-        coordinator.register_state_change_callback(
-            lambda fields: calls.append('state'))
+            lambda old, new: calls.append("transition")
+        )
+        coordinator.register_state_change_callback(lambda fields: calls.append("state"))
 
         coordinator.transition_to_screen(SetupScreen.WELCOME)
         coordinator.update_state(error_message=None)
@@ -117,11 +117,14 @@ class TestCoordinatorNotifiesOutsideTheLock:
         coordinator = SetupStateCoordinator()
         seen = []
         coordinator.register_screen_transition_callback(
-            lambda old, new: seen.append(coordinator.get_state().current_screen))
+            lambda old, new: seen.append(coordinator.get_state().current_screen)
+        )
 
         worker = threading.Thread(
             target=coordinator.transition_to_screen,
-            args=(SetupScreen.DISCOVERY,), daemon=True)
+            args=(SetupScreen.DISCOVERY,),
+            daemon=True,
+        )
         worker.start()
         worker.join(timeout=JOIN_TIMEOUT)
 
@@ -133,18 +136,21 @@ class TestTouchDispatchOutsideTheLock:
 
     def test_action_runs_with_touch_regions_lock_free(self, monkeypatch):
         manager = _manager()
-        region = ('start', pygame.Rect(0, 0, 10, 10))
+        region = ("start", pygame.Rect(0, 0, 10, 10))
         manager.touch_regions = [region]
         calls = []
         monkeypatch.setattr(
-            manager, '_handle_touch_action',
+            manager,
+            "_handle_touch_action",
             lambda action, hit: calls.append(
-                (_held(manager._touch_regions_lock), action, hit)),
-            raising=False)
+                (_held(manager._touch_regions_lock), action, hit)
+            ),
+            raising=False,
+        )
 
         manager.handle_touch_event((5, 5))
 
-        assert calls == [(True, 'start', region)]
+        assert calls == [(True, "start", region)]
 
 
 class TestRenderCacheLockScope:
@@ -155,9 +161,11 @@ class TestRenderCacheLockScope:
         manager._screen_needs_refresh = False
         calls = []
         monkeypatch.setattr(
-            manager, '_update_cached_screen_touch_regions',
+            manager,
+            "_update_cached_screen_touch_regions",
             lambda: calls.append(_held(manager._render_cache_lock)),
-            raising=False)
+            raising=False,
+        )
 
         manager.render(pygame.Surface((480, 480)))
 
@@ -177,9 +185,10 @@ class TestNoDeadlockUnderLoad:
         # region covers the whole panel so every tap hits it.
         def _render_screen(surface, state):
             manager._update_touch_regions_safe(
-                [('cancel', pygame.Rect(0, 0, 480, 480))])
+                [("cancel", pygame.Rect(0, 0, 480, 480))]
+            )
 
-        monkeypatch.setattr(manager, '_render_screen', _render_screen, raising=False)
+        monkeypatch.setattr(manager, "_render_screen", _render_screen, raising=False)
 
         screens = [SetupScreen.CURRENT_DEVICE, SetupScreen.WELCOME]
 
@@ -187,7 +196,7 @@ class TestNoDeadlockUnderLoad:
             screens.reverse()
             coordinator.transition_to_screen(screens[0])
 
-        monkeypatch.setattr(manager, '_handle_touch_action', _route, raising=False)
+        monkeypatch.setattr(manager, "_handle_touch_action", _route, raising=False)
 
         target = pygame.Surface((480, 480))
         manager.render(target)  # populate the WELCOME cache
@@ -207,12 +216,14 @@ class TestNoDeadlockUnderLoad:
             except Exception as exc:  # pragma: no cover - failure path
                 errors.append(exc)
 
-        threads = [threading.Thread(target=_render_loop, daemon=True),
-                   threading.Thread(target=_touch_loop, daemon=True)]
+        threads = [
+            threading.Thread(target=_render_loop, daemon=True),
+            threading.Thread(target=_touch_loop, daemon=True),
+        ]
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join(timeout=JOIN_TIMEOUT)
 
-        assert all(not thread.is_alive() for thread in threads), 'deadlock'
+        assert all(not thread.is_alive() for thread in threads), "deadlock"
         assert errors == []

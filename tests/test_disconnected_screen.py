@@ -47,13 +47,12 @@ def stub_fonts(monkeypatch):
     import gtach.display.manager as manager_module
 
     monkeypatch.setattr(
-        manager_module, 'get_font_manager',
-        lambda: types.SimpleNamespace(get_font=lambda size: f'font-{size}')
+        manager_module,
+        "get_font_manager",
+        lambda: types.SimpleNamespace(get_font=lambda size: f"font-{size}"),
     )
-    monkeypatch.setattr(manager_module, 'get_title_display_font',
-                        lambda: 'font-36')
-    monkeypatch.setattr(manager_module, 'get_label_small_font',
-                        lambda: 'font-18')
+    monkeypatch.setattr(manager_module, "get_title_display_font", lambda: "font-36")
+    monkeypatch.setattr(manager_module, "get_label_small_font", lambda: "font-18")
 
 
 def _code_only(func):
@@ -69,16 +68,20 @@ def _code_only(func):
 
     source = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source).body[0]
-    if (tree.body and isinstance(tree.body[0], ast.Expr)
-            and isinstance(tree.body[0].value, ast.Constant)
-            and isinstance(tree.body[0].value.value, str)):
+    if (
+        tree.body
+        and isinstance(tree.body[0], ast.Expr)
+        and isinstance(tree.body[0].value, ast.Constant)
+        and isinstance(tree.body[0].value.value, str)
+    ):
         first = tree.body[1]
     else:
         first = tree.body[0]
 
-    lines = source.splitlines()[first.lineno - 1:]
-    return '\n'.join(line for line in lines
-                     if line.strip() and not line.lstrip().startswith('#'))
+    lines = source.splitlines()[first.lineno - 1 :]
+    return "\n".join(
+        line for line in lines if line.strip() and not line.lstrip().startswith("#")
+    )
 
 
 class _Recorder:
@@ -92,12 +95,10 @@ class _Recorder:
 
     def as_host(self, **overrides):
         host = types.SimpleNamespace()
-        host.logger = logging.getLogger('test.disconnected')
+        host.logger = logging.getLogger("test.disconnected")
         host._palette = DAY_PALETTE
         # Class constants, so a SimpleNamespace host must be given them.
-        host._RETRY_ARC_DEFAULT_PERIOD = (
-            DisplayManager._RETRY_ARC_DEFAULT_PERIOD
-        )
+        host._RETRY_ARC_DEFAULT_PERIOD = DisplayManager._RETRY_ARC_DEFAULT_PERIOD
         host._DISCONNECTED_BG_COLOUR = DisplayManager._DISCONNECTED_BG_COLOUR
         host._DISCONNECTED_TEXT_COLOUR = DisplayManager._DISCONNECTED_TEXT_COLOUR
         host._SPINNER_CENTRE = DisplayManager._SPINNER_CENTRE
@@ -109,14 +110,18 @@ class _Recorder:
         host._disconnected_btn_setup = None
         host._disconnected_btn_reset = None
         host._draw_status_indicator = lambda: None
-        host._draw_button = lambda rect, label, fill, font: \
-            self.buttons.append((rect, label))
+        host._draw_button = lambda rect, label, fill, font: self.buttons.append(
+            (rect, label)
+        )
         host._draw_reconnect_spinner = lambda: None
         host.rendering_engine = types.SimpleNamespace(
             clear_surface=lambda *a, **k: None,
             get_surface=lambda target: self._surface,
-            render_text=lambda target, text, font, colour, pos, center=False:
-                self.texts.append((text, pos, font, colour)),
+            render_text=(
+                lambda target, text, font, colour, pos, center=False: self.texts.append(
+                    (text, pos, font, colour)
+                )
+            ),
         )
         for name, value in overrides.items():
             setattr(host, name, value)
@@ -131,17 +136,19 @@ class TestOneButton:
         calls = []
 
         host = types.SimpleNamespace()
-        host.logger = logging.getLogger('test.disconnected')
+        host.logger = logging.getLogger("test.disconnected")
         # Unset, so change-4ab5ff88's Reset button is not registered
         # and the single-button form these tests describe still holds.
         host._reset_callback = None
 
         def _column(specs, width, top, **kwargs):
-            calls.append(types.SimpleNamespace(
-                specs=tuple(specs), width=width, top=top, kwargs=kwargs
-            ))
+            calls.append(
+                types.SimpleNamespace(
+                    specs=tuple(specs), width=width, top=top, kwargs=kwargs
+                )
+            )
             # One rect per spec, as the real _button_column returns.
-            return ['rect-%d' % i for i in range(len(tuple(specs)))]
+            return ["rect-%d" % i for i in range(len(tuple(specs)))]
 
         host._button_column = _column
         host._enter_setup_from_disconnected = lambda: None
@@ -152,12 +159,12 @@ class TestOneButton:
         _host, call = self._registered()
 
         assert len(call.specs) == 1
-        assert call.specs[0][0] == 'disconnected_setup'
+        assert call.specs[0][0] == "disconnected_setup"
 
     def test_no_simulate_region(self):
         _host, call = self._registered()
 
-        assert all(spec[0] != 'disconnected_simulate' for spec in call.specs)
+        assert all(spec[0] != "disconnected_simulate" for spec in call.specs)
 
     def test_geometry_unchanged(self):
         """width and top must match the pre-change two-button call."""
@@ -170,15 +177,15 @@ class TestOneButton:
         """_button_column stacks downward, so first-of-one == first-of-two."""
         host, _call = self._registered()
 
-        assert host._disconnected_btn_setup == 'rect-0'
+        assert host._disconnected_btn_setup == "rect-0"
 
     def test_sim_attribute_and_region_are_gone_from_the_module(self):
         import gtach.display.manager as manager_module
 
-        source = open(manager_module.__file__, encoding='utf-8').read()
+        source = open(manager_module.__file__, encoding="utf-8").read()
 
-        assert '_disconnected_btn_sim' not in source
-        assert 'disconnected_simulate' not in source
+        assert "_disconnected_btn_sim" not in source
+        assert "disconnected_simulate" not in source
 
     def test_no_control_added_in_the_freed_slot(self):
         """The slot is deliberately empty pending a separate issue."""
@@ -197,11 +204,17 @@ class TestSpinnerPeriod:
         captured = []
 
         import gtach.display.manager as manager_module
-        monkeypatch.setattr(manager_module.time, 'monotonic', lambda: monotonic)
+
+        monkeypatch.setattr(manager_module.time, "monotonic", lambda: monotonic)
         monkeypatch.setattr(
-            manager_module.pygame.draw, 'circle',
-            circle or (lambda surface, colour, pos, radius:
-                       captured.append((colour, pos, radius)))
+            manager_module.pygame.draw,
+            "circle",
+            circle
+            or (
+                lambda surface, colour, pos, radius: captured.append(
+                    (colour, pos, radius)
+                )
+            ),
         )
 
         DisplayManager._draw_reconnect_spinner(host)
@@ -228,14 +241,14 @@ class TestSpinnerPeriod:
 
     def test_raising_callback_falls_back(self, monkeypatch):
         def _boom():
-            raise RuntimeError('interval exploded')
+            raise RuntimeError("interval exploded")
 
         captured = self._draw(_boom, monkeypatch)
 
         assert len(captured) == DisplayManager._SPINNER_DOT_COUNT
 
     def test_non_numeric_period_falls_back(self, monkeypatch):
-        captured = self._draw(lambda: 'five', monkeypatch)
+        captured = self._draw(lambda: "five", monkeypatch)
 
         assert len(captured) == DisplayManager._SPINNER_DOT_COUNT
 
@@ -258,13 +271,14 @@ class TestSpinnerPeriod:
 
     def test_drawing_failure_does_not_propagate(self, monkeypatch, caplog):
         def _boom(surface, colour, pos, radius):
-            raise RuntimeError('circle exploded')
+            raise RuntimeError("circle exploded")
 
-        with caplog.at_level(logging.DEBUG, logger='test.disconnected'):
+        with caplog.at_level(logging.DEBUG, logger="test.disconnected"):
             self._draw(lambda: 5.0, monkeypatch, circle=_boom)
 
-        assert any('Reconnect spinner render error' in r.getMessage()
-                   for r in caplog.records)
+        assert any(
+            "Reconnect spinner render error" in r.getMessage() for r in caplog.records
+        )
 
 
 class TestPhaseIsIndependentOfTransport:
@@ -278,10 +292,11 @@ class TestPhaseIsIndependentOfTransport:
         host = recorder.as_host(_retry_interval_callback=lambda: period)
 
         captured = []
-        monkeypatch.setattr(manager_module.time, 'monotonic', lambda: monotonic)
+        monkeypatch.setattr(manager_module.time, "monotonic", lambda: monotonic)
         monkeypatch.setattr(
-            manager_module.pygame.draw, 'circle',
-            lambda surface, colour, pos, radius: captured.append(colour)
+            manager_module.pygame.draw,
+            "circle",
+            lambda surface, colour, pos, radius: captured.append(colour),
         )
 
         DisplayManager._draw_reconnect_spinner(host)
@@ -314,26 +329,30 @@ class TestPhaseIsIndependentOfTransport:
     def test_source_reads_monotonic_and_no_transport_state(self):
         code = _code_only(DisplayManager._draw_reconnect_spinner)
 
-        assert 'time.monotonic()' in code
+        assert "time.monotonic()" in code
         # The period is the ONLY thing asked of the transport, and it is
         # asked through the interval callback.
         for forbidden in (
-            '_link_connected_callback',
-            '_link_cause_callback',
-            '_transport',
-            'is_connected',
-            'last_failure_cause',
+            "_link_connected_callback",
+            "_link_cause_callback",
+            "_transport",
+            "is_connected",
+            "last_failure_cause",
         ):
             assert forbidden not in code, forbidden
 
     def test_phase_line_derives_only_from_clock_and_period(self):
         code = _code_only(DisplayManager._draw_reconnect_spinner)
 
-        phase_lines = [line.strip() for line in code.splitlines()
-                       if 'phase' in line and '=' in line]
+        phase_lines = [
+            line.strip()
+            for line in code.splitlines()
+            if "phase" in line and "=" in line
+        ]
         assert phase_lines
-        assert any('time.monotonic()' in line and 'period' in line
-                   for line in phase_lines), phase_lines
+        assert any(
+            "time.monotonic()" in line and "period" in line for line in phase_lines
+        ), phase_lines
 
 
 class TestRenderIntegration:
@@ -346,9 +365,9 @@ class TestRenderIntegration:
         return recorder, host
 
     def test_only_setup_is_drawn(self):
-        recorder, _host = self._render(_disconnected_btn_setup='rect-0')
+        recorder, _host = self._render(_disconnected_btn_setup="rect-0")
 
-        assert recorder.buttons == [('rect-0', 'Setup')]
+        assert recorder.buttons == [("rect-0", "Setup")]
 
     def test_cause_line_is_unchanged_position_and_font(self):
         """change-5e7a03c4's line keeps its position and font.
@@ -358,22 +377,23 @@ class TestRenderIntegration:
         _DISCONNECTED_TEXT_COLOUR (issue-<pending>).
         """
         recorder, _host = self._render(
-            _link_cause_callback=lambda: 'no bluetooth controller'
+            _link_cause_callback=lambda: "no bluetooth controller"
         )
 
-        drawn = {text: (pos, font, colour)
-                 for text, pos, font, colour in recorder.texts}
-        assert 'no bluetooth controller' in drawn
-        pos, font, colour = drawn['no bluetooth controller']
+        drawn = {
+            text: (pos, font, colour) for text, pos, font, colour in recorder.texts
+        }
+        assert "no bluetooth controller" in drawn
+        pos, font, colour = drawn["no bluetooth controller"]
         assert pos == (240, 210)
-        assert font == 'font-18'
+        assert font == "font-18"
         assert colour == DisplayManager._DISCONNECTED_TEXT_COLOUR
 
     def test_title_and_message_unchanged(self):
         recorder, _host = self._render()
 
         texts = [text for text, _pos, _font, _colour in recorder.texts]
-        assert texts == ['Disconnected', 'OBD connection not available']
+        assert texts == ["Disconnected", "OBD connection not available"]
 
     def test_title_and_message_use_the_page_text_colour(self):
         recorder, _host = self._render()
@@ -384,24 +404,24 @@ class TestRenderIntegration:
     def test_spinner_is_drawn_after_the_button(self):
         order = []
         recorder = _Recorder()
-        host = recorder.as_host(_disconnected_btn_setup='rect-0')
-        host._draw_button = lambda *a: order.append('button')
-        host._draw_reconnect_spinner = lambda: order.append('spinner')
+        host = recorder.as_host(_disconnected_btn_setup="rect-0")
+        host._draw_button = lambda *a: order.append("button")
+        host._draw_reconnect_spinner = lambda: order.append("spinner")
 
         DisplayManager._render_disconnected(host)
 
-        assert order == ['button', 'spinner']
+        assert order == ["button", "spinner"]
 
     def test_status_indicator_is_drawn(self):
         """issue-<pending>: previously unreachable for this screen."""
         order = []
         recorder = _Recorder()
         host = recorder.as_host()
-        host._draw_status_indicator = lambda: order.append('status')
+        host._draw_status_indicator = lambda: order.append("status")
 
         DisplayManager._render_disconnected(host)
 
-        assert 'status' in order
+        assert "status" in order
 
 
 class TestResetButtonRegistration:
@@ -411,16 +431,14 @@ class TestResetButtonRegistration:
         calls = []
 
         host = types.SimpleNamespace()
-        host.logger = logging.getLogger('test.disconnected')
+        host.logger = logging.getLogger("test.disconnected")
         host._reset_callback = callback
         host._enter_setup_from_disconnected = lambda: None
 
         def _column(specs, width, top, **kwargs):
             specs = list(specs)
-            calls.append(types.SimpleNamespace(
-                specs=specs, width=width, top=top
-            ))
-            return ['rect-%d' % i for i in range(len(specs))]
+            calls.append(types.SimpleNamespace(specs=specs, width=width, top=top))
+            return ["rect-%d" % i for i in range(len(specs))]
 
         host._button_column = _column
         DisplayManager._register_disconnected_regions(host)
@@ -429,16 +447,17 @@ class TestResetButtonRegistration:
     def test_callback_unset_registers_only_setup(self):
         host, call = self._registered(None)
 
-        assert [s[0] for s in call.specs] == ['disconnected_setup']
+        assert [s[0] for s in call.specs] == ["disconnected_setup"]
         assert host._disconnected_btn_reset is None
 
     def test_callback_set_registers_both(self):
         host, call = self._registered(lambda: None)
 
         assert [s[0] for s in call.specs] == [
-            'disconnected_setup', 'disconnected_reset'
+            "disconnected_setup",
+            "disconnected_reset",
         ]
-        assert host._disconnected_btn_reset == 'rect-1'
+        assert host._disconnected_btn_reset == "rect-1"
 
     def test_setup_rect_identical_either_way(self):
         without, call_without = self._registered(None)
@@ -463,7 +482,7 @@ class TestResetButtonRendering:
     def _render(self, reset_rect):
         recorder = _Recorder()
         host = recorder.as_host(
-            _disconnected_btn_setup='rect-0',
+            _disconnected_btn_setup="rect-0",
             _disconnected_btn_reset=reset_rect,
         )
 
@@ -471,12 +490,10 @@ class TestResetButtonRendering:
         return recorder.buttons
 
     def test_not_drawn_when_rect_is_none(self):
-        assert self._render(None) == [('rect-0', 'Setup')]
+        assert self._render(None) == [("rect-0", "Setup")]
 
     def test_drawn_when_rect_exists(self):
-        assert self._render('rect-1') == [
-            ('rect-0', 'Setup'), ('rect-1', 'Reset')
-        ]
+        assert self._render("rect-1") == [("rect-0", "Setup"), ("rect-1", "Reset")]
 
     def test_label_fits_the_button_width(self):
         """Measured, not assumed: no abbreviation is needed."""
@@ -486,11 +503,12 @@ class TestResetButtonRendering:
         pygame.font.init()
         try:
             from gtach.display.typography import get_font_manager
+
             font = get_font_manager().get_font(28)
         except Exception:
             font = pygame.font.Font(None, 28)
 
-        assert font.size('Reset')[0] <= 240
+        assert font.size("Reset")[0] <= 240
 
 
 class TestDisconnectedCause:
@@ -508,11 +526,11 @@ class TestDisconnectedCause:
     def test_transport_cause_is_returned(self):
         transport = types.SimpleNamespace(
             is_connected=lambda: False,
-            last_failure_cause='adapter stopped responding',
+            last_failure_cause="adapter stopped responding",
         )
         host = types.SimpleNamespace(_transport=transport)
 
-        assert self._cause(host) == 'adapter stopped responding'
+        assert self._cause(host) == "adapter stopped responding"
 
     def test_no_reset_status_merge_remains(self):
         import inspect
@@ -520,5 +538,5 @@ class TestDisconnectedCause:
         from gtach.app import GTachApplication
 
         source = _code_only(GTachApplication._disconnected_cause)
-        assert 'reset_status' not in source
-        assert 'reset_lock' not in source
+        assert "reset_status" not in source
+        assert "reset_lock" not in source

@@ -22,10 +22,10 @@ import ast
 import pathlib
 from typing import List
 
-SRC_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'src' / 'gtach'
+SRC_ROOT = pathlib.Path(__file__).resolve().parents[1] / "src" / "gtach"
 
-_BROAD_NAMES = {'Exception', 'BaseException'}
-_LOG_METHODS = {'error', 'critical'}
+_BROAD_NAMES = {"Exception", "BaseException"}
+_LOG_METHODS = {"error", "critical"}
 
 # Calls matching the rule that are not logger calls, as 'path:line'
 # relative to src/gtach. Each entry must say what the call is.
@@ -40,12 +40,13 @@ def _is_broad(handler: ast.ExceptHandler) -> bool:
     if isinstance(exc_type, ast.Name):
         return exc_type.id in _BROAD_NAMES
     if isinstance(exc_type, ast.Tuple):
-        return any(isinstance(e, ast.Name) and e.id in _BROAD_NAMES
-                   for e in exc_type.elts)
+        return any(
+            isinstance(e, ast.Name) and e.id in _BROAD_NAMES for e in exc_type.elts
+        )
     return False
 
 
-def find_violations(source: str, filename: str = '<string>') -> List[str]:
+def find_violations(source: str, filename: str = "<string>") -> List[str]:
     """Return 'filename:line' for each error/critical call lacking exc_info.
 
     Args:
@@ -67,64 +68,64 @@ def find_violations(source: str, filename: str = '<string>') -> List[str]:
                 func = node.func
                 if not (isinstance(func, ast.Attribute) and func.attr in _LOG_METHODS):
                     continue
-                if any(kw.arg == 'exc_info' for kw in node.keywords):
+                if any(kw.arg == "exc_info" for kw in node.keywords):
                     continue
-                found.add((node.lineno, f'{filename}:{node.lineno}'))
+                found.add((node.lineno, f"{filename}:{node.lineno}"))
     return [label for _line, label in sorted(found)]
 
 
 def _source_files():
-    return sorted(SRC_ROOT.rglob('*.py'))
+    return sorted(SRC_ROOT.rglob("*.py"))
 
 
 def test_no_broad_handler_logs_an_error_without_a_traceback():
     violations = []
     for path in _source_files():
         relative = path.relative_to(SRC_ROOT).as_posix()
-        for label in find_violations(path.read_text(encoding='utf-8'), relative):
+        for label in find_violations(path.read_text(encoding="utf-8"), relative):
             if label not in NON_LOGGER_ALLOWLIST:
                 violations.append(label)
 
     assert violations == [], (
-        f'{len(violations)} error/critical call(s) in broad handlers lack '
-        f'exc_info:\n' + '\n'.join(violations)
+        f"{len(violations)} error/critical call(s) in broad handlers lack "
+        f"exc_info:\n" + "\n".join(violations)
     )
 
 
 def test_checker_detects_a_synthetic_violation():
     source = (
-        'import logging\n'
-        'logger = logging.getLogger(__name__)\n'
-        'try:\n'
-        '    pass\n'
-        'except Exception as e:\n'
+        "import logging\n"
+        "logger = logging.getLogger(__name__)\n"
+        "try:\n"
+        "    pass\n"
+        "except Exception as e:\n"
         '    logger.error(f"failed: {e}")\n'
-        'try:\n'
-        '    pass\n'
-        'except ValueError:\n'
+        "try:\n"
+        "    pass\n"
+        "except ValueError:\n"
         '    logger.error("narrow handlers are not checked")\n'
-        'try:\n'
-        '    pass\n'
-        'except Exception:\n'
+        "try:\n"
+        "    pass\n"
+        "except Exception:\n"
         '    logger.error("explicit choice", exc_info=False)\n'
     )
 
-    assert find_violations(source, 'synthetic.py') == ['synthetic.py:6']
+    assert find_violations(source, "synthetic.py") == ["synthetic.py:6"]
 
 
 def test_checker_covers_bare_tuple_and_nested_handlers():
     source = (
-        'try:\n'
-        '    pass\n'
-        'except:\n'
+        "try:\n"
+        "    pass\n"
+        "except:\n"
         '    log.critical("bare")\n'
-        'try:\n'
-        '    pass\n'
-        'except (OSError, Exception):\n'
-        '    try:\n'
-        '        pass\n'
-        '    except BaseException:\n'
+        "try:\n"
+        "    pass\n"
+        "except (OSError, Exception):\n"
+        "    try:\n"
+        "        pass\n"
+        "    except BaseException:\n"
         '        log.error("nested")\n'
     )
 
-    assert find_violations(source, 's.py') == ['s.py:4', 's.py:11']
+    assert find_violations(source, "s.py") == ["s.py:4", "s.py:11"]

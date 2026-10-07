@@ -51,9 +51,9 @@ class TestHeartbeatHook:
     """heartbeat is optional, invoked per iteration, and fully guarded."""
 
     def test_signature_defaults_to_none(self):
-        parameter = inspect.signature(
-            OBDTransport.reconnect_indefinitely
-        ).parameters['heartbeat']
+        parameter = inspect.signature(OBDTransport.reconnect_indefinitely).parameters[
+            "heartbeat"
+        ]
         assert parameter.default is None
 
     def test_invoked_on_both_iterations(self):
@@ -78,7 +78,7 @@ class TestHeartbeatHook:
 
         def _boom():
             calls.append(1)
-            raise RuntimeError('heartbeat exploded')
+            raise RuntimeError("heartbeat exploded")
 
         transport.reconnect_indefinitely(retry_delay=0.01, heartbeat=_boom)
 
@@ -97,7 +97,9 @@ class TestHeartbeatHook:
         transport._shutdown.set()
         beats = []
 
-        transport.reconnect_indefinitely(retry_delay=0.01, heartbeat=lambda: beats.append(1))
+        transport.reconnect_indefinitely(
+            retry_delay=0.01, heartbeat=lambda: beats.append(1)
+        )
 
         assert transport.connect_calls == 0
         assert beats == []

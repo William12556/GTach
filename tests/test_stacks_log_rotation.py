@@ -34,10 +34,11 @@ import pytest
 
 import gtach.main  # noqa: F401  — ensures the module is in sys.modules
 
-gtach_main = sys.modules['gtach.main']
+gtach_main = sys.modules["gtach.main"]
 
-HEADER_RE = re.compile(r'^=== gtach \S+ pid (\d+) armed '
-                       r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2} ===$')
+HEADER_RE = re.compile(
+    r"^=== gtach \S+ pid (\d+) armed " r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2} ===$"
+)
 
 
 class _FakeFaulthandler:
@@ -47,27 +48,27 @@ class _FakeFaulthandler:
         self.calls = []
 
     def enable(self, file=None):
-        self.calls.append('enable')
+        self.calls.append("enable")
 
     def disable(self):
-        self.calls.append('disable')
+        self.calls.append("disable")
 
     def dump_traceback_later(self, timeout, repeat=False, file=None):
-        self.calls.append('dump_traceback_later')
+        self.calls.append("dump_traceback_later")
 
     def cancel_dump_traceback_later(self):
-        self.calls.append('cancel_dump_traceback_later')
+        self.calls.append("cancel_dump_traceback_later")
 
 
 @pytest.fixture
 def armed(tmp_path, monkeypatch):
     """A disarmed, unrotated module pointed at a temporary log path."""
     fake = _FakeFaulthandler()
-    monkeypatch.setattr(gtach_main, 'faulthandler', fake)
-    monkeypatch.setattr(gtach_main, '_stacks_file', None)
-    monkeypatch.setattr(gtach_main, '_stacks_rotated', False)
-    path = tmp_path / 'stacks.log'
-    monkeypatch.setattr(gtach_main, '_STACKS_LOG', str(path))
+    monkeypatch.setattr(gtach_main, "faulthandler", fake)
+    monkeypatch.setattr(gtach_main, "_stacks_file", None)
+    monkeypatch.setattr(gtach_main, "_stacks_rotated", False)
+    path = tmp_path / "stacks.log"
+    monkeypatch.setattr(gtach_main, "_STACKS_LOG", str(path))
 
     yield types.SimpleNamespace(fake=fake, path=path, tmp=tmp_path)
 
@@ -84,12 +85,13 @@ def armed(tmp_path, monkeypatch):
 
 def _generation(env, n):
     """Path of backup generation n."""
-    return env.tmp / f'stacks.log.{n}'
+    return env.tmp / f"stacks.log.{n}"
 
 
 def _headers(path):
-    return [line for line in path.read_text().splitlines()
-            if line.startswith('=== gtach ')]
+    return [
+        line for line in path.read_text().splitlines() if line.startswith("=== gtach ")
+    ]
 
 
 class TestHeader:
@@ -116,32 +118,31 @@ class TestHeader:
         real_header = gtach_main._stacks_header
 
         def _tracking_header():
-            order.append('header')
+            order.append("header")
             return real_header()
 
-        monkeypatch.setattr(gtach_main, '_stacks_header', _tracking_header)
+        monkeypatch.setattr(gtach_main, "_stacks_header", _tracking_header)
         monkeypatch.setattr(
-            armed.fake, 'dump_traceback_later',
-            lambda *a, **k: order.append('arm')
+            armed.fake, "dump_traceback_later", lambda *a, **k: order.append("arm")
         )
 
         gtach_main.enable_stack_dumps()
 
-        assert order == ['header', 'arm']
+        assert order == ["header", "arm"]
 
     def test_version_failure_still_emits_a_header(self, armed, monkeypatch):
         import importlib.metadata
 
         def _boom(_name):
-            raise importlib.metadata.PackageNotFoundError('gtach')
+            raise importlib.metadata.PackageNotFoundError("gtach")
 
-        monkeypatch.setattr(importlib.metadata, 'version', _boom)
+        monkeypatch.setattr(importlib.metadata, "version", _boom)
 
         gtach_main.enable_stack_dumps()
 
         first_line = armed.path.read_text().splitlines()[0]
         assert HEADER_RE.match(first_line) is not None
-        assert 'unknown' in first_line
+        assert "unknown" in first_line
 
     def test_write_failure_does_not_prevent_arming(self, armed, monkeypatch, capsys):
         real_open = open
@@ -150,20 +151,19 @@ class TestHeader:
             handle = real_open(*args, **kwargs)
 
             def _boom(_text):
-                raise OSError('write exploded')
+                raise OSError("write exploded")
 
             handle.write = _boom
             return handle
 
         # A module global shadows the builtin for lookups inside the
         # module, so this reaches enable_stack_dumps's open() alone.
-        monkeypatch.setattr(gtach_main, 'open', _open_with_failing_write,
-                            raising=False)
+        monkeypatch.setattr(gtach_main, "open", _open_with_failing_write, raising=False)
 
         assert gtach_main.enable_stack_dumps() is True
 
-        assert armed.fake.calls == ['enable', 'dump_traceback_later']
-        assert 'WARNING' in capsys.readouterr().err
+        assert armed.fake.calls == ["enable", "dump_traceback_later"]
+        assert "WARNING" in capsys.readouterr().err
 
     def test_second_arm_without_disable_writes_one_header(self, armed):
         assert gtach_main.enable_stack_dumps() is True
@@ -186,22 +186,22 @@ class TestRotation:
     """Once per process, never on re-arm, generations bounded at three."""
 
     def test_pre_existing_content_moves_to_generation_one(self, armed):
-        armed.path.write_text('previous run dumps\n')
+        armed.path.write_text("previous run dumps\n")
 
         gtach_main.enable_stack_dumps()
 
-        assert _generation(armed, 1).read_text() == 'previous run dumps\n'
-        assert armed.path.read_text().startswith('=== gtach ')
+        assert _generation(armed, 1).read_text() == "previous run dumps\n"
+        assert armed.path.read_text().startswith("=== gtach ")
 
     def test_empty_file_is_not_rotated(self, armed):
-        armed.path.write_text('')
+        armed.path.write_text("")
 
         gtach_main.enable_stack_dumps()
 
         assert not _generation(armed, 1).exists()
 
     def test_rearm_does_not_rotate_again(self, armed):
-        armed.path.write_text('previous run dumps\n')
+        armed.path.write_text("previous run dumps\n")
 
         gtach_main.enable_stack_dumps()
         before = _generation(armed, 1).read_bytes()
@@ -219,7 +219,7 @@ class TestRotation:
             gtach_main._stacks_rotated = False
             gtach_main._stacks_file = None
             gtach_main.enable_stack_dumps()
-            gtach_main._stacks_file.write(f'run-{run}\n')
+            gtach_main._stacks_file.write(f"run-{run}\n")
             gtach_main.disable_stack_dumps()
 
         assert _generation(armed, 1).exists()
@@ -228,57 +228,57 @@ class TestRotation:
         assert not _generation(armed, 4).exists()
 
         # Newest backup is the run before last; run-0 has aged out.
-        assert 'run-2' in _generation(armed, 1).read_text()
-        assert 'run-1' in _generation(armed, 2).read_text()
-        assert 'run-0' in _generation(armed, 3).read_text()
-        assert 'run-3' in armed.path.read_text()
+        assert "run-2" in _generation(armed, 1).read_text()
+        assert "run-1" in _generation(armed, 2).read_text()
+        assert "run-0" in _generation(armed, 3).read_text()
+        assert "run-3" in armed.path.read_text()
 
     def test_generations_shift_outward_by_exactly_one(self, armed):
         """Descending order; no generation overwrites its neighbour."""
-        armed.path.write_text('live\n')
-        _generation(armed, 1).write_text('gen1\n')
-        _generation(armed, 2).write_text('gen2\n')
+        armed.path.write_text("live\n")
+        _generation(armed, 1).write_text("gen1\n")
+        _generation(armed, 2).write_text("gen2\n")
 
         gtach_main._rotate_stacks_log()
 
         assert not armed.path.exists()
-        assert _generation(armed, 1).read_text() == 'live\n'
-        assert _generation(armed, 2).read_text() == 'gen1\n'
-        assert _generation(armed, 3).read_text() == 'gen2\n'
+        assert _generation(armed, 1).read_text() == "live\n"
+        assert _generation(armed, 2).read_text() == "gen1\n"
+        assert _generation(armed, 3).read_text() == "gen2\n"
         assert not _generation(armed, 4).exists()
 
     def test_oldest_generation_is_discarded_without_raising(self, armed):
         """os.replace must overwrite an existing destination."""
-        armed.path.write_text('live\n')
+        armed.path.write_text("live\n")
         for n in (1, 2, 3):
-            _generation(armed, n).write_text(f'gen{n}\n')
+            _generation(armed, n).write_text(f"gen{n}\n")
 
         gtach_main._rotate_stacks_log()
 
-        assert _generation(armed, 3).read_text() == 'gen2\n'
+        assert _generation(armed, 3).read_text() == "gen2\n"
         assert not _generation(armed, 4).exists()
 
     def test_rotation_failure_still_arms(self, armed, monkeypatch, capsys):
         def _boom():
-            raise OSError('rotation exploded')
+            raise OSError("rotation exploded")
 
-        monkeypatch.setattr(gtach_main, '_rotate_stacks_log', _boom)
+        monkeypatch.setattr(gtach_main, "_rotate_stacks_log", _boom)
 
         assert gtach_main.enable_stack_dumps() is True
 
         assert gtach_main._stacks_rotated is True
-        assert armed.fake.calls == ['enable', 'dump_traceback_later']
-        assert armed.path.read_text().startswith('=== gtach ')
-        assert 'WARNING' in capsys.readouterr().err
+        assert armed.fake.calls == ["enable", "dump_traceback_later"]
+        assert armed.path.read_text().startswith("=== gtach ")
+        assert "WARNING" in capsys.readouterr().err
 
     def test_rotation_failure_is_not_retried(self, armed, monkeypatch):
         attempts = []
 
         def _boom():
             attempts.append(1)
-            raise OSError('rotation exploded')
+            raise OSError("rotation exploded")
 
-        monkeypatch.setattr(gtach_main, '_rotate_stacks_log', _boom)
+        monkeypatch.setattr(gtach_main, "_rotate_stacks_log", _boom)
 
         gtach_main.enable_stack_dumps()
         gtach_main.disable_stack_dumps()
@@ -294,20 +294,18 @@ class TestNoPythonSideTimer:
         import inspect
 
         source = inspect.getsource(gtach_main)
-        code = '\n'.join(
-            line for line in source.splitlines()
-            if not line.lstrip().startswith('#')
+        code = "\n".join(
+            line for line in source.splitlines() if not line.lstrip().startswith("#")
         )
-        assert 'threading' not in code
-        assert 'time.sleep' not in code
+        assert "threading" not in code
+        assert "time.sleep" not in code
 
     def test_dump_interval_unchanged(self, armed, monkeypatch):
         recorded = []
         monkeypatch.setattr(
-            armed.fake, 'dump_traceback_later',
-            lambda timeout, repeat=False, file=None: recorded.append(
-                (timeout, repeat)
-            )
+            armed.fake,
+            "dump_traceback_later",
+            lambda timeout, repeat=False, file=None: recorded.append((timeout, repeat)),
         )
 
         gtach_main.enable_stack_dumps()
@@ -315,7 +313,7 @@ class TestNoPythonSideTimer:
         assert recorded == [(15, True)]
 
     def test_stacks_log_path_and_backup_count(self):
-        assert gtach_main._STACKS_LOG == '/opt/gtach/stacks.log'
+        assert gtach_main._STACKS_LOG == "/opt/gtach/stacks.log"
         assert gtach_main._STACKS_BACKUPS == 3
 
     def test_rotation_flag_initialises_false(self):
@@ -323,4 +321,4 @@ class TestNoPythonSideTimer:
         import inspect
 
         source = inspect.getsource(gtach_main)
-        assert '\n_stacks_rotated = False\n' in source
+        assert "\n_stacks_rotated = False\n" in source

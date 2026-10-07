@@ -35,6 +35,7 @@ def get_installed_version() -> Optional[Tuple[int, ...]]:
     """Installed wheel version as an int tuple, or None."""
     try:
         from importlib.metadata import version as _pkg_version
+
         return _parse_version_str(_pkg_version("gtach"))
     except Exception:
         return None

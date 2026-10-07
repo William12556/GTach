@@ -59,7 +59,7 @@ class _StubTransport(OBDTransport):
         self.connect_calls = 0
 
     def _describe(self) -> str:
-        return 'stub-peer'
+        return "stub-peer"
 
     def _open(self):
         self.connect_calls += 1
@@ -76,7 +76,7 @@ class _StubTransport(OBDTransport):
 
     def _read(self, handle, size):
         if not self._reads:
-            raise _StubTimeout('no script left')
+            raise _StubTimeout("no script left")
         item = self._reads.pop(0)
         if isinstance(item, Exception):
             raise item
@@ -96,25 +96,31 @@ def _executable_lines(func):
 
     source = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source).body[0]
-    if (tree.body and isinstance(tree.body[0], ast.Expr)
-            and isinstance(tree.body[0].value, ast.Constant)
-            and isinstance(tree.body[0].value.value, str)):
+    if (
+        tree.body
+        and isinstance(tree.body[0], ast.Expr)
+        and isinstance(tree.body[0].value, ast.Constant)
+        and isinstance(tree.body[0].value.value, str)
+    ):
         body = tree.body[1:]
     else:
         body = tree.body
 
     lines = source.splitlines()
     start = body[0].lineno - 1
-    return [line for line in lines[start:]
-            if line.strip() and not line.lstrip().startswith('#')]
+    return [
+        line
+        for line in lines[start:]
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
 
 
 def _timeouts(n):
-    return [_StubTimeout('silent') for _ in range(n)]
+    return [_StubTimeout("silent") for _ in range(n)]
 
 
 def _ok():
-    return b'41 0C 1A F8>'
+    return b"41 0C 1A F8>"
 
 
 @pytest.fixture
@@ -133,13 +139,13 @@ class TestTimeoutThreshold:
 
     def test_four_timeouts_then_success_does_not_drop(self, transport, monkeypatch):
         drops = []
-        monkeypatch.setattr(transport, 'drop_link', lambda: drops.append(1))
+        monkeypatch.setattr(transport, "drop_link", lambda: drops.append(1))
         transport._reads = _timeouts(4) + [_ok()]
         transport.connect()
 
         for _ in range(4):
-            assert transport.send_command('010C') is None
-        assert transport.send_command('010C') is not None
+            assert transport.send_command("010C") is None
+        assert transport.send_command("010C") is not None
 
         assert drops == []
         assert transport._consecutive_timeouts == 0
@@ -149,35 +155,37 @@ class TestTimeoutThreshold:
         transport.connect()
         assert transport.is_connected() is True
 
-        with caplog.at_level('ERROR'):
+        with caplog.at_level("ERROR"):
             for _ in range(5):
-                assert transport.send_command('010C') is None
+                assert transport.send_command("010C") is None
 
         assert transport.is_connected() is False
-        assert any('dropping link' in r.message or 'dropping link' in r.getMessage()
-                   for r in caplog.records)
+        assert any(
+            "dropping link" in r.message or "dropping link" in r.getMessage()
+            for r in caplog.records
+        )
         # The load-bearing assertion: reconnection must remain possible.
         assert transport._shutdown.is_set() is False
 
     def test_three_one_three_does_not_drop(self, transport, monkeypatch):
         drops = []
-        monkeypatch.setattr(transport, 'drop_link', lambda: drops.append(1))
+        monkeypatch.setattr(transport, "drop_link", lambda: drops.append(1))
         transport._reads = _timeouts(3) + [_ok()] + _timeouts(3)
         transport.connect()
 
         for _ in range(7):
-            transport.send_command('010C')
+            transport.send_command("010C")
 
         assert drops == []
 
     def test_six_timeouts_drop_once_not_twice(self, transport, monkeypatch):
         drops = []
-        monkeypatch.setattr(transport, 'drop_link', lambda: drops.append(1))
+        monkeypatch.setattr(transport, "drop_link", lambda: drops.append(1))
         transport._reads = _timeouts(6)
         transport.connect()
 
         for _ in range(6):
-            transport.send_command('010C')
+            transport.send_command("010C")
 
         assert drops == [1]
         assert transport._consecutive_timeouts == 1
@@ -187,18 +195,19 @@ class TestTimeoutThreshold:
         import inspect
 
         source = inspect.getsource(OBDTransport.send_command)
-        assert (source.index('except self._TIMEOUT_ERRORS')
-                < source.index('except self._IO_ERRORS'))
+        assert source.index("except self._TIMEOUT_ERRORS") < source.index(
+            "except self._IO_ERRORS"
+        )
 
     def test_success_resets_the_counter(self, transport):
         transport._reads = _timeouts(2) + [_ok()]
         transport.connect()
 
-        transport.send_command('010C')
-        transport.send_command('010C')
+        transport.send_command("010C")
+        transport.send_command("010C")
         assert transport._consecutive_timeouts == 2
 
-        transport.send_command('010C')
+        transport.send_command("010C")
         assert transport._consecutive_timeouts == 0
 
 
@@ -231,9 +240,9 @@ class TestDropLinkVersusDisconnect:
 
     def test_drop_link_source_never_touches_shutdown(self):
         """The docstring names _shutdown; the body must not touch it."""
-        code = '\n'.join(_executable_lines(OBDTransport.drop_link))
+        code = "\n".join(_executable_lines(OBDTransport.drop_link))
 
-        assert '_shutdown' not in code
+        assert "_shutdown" not in code
 
 
 class TestSupervisingLoop:
@@ -242,7 +251,8 @@ class TestSupervisingLoop:
     def _run(self, transport, **kwargs):
         thread = threading.Thread(
             target=transport.reconnect_indefinitely,
-            kwargs=kwargs, daemon=True,
+            kwargs=kwargs,
+            daemon=True,
         )
         thread.start()
         return thread
@@ -256,7 +266,7 @@ class TestSupervisingLoop:
         assert transport.is_connected() is True
 
         thread.join(timeout=0.3)
-        assert thread.is_alive() is True, 'returned on a successful connect'
+        assert thread.is_alive() is True, "returned on a successful connect"
 
         transport.disconnect()
         thread.join(timeout=JOIN_TIMEOUT)
@@ -276,7 +286,7 @@ class TestSupervisingLoop:
             time.sleep(0.01)
         assert transport.connect_calls >= 2
 
-        assert thread.is_alive() is True, 'returned between the two connects'
+        assert thread.is_alive() is True, "returned between the two connects"
 
         transport.disconnect()
         thread.join(timeout=JOIN_TIMEOUT)
@@ -299,7 +309,7 @@ class TestSupervisingLoop:
 
     def test_shutdown_while_retrying_returns_promptly(self, monkeypatch):
         stub = _StubTransport()
-        monkeypatch.setattr(stub, '_open', lambda: None)
+        monkeypatch.setattr(stub, "_open", lambda: None)
         thread = self._run(stub, retry_delay=30.0)
 
         time.sleep(0.1)
@@ -316,31 +326,28 @@ class TestSupervisingLoop:
         """Every return in the loop must be guarded by a _shutdown test."""
         lines = _executable_lines(OBDTransport.reconnect_indefinitely)
 
-        returns = [i for i, line in enumerate(lines)
-                   if line.strip() == 'return']
+        returns = [i for i, line in enumerate(lines) if line.strip() == "return"]
         # Two: the heartbeat helper's guard on `heartbeat is None`, and
         # the loop's own exit.
         assert len(returns) == 2, [lines[i] for i in returns]
 
         guard = lines[returns[-1] - 1].strip()
-        assert guard == 'if self._shutdown.is_set():', guard
+        assert guard == "if self._shutdown.is_set():", guard
 
     def test_every_wait_is_on_shutdown(self):
-        code = '\n'.join(_executable_lines(OBDTransport.reconnect_indefinitely))
+        code = "\n".join(_executable_lines(OBDTransport.reconnect_indefinitely))
 
-        assert 'time.sleep' not in code
+        assert "time.sleep" not in code
         # Supervising poll, post-drop delay, failed-connect delay.
-        assert code.count('self._shutdown.wait(') == 3
+        assert code.count("self._shutdown.wait(") == 3
 
     def test_signature_is_unchanged(self):
         import inspect
 
-        params = inspect.signature(
-            OBDTransport.reconnect_indefinitely
-        ).parameters
-        assert list(params) == ['self', 'retry_delay', 'heartbeat']
-        assert params['retry_delay'].default == 5.0
-        assert params['heartbeat'].default is None
+        params = inspect.signature(OBDTransport.reconnect_indefinitely).parameters
+        assert list(params) == ["self", "retry_delay", "heartbeat"]
+        assert params["retry_delay"].default == 5.0
+        assert params["heartbeat"].default is None
 
 
 class TestSupervisingLoopHeartbeat:
@@ -359,12 +366,14 @@ class TestSupervisingLoopHeartbeat:
             result = outcomes.pop(0) if outcomes else object()
             return result
 
-        monkeypatch.setattr(stub, '_open', _open)
+        monkeypatch.setattr(stub, "_open", _open)
 
         thread = threading.Thread(
             target=stub.reconnect_indefinitely,
-            kwargs={'retry_delay': 0.05,
-                    'heartbeat': lambda: beats.append(stub.is_connected())},
+            kwargs={
+                "retry_delay": 0.05,
+                "heartbeat": lambda: beats.append(stub.is_connected()),
+            },
             daemon=True,
         )
         thread.start()
@@ -376,19 +385,19 @@ class TestSupervisingLoopHeartbeat:
         stub.disconnect()
         thread.join(timeout=JOIN_TIMEOUT)
 
-        assert any(b is False for b in beats), 'no beat while retrying'
-        assert any(b is True for b in beats), 'no beat while connected'
+        assert any(b is False for b in beats), "no beat while retrying"
+        assert any(b is True for b in beats), "no beat while connected"
 
     def test_raising_heartbeat_does_not_break_the_loop(self, transport):
         calls = []
 
         def _boom():
             calls.append(1)
-            raise RuntimeError('heartbeat exploded')
+            raise RuntimeError("heartbeat exploded")
 
         thread = threading.Thread(
             target=transport.reconnect_indefinitely,
-            kwargs={'retry_delay': 0.05, 'heartbeat': _boom},
+            kwargs={"retry_delay": 0.05, "heartbeat": _boom},
             daemon=True,
         )
         thread.start()
@@ -407,7 +416,8 @@ class TestSupervisingLoopHeartbeat:
     def test_no_heartbeat_argument(self, transport):
         thread = threading.Thread(
             target=transport.reconnect_indefinitely,
-            kwargs={'retry_delay': 0.05}, daemon=True,
+            kwargs={"retry_delay": 0.05},
+            daemon=True,
         )
         thread.start()
 
@@ -433,11 +443,12 @@ class TestNoBusySpin:
             threading.Timer(0.0, stub.drop_link).start()
             return object()
 
-        monkeypatch.setattr(stub, '_open', _open)
+        monkeypatch.setattr(stub, "_open", _open)
 
         thread = threading.Thread(
             target=stub.reconnect_indefinitely,
-            kwargs={'retry_delay': 0.2}, daemon=True,
+            kwargs={"retry_delay": 0.2},
+            daemon=True,
         )
         thread.start()
 

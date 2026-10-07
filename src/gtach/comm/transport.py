@@ -8,19 +8,18 @@ the appropriate transport based on platform and arguments.
 Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
 """
 
-from abc import ABC
-from enum import Enum, auto
 import argparse
 import errno as _errno
 import logging
 import os
 import threading
 import time
+from abc import ABC
+from enum import Enum, auto
 from typing import Callable, Optional
 
 from ..utils.platform import PlatformType
 from .device_store import get_device_store
-
 
 # The transport name set and its classifications, defined
 # once. Previously maintained in four places — main.py's
@@ -28,16 +27,16 @@ from .device_store import get_device_store
 # test and select_transport below — with an omission in any
 # one of them changing behaviour silently rather than
 # raising (core review §5.8).
-TRANSPORT_NAMES = ('tcp', 'serial', 'rfcomm', 'simtcp', 'simbt')
+TRANSPORT_NAMES = ("tcp", "serial", "rfcomm", "simtcp", "simbt")
 
 # Forced transports skip setup mode. simtcp is forced while
 # simbt routes through setup: that asymmetry is deliberate
 # and serves the pairing-simulation design. Do not
 # 'correct' it.
-TRANSPORT_FORCED = ('tcp', 'serial', 'simtcp')
+TRANSPORT_FORCED = ("tcp", "serial", "simtcp")
 
 # Fast transports poll at 0.02 s rather than 0.05 s.
-TRANSPORT_FAST = ('simbt', 'simtcp', 'tcp')
+TRANSPORT_FAST = ("simbt", "simtcp", "tcp")
 
 
 # errno arrives at connect()'s first except handler and was discarded
@@ -50,13 +49,13 @@ TRANSPORT_FAST = ('simbt', 'simtcp', 'tcp')
 # display without truncation. A test asserts that bound over the whole
 # mapping; keep any addition within it.
 _CONNECT_FAULT_CAUSES = {
-    _errno.EBUSY: 'bluetooth link busy - may need reset',
-    _errno.ETIMEDOUT: 'connection timed out',
-    _errno.EHOSTDOWN: 'adapter not reachable',
-    _errno.EHOSTUNREACH: 'adapter not reachable',
-    _errno.ENODEV: 'no bluetooth controller',
-    _errno.ENETDOWN: 'bluetooth controller down',
-    _errno.ECONNREFUSED: 'connection refused by adapter',
+    _errno.EBUSY: "bluetooth link busy - may need reset",
+    _errno.ETIMEDOUT: "connection timed out",
+    _errno.EHOSTDOWN: "adapter not reachable",
+    _errno.EHOSTUNREACH: "adapter not reachable",
+    _errno.ENODEV: "no bluetooth controller",
+    _errno.ENETDOWN: "bluetooth controller down",
+    _errno.ECONNREFUSED: "connection refused by adapter",
 }
 
 # Recorded when a link is torn down for sustained silence rather than
@@ -64,21 +63,21 @@ _CONNECT_FAULT_CAUSES = {
 # explanation in exactly the mid-session case change-9c2f41d8 exists to
 # handle, because only connect() ever set a cause (issue-5e7a03c4
 # iteration 2).
-_SILENT_LINK_CAUSE = 'adapter stopped responding'
+_SILENT_LINK_CAUSE = "adapter stopped responding"
 
 # Recorded when the peer closes the link (EOF read) (issue-907de6de).
-_PEER_CLOSED_CAUSE = 'adapter closed the connection'
+_PEER_CLOSED_CAUSE = "adapter closed the connection"
 
 # Reported after sustained consecutive connect failures with a
 # controller present. No single errno identifies a wedged controller;
 # persistence is the only signal available, and it is second-order —
 # which is why this is an escalation rather than a mapping entry.
-_WEDGED_LINK_CAUSE = 'bluetooth wedged - reset required'
+_WEDGED_LINK_CAUSE = "bluetooth wedged - reset required"
 
 # Sysfs path listing Bluetooth controllers. PlatformDetector already
 # probes this same path (platform.py:706), so reading it here is a
 # precedented pattern rather than a new dependency.
-_BLUETOOTH_SYSFS = '/sys/class/bluetooth'
+_BLUETOOTH_SYSFS = "/sys/class/bluetooth"
 
 
 def _bluetooth_adapter_present() -> bool:
@@ -105,37 +104,41 @@ def _bluetooth_adapter_present() -> bool:
 
 class TransportState(Enum):
     """Enumeration of transport connection states."""
-    
+
     DISCONNECTED = auto()
     """Transport is disconnected."""
-    
+
     CONNECTING = auto()
     """Transport is in the process of connecting."""
-    
+
     CONNECTED = auto()
     """Transport is connected and ready for communication."""
-    
+
     ERROR = auto()
     """Transport encountered an error."""
 
 
 class TransportError(Exception):
     """Base exception for transport-related errors."""
+
     pass
 
 
 class TransportConnectionError(TransportError):
     """Exception raised for connection-related errors."""
+
     pass
 
 
 class TransportTimeoutError(TransportError):
     """Exception raised for timeout-related errors."""
+
     pass
 
 
 class ProtocolError(TransportError):
     """Exception raised for protocol-related errors."""
+
     pass
 
 
@@ -210,9 +213,7 @@ class OBDTransport(ABC):
         # SimTransport uninstantiable and break simtcp and simbt. The
         # guard keeps direct instantiation an error regardless.
         if type(self) is OBDTransport:
-            raise TypeError(
-                "OBDTransport is abstract and cannot be instantiated"
-            )
+            raise TypeError("OBDTransport is abstract and cannot be instantiated")
         self._shutdown = threading.Event()
         self._lock = threading.RLock()
         self._handle = None
@@ -227,27 +228,19 @@ class OBDTransport(ABC):
         Returns:
             The handle, or None if no device could be resolved.
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement _open"
-        )
+        raise NotImplementedError(f"{type(self).__name__} must implement _open")
 
     def _close(self, handle) -> None:
         """Close the given handle."""
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement _close"
-        )
+        raise NotImplementedError(f"{type(self).__name__} must implement _close")
 
     def _write(self, handle, data: bytes) -> None:
         """Write bytes to the given handle."""
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement _write"
-        )
+        raise NotImplementedError(f"{type(self).__name__} must implement _write")
 
     def _read(self, handle, n: int) -> bytes:
         """Read up to n bytes from the given handle."""
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement _read"
-        )
+        raise NotImplementedError(f"{type(self).__name__} must implement _read")
 
     def _set_timeout(self, handle, timeout: float) -> None:
         """Apply a read timeout to the handle. Override if it differs."""
@@ -320,9 +313,9 @@ class OBDTransport(ABC):
         """
         try:
             if self._ADAPTER_CHECKS and not _bluetooth_adapter_present():
-                return 'no bluetooth controller'
+                return "no bluetooth controller"
 
-            code = getattr(exc, 'errno', None)
+            code = getattr(exc, "errno", None)
             if code in _CONNECT_FAULT_CAUSES:
                 return _CONNECT_FAULT_CAUSES[code]
             if code is not None:
@@ -331,9 +324,9 @@ class OBDTransport(ABC):
                 named = _errno.errorcode.get(code)
                 if named:
                     return named
-            return str(exc) or 'unknown connection failure'
+            return str(exc) or "unknown connection failure"
         except Exception:
-            return 'unknown connection failure'
+            return "unknown connection failure"
 
     def connect(self) -> bool:
         """Establish a connection to the OBD device.
@@ -375,21 +368,23 @@ class OBDTransport(ABC):
             # The counter is NOT reset here. Unlike the read-timeout
             # counter, this one latches: the condition persists until a
             # connect succeeds, and the cause should keep reporting it.
-            if (self._ADAPTER_CHECKS
-                    and failures >= self._MAX_CONSECUTIVE_CONNECT_FAILURES
-                    and cause != 'no bluetooth controller'
-                    and _bluetooth_adapter_present()):
+            if (
+                self._ADAPTER_CHECKS
+                and failures >= self._MAX_CONSECUTIVE_CONNECT_FAILURES
+                and cause != "no bluetooth controller"
+                and _bluetooth_adapter_present()
+            ):
                 cause = _WEDGED_LINK_CAUSE
 
             # Append the cause only when it says something the
             # exception text does not. An errno-less socket.timeout
             # otherwise logged 'timed out (timed out)'.
             if cause != str(e):
-                logger.error("Failed to connect to %s: %s (%s)",
-                             self._describe(), e, cause)
+                logger.error(
+                    "Failed to connect to %s: %s (%s)", self._describe(), e, cause
+                )
             else:
-                logger.error("Failed to connect to %s: %s",
-                             self._describe(), e)
+                logger.error("Failed to connect to %s: %s", self._describe(), e)
 
             self._discard_handle()
             with self._lock:
@@ -398,8 +393,12 @@ class OBDTransport(ABC):
                 self._last_failure_cause = cause
             return False
         except Exception as e:
-            logger.error("Unexpected error during connection to %s: %s",
-                         self._describe(), e, exc_info=True)
+            logger.error(
+                "Unexpected error during connection to %s: %s",
+                self._describe(),
+                e,
+                exc_info=True,
+            )
             self._discard_handle()
             with self._lock:
                 self._state = TransportState.ERROR
@@ -452,8 +451,7 @@ class OBDTransport(ABC):
             self._discard_handle_locked()
             self._state = TransportState.DISCONNECTED
             self._last_failure_cause = cause or _SILENT_LINK_CAUSE
-        logger.info("Link to %s dropped - will attempt to reconnect",
-                    self._describe())
+        logger.info("Link to %s dropped - will attempt to reconnect", self._describe())
 
     def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]:
         """Send a command to the OBD device and receive the response.
@@ -475,7 +473,7 @@ class OBDTransport(ABC):
 
         try:
             # Prepare the command
-            encoded_cmd = (command.strip() + '\r').encode('ascii')
+            encoded_cmd = (command.strip() + "\r").encode("ascii")
             logger.debug("TX: %r", encoded_cmd)
 
             # Set timeout for response, before the write so the write
@@ -486,7 +484,7 @@ class OBDTransport(ABC):
             # Read response until '>' prompt is received, within a
             # monotonic deadline.
             deadline = time.monotonic() + timeout + self._READ_DEADLINE_MARGIN_S
-            buf = b''
+            buf = b""
             while True:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
@@ -508,13 +506,13 @@ class OBDTransport(ABC):
                         return self._record_timeout(command, timeout)
                     break
                 buf += data
-                if b'>' in buf:
+                if b">" in buf:
                     break
 
             # Decode and strip the response
-            response = buf.decode('ascii', errors='ignore').strip()
+            response = buf.decode("ascii", errors="ignore").strip()
             # Remove the trailing '>' prompt
-            response = response.rstrip('>').strip()
+            response = response.rstrip(">").strip()
             logger.debug("RX: %r", response)
             # Any answer at all means the peer is alive. The threshold
             # counts CONSECUTIVE silences, so an occasional slow
@@ -545,8 +543,11 @@ class OBDTransport(ABC):
             None, so send_command can return the result directly.
         """
         logger = logging.getLogger(self.__class__.__name__)
-        logger.warning("Timeout waiting for response from device "
-                       "(cmd=%r, timeout=%.1fs)", command, timeout)
+        logger.warning(
+            "Timeout waiting for response from device " "(cmd=%r, timeout=%.1fs)",
+            command,
+            timeout,
+        )
         with self._lock:
             self._consecutive_timeouts += 1
             _dead = self._consecutive_timeouts >= self._MAX_CONSECUTIVE_TIMEOUTS
@@ -558,8 +559,9 @@ class OBDTransport(ABC):
                 self._consecutive_timeouts = 0
         if _dead:
             logger.error(
-                "No response from %s after %d consecutive timeouts "
-                "- dropping link", self._describe(), _count
+                "No response from %s after %d consecutive timeouts " "- dropping link",
+                self._describe(),
+                _count,
             )
             # OUTSIDE the lock: drop_link takes _lock itself. The
             # decision is captured above and acted on here.
@@ -573,7 +575,7 @@ class OBDTransport(ABC):
         Returns:
             The transport's configured delay, 5.0 if it has none.
         """
-        return getattr(self, '_retry_delay', 5.0)
+        return getattr(self, "_retry_delay", 5.0)
 
     def is_connected(self) -> bool:
         """Check if the transport is currently connected.
@@ -594,8 +596,9 @@ class OBDTransport(ABC):
         with self._lock:
             return self._state
 
-    def reconnect_indefinitely(self, retry_delay: float = 5.0,
-                               heartbeat: Optional[Callable[[], None]] = None) -> None:
+    def reconnect_indefinitely(
+        self, retry_delay: float = 5.0, heartbeat: Optional[Callable[[], None]] = None
+    ) -> None:
         """Supervise the link for the life of the process.
 
         Connects, then watches the established link and reconnects
@@ -655,74 +658,81 @@ class OBDTransport(ABC):
                 # every connect would otherwise spin this loop at full
                 # speed; the wait is on _shutdown, so it costs nothing
                 # at shutdown.
-                logger.info("Link lost - resuming reconnection attempts "
-                            "in %.1f seconds", retry_delay)
+                logger.info(
+                    "Link lost - resuming reconnection attempts " "in %.1f seconds",
+                    retry_delay,
+                )
                 self._shutdown.wait(retry_delay)
                 continue
             _beat()
-            logger.warning("Failed to connect, retrying in %.1f seconds...", retry_delay)
+            logger.warning(
+                "Failed to connect, retrying in %.1f seconds...", retry_delay
+            )
             self._shutdown.wait(retry_delay)
 
 
-def select_transport(platform_type: PlatformType, args: argparse.Namespace) -> OBDTransport:
-    """Factory function to select the appropriate transport based on platform and arguments.
-    
+def select_transport(
+    platform_type: PlatformType, args: argparse.Namespace
+) -> OBDTransport:
+    """Select the appropriate transport based on platform and arguments.
+
     Args:
         platform_type: The platform type (e.g., RASPBERRY_PI).
         args: Command-line arguments namespace.
-        
+
     Returns:
         OBDTransport: An instance of the appropriate transport class.
-        
+
     Raises:
         TransportError: If the platform is unsupported or no paired device is found.
     """
     from .serial_transport import SerialTransport
     from .tcp_transport import TCPTransport
 
-    transport_arg = getattr(args, 'transport', None)
+    transport_arg = getattr(args, "transport", None)
 
     # Simulation transports for hardware-free testing. SimTransport
     # serves both simtcp and simbt; they are classified differently for
     # forcing, which is the pairing-simulation design rather than an
     # inconsistency (core review §5.8).
-    _simulated = tuple(n for n in TRANSPORT_NAMES if n.startswith('sim'))
+    _simulated = tuple(n for n in TRANSPORT_NAMES if n.startswith("sim"))
     if transport_arg in _simulated:
         from .sim_transport import SimTransport
+
         return SimTransport()
 
-    if transport_arg == 'tcp':
-        host = getattr(args, 'obd_host', 'localhost')
-        port = getattr(args, 'obd_port', 35000)
+    if transport_arg == "tcp":
+        host = getattr(args, "obd_host", "localhost")
+        port = getattr(args, "obd_port", 35000)
         return TCPTransport(host=host, port=port)
-    
-    elif transport_arg == 'serial':
-        port = getattr(args, 'serial_port', None)
+
+    elif transport_arg == "serial":
+        port = getattr(args, "serial_port", None)
         return SerialTransport(port=port)
-    
-    elif transport_arg == 'rfcomm':
+
+    elif transport_arg == "rfcomm":
         return _get_rfcomm()
-    
+
     # Auto-detect based on platform if no transport argument is provided
-    if platform_type.name.startswith('RASPBERRY_PI'):
+    if platform_type.name.startswith("RASPBERRY_PI"):
         return _get_rfcomm()
     else:
-        raise TransportError('Unsupported platform')
+        raise TransportError("Unsupported platform")
 
 
 def _get_rfcomm() -> OBDTransport:
     """Helper function to create an RFCOMM transport using the primary device.
-    
+
     Returns:
         RFCOMMTransport: An instance of RFCOMMTransport.
-        
+
     Raises:
         TransportError: If no paired device is found.
     """
     from .rfcomm import RFCOMMTransport
-    
+
     ds = get_device_store()
     dev = ds.get_primary_device()
     if not dev:
-        raise TransportError('No paired device found')
+        raise TransportError("No paired device found")
     return RFCOMMTransport(mac_address=dev.mac_address)

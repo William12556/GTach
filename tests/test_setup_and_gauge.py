@@ -42,11 +42,12 @@ from gtach.display.setup_models import PairingStatus, SetupScreen, SetupState
 from gtach.display.typography import get_label_small_font
 
 JOIN_TIMEOUT = 5.0
-LONG_ERROR = ("No devices found. Ensure your ELM327 adapter is powered on "
-              "and discoverable.")
+LONG_ERROR = (
+    "No devices found. Ensure your ELM327 adapter is powered on " "and discoverable."
+)
 
 
-@pytest.fixture(autouse=True, scope='module')
+@pytest.fixture(autouse=True, scope="module")
 def _pygame_ready():
     """Off-screen surfaces and fonts; see tests/test_device_list_focus.py."""
     pygame.init()
@@ -54,7 +55,7 @@ def _pygame_ready():
 
 def _manager(coordinator=None):
     manager = object.__new__(SetupDisplayManager)
-    manager.logger = logging.getLogger('test.setup_and_gauge')
+    manager.logger = logging.getLogger("test.setup_and_gauge")
     manager.state_coordinator = coordinator or SetupStateCoordinator()
     manager.touch_regions = []
     manager._touch_regions_lock = threading.Lock()
@@ -68,7 +69,8 @@ class TestStopSetup:
         manager = _manager()
         manager._shutdown_event = threading.Event()
         manager.bluetooth_interface = types.SimpleNamespace(
-            cancel_operations=lambda: None, shutdown=lambda: None)  # issue-d140121d
+            cancel_operations=lambda: None, shutdown=lambda: None
+        )  # issue-d140121d
         manager._setup_thread = None
         return manager
 
@@ -103,7 +105,7 @@ class TestStopSetup:
 
 def _app():
     app = object.__new__(GTachApplication)
-    app.logger = logging.getLogger('test.setup_and_gauge')
+    app.logger = logging.getLogger("test.setup_and_gauge")
     app._obd_lock = threading.Lock()  # issue-4005360c
     return app
 
@@ -113,54 +115,75 @@ class TestApplicationStopsSetupManager:
     def test_completion_stops_manager_once_before_exit(self):
         app = _app()
         calls = []
-        app._setup_manager = types.SimpleNamespace(stop_setup=lambda: calls.append('stop'))
-        app._display = types.SimpleNamespace(exit_setup_mode=lambda: calls.append('exit'))
-        app._start_obd = lambda: calls.append('obd')
+        app._setup_manager = types.SimpleNamespace(
+            stop_setup=lambda: calls.append("stop")
+        )
+        app._display = types.SimpleNamespace(
+            exit_setup_mode=lambda: calls.append("exit")
+        )
+        app._start_obd = lambda: calls.append("obd")
 
         app._on_setup_complete()
         app._on_setup_complete()
 
-        assert calls == ['stop', 'exit', 'obd']
+        assert calls == ["stop", "exit", "obd"]
 
     def test_re_entry_stops_previous_manager_first(self, monkeypatch):
         app = _app()
         calls = []
-        app._setup_manager = types.SimpleNamespace(stop_setup=lambda: calls.append('old.stop'))
-        app._watchdog = types.SimpleNamespace(_thread=types.SimpleNamespace(is_alive=lambda: True))
+        app._setup_manager = types.SimpleNamespace(
+            stop_setup=lambda: calls.append("old.stop")
+        )
+        app._watchdog = types.SimpleNamespace(
+            _thread=types.SimpleNamespace(is_alive=lambda: True)
+        )
         app._thread_manager = object()
         app._display = types.SimpleNamespace(
             rendering_engine=types.SimpleNamespace(main_surface=None),
             touch_handler=None,
-            set_setup_mode=lambda manager: calls.append('set_setup_mode'))
+            set_setup_mode=lambda manager: calls.append("set_setup_mode"),
+        )
 
         def new_manager(*args, **kwargs):
-            calls.append('new')
-            return types.SimpleNamespace(start_setup=lambda: calls.append('start'))
+            calls.append("new")
+            return types.SimpleNamespace(start_setup=lambda: calls.append("start"))
 
-        monkeypatch.setattr(app_module, 'SetupDisplayManager', new_manager)
+        monkeypatch.setattr(app_module, "SetupDisplayManager", new_manager)
 
         app._start_setup_mode()
 
-        assert calls.index('old.stop') < calls.index('new')
+        assert calls.index("old.stop") < calls.index("new")
 
 
 class TestGaugeMaxRpm:
 
-    @pytest.mark.parametrize('redline, expected', [
-        (6000, 7000), (7000, 8000), (7500, 8000),
-        (8500, 9000), (9000, 9000), (12000, 9000),
-    ])
+    @pytest.mark.parametrize(
+        "redline, expected",
+        [
+            (6000, 7000),
+            (7000, 8000),
+            (7500, 8000),
+            (8500, 9000),
+            (9000, 9000),
+            (12000, 9000),
+        ],
+    )
     def test_rule(self, redline, expected):
         host = types.SimpleNamespace(
             config=types.SimpleNamespace(
-                rpm_bands=types.SimpleNamespace(redline_rpm=redline)))
+                rpm_bands=types.SimpleNamespace(redline_rpm=redline)
+            )
+        )
 
         assert DisplayManager._gauge_max_rpm(host) == expected
 
-    @pytest.mark.parametrize('host', [
-        types.SimpleNamespace(),
-        types.SimpleNamespace(config=types.SimpleNamespace()),
-    ])
+    @pytest.mark.parametrize(
+        "host",
+        [
+            types.SimpleNamespace(),
+            types.SimpleNamespace(config=types.SimpleNamespace()),
+        ],
+    )
     def test_missing_configuration(self, host):
         assert DisplayManager._gauge_max_rpm(host) == 7000
 
@@ -169,8 +192,9 @@ class TestCachedDevicePresence:
 
     def test_cached_regions_use_flag_without_device_store(self, monkeypatch):
         def _forbidden(*args, **kwargs):
-            raise AssertionError('DeviceStore constructed')
-        monkeypatch.setattr(device_store_module, 'DeviceStore', _forbidden)
+            raise AssertionError("DeviceStore constructed")
+
+        monkeypatch.setattr(device_store_module, "DeviceStore", _forbidden)
         manager = _manager()
         recorded = []
         manager._update_touch_regions_safe = recorded.append
@@ -181,7 +205,9 @@ class TestCachedDevicePresence:
         manager._update_cached_screen_touch_regions()
 
         assert [[r[0] for r in regions] for regions in recorded] == [
-            ['start', 'cancel_setup'], ['start']]
+            ["start", "cancel_setup"],
+            ["start"],
+        ]
 
     def test_entry_to_welcome_refreshes_flag(self):
         coordinator = SetupStateCoordinator()
@@ -206,14 +232,19 @@ class TestPersistentErrors:
             selected_device=None,
             pairing_status=PairingStatus.IDLE,
             setup_complete=False,
-            error_message='OBD check failed',
+            error_message="OBD check failed",
         )
         coordinator = SetupStateCoordinator(initial_state=state)
         host = types.SimpleNamespace(
-            logger=logging.getLogger('test.setup_and_gauge'),
-            colors={'background': (216, 200, 146), 'text': (0, 0, 0),
-                    'text_dim': (0, 0, 0), 'border': (80, 80, 90),
-                    'primary': (100, 150, 250), 'danger': (255, 50, 50)},
+            logger=logging.getLogger("test.setup_and_gauge"),
+            colors={
+                "background": (216, 200, 146),
+                "text": (0, 0, 0),
+                "text_dim": (0, 0, 0),
+                "border": (80, 80, 90),
+                "primary": (100, 150, 250),
+                "danger": (255, 50, 50),
+            },
             state_coordinator=coordinator,
             positioning_engine=CircularPositioningEngine(),
             device_renderer=DeviceSurfaceRenderer(),
@@ -222,20 +253,24 @@ class TestPersistentErrors:
         )
 
         SetupDisplayManager._render_device_list_screen(
-            host, pygame.Surface((480, 480)), coordinator.get_state())
+            host, pygame.Surface((480, 480)), coordinator.get_state()
+        )
 
-        assert coordinator.get_state().error_message == 'OBD check failed'
+        assert coordinator.get_state().error_message == "OBD check failed"
 
     def test_tap_clears_error_before_dispatch(self, monkeypatch):
         manager = _manager()
-        manager.state_coordinator.update_state(error_message='Device not available')
-        manager.touch_regions = [('start', pygame.Rect(0, 0, 10, 10))]
+        manager.state_coordinator.update_state(error_message="Device not available")
+        manager.touch_regions = [("start", pygame.Rect(0, 0, 10, 10))]
         seen = []
         monkeypatch.setattr(
-            manager, '_handle_touch_action',
+            manager,
+            "_handle_touch_action",
             lambda action, region: seen.append(
-                manager.state_coordinator.get_state().error_message),
-            raising=False)
+                manager.state_coordinator.get_state().error_message
+            ),
+            raising=False,
+        )
 
         manager.handle_touch_event((5, 5))
 
@@ -249,10 +284,10 @@ class TestFitText:
         assert font is not None
         manager = _manager()
 
-        short = manager._fit_text(font, 'Device not available')
+        short = manager._fit_text(font, "Device not available")
         long = manager._fit_text(font, LONG_ERROR)
 
-        assert short == 'Device not available'
-        assert long == 'No devices found.'
+        assert short == "Device not available"
+        assert long == "No devices found."
         assert font.size(short)[0] <= 400
         assert font.size(long)[0] <= 400

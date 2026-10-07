@@ -7,19 +7,19 @@
 
 """Utility components for OBDII display application."""
 
-from .config import ConfigStore, AppConfig
-from .home import gtach_home
-from .terminal import TerminalRestorer
+from .config import AppConfig, ConfigStore
 from .dependencies import DependencyValidator, validate_dependencies
-from .platform import get_platform_type, PlatformType
+from .home import gtach_home
+from .platform import PlatformType, get_platform_type
+from .terminal import TerminalRestorer
 
 __all__ = [
-    'ConfigStore',
-    'AppConfig',
-    'gtach_home',
-    'TerminalRestorer',
-    'DependencyValidator',
-    'validate_dependencies',
-    'get_platform_type',
-    'PlatformType'
+    "ConfigStore",
+    "AppConfig",
+    "gtach_home",
+    "TerminalRestorer",
+    "DependencyValidator",
+    "validate_dependencies",
+    "get_platform_type",
+    "PlatformType",
 ]

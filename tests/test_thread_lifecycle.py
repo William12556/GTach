@@ -42,7 +42,7 @@ def manager():
 
 
 def _watchdog(manager, calls):
-    return WatchdogMonitor(manager, shutdown_callback=lambda: calls.append('shutdown'))
+    return WatchdogMonitor(manager, shutdown_callback=lambda: calls.append("shutdown"))
 
 
 def _age(manager, name, age):
@@ -61,27 +61,27 @@ class TestEscalationWithoutRestart:
     def test_stale_obd_protocol_shuts_down(self, manager):
         calls = []
         watchdog = _watchdog(manager, calls)
-        manager.register_thread('obd_protocol', threading.Thread(target=lambda: None))
-        _age(manager, 'obd_protocol', watchdog.critical_timeout + 5)
+        manager.register_thread("obd_protocol", threading.Thread(target=lambda: None))
+        _age(manager, "obd_protocol", watchdog.critical_timeout + 5)
 
         watchdog._check_thread_health()
 
-        assert calls == ['shutdown']
+        assert calls == ["shutdown"]
 
     def test_stale_non_critical_thread_logs_only(self, manager, caplog):
         calls = []
         watchdog = _watchdog(manager, calls)
         original = threading.Thread(target=lambda: None)
-        manager.register_thread('worker', original)
-        _age(manager, 'worker', watchdog.critical_timeout + 5)
+        manager.register_thread("worker", original)
+        _age(manager, "worker", watchdog.critical_timeout + 5)
 
-        with caplog.at_level(logging.ERROR, logger='WatchdogMonitor'):
+        with caplog.at_level(logging.ERROR, logger="WatchdogMonitor"):
             for _ in range(3):
                 watchdog._check_thread_health()
-                watchdog.thread_health['worker'].last_recovery_time = float('-inf')
+                watchdog.thread_health["worker"].last_recovery_time = float("-inf")
 
         assert any(r.levelno == logging.ERROR for r in caplog.records)
-        assert manager.threads['worker'].thread is original
+        assert manager.threads["worker"].thread is original
         assert calls == []
 
 
@@ -90,36 +90,38 @@ class TestDeadThreadRule:
     def test_exited_critical_thread_shuts_down(self, manager):
         calls = []
         watchdog = _watchdog(manager, calls)
-        manager.register_thread('display', _exited_thread('display'))
-        manager.threads['display'].status = ThreadStatus.RUNNING
+        manager.register_thread("display", _exited_thread("display"))
+        manager.threads["display"].status = ThreadStatus.RUNNING
 
         watchdog._check_thread_health()
 
-        assert manager.threads['display'].status == ThreadStatus.STOPPED
-        assert calls == ['shutdown']
+        assert manager.threads["display"].status == ThreadStatus.STOPPED
+        assert calls == ["shutdown"]
 
     def test_exited_non_critical_thread_is_marked_stopped(self, manager, caplog):
         calls = []
         watchdog = _watchdog(manager, calls)
-        manager.register_thread('worker', _exited_thread('worker'))
-        manager.threads['worker'].status = ThreadStatus.RUNNING
+        manager.register_thread("worker", _exited_thread("worker"))
+        manager.threads["worker"].status = ThreadStatus.RUNNING
 
-        with caplog.at_level(logging.INFO, logger='WatchdogMonitor'):
+        with caplog.at_level(logging.INFO, logger="WatchdogMonitor"):
             watchdog._check_thread_health()
 
-        assert manager.threads['worker'].status == ThreadStatus.STOPPED
+        assert manager.threads["worker"].status == ThreadStatus.STOPPED
         assert calls == []
-        assert any(r.levelno == logging.INFO and 'exited' in r.getMessage()
-                   for r in caplog.records)
+        assert any(
+            r.levelno == logging.INFO and "exited" in r.getMessage()
+            for r in caplog.records
+        )
 
     def test_registered_but_not_started_is_left_alone(self, manager):
         calls = []
         watchdog = _watchdog(manager, calls)
-        manager.register_thread('display', threading.Thread(target=lambda: None))
+        manager.register_thread("display", threading.Thread(target=lambda: None))
 
         watchdog._check_thread_health()
 
-        assert manager.threads['display'].status == ThreadStatus.STARTING
+        assert manager.threads["display"].status == ThreadStatus.STARTING
         assert calls == []
 
 
@@ -127,7 +129,9 @@ class TestStopThread:
 
     def test_stop_func_runs_unlocked_before_join(self, manager):
         release = threading.Event()
-        worker = threading.Thread(target=release.wait, args=(JOIN_TIMEOUT,), daemon=True)
+        worker = threading.Thread(
+            target=release.wait, args=(JOIN_TIMEOUT,), daemon=True
+        )
         recorded = []
         stop_calls = []
 
@@ -139,15 +143,16 @@ class TestStopThread:
                 if acquired:
                     manager._state_lock.release()
                 recorded.append(acquired)
+
             helper = threading.Thread(target=probe, daemon=True)
             helper.start()
             helper.join(JOIN_TIMEOUT)
             release.set()
 
-        manager.register_thread('x', worker, stop_func=stop_func)
+        manager.register_thread("x", worker, stop_func=stop_func)
         worker.start()
 
-        assert manager.stop_thread('x', timeout=JOIN_TIMEOUT) is True
+        assert manager.stop_thread("x", timeout=JOIN_TIMEOUT) is True
         assert stop_calls == [1]
         assert recorded == [True]
 
@@ -156,37 +161,39 @@ class TestStopThread:
         worker = threading.Thread(target=release.wait, args=(0.2,), daemon=True)
 
         def stop_func():
-            raise RuntimeError('boom')
+            raise RuntimeError("boom")
 
-        manager.register_thread('x', worker, stop_func=stop_func)
+        manager.register_thread("x", worker, stop_func=stop_func)
         worker.start()
 
-        assert manager.stop_thread('x', timeout=JOIN_TIMEOUT) is True
+        assert manager.stop_thread("x", timeout=JOIN_TIMEOUT) is True
 
 
 class TestRegisterThread:
 
     def test_dead_entry_is_replaced(self, manager):
-        manager.register_thread('x', _exited_thread('x'))
-        manager.threads['x'].status = ThreadStatus.RUNNING
+        manager.register_thread("x", _exited_thread("x"))
+        manager.threads["x"].status = ThreadStatus.RUNNING
         t2 = threading.Thread(target=lambda: None)
 
-        manager.register_thread('x', t2)
+        manager.register_thread("x", t2)
 
-        assert manager.threads['x'].thread is t2
+        assert manager.threads["x"].thread is t2
 
     def test_live_entry_is_kept(self, manager, caplog):
         release = threading.Event()
-        original = threading.Thread(target=release.wait, args=(JOIN_TIMEOUT,), daemon=True)
-        manager.register_thread('x', original)
+        original = threading.Thread(
+            target=release.wait, args=(JOIN_TIMEOUT,), daemon=True
+        )
+        manager.register_thread("x", original)
         original.start()
-        manager.threads['x'].status = ThreadStatus.RUNNING
+        manager.threads["x"].status = ThreadStatus.RUNNING
         try:
-            with caplog.at_level(logging.WARNING, logger='ThreadManager'):
-                manager.register_thread('x', threading.Thread(target=lambda: None))
+            with caplog.at_level(logging.WARNING, logger="ThreadManager"):
+                manager.register_thread("x", threading.Thread(target=lambda: None))
 
-            assert manager.threads['x'].thread is original
-            assert any('already exists' in r.getMessage() for r in caplog.records)
+            assert manager.threads["x"].thread is original
+            assert any("already exists" in r.getMessage() for r in caplog.records)
         finally:
             release.set()
             original.join(JOIN_TIMEOUT)
@@ -210,15 +217,15 @@ class TestOBDProtocol:
     def test_every_command_refreshes_heartbeat(self):
         beats = []
         thread_manager = types.SimpleNamespace(
-            register_thread=lambda *a, **k: None,
-            update_heartbeat=beats.append)
+            register_thread=lambda *a, **k: None, update_heartbeat=beats.append
+        )
         transport = types.SimpleNamespace(
-            is_connected=lambda: True,
-            send_command=lambda command, timeout: 'OK')
+            is_connected=lambda: True, send_command=lambda command, timeout: "OK"
+        )
         obd = OBDProtocol(transport, thread_manager)
 
-        assert obd._send_command(b'ATE0') == 'OK'
-        assert beats == ['obd_protocol']
+        assert obd._send_command(b"ATE0") == "OK"
+        assert beats == ["obd_protocol"]
 
 
 class TestSimTransportState:
@@ -250,25 +257,25 @@ class _FakeTransport(OBDTransport):
         pass
 
     def _write(self, handle, data):
-        self.calls.append('write')
+        self.calls.append("write")
 
     def _read(self, handle, n):
-        self.calls.append('read')
+        self.calls.append("read")
         time.sleep(0.01)
         return self._reply
 
     def _set_timeout(self, handle, timeout):
-        self.calls.append('set_timeout')
+        self.calls.append("set_timeout")
 
 
 class TestSendCommandDeadline:
 
     def test_endless_searching_is_bounded(self):
-        transport = _FakeTransport(b'SEARCHING')
+        transport = _FakeTransport(b"SEARCHING")
         assert transport.connect()
 
         start = time.monotonic()
-        result = transport.send_command('0100', timeout=0.2)
+        result = transport.send_command("0100", timeout=0.2)
         elapsed = time.monotonic() - start
 
         assert result is None
@@ -276,30 +283,33 @@ class TestSendCommandDeadline:
         assert transport._consecutive_timeouts == 1
 
     def test_timeout_set_before_write(self):
-        transport = _FakeTransport(b'41 0C 1A F8\r>')
+        transport = _FakeTransport(b"41 0C 1A F8\r>")
         assert transport.connect()
 
-        result = transport.send_command('010C', timeout=0.2)
+        result = transport.send_command("010C", timeout=0.2)
 
-        assert transport.calls.index('set_timeout') < transport.calls.index('write')
-        assert result == '41 0C 1A F8'
+        assert transport.calls.index("set_timeout") < transport.calls.index("write")
+        assert result == "41 0C 1A F8"
 
 
 class TestReEnterSetup:
 
     def test_stops_transport_then_obd_through_manager(self):
         app = object.__new__(GTachApplication)
-        app.logger = logging.getLogger('test.thread_lifecycle')
+        app.logger = logging.getLogger("test.thread_lifecycle")
         app._obd_lock = threading.Lock()  # issue-4005360c
         stops = []
         direct = []
         app._thread_manager = types.SimpleNamespace(
-            stop_thread=lambda name, timeout: stops.append((name, timeout)))
-        app._transport = types.SimpleNamespace(disconnect=lambda: direct.append('disconnect'))
-        app._obd = types.SimpleNamespace(stop=lambda: direct.append('obd.stop'))
+            stop_thread=lambda name, timeout: stops.append((name, timeout))
+        )
+        app._transport = types.SimpleNamespace(
+            disconnect=lambda: direct.append("disconnect")
+        )
+        app._obd = types.SimpleNamespace(stop=lambda: direct.append("obd.stop"))
         app._start_setup_mode = lambda: None
 
         app._re_enter_setup()
 
-        assert stops == [('transport', 2.0), ('obd_protocol', 2.0)]
+        assert stops == [("transport", 2.0), ("obd_protocol", 2.0)]
         assert direct == []

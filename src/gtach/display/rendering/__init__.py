@@ -13,11 +13,11 @@ display manager for improved maintainability and testing.
 """
 
 from .engine import DisplayRenderingEngine
-from .interfaces import RenderingEngineInterface, RenderTarget, RenderingStats
+from .interfaces import RenderingEngineInterface, RenderingStats, RenderTarget
 
 __all__ = [
-    'DisplayRenderingEngine',
-    'RenderingEngineInterface', 
-    'RenderTarget',
-    'RenderingStats'
+    "DisplayRenderingEngine",
+    "RenderingEngineInterface",
+    "RenderTarget",
+    "RenderingStats",
 ]

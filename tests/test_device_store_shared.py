@@ -38,15 +38,17 @@ PER_THREAD = 50
 
 @pytest.fixture(autouse=True)
 def home(tmp_path, monkeypatch):
-    monkeypatch.setenv('GTACH_HOME', str(tmp_path))
+    monkeypatch.setenv("GTACH_HOME", str(tmp_path))
     reset_device_store()
     return tmp_path
 
 
 def _device(prefix, index):
-    return BluetoothDevice(name=f'{prefix}{index}',
-                           mac_address=f'{prefix}:00:00:00:00:{index:02X}',
-                           device_type='ELM327')
+    return BluetoothDevice(
+        name=f"{prefix}{index}",
+        mac_address=f"{prefix}:00:00:00:00:{index:02X}",
+        device_type="ELM327",
+    )
 
 
 class TestSharedInstance:
@@ -55,15 +57,15 @@ class TestSharedInstance:
         assert get_device_store() is get_device_store()
 
     def test_default_path_under_gtach_home(self, home):
-        assert get_device_store().config_path == str(home / 'config' / 'devices.yaml')
+        assert get_device_store().config_path == str(home / "config" / "devices.yaml")
 
     def test_visible_from_another_call_site(self):
-        get_device_store().save_device(_device('AA', 1))
+        get_device_store().save_device(_device("AA", 1))
 
         primary = get_device_store().get_primary_device()
 
         assert primary is not None
-        assert primary.mac_address == 'AA:00:00:00:00:01'
+        assert primary.mac_address == "AA:00:00:00:00:01"
 
     def test_reset_gives_new_object(self):
         first = get_device_store()
@@ -85,7 +87,10 @@ class TestConcurrency:
             except Exception as e:  # pragma: no cover - failure path
                 errors.append(e)
 
-        threads = [threading.Thread(target=worker, args=(p,), daemon=True) for p in ('AA', 'BB')]
+        threads = [
+            threading.Thread(target=worker, args=(p,), daemon=True)
+            for p in ("AA", "BB")
+        ]
         for t in threads:
             t.start()
         for t in threads:
@@ -93,20 +98,20 @@ class TestConcurrency:
 
         assert all(not t.is_alive() for t in threads)
         assert errors == []
-        with open(home / 'config' / 'devices.yaml') as f:
+        with open(home / "config" / "devices.yaml") as f:
             data = yaml.safe_load(f)
-        assert len(data['paired_devices']['secondary']) == 2 * PER_THREAD
+        assert len(data["paired_devices"]["secondary"]) == 2 * PER_THREAD
         assert len(store.get_all_devices()) == 2 * PER_THREAD
 
     def test_every_public_method_takes_the_lock(self):
         """Each public method blocks while another thread holds the lock."""
         store = get_device_store()
         calls = [
-            lambda: store.save_device(_device('AA', 1)),
+            lambda: store.save_device(_device("AA", 1)),
             store.get_primary_device,
             store.get_all_devices,
-            lambda: store.remove_device('AA:00:00:00:00:01'),
-            lambda: store.get_device_by_mac('AA:00:00:00:00:01'),
+            lambda: store.remove_device("AA:00:00:00:00:01"),
+            lambda: store.get_device_by_mac("AA:00:00:00:00:01"),
         ]
         for call in calls:
             done = threading.Event()
@@ -126,19 +131,25 @@ class TestDurableSave:
         store = get_device_store()
         order = []
         real_fsync, real_replace = os.fsync, os.replace
-        monkeypatch.setattr(device_store_module.os, 'fsync',
-                            lambda fd: (order.append('fsync'), real_fsync(fd)))
-        monkeypatch.setattr(device_store_module.os, 'replace',
-                            lambda a, b: (order.append('replace'), real_replace(a, b)))
+        monkeypatch.setattr(
+            device_store_module.os,
+            "fsync",
+            lambda fd: (order.append("fsync"), real_fsync(fd)),
+        )
+        monkeypatch.setattr(
+            device_store_module.os,
+            "replace",
+            lambda a, b: (order.append("replace"), real_replace(a, b)),
+        )
 
         assert store._save_config() is True
-        assert order == ['fsync', 'replace']
+        assert order == ["fsync", "replace"]
 
 
 class TestPatchedClass:
 
     def test_accessor_constructs_through_module_name(self, monkeypatch):
         sentinel = object()
-        monkeypatch.setattr(device_store_module, 'DeviceStore', lambda: sentinel)
+        monkeypatch.setattr(device_store_module, "DeviceStore", lambda: sentinel)
 
         assert get_device_store() is sentinel

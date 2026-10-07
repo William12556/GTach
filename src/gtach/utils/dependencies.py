@@ -11,31 +11,37 @@ Dependency validation system for OBDII display application.
 Validates platform-specific requirements and provides clear error messages.
 """
 
-import sys
-import os
-import logging
 import importlib.util
-from typing import Dict, List, Optional, Tuple, Any
+import logging
+import os
+import sys
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import Any, Dict, List, Optional, Tuple
+
 
 class DependencyType(Enum):
     """Types of dependencies"""
+
     REQUIRED = "required"
     OPTIONAL = "optional"
     PLATFORM_SPECIFIC = "platform_specific"
     DEVELOPMENT = "development"
 
+
 class ValidationResult(Enum):
     """Validation result status"""
+
     SUCCESS = auto()
     WARNING = auto()
     ERROR = auto()
     FATAL = auto()
 
+
 @dataclass
 class DependencyInfo:
     """Information about a dependency"""
+
     name: str
     import_name: str
     dependency_type: DependencyType
@@ -45,9 +51,11 @@ class DependencyInfo:
     description: str = ""
     alternatives: List[str] = field(default_factory=list)
 
+
 @dataclass
 class ValidationReport:
     """Dependency validation report"""
+
     name: str
     dependency_info: DependencyInfo
     result: ValidationResult
@@ -56,26 +64,27 @@ class ValidationReport:
     error_message: Optional[str] = None
     install_command: Optional[str] = None
 
+
 class DependencyValidator:
     """Validates application dependencies with platform-specific requirements"""
-    
+
     def __init__(self, debug: bool = False):
         """Initialize dependency validator
-        
+
         Args:
             debug: Enable debug logging and detailed reporting
         """
         self.debug = debug
-        self.logger = logging.getLogger('DependencyValidator')
+        self.logger = logging.getLogger("DependencyValidator")
         self.platform_info = self._detect_platform()
         self.reports: List[ValidationReport] = []
-        
+
         # Define all dependencies
         self.dependencies = self._define_dependencies()
-        
+
         if self.debug:
             self.logger.setLevel(logging.DEBUG)
-    
+
     def _detect_platform(self) -> Dict[str, Any]:
         """Detect current platform and capabilities"""
         # Get system info directly from os.uname() and sys
@@ -86,19 +95,22 @@ class DependencyValidator:
         except AttributeError:
             # Fallback for Windows
             system = os.name
-            machine = 'unknown'
-        
-        python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-        
+            machine = "unknown"
+
+        python_version = (
+            f"{sys.version_info.major}.{sys.version_info.minor}."
+            f"{sys.version_info.micro}"
+        )
+
         platform_info = {
-            'system': system,
-            'machine': machine,
-            'python_version': python_version,
-            'is_raspberry_pi': False,
-            'is_linux': system == 'Linux',
-            'is_development': False
+            "system": system,
+            "machine": machine,
+            "python_version": python_version,
+            "is_raspberry_pi": False,
+            "is_linux": system == "Linux",
+            "is_development": False,
         }
-        
+
         # Detect Raspberry Pi through the authoritative multi-method
         # detector rather than a second substring test that can
         # disagree with it. PlatformDetector weighs device-tree,
@@ -107,7 +119,8 @@ class DependencyValidator:
         # (core review §4.4).
         try:
             from .platform import is_raspberry_pi as _is_raspberry_pi
-            platform_info['is_raspberry_pi'] = _is_raspberry_pi()
+
+            platform_info["is_raspberry_pi"] = _is_raspberry_pi()
         except Exception as e:
             # This validator must remain usable even when platform
             # detection is not, since reporting that condition is part
@@ -116,23 +129,23 @@ class DependencyValidator:
                 f"PlatformDetector unavailable, using inline detection: {e}"
             )
             try:
-                with open('/proc/cpuinfo', 'r') as f:
+                with open("/proc/cpuinfo", "r") as f:
                     cpuinfo = f.read()
-                    if 'BCM' in cpuinfo or 'Raspberry Pi' in cpuinfo:
-                        platform_info['is_raspberry_pi'] = True
+                    if "BCM" in cpuinfo or "Raspberry Pi" in cpuinfo:
+                        platform_info["is_raspberry_pi"] = True
             except (FileNotFoundError, PermissionError):
                 pass
 
         # Determine if this is a development environment
-        platform_info['is_development'] = (
-            platform_info['is_linux'] and not platform_info['is_raspberry_pi']
+        platform_info["is_development"] = (
+            platform_info["is_linux"] and not platform_info["is_raspberry_pi"]
         )
-        
+
         if self.debug:
             self.logger.debug(f"Platform detection: {platform_info}")
-        
+
         return platform_info
-    
+
     def _define_dependencies(self) -> List[DependencyInfo]:
         """Define all application dependencies with platform-specific requirements"""
         return [
@@ -141,45 +154,40 @@ class DependencyValidator:
                 name="Python Standard Library",
                 import_name="os",
                 dependency_type=DependencyType.REQUIRED,
-                description="Python standard library modules"
+                description="Python standard library modules",
             ),
-            
             # PyGame for display
             DependencyInfo(
                 name="PyGame",
                 import_name="pygame",
                 dependency_type=DependencyType.REQUIRED,
                 install_hint="pip install pygame",
-                description="Graphics and display rendering"
+                description="Graphics and display rendering",
             ),
-            
             # YAML configuration
             DependencyInfo(
                 name="PyYAML",
                 import_name="yaml",
                 dependency_type=DependencyType.REQUIRED,
                 install_hint="pip install PyYAML",
-                description="YAML configuration file support"
+                description="YAML configuration file support",
             ),
-            
             # Serial communication
             DependencyInfo(
                 name="PySerial",
                 import_name="serial",
                 dependency_type=DependencyType.REQUIRED,
                 install_hint="pip install pyserial",
-                description="Serial communication for OBD-II interface"
+                description="Serial communication for OBD-II interface",
             ),
-            
             # System metrics
             DependencyInfo(
                 name="psutil",
                 import_name="psutil",
                 dependency_type=DependencyType.REQUIRED,
                 install_hint="pip install psutil",
-                description="Process and memory metrics"
+                description="Process and memory metrics",
             ),
-            
             # Raspberry Pi GPIO (Pi-specific)
             DependencyInfo(
                 name="RPi.GPIO",
@@ -187,9 +195,8 @@ class DependencyValidator:
                 dependency_type=DependencyType.PLATFORM_SPECIFIC,
                 platforms=["raspberry_pi"],
                 install_hint="pip install RPi.GPIO",
-                description="Raspberry Pi GPIO control"
+                description="Raspberry Pi GPIO control",
             ),
-            
             # HyperPixel display (Pi-specific)
             DependencyInfo(
                 name="HyperPixel2R",
@@ -197,82 +204,83 @@ class DependencyValidator:
                 dependency_type=DependencyType.PLATFORM_SPECIFIC,
                 platforms=["raspberry_pi"],
                 install_hint="Follow HyperPixel2R installation guide",
-                description="HyperPixel 2.1 Round display driver"
+                description="HyperPixel 2.1 Round display driver",
             ),
-            
             # Math libraries
             DependencyInfo(
                 name="Math",
                 import_name="math",
                 dependency_type=DependencyType.REQUIRED,
-                description="Mathematical functions"
+                description="Mathematical functions",
             ),
-            
             # Threading
             DependencyInfo(
                 name="Threading",
                 import_name="threading",
                 dependency_type=DependencyType.REQUIRED,
-                description="Multi-threading support"
+                description="Multi-threading support",
             ),
-            
             # Time utilities
             DependencyInfo(
                 name="Time",
                 import_name="time",
                 dependency_type=DependencyType.REQUIRED,
-                description="Time and timing utilities"
+                description="Time and timing utilities",
             ),
-            
             # Logging
             DependencyInfo(
                 name="Logging",
                 import_name="logging",
                 dependency_type=DependencyType.REQUIRED,
-                description="Application logging"
+                description="Application logging",
             ),
         ]
-    
+
     def _should_check_dependency(self, dep: DependencyInfo) -> bool:
         """Determine if a dependency should be checked on current platform"""
         # Always check required dependencies
         if dep.dependency_type == DependencyType.REQUIRED:
             return True
-        
+
         # Check platform-specific dependencies
         if dep.dependency_type == DependencyType.PLATFORM_SPECIFIC:
             if not dep.platforms:
                 return True  # No platform restriction
-            
-            if "raspberry_pi" in dep.platforms and self.platform_info['is_raspberry_pi']:
+
+            if (
+                "raspberry_pi" in dep.platforms
+                and self.platform_info["is_raspberry_pi"]
+            ):
                 return True
-            if "linux" in dep.platforms and self.platform_info['is_linux']:
+            if "linux" in dep.platforms and self.platform_info["is_linux"]:
                 return True
-            
+
             return False
-        
+
         # Check development dependencies
         if dep.dependency_type == DependencyType.DEVELOPMENT:
             if not dep.platforms:
                 return True
-            
-            if "development" in dep.platforms and self.platform_info['is_development']:
+
+            if "development" in dep.platforms and self.platform_info["is_development"]:
                 return True
-            
+
             return False
-        
+
         # Check optional dependencies
         if dep.dependency_type == DependencyType.OPTIONAL:
             return True
-        
+
         return False
-    
-    def _check_import(self, import_name: str) -> Tuple[bool, Optional[str], Optional[str]]:
+
+    def _check_import(
+        self, import_name: str
+    ) -> Tuple[bool, Optional[str], Optional[str]]:
         """Check if a module can be imported and get version info
-        
+
         Enhanced to properly check virtual environment installations and provide
         detailed debugging information for dependency detection issues.
-        
+
         Returns:
             Tuple of (available, version, error_message)
         """
@@ -280,40 +288,45 @@ class DependencyValidator:
             self.logger.debug(f"Checking import for: {import_name}")
             self.logger.debug(f"Python executable: {sys.executable}")
             self.logger.debug(f"Python path: {sys.path[:3]}...")  # First 3 entries
-            
+
             # Check if we're in a virtual environment
             venv_info = self._detect_virtual_environment()
-            if venv_info['in_venv']:
-                self.logger.debug(f"Virtual environment detected: {venv_info['venv_path']}")
+            if venv_info["in_venv"]:
+                self.logger.debug(
+                    f"Virtual environment detected: {venv_info['venv_path']}"
+                )
             else:
                 self.logger.debug("Not in virtual environment (or not detected)")
-        
+
         try:
             # Try to import the module
             module = importlib.import_module(import_name)
-            
+
             # Try to get version information
             version = None
-            for version_attr in ['__version__', 'version', 'VERSION']:
+            for version_attr in ["__version__", "version", "VERSION"]:
                 if hasattr(module, version_attr):
                     version = getattr(module, version_attr)
                     if callable(version):
                         version = version()
                     version = str(version)
                     break
-            
-            # Try alternative version detection for packages without standard version attributes
+
+            # Try alternative version detection for packages without standard version
+            # attributes
             if not version:
                 version = self._get_package_version_alt(import_name)
-            
+
             if self.debug:
-                module_file = getattr(module, '__file__', 'built-in')
-                self.logger.debug(f"Successfully imported {import_name} from: {module_file}")
+                module_file = getattr(module, "__file__", "built-in")
+                self.logger.debug(
+                    f"Successfully imported {import_name} from: {module_file}"
+                )
                 if version:
                     self.logger.debug(f"Version detected: {version}")
-            
+
             return True, version, None
-            
+
         except ImportError as e:
             if self.debug:
                 self.logger.debug(f"ImportError for {import_name}: {str(e)}")
@@ -323,33 +336,35 @@ class DependencyValidator:
                     self.logger.debug(f"Module spec not found for {import_name}")
                 else:
                     self.logger.debug(f"Module spec found but import failed: {spec}")
-            
+
             return False, None, str(e)
         except Exception as e:
             if self.debug:
                 self.logger.debug(f"Unexpected error importing {import_name}: {str(e)}")
             return False, None, f"Unexpected error: {str(e)}"
-    
+
     def _validate_dependency(self, dep: DependencyInfo) -> ValidationReport:
         """Validate a single dependency"""
         if self.debug:
             self.logger.debug(f"Validating dependency: {dep.name}")
-        
+
         # Check if we should validate this dependency
         if not self._should_check_dependency(dep):
             if self.debug:
-                self.logger.debug(f"Skipping {dep.name} - not required for current platform")
+                self.logger.debug(
+                    f"Skipping {dep.name} - not required for current platform"
+                )
             return ValidationReport(
                 name=dep.name,
                 dependency_info=dep,
                 result=ValidationResult.SUCCESS,
                 available=False,
-                error_message="Not required for current platform"
+                error_message="Not required for current platform",
             )
-        
+
         # Attempt to import the dependency
         available, version, error_message = self._check_import(dep.import_name)
-        
+
         # Determine validation result
         if available:
             result = ValidationResult.SUCCESS
@@ -358,15 +373,17 @@ class DependencyValidator:
             if dep.dependency_type == DependencyType.REQUIRED:
                 result = ValidationResult.FATAL
             elif dep.dependency_type == DependencyType.PLATFORM_SPECIFIC:
-                if self.platform_info['is_raspberry_pi'] and dep.platforms == ["raspberry_pi"]:
+                if self.platform_info["is_raspberry_pi"] and dep.platforms == [
+                    "raspberry_pi"
+                ]:
                     result = ValidationResult.ERROR
                 else:
                     result = ValidationResult.WARNING
             else:
                 result = ValidationResult.WARNING
-            
+
             install_command = dep.install_hint
-        
+
         report = ValidationReport(
             name=dep.name,
             dependency_info=dep,
@@ -374,81 +391,124 @@ class DependencyValidator:
             available=available,
             version=version,
             error_message=error_message,
-            install_command=install_command
+            install_command=install_command,
         )
-        
+
         if self.debug:
-            self.logger.debug(f"Dependency {dep.name}: {result.name} - Available: {available}")
+            self.logger.debug(
+                f"Dependency {dep.name}: {result.name} - Available: {available}"
+            )
             if version:
                 self.logger.debug(f"Version: {version}")
             if error_message:
                 self.logger.debug(f"Error: {error_message}")
-        
+
         return report
-    
+
     def validate_all(self) -> List[ValidationReport]:
         """Validate all dependencies and return reports"""
         self.logger.info("Starting dependency validation...")
-        
+
         if self.debug:
-            self.logger.debug(f"Platform: {self.platform_info['system']} {self.platform_info['machine']}")
+            self.logger.debug(
+                f"Platform: {self.platform_info['system']} "
+                f"{self.platform_info['machine']}"
+            )
             self.logger.debug(f"Python: {self.platform_info['python_version']}")
             self.logger.debug(f"Raspberry Pi: {self.platform_info['is_raspberry_pi']}")
             self.logger.debug(f"Development: {self.platform_info['is_development']}")
-        
+
         self.reports = []
-        
+
         for dep in self.dependencies:
             report = self._validate_dependency(dep)
             self.reports.append(report)
-        
+
         return self.reports
-    
+
     def get_summary(self) -> Dict[str, Any]:
         """Get validation summary statistics"""
         if not self.reports:
             return {}
-        
+
         # Filter out skipped dependencies for cleaner summary
-        checked_reports = [r for r in self.reports if not (r.result == ValidationResult.SUCCESS and not r.available)]
-        
+        checked_reports = [
+            r
+            for r in self.reports
+            if not (r.result == ValidationResult.SUCCESS and not r.available)
+        ]
+
         summary = {
-            'total_checked': len(checked_reports),
-            'available': sum(1 for r in checked_reports if r.available),
-            'missing': sum(1 for r in checked_reports if not r.available),
-            'fatal_errors': sum(1 for r in self.reports if r.result == ValidationResult.FATAL),
-            'errors': sum(1 for r in self.reports if r.result == ValidationResult.ERROR),
-            'warnings': sum(1 for r in self.reports if r.result == ValidationResult.WARNING),
-            'success': sum(1 for r in self.reports if r.result == ValidationResult.SUCCESS and r.available),
-            'skipped': sum(1 for r in self.reports if r.result == ValidationResult.SUCCESS and not r.available),
-            'can_start': sum(1 for r in self.reports if r.result == ValidationResult.FATAL) == 0
+            "total_checked": len(checked_reports),
+            "available": sum(1 for r in checked_reports if r.available),
+            "missing": sum(1 for r in checked_reports if not r.available),
+            "fatal_errors": sum(
+                1 for r in self.reports if r.result == ValidationResult.FATAL
+            ),
+            "errors": sum(
+                1 for r in self.reports if r.result == ValidationResult.ERROR
+            ),
+            "warnings": sum(
+                1 for r in self.reports if r.result == ValidationResult.WARNING
+            ),
+            "success": sum(
+                1
+                for r in self.reports
+                if r.result == ValidationResult.SUCCESS and r.available
+            ),
+            "skipped": sum(
+                1
+                for r in self.reports
+                if r.result == ValidationResult.SUCCESS and not r.available
+            ),
+            "can_start": sum(
+                1 for r in self.reports if r.result == ValidationResult.FATAL
+            )
+            == 0,
         }
-        
+
         return summary
-    
+
     def print_report(self, show_successful: bool = None) -> None:
         """Print detailed dependency report"""
         if show_successful is None:
             show_successful = self.debug
-        
-        print("\n" + "="*70)
+
+        print("\n" + "=" * 70)
         print("OBDII Display Application - Dependency Validation Report")
-        print("="*70)
-        
+        print("=" * 70)
+
         # Platform information
-        print(f"Platform: {self.platform_info['system']} {self.platform_info['machine']}")
+        print(
+            f"Platform: {self.platform_info['system']} {self.platform_info['machine']}"
+        )
         print(f"Python: {self.platform_info['python_version']}")
-        print(f"Raspberry Pi: {'Yes' if self.platform_info['is_raspberry_pi'] else 'No'}")
-        print(f"Development Mode: {'Yes' if self.platform_info['is_development'] else 'No'}")
+        print(
+            f"Raspberry Pi: {'Yes' if self.platform_info['is_raspberry_pi'] else 'No'}"
+        )
+        print(
+            "Development Mode: "
+            f"{'Yes' if self.platform_info['is_development'] else 'No'}"
+        )
         print()
-        
+
         # Group reports by result type
         fatal_reports = [r for r in self.reports if r.result == ValidationResult.FATAL]
         error_reports = [r for r in self.reports if r.result == ValidationResult.ERROR]
-        warning_reports = [r for r in self.reports if r.result == ValidationResult.WARNING]
-        success_reports = [r for r in self.reports if r.result == ValidationResult.SUCCESS and r.available]
-        skipped_reports = [r for r in self.reports if r.result == ValidationResult.SUCCESS and not r.available]
-        
+        warning_reports = [
+            r for r in self.reports if r.result == ValidationResult.WARNING
+        ]
+        success_reports = [
+            r
+            for r in self.reports
+            if r.result == ValidationResult.SUCCESS and r.available
+        ]
+        skipped_reports = [
+            r
+            for r in self.reports
+            if r.result == ValidationResult.SUCCESS and not r.available
+        ]
+
         # Print fatal errors
         if fatal_reports:
             print("❌ FATAL ERRORS (Application cannot start):")
@@ -459,7 +519,7 @@ class DependencyValidator:
                 if report.dependency_info.description:
                     print(f"    Purpose: {report.dependency_info.description}")
                 print()
-        
+
         # Print errors
         if error_reports:
             print("🟡 ERRORS (Reduced functionality):")
@@ -470,7 +530,7 @@ class DependencyValidator:
                 if report.dependency_info.description:
                     print(f"    Purpose: {report.dependency_info.description}")
                 print()
-        
+
         # Print warnings
         if warning_reports:
             print("⚠️  WARNINGS (Optional features unavailable):")
@@ -481,7 +541,7 @@ class DependencyValidator:
                 if report.dependency_info.description:
                     print(f"    Purpose: {report.dependency_info.description}")
                 print()
-        
+
         # Print successful dependencies
         if show_successful and success_reports:
             print("✅ AVAILABLE DEPENDENCIES:")
@@ -491,7 +551,7 @@ class DependencyValidator:
                 if self.debug and report.dependency_info.description:
                     print(f"    Purpose: {report.dependency_info.description}")
             print()
-        
+
         # Print skipped dependencies in debug mode
         if self.debug and skipped_reports:
             print("⏭️  SKIPPED DEPENDENCIES (Not required for current platform):")
@@ -500,7 +560,7 @@ class DependencyValidator:
                 if report.dependency_info.description:
                     print(f"    Purpose: {report.dependency_info.description}")
             print()
-        
+
         # Print summary
         summary = self.get_summary()
         print("📊 SUMMARY:")
@@ -510,95 +570,96 @@ class DependencyValidator:
         print(f"  Fatal Errors: {summary['fatal_errors']}")
         print(f"  Errors: {summary['errors']}")
         print(f"  Warnings: {summary['warnings']}")
-        if self.debug and summary.get('skipped', 0) > 0:
+        if self.debug and summary.get("skipped", 0) > 0:
             print(f"  Skipped (Platform-specific): {summary['skipped']}")
         print()
-        
+
         # Final status
-        if summary['can_start']:
+        if summary["can_start"]:
             print("✅ Application can start (all critical dependencies available)")
         else:
             print("❌ Application cannot start (missing critical dependencies)")
-        
-        print("="*70)
-    
+
+        print("=" * 70)
+
     def get_install_commands(self) -> List[str]:
         """Get installation commands for missing dependencies"""
         commands = []
-        
+
         for report in self.reports:
             if not report.available and report.install_command:
                 commands.append(report.install_command)
-        
+
         return list(set(commands))  # Remove duplicates
-    
+
     def can_start_application(self) -> bool:
         """Check if application can start (no fatal dependency errors)"""
         return all(report.result != ValidationResult.FATAL for report in self.reports)
-    
+
     def _detect_virtual_environment(self) -> Dict[str, Any]:
         """Detect if we're running in a virtual environment and get details"""
         venv_info = {
-            'in_venv': False,
-            'venv_path': None,
-            'venv_type': None,
-            'base_prefix': getattr(sys, 'base_prefix', sys.prefix),
-            'real_prefix': getattr(sys, 'real_prefix', None)
+            "in_venv": False,
+            "venv_path": None,
+            "venv_type": None,
+            "base_prefix": getattr(sys, "base_prefix", sys.prefix),
+            "real_prefix": getattr(sys, "real_prefix", None),
         }
-        
+
         # Check various virtual environment indicators
-        if hasattr(sys, 'real_prefix'):
+        if hasattr(sys, "real_prefix"):
             # virtualenv
-            venv_info['in_venv'] = True
-            venv_info['venv_type'] = 'virtualenv'
-            venv_info['venv_path'] = sys.prefix
+            venv_info["in_venv"] = True
+            venv_info["venv_type"] = "virtualenv"
+            venv_info["venv_path"] = sys.prefix
         elif sys.base_prefix != sys.prefix:
             # venv (Python 3.3+)
-            venv_info['in_venv'] = True
-            venv_info['venv_type'] = 'venv'
-            venv_info['venv_path'] = sys.prefix
-        elif os.environ.get('VIRTUAL_ENV'):
+            venv_info["in_venv"] = True
+            venv_info["venv_type"] = "venv"
+            venv_info["venv_path"] = sys.prefix
+        elif os.environ.get("VIRTUAL_ENV"):
             # Environment variable set
-            venv_info['in_venv'] = True
-            venv_info['venv_type'] = 'env_var'
-            venv_info['venv_path'] = os.environ['VIRTUAL_ENV']
-        elif os.environ.get('CONDA_DEFAULT_ENV'):
+            venv_info["in_venv"] = True
+            venv_info["venv_type"] = "env_var"
+            venv_info["venv_path"] = os.environ["VIRTUAL_ENV"]
+        elif os.environ.get("CONDA_DEFAULT_ENV"):
             # Conda environment
-            venv_info['in_venv'] = True
-            venv_info['venv_type'] = 'conda'
-            venv_info['venv_path'] = os.environ.get('CONDA_PREFIX', sys.prefix)
-        
+            venv_info["in_venv"] = True
+            venv_info["venv_type"] = "conda"
+            venv_info["venv_path"] = os.environ.get("CONDA_PREFIX", sys.prefix)
+
         return venv_info
-    
+
     def _get_package_version_alt(self, import_name: str) -> Optional[str]:
         """Alternative method to get package version using importlib.metadata only"""
         # Map import names to package names for version detection
         import_to_package = {
-            'yaml': 'PyYAML',
-            'serial': 'pyserial',
-            'pygame': 'pygame',
+            "yaml": "PyYAML",
+            "serial": "pyserial",
+            "pygame": "pygame",
             # Add more mappings as needed
         }
-        
+
         package_name = import_to_package.get(import_name, import_name)
-        
+
         # Try importlib.metadata (Python 3.8+)
         try:
             if sys.version_info >= (3, 8):
                 import importlib.metadata
+
                 return importlib.metadata.version(package_name)
         except (ImportError, Exception):
             pass
-        
+
         return None
 
 
 def validate_dependencies(debug: bool = False) -> DependencyValidator:
     """Validate all dependencies and return validator instance
-    
+
     Args:
         debug: Enable debug logging and detailed reporting
-    
+
     Returns:
         DependencyValidator instance with validation results
     """
@@ -610,26 +671,40 @@ def validate_dependencies(debug: bool = False) -> DependencyValidator:
 def main():
     """Main function for standalone dependency checking"""
     import argparse
-    
-    parser = argparse.ArgumentParser(description="OBDII Display Application - Dependency Validator")
-    parser.add_argument('--debug', action='store_true', help='Enable debug logging and detailed reporting')
-    parser.add_argument('--show-successful', action='store_true', help='Show successful dependencies in report')
-    parser.add_argument('--install-commands', action='store_true', help='Show installation commands for missing dependencies')
-    
+
+    parser = argparse.ArgumentParser(
+        description="OBDII Display Application - Dependency Validator"
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging and detailed reporting",
+    )
+    parser.add_argument(
+        "--show-successful",
+        action="store_true",
+        help="Show successful dependencies in report",
+    )
+    parser.add_argument(
+        "--install-commands",
+        action="store_true",
+        help="Show installation commands for missing dependencies",
+    )
+
     args = parser.parse_args()
-    
+
     # Setup logging
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    
+
     # Run validation
     validator = validate_dependencies(debug=args.debug)
-    
+
     # Print report
     validator.print_report(show_successful=args.show_successful)
-    
+
     # Show install commands if requested
     if args.install_commands:
         commands = validator.get_install_commands()
@@ -638,7 +713,7 @@ def main():
             for cmd in commands:
                 print(f"  {cmd}")
             print()
-    
+
     # Exit with appropriate code
     sys.exit(0 if validator.can_start_application() else 1)
 

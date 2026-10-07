@@ -18,8 +18,8 @@ directory of their own, so nothing is written into the repository
 import os
 from pathlib import Path
 
-GTACH_HOME_ENV = 'GTACH_HOME'
-DEFAULT_GTACH_HOME = Path('/opt/gtach')
+GTACH_HOME_ENV = "GTACH_HOME"
+DEFAULT_GTACH_HOME = Path("/opt/gtach")
 
 
 def gtach_home() -> Path:

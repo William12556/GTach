@@ -127,8 +127,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 ## 7.0 Formatting and Type Checking
 
 - Format: `black`, `isort` (profile `black`). Lint: `flake8`. Type: `mypy` (strict settings; see `pyproject.toml`).
-- Line length: PEP 8 (79). Note: `pyproject.toml` pins `black`/`isort` to 88, which diverges from PEP 8;
-  reconcile before relying on either limit.
+- Line length: 88 for black, isort and flake8 (`.flake8`).
 - Fix order on failures: formatting → type errors → linting.
 - Optional handling: explicit `None` checks; narrow types before use.
 
@@ -202,6 +201,7 @@ ai/workspace/
 | 1.4 | 2026-10-07 | Configuration: single ConfigStore under GTACH_HOME (change-5fbff586) |
 | 1.5 | 2026-10-07 | Hardware row: RPi.GPIO and hyperpixel2r in the .[pi] extra (change-52653cd6) |
 | 1.6 | 2026-10-07 | Rule 8: file-serialising lock may span that file's I/O (change-4005360c) |
+| 1.7 | 2026-10-07 | §7 line length: 88 for black, isort and flake8 (change-e4ee50fd) |
 
 ---
 

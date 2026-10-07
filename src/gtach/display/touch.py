@@ -17,24 +17,26 @@ from typing import Optional, Tuple
 
 # Import touch interface abstraction
 try:
-    from .touch_interface import create_touch_interface, TouchEvent, TouchEventType
+    from .touch_interface import TouchEvent, TouchEventType, create_touch_interface
+
     TOUCH_INTERFACE_AVAILABLE = True
 except ImportError:
     TOUCH_INTERFACE_AVAILABLE = False
-    logging.getLogger('TouchHandler').error("Touch interface abstraction not available")
+    logging.getLogger("TouchHandler").error("Touch interface abstraction not available")
 
 
 class TouchHandler:
     """Handles touch input and gestures using the touch interface abstraction layer"""
-    
+
     def __init__(self, display_manager, touch_interface=None):
         """Initialize touch handler
 
         Args:
             display_manager: Display manager instance
-            touch_interface: Pre-initialised touch interface; if provided, skips self-initialisation
+            touch_interface: Pre-initialised touch interface; if provided,
+                skips self-initialisation
         """
-        self.logger = logging.getLogger('TouchHandler')
+        self.logger = logging.getLogger("TouchHandler")
         self.display_manager = display_manager
         self._touch_start: Optional[Tuple[float, int, int]] = None
 
@@ -51,27 +53,31 @@ class TouchHandler:
             if not TOUCH_INTERFACE_AVAILABLE:
                 self.logger.error("Touch interface abstraction not available")
                 return None
-            
+
             # Use the factory function to create appropriate interface
             interface = create_touch_interface()
             self.logger.info(f"Touch interface created: {interface.__class__.__name__}")
-            
+
             # Start the interface
             interface.start()
             self.logger.info("Touch interface started successfully")
-            
+
             return interface
-            
+
         except Exception as e:
-            self.logger.error(f"Failed to initialize touch interface: {e}", exc_info=True)
+            self.logger.error(
+                f"Failed to initialize touch interface: {e}", exc_info=True
+            )
             return None
 
     def _setup_touch_handler(self) -> None:
         """Set up touch event handler using the abstraction layer"""
         if self.touch_interface is None:
-            self.logger.warning("No touch interface available - touch events will not be processed")
+            self.logger.warning(
+                "No touch interface available - touch events will not be processed"
+            )
             return
-        
+
         try:
             # Register our touch event handler with the abstraction layer
             self.touch_interface.register_callback(self._handle_touch_event)
@@ -85,14 +91,17 @@ class TouchHandler:
             # Convert normalized coordinates to pixel coordinates (480x480 display)
             x = int(event.x * 480)
             y = int(event.y * 480)
-            
+
             # Ensure coordinates are within valid bounds
             x = max(0, min(479, x))
             y = max(0, min(479, y))
-            
+
             # Log touch events for debugging
-            self.logger.debug(f"Touch event: {event.event_type.name} at ({x}, {y}) - normalized ({event.x:.3f}, {event.y:.3f})")
-            
+            self.logger.debug(
+                f"Touch event: {event.event_type.name} at ({x}, {y}) - normalized "
+                f"({event.x:.3f}, {event.y:.3f})"
+            )
+
             # Convert TouchEventType to boolean state for existing logic
             if event.event_type == TouchEventType.TOUCH_DOWN:
                 state = True
@@ -100,29 +109,34 @@ class TouchHandler:
                 state = False
             else:  # TOUCH_MOVE - treat as touch down for now
                 state = True
-            
+
             # Call existing touch handling logic
             self._process_touch(0, x, y, state, event.timestamp)
-            
+
         except Exception as e:
             self.logger.error(f"Error handling touch event: {e}", exc_info=True)
 
-    def _process_touch(self, touch_id: int, x: int, y: int, state: bool, timestamp: float = None) -> None:
+    def _process_touch(
+        self, touch_id: int, x: int, y: int, state: bool, timestamp: float = None
+    ) -> None:
         """Process touch events with gesture recognition integration"""
         try:
             current_time = timestamp if timestamp else time.monotonic()
-            
+
             if state:  # Touch down/move
                 if self._touch_start is None:  # Only record on first touch down
                     self._touch_start = (current_time, x, y)
-                    
+
             else:  # Touch end
                 if not self._touch_start:
                     return
-                    
+
                 start_time, start_x, start_y = self._touch_start
                 duration = current_time - start_time
-                self.logger.debug(f"Touch end: duration={duration:.3f}s, pos=({x},{y}), start=({start_x},{start_y})")
+                self.logger.debug(
+                    f"Touch end: duration={duration:.3f}s, pos=({x},{y}), "
+                    f"start=({start_x},{start_y})"
+                )
 
                 # Skip gesture handler in setup mode - route directly
                 if self.display_manager.is_in_setup_mode():
@@ -137,7 +151,7 @@ class TouchHandler:
                     self._handle_short_press(x, y, start_x, start_y)
 
                 self._touch_start = None
-                
+
         except Exception as e:
             self.logger.error(f"Touch processing error: {e}", exc_info=True)
 
@@ -197,8 +211,9 @@ class TouchHandler:
             # the same movement; 100 — the value the removed horizontal
             # branch used — if the coordinator is unavailable.
             swipe_threshold = getattr(
-                getattr(self.display_manager, 'touch_coordinator', None),
-                'swipe_threshold', 100
+                getattr(self.display_manager, "touch_coordinator", None),
+                "swipe_threshold",
+                100,
             )
             dx = x - start_x
             dy = y - start_y
@@ -264,19 +279,23 @@ class TouchHandler:
             dispatched; False to fall through to the tap dispatch.
         """
         try:
-            setup_manager = getattr(self.display_manager, '_setup_manager', None)
-            if setup_manager is None or not hasattr(setup_manager, 'handle_setup_swipe'):
+            setup_manager = getattr(self.display_manager, "_setup_manager", None)
+            if setup_manager is None or not hasattr(
+                setup_manager, "handle_setup_swipe"
+            ):
                 return False
 
             # Scoped to the device list: no other setup screen changes
             # behaviour.
             from .setup_models import SetupScreen
+
             if setup_manager.state.current_screen != SetupScreen.DEVICE_LIST:
                 return False
 
             swipe_threshold = getattr(
-                getattr(self.display_manager, 'touch_coordinator', None),
-                'swipe_threshold', 100
+                getattr(self.display_manager, "touch_coordinator", None),
+                "swipe_threshold",
+                100,
             )
             dx = x - start_x
             dy = y - start_y
@@ -288,7 +307,9 @@ class TouchHandler:
 
             direction = 1 if dy > 0 else -1
             setup_manager.handle_setup_swipe(direction)
-            self.logger.debug(f"Setup device-list swipe consumed: direction={direction:+d}")
+            self.logger.debug(
+                f"Setup device-list swipe consumed: direction={direction:+d}"
+            )
             return True
 
         except Exception as e:
@@ -298,14 +319,15 @@ class TouchHandler:
     def _handle_setup_touch(self, x: int, y: int) -> None:
         """Handle touch events in setup mode"""
         try:
-            # Route touch events through the DisplayManager's new handle_touch_event method
+            # Route touch events through the DisplayManager's new handle_touch_event
+            # method
             action = self.display_manager.handle_touch_event((x, y))
-            
+
             # Handle special setup actions that affect the main application
-            if action and hasattr(action, 'name'):
-                if action.name == 'EXIT_SETUP':
+            if action and hasattr(action, "name"):
+                if action.name == "EXIT_SETUP":
                     self.display_manager.exit_setup_mode()
-                    
+
         except Exception as e:
             self.logger.error(f"Setup touch handling error: {e}", exc_info=True)
 
@@ -324,20 +346,23 @@ class TouchHandler:
         """Get information about the current touch interface for debugging"""
         try:
             info = {
-                'touch_interface_available': TOUCH_INTERFACE_AVAILABLE,
-                'interface_type': type(self.touch_interface).__name__ if self.touch_interface else 'None'
+                "touch_interface_available": TOUCH_INTERFACE_AVAILABLE,
+                "interface_type": (
+                    type(self.touch_interface).__name__
+                    if self.touch_interface
+                    else "None"
+                ),
             }
-            
+
             if self.touch_interface is not None:
                 try:
                     interface_info = self.touch_interface.get_info()
-                    info['interface_info'] = interface_info
+                    info["interface_info"] = interface_info
                 except AttributeError:
-                    info['interface_info'] = 'get_info() not available'
-            
+                    info["interface_info"] = "get_info() not available"
+
             return info
-            
+
         except Exception as e:
             self.logger.error(f"Error getting touch interface info: {e}", exc_info=True)
-            return {'error': str(e)}
-
+            return {"error": str(e)}

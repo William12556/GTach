@@ -40,10 +40,12 @@ class RFCOMMTransport(OBDTransport):
     def _open(self) -> Optional[socket.socket]:
         """Open an RFCOMM socket to the paired device."""
         # Guard against platforms where AF_BLUETOOTH is not available (e.g., macOS)
-        if not hasattr(socket, 'AF_BLUETOOTH'):
+        if not hasattr(socket, "AF_BLUETOOTH"):
             raise OSError("AF_BLUETOOTH not supported on this platform")
 
-        sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        sock = socket.socket(
+            socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM
+        )
         sock.settimeout(10)
         # Nothing else closes this socket if connect raises. It is a
         # local, and OBDTransport.connect's _IO_ERRORS handler calls

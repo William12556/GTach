@@ -30,12 +30,12 @@ from gtach.display.async_operations import (
     OperationStatus,
     OperationType,
 )
+from gtach.display.input.interfaces import TouchAction
 from gtach.display.input.touch_coordinator import TouchEventCoordinator
 from gtach.display.setup import SetupDisplayManager
 from gtach.display.setup_components.bluetooth.interface import BluetoothSetupInterface
 from gtach.display.setup_models import PairingStatus
 from gtach.display.touch_interface import MockTouchInterface, TouchEvent, TouchEventType
-from gtach.display.input.interfaces import TouchAction
 
 WAIT_TIMEOUT = 5.0
 
@@ -54,32 +54,36 @@ class _CapturingAsyncManager:
     def __init__(self):
         self.submitted = []
 
-    def submit_operation(self, operation_type, task_func, *args,
-                         progress_callback=None, **kwargs):
+    def submit_operation(
+        self, operation_type, task_func, *args, progress_callback=None, **kwargs
+    ):
         self.submitted.append((operation_type, task_func, progress_callback))
-        return f'op-{len(self.submitted)}'
+        return f"op-{len(self.submitted)}"
 
 
 class _SyncAsyncManager:
     """Runs the task at once and reports a terminal status."""
 
-    def submit_operation(self, operation_type, task_func, *args,
-                         progress_callback=None, **kwargs):
+    def submit_operation(
+        self, operation_type, task_func, *args, progress_callback=None, **kwargs
+    ):
         try:
-            op = types.SimpleNamespace(status=OperationStatus.COMPLETED,
-                                       result=task_func(*args, **kwargs))
+            op = types.SimpleNamespace(
+                status=OperationStatus.COMPLETED, result=task_func(*args, **kwargs)
+            )
         except Exception as e:
-            op = types.SimpleNamespace(status=OperationStatus.FAILED,
-                                       result=None, error=e)
+            op = types.SimpleNamespace(
+                status=OperationStatus.FAILED, result=None, error=e
+            )
         if progress_callback:
             progress_callback(op)
-        return 'op-sync'
+        return "op-sync"
 
 
 def _interface(async_manager, pairing_factory=None, device_store=None):
     """A BluetoothSetupInterface without real workers or a device store."""
     iface = object.__new__(BluetoothSetupInterface)
-    iface.logger = logging.getLogger('test.callbacks_outside_locks')
+    iface.logger = logging.getLogger("test.callbacks_outside_locks")
     iface.device_store = device_store
     iface.async_manager = async_manager
     iface._pairing_factory = pairing_factory
@@ -106,15 +110,16 @@ class TestAsyncManagerCallbacks:
 
         def task(progress_callback=None):
             progress_callback(0.5)
-            return 'ok'
+            return "ok"
 
         def callback(operation):
             calls.append(_free(manager._operations_lock))
             if operation.status == OperationStatus.COMPLETED:
                 finished.set()
 
-        manager.submit_operation(OperationType.GENERAL_TASK, task,
-                                 progress_callback=callback)
+        manager.submit_operation(
+            OperationType.GENERAL_TASK, task, progress_callback=callback
+        )
 
         assert finished.wait(WAIT_TIMEOUT)
         assert len(calls) >= 2
@@ -129,8 +134,9 @@ class TestAsyncManagerCallbacks:
             if operation.status == OperationStatus.COMPLETED:
                 finished.set()
 
-        manager.submit_operation(OperationType.GENERAL_TASK, lambda: 'ok',
-                                 progress_callback=callback)
+        manager.submit_operation(
+            OperationType.GENERAL_TASK, lambda: "ok", progress_callback=callback
+        )
 
         assert finished.wait(WAIT_TIMEOUT)
         assert seen and all(op is not None for op in seen)
@@ -140,31 +146,41 @@ class TestCompletionHandlersIgnoreProgress:
     """D12: a RUNNING update is not a terminal outcome."""
 
     def _running(self):
-        return types.SimpleNamespace(status=OperationStatus.RUNNING,
-                                     result=object(), error=None)
+        return types.SimpleNamespace(
+            status=OperationStatus.RUNNING, result=object(), error=None
+        )
 
     def _snapshot(self, iface, state):
-        return (state.pairing_status, iface.pairing,
-                iface._pairing_ready.is_set(), dict(iface._active_operations))
+        return (
+            state.pairing_status,
+            iface.pairing,
+            iface._pairing_ready.is_set(),
+            dict(iface._active_operations),
+        )
 
     def _handlers(self):
         stub = _CapturingAsyncManager()
         iface = _interface(stub)
-        state = types.SimpleNamespace(pairing_status=PairingStatus.IDLE,
-                                      discovered_devices=[],
-                                      discovery_progress=0.0)
+        state = types.SimpleNamespace(
+            pairing_status=PairingStatus.IDLE,
+            discovered_devices=[],
+            discovery_progress=0.0,
+        )
         iface._init_bluetooth_pairing_async()
         iface.start_discovery(state)
-        device = types.SimpleNamespace(name='dev', mac_address='00:11:22:33:44:55')
+        device = types.SimpleNamespace(name="dev", mac_address="00:11:22:33:44:55")
         iface.start_pairing(device, state)
         handlers = {op_type: cb for op_type, _, cb in stub.submitted}
         return iface, state, handlers
 
-    @pytest.mark.parametrize('op_type', [
-        OperationType.BLUETOOTH_INIT,
-        OperationType.DEVICE_DISCOVERY,
-        OperationType.DEVICE_PAIRING,
-    ])
+    @pytest.mark.parametrize(
+        "op_type",
+        [
+            OperationType.BLUETOOTH_INIT,
+            OperationType.DEVICE_DISCOVERY,
+            OperationType.DEVICE_PAIRING,
+        ],
+    )
     def test_running_update_changes_nothing(self, op_type):
         iface, state, handlers = self._handlers()
         before = self._snapshot(iface, state)
@@ -190,12 +206,14 @@ class TestTouchCoordinatorButtonCallback:
                 if acquired:
                     coordinator._lock.release()
                 recorded.append(acquired)
+
             helper = threading.Thread(target=probe, daemon=True)
             helper.start()
             helper.join(WAIT_TIMEOUT)
 
         coordinator.register_button_region(
-            'b', pygame.Rect(0, 0, 100, 100), TouchAction.BUTTON_PRESS, callback)
+            "b", pygame.Rect(0, 0, 100, 100), TouchAction.BUTTON_PRESS, callback
+        )
 
         result = coordinator.handle_touch_down((50, 50))
 
@@ -207,13 +225,15 @@ class TestTouchCoordinatorButtonCallback:
         coordinator = TouchEventCoordinator()
 
         def callback(pos):
-            coordinator.register_button_region('c', pygame.Rect(200, 200, 10, 10))
+            coordinator.register_button_region("c", pygame.Rect(200, 200, 10, 10))
 
         coordinator.register_button_region(
-            'b', pygame.Rect(0, 0, 100, 100), TouchAction.BUTTON_PRESS, callback)
+            "b", pygame.Rect(0, 0, 100, 100), TouchAction.BUTTON_PRESS, callback
+        )
 
-        worker = threading.Thread(target=coordinator.handle_touch_down,
-                                  args=((50, 50),), daemon=True)
+        worker = threading.Thread(
+            target=coordinator.handle_touch_down, args=((50, 50),), daemon=True
+        )
         worker.start()
         worker.join(WAIT_TIMEOUT)
 
@@ -237,8 +257,9 @@ class TestStartDeviceProbe:
     @pytest.fixture
     def no_transport(self, monkeypatch):
         def _forbidden(*args, **kwargs):
-            raise AssertionError('RFCOMMTransport constructed')
-        monkeypatch.setattr(rfcomm_module, 'RFCOMMTransport', _forbidden)
+            raise AssertionError("RFCOMMTransport constructed")
+
+        monkeypatch.setattr(rfcomm_module, "RFCOMMTransport", _forbidden)
 
     def test_simulation_passes_without_rfcomm(self, no_transport):
         iface = _interface(_SyncAsyncManager(), pairing_factory=object)
@@ -249,12 +270,13 @@ class TestStartDeviceProbe:
         assert results == [True]
 
     def test_unreachable_device_reports_false(self, monkeypatch):
-        if not hasattr(socket, 'AF_BLUETOOTH'):
-            monkeypatch.setattr(socket, 'AF_BLUETOOTH', 31, raising=False)
-        device = types.SimpleNamespace(mac_address='00:11:22:33:44:55')
+        if not hasattr(socket, "AF_BLUETOOTH"):
+            monkeypatch.setattr(socket, "AF_BLUETOOTH", 31, raising=False)
+        device = types.SimpleNamespace(mac_address="00:11:22:33:44:55")
         store = types.SimpleNamespace(get_primary_device=lambda: device)
-        monkeypatch.setattr(rfcomm_module.RFCOMMTransport, 'connect',
-                            lambda self: False)
+        monkeypatch.setattr(
+            rfcomm_module.RFCOMMTransport, "connect", lambda self: False
+        )
         iface = _interface(_SyncAsyncManager(), device_store=store)
         results = []
 
@@ -278,14 +300,15 @@ class TestCurrentContinue:
 
     def test_one_probe_and_no_action(self):
         manager = object.__new__(SetupDisplayManager)
-        manager.logger = logging.getLogger('test.callbacks_outside_locks')
+        manager.logger = logging.getLogger("test.callbacks_outside_locks")
         manager._probe_in_flight = False
         probes = []
         manager.bluetooth_interface = types.SimpleNamespace(
-            start_device_probe=lambda on_result: probes.append(on_result))
+            start_device_probe=lambda on_result: probes.append(on_result)
+        )
 
-        first = manager._handle_touch_action('current_continue', ('current_continue',))
-        second = manager._handle_touch_action('current_continue', ('current_continue',))
+        first = manager._handle_touch_action("current_continue", ("current_continue",))
+        second = manager._handle_touch_action("current_continue", ("current_continue",))
 
         assert len(probes) == 1
         assert first is None and second is None

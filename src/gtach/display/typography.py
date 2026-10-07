@@ -9,8 +9,9 @@
 """
 Typography constants and font management for the OBDII display application.
 
-This module implements minimalist typography sizing designed for the HyperPixel 2" Round display.
-Font sizes have been reduced by approximately 40% while maintaining excellent readability
+This module implements minimalist typography sizing designed for the
+HyperPixel 2" Round display. Font sizes have been reduced by approximately 40%
+while maintaining excellent readability
 at the typical viewing distance of 30-50cm.
 
 The typography system is optimized for:
@@ -23,12 +24,13 @@ The typography system is optimized for:
 
 import logging
 import threading
-from typing import Dict, Optional, Tuple
 from enum import Enum
+from typing import Dict, Optional, Tuple
 
 # Conditional imports for hardware dependencies
 try:
     import pygame
+
     PYGAME_AVAILABLE = True
 except ImportError:
     pygame = None
@@ -37,48 +39,51 @@ except ImportError:
 
 class FontCategory(Enum):
     """Font categories for different UI elements."""
-    TITLE = "title"          # Main display values (RPM, etc.)
-    MEDIUM = "medium"        # Section headers, warnings
-    SMALL = "small"          # Labels, secondary information
-    MINIMAL = "minimal"      # Status indicators, hints
+
+    TITLE = "title"  # Main display values (RPM, etc.)
+    MEDIUM = "medium"  # Section headers, warnings
+    SMALL = "small"  # Labels, secondary information
+    MINIMAL = "minimal"  # Status indicators, hints
 
 
 class ButtonSize(Enum):
     """Standard button size categories."""
-    LARGE = "large"          # Primary actions (280x100)
-    MEDIUM = "medium"        # Secondary actions (140x60)
-    SMALL = "small"          # Tertiary actions (110x50)
-    ICON = "icon"            # Icon-only buttons (40x40)
-    FLOATING = "floating"    # Floating action buttons (44x44)
+
+    LARGE = "large"  # Primary actions (280x100)
+    MEDIUM = "medium"  # Secondary actions (140x60)
+    SMALL = "small"  # Tertiary actions (110x50)
+    ICON = "icon"  # Icon-only buttons (40x40)
+    FLOATING = "floating"  # Floating action buttons (44x44)
 
 
 class ButtonState(Enum):
     """Button visual states."""
-    NORMAL = "normal"        # Default state
-    HOVER = "hover"          # Mouse hover (if supported)
-    PRESSED = "pressed"      # Currently being pressed
-    DISABLED = "disabled"    # Not interactive
+
+    NORMAL = "normal"  # Default state
+    HOVER = "hover"  # Mouse hover (if supported)
+    PRESSED = "pressed"  # Currently being pressed
+    DISABLED = "disabled"  # Not interactive
 
 
 class TypographyConstants:
     """
     Centralized typography constants for minimalist design.
-    
+
     Font sizes are optimized for the 480x480 circular display with reduced sizes
     for space efficiency while maintaining readability.
     """
-    
+
     # Primary font sizes (reduced from original by ~40%)
-    TITLE_SIZE = 36      # Main RPM display (was 120)
-    MEDIUM_SIZE = 28     # Settings headers, mode labels (was 48)
-    SMALL_SIZE = 20      # Labels, warnings (was 36)
-    MINIMAL_SIZE = 16    # Status text, hints (was 24)
+    TITLE_SIZE = 36  # Main RPM display (was 120)
+    MEDIUM_SIZE = 28  # Settings headers, mode labels (was 48)
+    SMALL_SIZE = 20  # Labels, warnings (was 36)
+    MINIMAL_SIZE = 16  # Status text, hints (was 24)
 
     # Specific named constants for DisplayManager
-    FONT_RPM_LARGE = 180     # Digital mode main RPM display
-    FONT_RPM_MEDIUM = 28     # Gauge mode center readout
-    FONT_TITLE = 36          # Settings title
-    FONT_HEADING = 28        # Settings section headers
+    FONT_RPM_LARGE = 180  # Digital mode main RPM display
+    FONT_RPM_MEDIUM = 28  # Gauge mode center readout
+    FONT_TITLE = 36  # Settings title
+    FONT_HEADING = 28  # Settings section headers
 
     # The single small-text tier: hints, labels, status messages and
     # metadata across every screen. Replaces FONT_LABEL_SMALL (16) and
@@ -89,37 +94,37 @@ class TypographyConstants:
     FONT_SMALL_TEXT = 20
 
     # Additional constants for SetupDisplayManager
-    FONT_BODY = 24           # Body text and descriptions
-    FONT_BUTTON = 24         # Button text
-    
+    FONT_BODY = 24  # Body text and descriptions
+    FONT_BUTTON = 24  # Button text
+
     # Display constraints
     DISPLAY_WIDTH = 480
     DISPLAY_HEIGHT = 480
     DISPLAY_CENTER = (240, 240)
-    
+
     # Font rendering flags
-    FONT_BOLD = False        # Set True to apply synthetic bold to all UI fonts
+    FONT_BOLD = False  # Set True to apply synthetic bold to all UI fonts
 
     # Font validation ranges
     MIN_FONT_SIZE = 12
     MAX_FONT_SIZE = 180
-    
+
     # Typography scale ratios for responsive sizing
-    SCALE_SMALL = 0.8    # For cramped layouts
-    SCALE_LARGE = 1.2    # For emphasis
-    
+    SCALE_SMALL = 0.8  # For cramped layouts
+    SCALE_LARGE = 1.2  # For emphasis
+
     # Standardized button size constants (width x height in pixels)
-    BUTTON_LARGE = (260, 90)     # Primary actions like "Continue", "Save"
-    BUTTON_MEDIUM = (140, 60)    # Secondary actions like "Back", "Cancel"
-    BUTTON_SMALL = (110, 50)     # Tertiary actions like filter toggles
-    BUTTON_ICON = (40, 40)       # Icon-only buttons
-    BUTTON_FLOATING = (44, 44)   # Floating action buttons (minimum touch target)
-    
+    BUTTON_LARGE = (260, 90)  # Primary actions like "Continue", "Save"
+    BUTTON_MEDIUM = (140, 60)  # Secondary actions like "Back", "Cancel"
+    BUTTON_SMALL = (110, 50)  # Tertiary actions like filter toggles
+    BUTTON_ICON = (40, 40)  # Icon-only buttons
+    BUTTON_FLOATING = (44, 44)  # Floating action buttons (minimum touch target)
+
     # Button visual styling constants
-    BUTTON_CORNER_RADIUS = 6     # Corner radius for all button types (px)
-    BUTTON_BORDER_WIDTH = 2      # Standard border width for outlined buttons (px)
-    BUTTON_TOUCH_EXPANSION = 8   # Touch region expansion in all directions (px)
-    BUTTON_PRESS_SCALE = 0.95    # Scale factor for pressed state (95% of original)
+    BUTTON_CORNER_RADIUS = 6  # Corner radius for all button types (px)
+    BUTTON_BORDER_WIDTH = 2  # Standard border width for outlined buttons (px)
+    BUTTON_TOUCH_EXPANSION = 8  # Touch region expansion in all directions (px)
+    BUTTON_PRESS_SCALE = 0.95  # Scale factor for pressed state (95% of original)
 
     # Minimum comfortable touch target for a panel operated by
     # hand in a moving vehicle. 72 px = 8.0 mm at the HyperPixel
@@ -134,22 +139,22 @@ class TypographyConstants:
     VIEWPORT_RADIUS = 238
 
     # Button font sizes
-    BUTTON_FONT_LARGE = 28       # Font size for BUTTON_LARGE
-    BUTTON_FONT_MEDIUM = 20      # Font size for BUTTON_MEDIUM
-    BUTTON_FONT_SMALL = 18       # Font size for BUTTON_SMALL
-    BUTTON_FONT_ICON = 16        # Font size for icon labels/fallback text
+    BUTTON_FONT_LARGE = 28  # Font size for BUTTON_LARGE
+    BUTTON_FONT_MEDIUM = 20  # Font size for BUTTON_MEDIUM
+    BUTTON_FONT_SMALL = 18  # Font size for BUTTON_SMALL
+    BUTTON_FONT_ICON = 16  # Font size for icon labels/fallback text
 
 
 class FontManager:
     """
     Thread-safe font manager with caching and validation.
-    
+
     Manages pygame font objects with automatic caching to prevent memory leaks
     and ensure consistent font rendering across the application.
     """
-    
+
     def __init__(self):
-        self.logger = logging.getLogger('FontManager')
+        self.logger = logging.getLogger("FontManager")
         self._font_cache: Dict[int, pygame.font.Font] = {}
         self._plain_font_cache: Dict[int, pygame.font.Font] = {}
         self._bold_font_cache: Dict[int, pygame.font.Font] = {}
@@ -158,23 +163,26 @@ class FontManager:
 
         # Resolve Michroma font path
         import os as _os
-        _font_dir = _os.path.normpath(_os.path.join(_os.path.dirname(__file__), '..', 'assets', 'fonts'))
-        self._michroma_path = _os.path.join(_font_dir, 'Michroma-Regular.ttf')
+
+        _font_dir = _os.path.normpath(
+            _os.path.join(_os.path.dirname(__file__), "..", "assets", "fonts")
+        )
+        self._michroma_path = _os.path.join(_font_dir, "Michroma-Regular.ttf")
         if not _os.path.exists(self._michroma_path):
-            self.logger.warning(f'Michroma font not found at {self._michroma_path}')
+            self.logger.warning(f"Michroma font not found at {self._michroma_path}")
             self._michroma_path = None
 
         # Initialize pygame font system if available
         if PYGAME_AVAILABLE:
             self._initialize_pygame_fonts()
-    
+
     def _initialize_pygame_fonts(self) -> None:
         """Initialize pygame font system with error handling."""
         try:
             if not pygame.font.get_init():
                 pygame.font.init()
                 self.logger.debug("Pygame font system initialized")
-            
+
             # Test font creation to verify system works
             test_font = pygame.font.Font(None, 24)
             if test_font:
@@ -182,11 +190,11 @@ class FontManager:
                 self.logger.info("Font manager initialized successfully")
             else:
                 self.logger.error("Font system test failed")
-                
+
         except Exception as e:
             self.logger.error(f"Font system initialization failed: {e}", exc_info=True)
             self._initialized = False
-    
+
     def get_font(self, size: int) -> pygame.font.Font:
         """
         Get a cached font object for the specified size.
@@ -221,7 +229,9 @@ class FontManager:
             self._initialize_pygame_fonts()
             if not self._initialized:
                 self.logger.error("Font requested but font system failed to initialize")
-                raise RuntimeError("Font system unavailable: pygame.font failed to initialize")
+                raise RuntimeError(
+                    "Font system unavailable: pygame.font failed to initialize"
+                )
 
         # Validate font size
         validated_size = self._validate_font_size(size)
@@ -237,7 +247,8 @@ class FontManager:
                     except Exception as e:
                         self.logger.warning(
                             f"Michroma font load failed at size {validated_size}, "
-                            f"using system default: {e}", exc_info=True
+                            f"using system default: {e}",
+                            exc_info=True,
                         )
 
                 if font is None:
@@ -246,7 +257,7 @@ class FontManager:
                     except Exception as e:
                         self.logger.error(
                             f"Failed to create font size {validated_size}: {e}",
-                            exc_info=True
+                            exc_info=True,
                         )
                         raise RuntimeError(
                             f"Font creation failed for size {validated_size}"
@@ -291,14 +302,16 @@ class FontManager:
                 except Exception as e:
                     self.logger.error(
                         f"Plain font creation failed for size {validated_size}: {e}",
-                        exc_info=True
+                        exc_info=True,
                     )
                     raise RuntimeError(
                         f"Plain font creation failed for size {validated_size}"
                     ) from e
 
                 self._plain_font_cache[validated_size] = font
-                self.logger.debug(f"Created and cached plain font size {validated_size}")
+                self.logger.debug(
+                    f"Created and cached plain font size {validated_size}"
+                )
 
             return self._plain_font_cache[validated_size]
 
@@ -325,7 +338,8 @@ class FontManager:
                     except Exception as e:
                         self.logger.warning(
                             f"Michroma font load failed at size {validated_size}, "
-                            f"using system default: {e}", exc_info=True
+                            f"using system default: {e}",
+                            exc_info=True,
                         )
                 if font is None:
                     font = pygame.font.Font(None, validated_size)
@@ -333,7 +347,9 @@ class FontManager:
                 self._bold_font_cache[validated_size] = font
             return self._bold_font_cache[validated_size]
 
-    def get_font_for_category(self, category: FontCategory, scale: float = 1.0) -> pygame.font.Font:
+    def get_font_for_category(
+        self, category: FontCategory, scale: float = 1.0
+    ) -> pygame.font.Font:
         """
         Get a font for a specific category with optional scaling.
 
@@ -351,41 +367,47 @@ class FontManager:
             FontCategory.TITLE: TypographyConstants.TITLE_SIZE,
             FontCategory.MEDIUM: TypographyConstants.MEDIUM_SIZE,
             FontCategory.SMALL: TypographyConstants.SMALL_SIZE,
-            FontCategory.MINIMAL: TypographyConstants.MINIMAL_SIZE
+            FontCategory.MINIMAL: TypographyConstants.MINIMAL_SIZE,
         }
-        
+
         base_size = base_sizes.get(category, TypographyConstants.SMALL_SIZE)
         scaled_size = int(base_size * scale)
-        
+
         return self.get_font(scaled_size)
-    
+
     def _validate_font_size(self, size: int) -> int:
         """
         Validate and clamp font size to acceptable bounds.
-        
+
         Args:
             size: Requested font size
-            
+
         Returns:
             Validated font size within acceptable range
         """
         if size < TypographyConstants.MIN_FONT_SIZE:
-            self.logger.warning(f"Font size {size} below minimum, using {TypographyConstants.MIN_FONT_SIZE}")
+            self.logger.warning(
+                f"Font size {size} below minimum, using "
+                f"{TypographyConstants.MIN_FONT_SIZE}"
+            )
             return TypographyConstants.MIN_FONT_SIZE
         elif size > TypographyConstants.MAX_FONT_SIZE:
-            self.logger.warning(f"Font size {size} above maximum, using {TypographyConstants.MAX_FONT_SIZE}")
+            self.logger.warning(
+                f"Font size {size} above maximum, using "
+                f"{TypographyConstants.MAX_FONT_SIZE}"
+            )
             return TypographyConstants.MAX_FONT_SIZE
-        
+
         return size
-    
+
     def calculate_text_bounds(self, text: str, font_size: int) -> Tuple[int, int]:
         """
         Calculate text dimensions for layout planning.
-        
+
         Args:
             text: Text to measure
             font_size: Font size to use
-            
+
         Returns:
             Tuple of (width, height) in pixels
         """
@@ -400,40 +422,46 @@ class FontManager:
             self.logger.error(f"Error calculating text bounds: {e}", exc_info=True)
             char_width = font_size * 0.6  # Rough approximation
             return (int(len(text) * char_width), font_size)
-    
-    def validate_text_fits_circular_display(self, text: str, font_size: int, 
-                                          center: Tuple[int, int] = None) -> bool:
+
+    def validate_text_fits_circular_display(
+        self, text: str, font_size: int, center: Tuple[int, int] = None
+    ) -> bool:
         """
         Validate that text fits within the circular display constraints.
-        
+
         Args:
             text: Text to validate
             font_size: Font size to use
             center: Center position (defaults to display center)
-            
+
         Returns:
             True if text fits comfortably within circular bounds
         """
         if center is None:
             center = TypographyConstants.DISPLAY_CENTER
-        
+
         width, height = self.calculate_text_bounds(text, font_size)
-        
+
         # Calculate required radius for text
         text_radius = max(width, height) / 2
-        
+
         # Allow some margin from display edge
-        max_radius = min(TypographyConstants.DISPLAY_WIDTH, 
-                        TypographyConstants.DISPLAY_HEIGHT) / 2 - 20
-        
+        max_radius = (
+            min(TypographyConstants.DISPLAY_WIDTH, TypographyConstants.DISPLAY_HEIGHT)
+            / 2
+            - 20
+        )
+
         fits = text_radius <= max_radius
-        
+
         if not fits:
-            self.logger.debug(f"Text '{text}' at size {font_size} requires radius {text_radius:.1f}, "
-                             f"max available {max_radius:.1f}")
-        
+            self.logger.debug(
+                f"Text '{text}' at size {font_size} requires radius {text_radius:.1f}, "
+                f"max available {max_radius:.1f}"
+            )
+
         return fits
-    
+
     def clear_cache(self) -> None:
         """Clear the font caches to free memory."""
         with self._cache_lock:
@@ -441,14 +469,14 @@ class FontManager:
             self._plain_font_cache.clear()
             self._bold_font_cache.clear()
             self.logger.debug("Font cache cleared")
-    
+
     def get_cache_info(self) -> Dict[str, int]:
         """Get information about the current font cache."""
         with self._cache_lock:
             return {
-                'cached_fonts': len(self._font_cache),
-                'cached_sizes': list(self._font_cache.keys()),
-                'initialized': self._initialized
+                "cached_fonts": len(self._font_cache),
+                "cached_sizes": list(self._font_cache.keys()),
+                "initialized": self._initialized,
             }
 
 
@@ -460,17 +488,17 @@ _manager_lock = threading.Lock()
 def get_font_manager() -> FontManager:
     """
     Get the global font manager instance (thread-safe singleton).
-    
+
     Returns:
         FontManager instance
     """
     global _font_manager
-    
+
     if _font_manager is None:
         with _manager_lock:
             if _font_manager is None:
                 _font_manager = FontManager()
-    
+
     return _font_manager
 
 
@@ -544,5 +572,3 @@ def get_body_font() -> Optional[pygame.font.Font]:
 def get_button_font() -> Optional[pygame.font.Font]:
     """Get font for button text."""
     return get_font_manager().get_font(TypographyConstants.FONT_BUTTON)
-
-

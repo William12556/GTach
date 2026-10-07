@@ -7,19 +7,17 @@
 
 """GTach application package."""
 
+# pyproject.toml is the single version source (issue-52653cd6).
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _version
+
 from .app import GTachApplication
 from .main import main
 
-# pyproject.toml is the single version source (issue-52653cd6).
-from importlib.metadata import version as _version, PackageNotFoundError
 try:
-    __version__ = _version('gtach')
+    __version__ = _version("gtach")
 except PackageNotFoundError:
-    __version__ = '0+unknown'
+    __version__ = "0+unknown"
 __author__ = "William Watson"
 
-__all__ = [
-    'GTachApplication',
-    'main',
-    '__version__'
-]
+__all__ = ["GTachApplication", "main", "__version__"]

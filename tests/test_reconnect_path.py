@@ -29,8 +29,9 @@ from gtach.comm.transport import OBDTransport
 
 
 def _thread_manager():
-    return types.SimpleNamespace(register_thread=lambda *a, **k: None,
-                                 update_heartbeat=lambda name: None)
+    return types.SimpleNamespace(
+        register_thread=lambda *a, **k: None, update_heartbeat=lambda name: None
+    )
 
 
 class _ScriptedLink:
@@ -43,11 +44,11 @@ class _ScriptedLink:
         return True
 
     def send_command(self, command, timeout):
-        if command == 'ATZ':
-            return 'ELM327 v1.5'
-        if command.startswith('AT'):
-            return 'OK'
-        if command == '0100':
+        if command == "ATZ":
+            return "ELM327 v1.5"
+        if command.startswith("AT"):
+            return "OK"
+        if command == "0100":
             return self.reply_0100
         return None
 
@@ -58,17 +59,27 @@ def _protocol(link):
 
 class TestInitValidation:
 
-    @pytest.mark.parametrize('reply', [
-        '41 00 BE 3E B8 11',
-        '4100BE3EB811',
-        'SEARCHING...\r41 00 BE 3E B8 11',
-    ])
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            "41 00 BE 3E B8 11",
+            "4100BE3EB811",
+            "SEARCHING...\r41 00 BE 3E B8 11",
+        ],
+    )
     def test_positive_reply_accepted(self, reply):
         assert _protocol(_ScriptedLink(reply))._initialize_protocol() is True
 
-    @pytest.mark.parametrize('reply', [
-        'NO DATA', 'UNABLE TO CONNECT', '?', '7F 01 12', None,
-    ])
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            "NO DATA",
+            "UNABLE TO CONNECT",
+            "?",
+            "7F 01 12",
+            None,
+        ],
+    )
     def test_other_replies_rejected(self, reply):
         assert _protocol(_ScriptedLink(reply))._initialize_protocol() is False
 
@@ -92,8 +103,8 @@ class TestInitBackOff:
             waits.append(timeout)
             return real_wait(0)
 
-        monkeypatch.setattr(obd, '_initialize_protocol', init)
-        monkeypatch.setattr(obd.shutdown_event, 'wait', wait)
+        monkeypatch.setattr(obd, "_initialize_protocol", init)
+        monkeypatch.setattr(obd.shutdown_event, "wait", wait)
 
         obd._protocol_loop()
 
@@ -117,7 +128,7 @@ class _Stub(OBDTransport):
         self.closed_handles = []
 
     def _describe(self):
-        return 'stub-peer'
+        return "stub-peer"
 
     def _open(self):
         if self._open_error is not None:
@@ -136,7 +147,7 @@ class _Stub(OBDTransport):
     def _read(self, handle, n):
         if self._reads:
             return self._reads.pop(0)
-        return b''
+        return b""
 
 
 class TestPeerClose:
@@ -145,10 +156,10 @@ class TestPeerClose:
         transport = _Stub()
         assert transport.connect()
 
-        assert transport.send_command('010C', timeout=0.2) is None
+        assert transport.send_command("010C", timeout=0.2) is None
         assert len(transport.closed_handles) == 1
         assert transport.is_connected() is False
-        assert transport.last_failure_cause == 'adapter closed the connection'
+        assert transport.last_failure_cause == "adapter closed the connection"
 
 
 class TestAdapterChecksOptIn:
@@ -161,20 +172,24 @@ class TestAdapterChecksOptIn:
         return causes
 
     def test_non_bluetooth_never_reports_adapter_faults(self, monkeypatch):
-        monkeypatch.setattr(transport_module, '_bluetooth_adapter_present', lambda: False)
-        transport = _Stub(open_error=OSError(errno.ECONNREFUSED, 'refused'))
+        monkeypatch.setattr(
+            transport_module, "_bluetooth_adapter_present", lambda: False
+        )
+        transport = _Stub(open_error=OSError(errno.ECONNREFUSED, "refused"))
 
         causes = self._fail_six(transport)
 
-        assert 'no bluetooth controller' not in causes
+        assert "no bluetooth controller" not in causes
         assert transport_module._WEDGED_LINK_CAUSE not in causes
 
     def test_bluetooth_reports_missing_controller(self, monkeypatch):
-        monkeypatch.setattr(transport_module, '_bluetooth_adapter_present', lambda: False)
-        transport = _Stub(open_error=OSError(errno.ECONNREFUSED, 'refused'))
+        monkeypatch.setattr(
+            transport_module, "_bluetooth_adapter_present", lambda: False
+        )
+        transport = _Stub(open_error=OSError(errno.ECONNREFUSED, "refused"))
         transport._ADAPTER_CHECKS = True
 
-        assert self._fail_six(transport)[-1] == 'no bluetooth controller'
+        assert self._fail_six(transport)[-1] == "no bluetooth controller"
 
     def test_class_defaults(self):
         assert OBDTransport._ADAPTER_CHECKS is False
@@ -199,31 +214,32 @@ class TestSerialEmptyRead:
             drops.append(cause)
             real_drop(cause)
 
-        monkeypatch.setattr(transport, 'drop_link', drop_link)
+        monkeypatch.setattr(transport, "drop_link", drop_link)
 
         for _ in range(5):
-            transport.send_command('010C', timeout=0.1)
+            transport.send_command("010C", timeout=0.1)
 
         assert len(drops) == 1
         assert transport.is_connected() is False
 
     def test_partial_response_still_returned(self):
-        transport = _SerialStub(reads=[b'41 0C 1A F8', b''])
+        transport = _SerialStub(reads=[b"41 0C 1A F8", b""])
         assert transport.connect()
 
-        assert transport.send_command('010C', timeout=0.2) == '41 0C 1A F8'
+        assert transport.send_command("010C", timeout=0.2) == "41 0C 1A F8"
 
 
 class TestRpmPidCheck:
 
     def test_only_pid_0c_is_decoded(self):
-        replies = iter(['41 0D 1A F8', '41 0C 1A F8'])
+        replies = iter(["41 0D 1A F8", "41 0C 1A F8"])
         link = types.SimpleNamespace(
             is_connected=lambda: True,
-            send_command=lambda command, timeout: next(replies))
+            send_command=lambda command, timeout: next(replies),
+        )
         obd = _protocol(link)
 
         assert obd._request_rpm() is None
         response = obd._request_rpm()
         assert response is not None
-        assert response.data == b'\x1a\xf8'
+        assert response.data == b"\x1a\xf8"

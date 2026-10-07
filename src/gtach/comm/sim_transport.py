@@ -32,7 +32,7 @@ class SimTransport(OBDTransport):
     def __init__(self):
         """Initialize the simulation transport."""
         super().__init__()
-        self.logger = logging.getLogger('SimTransport')
+        self.logger = logging.getLogger("SimTransport")
         self._connected = False
         self._state = TransportState.DISCONNECTED
         self._start_time = time.time()
@@ -75,7 +75,11 @@ class SimTransport(OBDTransport):
         Returns:
             TransportState: CONNECTED if connected, else DISCONNECTED.
         """
-        return TransportState.CONNECTED if self.is_connected() else TransportState.DISCONNECTED
+        return (
+            TransportState.CONNECTED
+            if self.is_connected()
+            else TransportState.DISCONNECTED
+        )
 
     def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]:
         """Send a command and return a synthetic ELM327 response.
@@ -106,25 +110,25 @@ class SimTransport(OBDTransport):
             str: Synthetic ELM327 response.
         """
         # ELM327 initialization commands
-        if cmd == 'ATZ':
-            return 'ELM327 v1.5'
-        elif cmd in ('ATE0', 'ATL0', 'ATS0', 'ATH0'):
-            return 'OK'
-        elif cmd.startswith('ATSP'):
-            return 'OK'
+        if cmd == "ATZ":
+            return "ELM327 v1.5"
+        elif cmd in ("ATE0", "ATL0", "ATS0", "ATH0"):
+            return "OK"
+        elif cmd.startswith("ATSP"):
+            return "OK"
 
         # OBD-II commands
-        elif cmd == '0100':
+        elif cmd == "0100":
             # Supported PIDs 01-20
-            return '41 00 BE 3E B8 11'
+            return "41 00 BE 3E B8 11"
 
-        elif cmd == '010C':
+        elif cmd == "010C":
             # RPM query - return sine wave 800-6500 RPM, ~12s period
             return self._compute_rpm_response()
 
         else:
             # Unknown command
-            return 'NO DATA'
+            return "NO DATA"
 
     def _compute_rpm_response(self) -> str:
         """Compute synthetic RPM value on a sine wave sweep.
@@ -144,4 +148,4 @@ class SimTransport(OBDTransport):
         a = (rpm_encoded >> 8) & 0xFF
         b = rpm_encoded & 0xFF
 
-        return f'41 0C {a:02X} {b:02X}'
+        return f"41 0C {a:02X} {b:02X}"

@@ -8,135 +8,147 @@
 
 """
 Circular positioning engine for HyperPixel 2" Round display.
-Mathematical algorithms for device layout positioning with circular display optimization.
+Mathematical algorithms for device layout positioning with circular display
+optimization.
 """
 
 import logging
 import math
-import time
 import threading
-from typing import List, Dict, Tuple, Any
+import time
+from typing import Any, Dict, List, Tuple
 
 
 class CircularPositioningEngine:
     """Mathematical algorithms for circular display positioning with optimization"""
-    
-    def __init__(self, display_center: Tuple[int, int] = (240, 240), 
-                 safe_radius: int = 200, max_radius: int = 220,
-                 display_size: Tuple[int, int] = (480, 480)):
-        self.logger = logging.getLogger('CircularPositioningEngine')
-        
+
+    def __init__(
+        self,
+        display_center: Tuple[int, int] = (240, 240),
+        safe_radius: int = 200,
+        max_radius: int = 220,
+        display_size: Tuple[int, int] = (480, 480),
+    ):
+        self.logger = logging.getLogger("CircularPositioningEngine")
+
         # Circular display constants
         self.display_center = display_center
         self.display_safe_radius = safe_radius
         self.display_max_radius = max_radius
         self.display_size = display_size
-        
+
         # Performance optimization caches
         self._circular_layout_cache = {}
         self._cache_lock = threading.Lock()
-        
+
         # Performance monitoring
         self._performance_monitoring = {
-            'enabled': False,
-            'stats': {
-                'total_positioning_calls': 0,
-                'total_validation_calls': 0,
-                'total_positioning_time': 0.0,
-                'total_validation_time': 0.0,
-                'average_positioning_time': 0.0,
-                'average_validation_time': 0.0,
-                'slow_operations_count': 0
-            }
+            "enabled": False,
+            "stats": {
+                "total_positioning_calls": 0,
+                "total_validation_calls": 0,
+                "total_positioning_time": 0.0,
+                "total_validation_time": 0.0,
+                "average_positioning_time": 0.0,
+                "average_validation_time": 0.0,
+                "slow_operations_count": 0,
+            },
         }
-        
-        self.logger.info(f"Initialized CircularPositioningEngine with center={display_center}, "
-                        f"safe_radius={safe_radius}, max_radius={max_radius}")
-    
+
+        self.logger.info(
+            f"Initialized CircularPositioningEngine with center={display_center}, "
+            f"safe_radius={safe_radius}, max_radius={max_radius}"
+        )
+
     def get_circular_safe_area(self) -> Dict[str, Any]:
         """Get circular display geometry constants for safe UI positioning"""
         try:
             geometry = {
-                'center': self.display_center,
-                'safe_radius': self.display_safe_radius,
-                'max_radius': self.display_max_radius,
-                'size': self.display_size
+                "center": self.display_center,
+                "safe_radius": self.display_safe_radius,
+                "max_radius": self.display_max_radius,
+                "size": self.display_size,
             }
-            
+
             self.logger.debug(f"Circular display geometry: {geometry}")
             return geometry
-            
+
         except Exception as e:
             self.logger.error(f"Error getting circular safe area: {e}", exc_info=True)
             return {
-                'center': (240, 240),
-                'safe_radius': 200,
-                'max_radius': 220,
-                'size': (480, 480)
+                "center": (240, 240),
+                "safe_radius": 200,
+                "max_radius": 220,
+                "size": (480, 480),
             }
-    
-    def validate_circular_bounds(self, rect_coords: Tuple[int, int, int, int]) -> Dict[str, Any]:
+
+    def validate_circular_bounds(
+        self, rect_coords: Tuple[int, int, int, int]
+    ) -> Dict[str, Any]:
         """Validate if a rectangle fits within the circular display boundary"""
         start_time = time.time()
-        
+
         try:
             x, y, width, height = rect_coords
             center_x, center_y = self.display_center
-            
+
             rect_center_x = x + width // 2
             rect_center_y = y + height // 2
-            center_distance = math.sqrt((rect_center_x - center_x)**2 + (rect_center_y - center_y)**2)
-            
-            corners = [
-                (x, y),
-                (x + width, y),
-                (x, y + height),
-                (x + width, y + height)
-            ]
-            
+            center_distance = math.sqrt(
+                (rect_center_x - center_x) ** 2 + (rect_center_y - center_y) ** 2
+            )
+
+            corners = [(x, y), (x + width, y), (x, y + height), (x + width, y + height)]
+
             corner_distances = []
             for corner_x, corner_y in corners:
-                distance = math.sqrt((corner_x - center_x)**2 + (corner_y - center_y)**2)
+                distance = math.sqrt(
+                    (corner_x - center_x) ** 2 + (corner_y - center_y) ** 2
+                )
                 corner_distances.append(distance)
-            
+
             max_corner_distance = max(corner_distances)
-            
+
             within_safe_area = max_corner_distance <= self.display_safe_radius
             within_max_area = max_corner_distance <= self.display_max_radius
             valid = within_safe_area
-            
+
             result = {
-                'valid': valid,
-                'center_distance': center_distance,
-                'corner_distances': corner_distances,
-                'max_corner_distance': max_corner_distance,
-                'within_safe_area': within_safe_area,
-                'within_max_area': within_max_area
+                "valid": valid,
+                "center_distance": center_distance,
+                "corner_distances": corner_distances,
+                "max_corner_distance": max_corner_distance,
+                "within_safe_area": within_safe_area,
+                "within_max_area": within_max_area,
             }
-            
-            if self._performance_monitoring['enabled']:
-                self._performance_monitoring['stats']['total_validation_calls'] += 1
+
+            if self._performance_monitoring["enabled"]:
+                self._performance_monitoring["stats"]["total_validation_calls"] += 1
                 duration = time.time() - start_time
-                self._performance_monitoring['stats']['total_validation_time'] += duration
-                self._performance_monitoring['stats']['average_validation_time'] = (
-                    self._performance_monitoring['stats']['total_validation_time'] / 
-                    self._performance_monitoring['stats']['total_validation_calls']
+                self._performance_monitoring["stats"][
+                    "total_validation_time"
+                ] += duration
+                self._performance_monitoring["stats"]["average_validation_time"] = (
+                    self._performance_monitoring["stats"]["total_validation_time"]
+                    / self._performance_monitoring["stats"]["total_validation_calls"]
                 )
-            
+
             return result
-            
+
         except Exception as e:
             self.logger.error(f"Error validating circular bounds: {e}", exc_info=True)
             return {
-                'valid': False,
-                'center_distance': float('inf'),
-                'corner_distances': [float('inf')],
-                'max_corner_distance': float('inf'),
-                'within_safe_area': False,
-                'within_max_area': False
+                "valid": False,
+                "center_distance": float("inf"),
+                "corner_distances": [float("inf")],
+                "max_corner_distance": float("inf"),
+                "within_safe_area": False,
+                "within_max_area": False,
             }
-    
-    def _calculate_curved_geometry(self, y_pos: int, item_height: int) -> Dict[str, Any]:
+
+    def _calculate_curved_geometry(
+        self, y_pos: int, item_height: int
+    ) -> Dict[str, Any]:
         """Compute the curved x-offset, width, scale and opacity for one row.
 
         Extracted from calculate_curved_list_layout so that the fixed
@@ -158,7 +170,9 @@ class CircularPositioningEngine:
 
         try:
             if y_distance_from_center <= safe_radius:
-                horizontal_radius = math.sqrt(safe_radius**2 - y_distance_from_center**2)
+                horizontal_radius = math.sqrt(
+                    safe_radius**2 - y_distance_from_center**2
+                )
 
                 curve_factor = 1.0 - (horizontal_radius / safe_radius)
                 x_offset = int(curve_factor * 15)
@@ -168,9 +182,15 @@ class CircularPositioningEngine:
 
                 x_pos = center_x - item_width // 2 + x_offset
 
-                distance_from_center = math.sqrt((center_x - x_pos)**2 + y_distance_from_center**2)
-                scale_factor = max(0.95, 1.0 - (distance_from_center / safe_radius) * 0.05)
-                opacity_factor = max(0.85, 1.0 - (distance_from_center / safe_radius) * 0.15)
+                distance_from_center = math.sqrt(
+                    (center_x - x_pos) ** 2 + y_distance_from_center**2
+                )
+                scale_factor = max(
+                    0.95, 1.0 - (distance_from_center / safe_radius) * 0.05
+                )
+                opacity_factor = max(
+                    0.85, 1.0 - (distance_from_center / safe_radius) * 0.15
+                )
 
                 in_safe_area = distance_from_center <= safe_radius
             else:
@@ -182,8 +202,10 @@ class CircularPositioningEngine:
                 in_safe_area = False
 
         except Exception as calc_error:
-            self.logger.warning(f"Error in curved geometry calculation at y={y_pos}: {calc_error}",
-                                exc_info=True)
+            self.logger.warning(
+                f"Error in curved geometry calculation at y={y_pos}: {calc_error}",
+                exc_info=True,
+            )
             x_pos = 40
             item_width = 350
             scale_factor = 1.0
@@ -192,17 +214,18 @@ class CircularPositioningEngine:
             in_safe_area = False
 
         return {
-            'x': x_pos,
-            'width': item_width,
-            'height': item_height,
-            'scale': scale_factor,
-            'opacity': opacity_factor,
-            'center_distance': distance_from_center,
-            'in_safe_area': in_safe_area
+            "x": x_pos,
+            "width": item_width,
+            "height": item_height,
+            "scale": scale_factor,
+            "opacity": opacity_factor,
+            "center_distance": distance_from_center,
+            "in_safe_area": in_safe_area,
         }
 
-    def calculate_focused_slot_layout(self, item_height: int = 45,
-                                      item_spacing: int = 10) -> List[Dict[str, Any]]:
+    def calculate_focused_slot_layout(
+        self, item_height: int = 45, item_spacing: int = 10
+    ) -> List[Dict[str, Any]]:
         """Calculate the three fixed DEVICE_LIST slot positions.
 
         Exactly three slots are always returned — top, middle and
@@ -229,15 +252,15 @@ class CircularPositioningEngine:
             # Middle slot centred on the display axis; the other two
             # one pitch either side of it.
             middle_y = center_y - item_height // 2
-            slot_names = ('top', 'middle', 'bottom')
+            slot_names = ("top", "middle", "bottom")
 
             layout_data = []
             for index, (name, offset) in enumerate(zip(slot_names, (-pitch, 0, pitch))):
                 y_pos = middle_y + offset
                 layout_item = self._calculate_curved_geometry(y_pos, item_height)
-                layout_item['index'] = index
-                layout_item['slot'] = name
-                layout_item['y'] = y_pos
+                layout_item["index"] = index
+                layout_item["slot"] = name
+                layout_item["y"] = y_pos
                 layout_data.append(layout_item)
 
                 if self.logger.isEnabledFor(logging.DEBUG):
@@ -250,101 +273,123 @@ class CircularPositioningEngine:
             return layout_data
 
         except Exception as e:
-            self.logger.error(f"Error calculating focused slot layout: {e}", exc_info=True)
+            self.logger.error(
+                f"Error calculating focused slot layout: {e}", exc_info=True
+            )
             center_y = self.display_center[1]
             pitch = item_height + item_spacing
             middle_y = center_y - item_height // 2
             return [
                 {
-                    'index': index,
-                    'slot': name,
-                    'x': 65,
-                    'y': middle_y + offset,
-                    'width': 350,
-                    'height': item_height,
-                    'scale': 1.0,
-                    'opacity': 1.0,
-                    'center_distance': abs(offset),
-                    'in_safe_area': True
+                    "index": index,
+                    "slot": name,
+                    "x": 65,
+                    "y": middle_y + offset,
+                    "width": 350,
+                    "height": item_height,
+                    "scale": 1.0,
+                    "opacity": 1.0,
+                    "center_distance": abs(offset),
+                    "in_safe_area": True,
                 }
                 for index, (name, offset) in enumerate(
-                    zip(('top', 'middle', 'bottom'), (-pitch, 0, pitch))
+                    zip(("top", "middle", "bottom"), (-pitch, 0, pitch))
                 )
             ]
 
-    def validate_all_layout_elements(self, layout_data: List[Dict[str, Any]], 
-                                   screen_name: str = "current") -> Dict[str, Any]:
+    def validate_all_layout_elements(
+        self, layout_data: List[Dict[str, Any]], screen_name: str = "current"
+    ) -> Dict[str, Any]:
         """Validate all layout elements for circular boundary compliance"""
         try:
             total_elements = len(layout_data)
             valid_elements = 0
             invalid_elements = []
             performance_stats = {}
-            
+
             start_time = time.time()
-            
+
             for item in layout_data:
-                rect_coords = (item['x'], item['y'], item['width'], item['height'])
+                rect_coords = (item["x"], item["y"], item["width"], item["height"])
                 validation_result = self.validate_circular_bounds(rect_coords)
-                
-                if validation_result['valid']:
+
+                if validation_result["valid"]:
                     valid_elements += 1
                 else:
-                    invalid_elements.append({
-                        'item_index': item.get('index', -1),
-                        'rect_coords': rect_coords,
-                        'max_corner_distance': validation_result['max_corner_distance'],
-                        'safe_radius': self.display_safe_radius,
-                        'excess_distance': validation_result['max_corner_distance'] - self.display_safe_radius
-                    })
-            
+                    invalid_elements.append(
+                        {
+                            "item_index": item.get("index", -1),
+                            "rect_coords": rect_coords,
+                            "max_corner_distance": validation_result[
+                                "max_corner_distance"
+                            ],
+                            "safe_radius": self.display_safe_radius,
+                            "excess_distance": validation_result["max_corner_distance"]
+                            - self.display_safe_radius,
+                        }
+                    )
+
             total_time = time.time() - start_time
             performance_stats = {
-                'validation_time_ms': total_time * 1000,
-                'elements_per_second': total_elements / total_time if total_time > 0 else 0,
-                'average_time_per_element_ms': (total_time / total_elements * 1000) if total_elements > 0 else 0
+                "validation_time_ms": total_time * 1000,
+                "elements_per_second": (
+                    total_elements / total_time if total_time > 0 else 0
+                ),
+                "average_time_per_element_ms": (
+                    (total_time / total_elements * 1000) if total_elements > 0 else 0
+                ),
             }
-            
+
             validation_summary = {
-                'passed': len(invalid_elements) == 0,
-                'total_elements': total_elements,
-                'valid_elements': valid_elements,
-                'invalid_elements_count': len(invalid_elements),
-                'compliance_percentage': (valid_elements / total_elements * 100) if total_elements > 0 else 100
+                "passed": len(invalid_elements) == 0,
+                "total_elements": total_elements,
+                "valid_elements": valid_elements,
+                "invalid_elements_count": len(invalid_elements),
+                "compliance_percentage": (
+                    (valid_elements / total_elements * 100)
+                    if total_elements > 0
+                    else 100
+                ),
             }
-            
+
             result = {
-                'screen_name': screen_name,
-                'validation_summary': validation_summary,
-                'invalid_elements': invalid_elements,
-                'performance_stats': performance_stats,
-                'recommendations': []
+                "screen_name": screen_name,
+                "validation_summary": validation_summary,
+                "invalid_elements": invalid_elements,
+                "performance_stats": performance_stats,
+                "recommendations": [],
             }
-            
+
             if len(invalid_elements) > 0:
-                result['recommendations'].append(f"Adjust {len(invalid_elements)} elements to fit within safe area")
+                result["recommendations"].append(
+                    f"Adjust {len(invalid_elements)} elements to fit within safe area"
+                )
             else:
-                result['recommendations'].append("All elements comply with circular layout constraints")
-            
+                result["recommendations"].append(
+                    "All elements comply with circular layout constraints"
+                )
+
             return result
-            
+
         except Exception as e:
             self.logger.error(f"Error validating layout elements: {e}", exc_info=True)
             return {
-                'screen_name': screen_name,
-                'validation_summary': {'passed': False, 'error': str(e)},
-                'invalid_elements': [],
-                'performance_stats': {},
-                'recommendations': ['Validation failed due to error']
+                "screen_name": screen_name,
+                "validation_summary": {"passed": False, "error": str(e)},
+                "invalid_elements": [],
+                "performance_stats": {},
+                "recommendations": ["Validation failed due to error"],
             }
-    
+
     def clear_layout_cache(self) -> None:
         """Clear the circular layout cache to free memory"""
         try:
             with self._cache_lock:
                 cache_size = len(self._circular_layout_cache)
                 self._circular_layout_cache.clear()
-                self.logger.info(f"Cleared circular layout cache ({cache_size} entries)")
-                
+                self.logger.info(
+                    f"Cleared circular layout cache ({cache_size} entries)"
+                )
+
         except Exception as e:
             self.logger.error(f"Error clearing layout cache: {e}", exc_info=True)

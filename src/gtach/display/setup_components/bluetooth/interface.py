@@ -13,19 +13,23 @@ Handles device discovery coordination and setup mode Bluetooth operations.
 
 import logging
 import threading
-from typing import Dict, Callable
-from ...setup_models import PairingStatus, BluetoothDevice
-from ....comm.pairing import BluetoothPairing
+from typing import Callable, Dict
+
 from ....comm.device_store import get_device_store
 from ....comm.models import BluetoothDevice as CommBluetoothDevice
-from ...async_operations import get_async_manager, OperationType, OperationStatus
+from ....comm.pairing import BluetoothPairing
+from ...async_operations import OperationStatus, OperationType, get_async_manager
+from ...setup_models import BluetoothDevice, PairingStatus
 
 
 class BluetoothSetupInterface:
-    """Manages Bluetooth operations for setup mode with thread-safe async coordination"""
+    """Manages Bluetooth operations for setup mode.
+
+    Uses thread-safe async coordination.
+    """
 
     def __init__(self, pairing_factory=None, state_coordinator=None):
-        self.logger = logging.getLogger('BluetoothSetupInterface')
+        self.logger = logging.getLogger("BluetoothSetupInterface")
         self.device_store = get_device_store()
         self.async_manager = get_async_manager()
         self._pairing_factory = pairing_factory
@@ -39,91 +43,123 @@ class BluetoothSetupInterface:
 
         # Initialize Bluetooth pairing asynchronously
         self._init_bluetooth_pairing_async()
-    
+
     def _init_bluetooth_pairing_async(self) -> None:
         """Initialize Bluetooth pairing asynchronously to prevent UI blocking"""
+
         def init_bluetooth_pairing(progress_callback=None):
             """Initialize BluetoothPairing in worker thread"""
             try:
                 if progress_callback:
                     progress_callback(0.2, "Creating BluetoothPairing instance...")
 
-                pairing = (self._pairing_factory if self._pairing_factory else BluetoothPairing)()
-                
+                pairing = (
+                    self._pairing_factory if self._pairing_factory else BluetoothPairing
+                )()
+
                 if progress_callback:
                     progress_callback(0.8, "Testing Bluetooth adapter...")
-                
+
                 try:
                     if progress_callback:
                         progress_callback(1.0, "Bluetooth initialization complete")
                 except Exception as e:
                     self.logger.warning(f"Bluetooth adapter check failed: {e}")
                     if progress_callback:
-                        progress_callback(1.0, "Bluetooth initialization complete (limited)")
-                
+                        progress_callback(
+                            1.0, "Bluetooth initialization complete (limited)"
+                        )
+
                 return pairing
-                
+
             except Exception as e:
-                self.logger.error(f"Bluetooth pairing initialization failed: {e}", exc_info=True)
+                self.logger.error(
+                    f"Bluetooth pairing initialization failed: {e}", exc_info=True
+                )
                 if progress_callback:
                     progress_callback(1.0, f"Bluetooth initialization failed: {str(e)}")
                 raise
-        
+
         def on_bluetooth_init_complete(operation):
             """Callback when Bluetooth initialization completes"""
             try:
                 # Progress updates arrive here too; act only on a
                 # terminal status (audit-36b6ea95 D12).
-                if operation.status in (OperationStatus.PENDING, OperationStatus.RUNNING):
+                if operation.status in (
+                    OperationStatus.PENDING,
+                    OperationStatus.RUNNING,
+                ):
                     return
                 if operation.status == OperationStatus.COMPLETED:
                     self.pairing = operation.result
                     self._pairing_ready.set()
-                    self.logger.info("Bluetooth pairing initialized successfully in background")
+                    self.logger.info(
+                        "Bluetooth pairing initialized successfully in background"
+                    )
                 elif operation.status == OperationStatus.FAILED:
-                    self.logger.error(f"Bluetooth pairing initialization failed: {operation.error}")
+                    self.logger.error(
+                        f"Bluetooth pairing initialization failed: {operation.error}"
+                    )
                     self.pairing = None
                     self._pairing_ready.set()
                 else:
-                    self.logger.warning(f"Bluetooth pairing initialization ended with status: {operation.status}")
+                    self.logger.warning(
+                        "Bluetooth pairing initialization ended with status: "
+                        f"{operation.status}"
+                    )
                     self.pairing = None
                     self._pairing_ready.set()
-                
+
                 with self._ops_lock:
-                    self._active_operations.pop('bluetooth_init', None)
-                    
+                    self._active_operations.pop("bluetooth_init", None)
+
             except Exception as e:
-                self.logger.error(f"Error in bluetooth init callback: {e}", exc_info=True)
+                self.logger.error(
+                    f"Error in bluetooth init callback: {e}", exc_info=True
+                )
                 self.pairing = None
                 self._pairing_ready.set()
-        
+
         try:
             operation_id = self.async_manager.submit_operation(
                 OperationType.BLUETOOTH_INIT,
                 init_bluetooth_pairing,
-                progress_callback=on_bluetooth_init_complete
+                progress_callback=on_bluetooth_init_complete,
             )
-            
+
             with self._ops_lock:
-                self._active_operations['bluetooth_init'] = operation_id
-            self.logger.info(f"Bluetooth pairing initialization started (operation: {operation_id})")
-            
+                self._active_operations["bluetooth_init"] = operation_id
+            self.logger.info(
+                f"Bluetooth pairing initialization started (operation: {operation_id})"
+            )
+
         except Exception as e:
-            self.logger.error(f"Failed to submit bluetooth initialization operation: {e}", exc_info=True)
+            self.logger.error(
+                f"Failed to submit bluetooth initialization operation: {e}",
+                exc_info=True,
+            )
             try:
-                self.pairing = (self._pairing_factory if self._pairing_factory else BluetoothPairing)()
+                self.pairing = (
+                    self._pairing_factory if self._pairing_factory else BluetoothPairing
+                )()
                 self._pairing_ready.set()
                 self.logger.warning("Fallback to synchronous Bluetooth initialization")
             except Exception as fallback_error:
-                self.logger.error(f"Synchronous Bluetooth initialization also failed: {fallback_error}", exc_info=True)
+                self.logger.error(
+                    "Synchronous Bluetooth initialization also failed: "
+                    f"{fallback_error}",
+                    exc_info=True,
+                )
                 self.pairing = None
                 self._pairing_ready.set()
-    
+
     def ensure_pairing_initialized(self) -> bool:
         """Ensure Bluetooth pairing is initialized, waiting if necessary"""
         try:
             if not self._pairing_ready.wait(timeout=10.0):
-                self.logger.error("Timeout waiting for Bluetooth pairing initialization")
+                self.logger.error(
+                    "Timeout waiting for Bluetooth pairing initialization"
+                )
                 return False
 
             if self.pairing is None:
@@ -134,7 +170,9 @@ class BluetoothSetupInterface:
             return True
 
         except Exception as e:
-            self.logger.error(f"Error ensuring pairing initialization: {e}", exc_info=True)
+            self.logger.error(
+                f"Error ensuring pairing initialization: {e}", exc_info=True
+            )
             return False
 
     def verify_obd_connection(self, state) -> bool:
@@ -147,11 +185,15 @@ class BluetoothSetupInterface:
             bool: True if OBD verification succeeds, False otherwise
         """
         import socket as _socket
+
         from ....comm.rfcomm import RFCOMMTransport
+
         # Skip RFCOMM probe in simulation mode (pairing_factory injected)
         # or when AF_BLUETOOTH is unavailable
-        if self._pairing_factory is not None or not hasattr(_socket, 'AF_BLUETOOTH'):
-            self.logger.info("OBD verify: simulation mode or no AF_BLUETOOTH — pass-through")
+        if self._pairing_factory is not None or not hasattr(_socket, "AF_BLUETOOTH"):
+            self.logger.info(
+                "OBD verify: simulation mode or no AF_BLUETOOTH — pass-through"
+            )
             return True
         try:
             device = self.device_store.get_primary_device()
@@ -166,24 +208,34 @@ class BluetoothSetupInterface:
                 return False
 
             try:
-                response = transport.send_command('ATZ', timeout=5.0)
+                response = transport.send_command("ATZ", timeout=5.0)
                 ok = response is not None and len(response.strip()) > 0
-                self.logger.info(f"OBD verify: {'pass' if ok else 'fail'} response={response!r}")
+                self.logger.info(
+                    f"OBD verify: {'pass' if ok else 'fail'} response={response!r}"
+                )
                 return ok
             finally:
                 transport.disconnect()
         except Exception as e:
             self.logger.error(f"OBD verify exception: {e}", exc_info=True)
             return False
-    
-    def start_discovery(self, state, progress_callback=None, device_found_callback=None,
-                       show_all_devices=False) -> None:
+
+    def start_discovery(
+        self,
+        state,
+        progress_callback=None,
+        device_found_callback=None,
+        show_all_devices=False,
+    ) -> None:
         """Start device discovery using async operation framework"""
+
         def discovery_task(progress_callback_inner=None):
             """Discover devices in worker thread"""
             try:
                 if not self.ensure_pairing_initialized():
-                    self.logger.error("Cannot start discovery - Bluetooth pairing not available")
+                    self.logger.error(
+                        "Cannot start discovery - Bluetooth pairing not available"
+                    )
                     self._set_state(state, pairing_status=PairingStatus.FAILED)
                     raise RuntimeError("Bluetooth pairing not available")
 
@@ -193,145 +245,183 @@ class BluetoothSetupInterface:
                 # Brief settle delay — allows RFCOMM stack to release adapter
                 # after a previous pairing attempt before issuing hcitool scan
                 import time as _time
+
                 _time.sleep(2.0)
 
                 self._set_state(state, pairing_status=PairingStatus.DISCOVERING)
                 self._set_state(state, discovery_progress=0.0)
                 self._set_state(state, discovered_devices=[])
-                
+
                 def internal_progress_callback(progress):
-                    """Internal progress callback to update state and external callback"""
+                    """Update state and forward progress to the external callback"""
                     self._set_state(state, discovery_progress=progress)
                     if progress_callback:
                         progress_callback(progress)
                     if progress_callback_inner:
-                        progress_callback_inner(progress, f"Discovering devices... {int(progress * 100)}%")
-                
+                        progress_callback_inner(
+                            progress, f"Discovering devices... {int(progress * 100)}%"
+                        )
+
                 def internal_device_found_callback(device):
                     """Internal device found callback"""
                     if device and self._add_device(state, device):
                         if device_found_callback:
                             device_found_callback(device)
-                
+
                 devices = self.pairing.discover_elm327_devices(
                     timeout=state.discovery_timeout,
                     progress_callback=internal_progress_callback,
                     device_found_callback=internal_device_found_callback,
-                    show_all_devices=show_all_devices
+                    show_all_devices=show_all_devices,
                 )
-                
+
                 return devices
-                
+
             except Exception as e:
                 self.logger.error(f"Device discovery failed: {e}", exc_info=True)
                 self._set_state(state, pairing_status=PairingStatus.FAILED)
                 raise
-        
+
         def on_discovery_complete(operation):
             """Callback when discovery operation completes"""
             try:
                 # Progress updates arrive here too; act only on a
                 # terminal status (audit-36b6ea95 D12).
-                if operation.status in (OperationStatus.PENDING, OperationStatus.RUNNING):
+                if operation.status in (
+                    OperationStatus.PENDING,
+                    OperationStatus.RUNNING,
+                ):
                     return
                 if operation.status == OperationStatus.COMPLETED:
                     devices = operation.result
                     self._set_state(state, discovered_devices=devices)
                     self._set_state(state, pairing_status=PairingStatus.IDLE)
                     if not devices:
-                        self._set_state(state, error_message="No devices found. Ensure your ELM327 adapter is powered on and discoverable.")
+                        self._set_state(
+                            state,
+                            error_message=(
+                                "No devices found. Ensure your ELM327 adapter is "
+                                "powered on and discoverable."
+                            ),
+                        )
                     self.logger.info(f"Discovery completed with {len(devices)} devices")
                 elif operation.status == OperationStatus.FAILED:
                     self.logger.error(f"Discovery failed: {operation.error}")
                     self._set_state(state, pairing_status=PairingStatus.FAILED)
                 else:
-                    self.logger.warning(f"Discovery ended with status: {operation.status}")
+                    self.logger.warning(
+                        f"Discovery ended with status: {operation.status}"
+                    )
                     self._set_state(state, pairing_status=PairingStatus.IDLE)
-                
+
                 with self._ops_lock:
-                    self._active_operations.pop('device_discovery', None)
-                    
+                    self._active_operations.pop("device_discovery", None)
+
             except Exception as e:
                 self.logger.error(f"Error in discovery callback: {e}", exc_info=True)
                 self._set_state(state, pairing_status=PairingStatus.FAILED)
-        
+
         try:
             # async_manager is called outside _ops_lock (CLAUDE.md §4 rule 8).
             with self._ops_lock:
-                existing_op_id = self._active_operations.pop('device_discovery', None)
+                existing_op_id = self._active_operations.pop("device_discovery", None)
             if existing_op_id is not None:
                 self.async_manager.cancel_operation(existing_op_id)
-            
+
             operation_id = self.async_manager.submit_operation(
                 OperationType.DEVICE_DISCOVERY,
                 discovery_task,
-                progress_callback=on_discovery_complete
+                progress_callback=on_discovery_complete,
             )
-            
+
             with self._ops_lock:
-                self._active_operations['device_discovery'] = operation_id
+                self._active_operations["device_discovery"] = operation_id
             self.logger.info(f"Device discovery started (operation: {operation_id})")
-            
+
         except Exception as e:
-            self.logger.error(f"Failed to submit discovery operation: {e}", exc_info=True)
+            self.logger.error(
+                f"Failed to submit discovery operation: {e}", exc_info=True
+            )
             self._set_state(state, pairing_status=PairingStatus.FAILED)
 
-    def start_pairing(self, device: BluetoothDevice, state, progress_callback=None) -> None:
+    def start_pairing(
+        self, device: BluetoothDevice, state, progress_callback=None
+    ) -> None:
         """Start pairing with selected device using async operation framework"""
+
         def pairing_task(progress_callback_inner=None):
             """Pair with device in worker thread"""
             try:
                 if not self.ensure_pairing_initialized():
-                    self.logger.error("Cannot start pairing - Bluetooth pairing not available")
+                    self.logger.error(
+                        "Cannot start pairing - Bluetooth pairing not available"
+                    )
                     self._set_state(state, pairing_status=PairingStatus.FAILED)
                     raise RuntimeError("Bluetooth pairing not available")
-                
+
                 if progress_callback_inner:
-                    progress_callback_inner(0.1, f"Starting pairing with {device.name}...")
-                
+                    progress_callback_inner(
+                        0.1, f"Starting pairing with {device.name}..."
+                    )
+
                 def status_callback(status, message):
                     """Internal status callback to update state"""
                     self._set_state(state, pairing_status=status)
                     if status == PairingStatus.FAILED:
                         self._set_state(state, error_message=message)
-                    
+
                     if status == PairingStatus.CONNECTING:
                         if progress_callback:
                             progress_callback(0.5, f"Pairing with {device.name}...")
                         if progress_callback_inner:
-                            progress_callback_inner(0.5, f"Pairing with {device.name}...")
+                            progress_callback_inner(
+                                0.5, f"Pairing with {device.name}..."
+                            )
                     elif status == PairingStatus.SUCCESS:
                         if progress_callback:
-                            progress_callback(1.0, f"Successfully paired with {device.name}")
+                            progress_callback(
+                                1.0, f"Successfully paired with {device.name}"
+                            )
                         if progress_callback_inner:
-                            progress_callback_inner(1.0, f"Successfully paired with {device.name}")
+                            progress_callback_inner(
+                                1.0, f"Successfully paired with {device.name}"
+                            )
                     elif status == PairingStatus.FAILED:
                         if progress_callback:
-                            progress_callback(1.0, f"Failed to pair with {device.name}: {message}")
+                            progress_callback(
+                                1.0, f"Failed to pair with {device.name}: {message}"
+                            )
                         if progress_callback_inner:
-                            progress_callback_inner(1.0, f"Failed to pair with {device.name}: {message}")
-                
+                            progress_callback_inner(
+                                1.0, f"Failed to pair with {device.name}: {message}"
+                            )
+
                 success = self.pairing.pair_device(device, status_callback)
                 return success
-                
+
             except Exception as e:
                 self.logger.error(f"Device pairing failed: {e}", exc_info=True)
                 self._set_state(state, pairing_status=PairingStatus.FAILED)
                 self._set_state(state, error_message=str(e))
                 raise
-        
+
         def on_pairing_complete(operation):
             """Callback when pairing operation completes"""
             try:
                 # Progress updates arrive here too; act only on a
                 # terminal status (audit-36b6ea95 D12).
-                if operation.status in (OperationStatus.PENDING, OperationStatus.RUNNING):
+                if operation.status in (
+                    OperationStatus.PENDING,
+                    OperationStatus.RUNNING,
+                ):
                     return
                 if operation.status == OperationStatus.COMPLETED:
                     success = operation.result
                     if success:
                         self._set_state(state, pairing_status=PairingStatus.SUCCESS)
-                        self.logger.info(f"Successfully paired with device: {device.name}")
+                        self.logger.info(
+                            f"Successfully paired with device: {device.name}"
+                        )
 
                         # Persist device to store before OBD verify
                         # Convert setup BluetoothDevice -> comm BluetoothDevice
@@ -348,53 +438,69 @@ class BluetoothSetupInterface:
                             if self._state_coordinator is not None:
                                 self._state_coordinator.complete_setup()
                             else:
-                                self.logger.warning("OBD verify passed but state_coordinator is None")
+                                self.logger.warning(
+                                    "OBD verify passed but state_coordinator is None"
+                                )
                         else:
-                            self._set_state(state, error_message='OBD check failed')
+                            self._set_state(state, error_message="OBD check failed")
                             if self._state_coordinator is not None:
                                 from ...setup_models import SetupScreen
-                                self._state_coordinator.transition_to_screen(SetupScreen.DEVICE_LIST)
+
+                                self._state_coordinator.transition_to_screen(
+                                    SetupScreen.DEVICE_LIST
+                                )
                             else:
-                                self.logger.warning("OBD verify failed but state_coordinator is None")
+                                self.logger.warning(
+                                    "OBD verify failed but state_coordinator is None"
+                                )
                     else:
                         self._set_state(state, pairing_status=PairingStatus.FAILED)
                         self.logger.error(f"Failed to pair with device: {device.name}")
                 elif operation.status == OperationStatus.FAILED:
                     self._set_state(state, pairing_status=PairingStatus.FAILED)
-                    self._set_state(state, error_message=str(operation.error) if operation.error else "Unknown pairing error")
+                    self._set_state(
+                        state,
+                        error_message=(
+                            str(operation.error)
+                            if operation.error
+                            else "Unknown pairing error"
+                        ),
+                    )
                     self.logger.error(f"Pairing operation failed: {operation.error}")
                 else:
-                    self.logger.warning(f"Pairing ended with status: {operation.status}")
+                    self.logger.warning(
+                        f"Pairing ended with status: {operation.status}"
+                    )
                     self._set_state(state, pairing_status=PairingStatus.FAILED)
 
                 with self._ops_lock:
-                    self._active_operations.pop('device_pairing', None)
+                    self._active_operations.pop("device_pairing", None)
 
             except Exception as e:
                 self.logger.error(f"Error in pairing callback: {e}", exc_info=True)
                 self._set_state(state, pairing_status=PairingStatus.FAILED)
-        
+
         try:
             # async_manager is called outside _ops_lock (CLAUDE.md §4 rule 8).
             with self._ops_lock:
-                existing_op_id = self._active_operations.pop('device_pairing', None)
+                existing_op_id = self._active_operations.pop("device_pairing", None)
             if existing_op_id is not None:
                 self.async_manager.cancel_operation(existing_op_id)
-            
+
             operation_id = self.async_manager.submit_operation(
                 OperationType.DEVICE_PAIRING,
                 pairing_task,
-                progress_callback=on_pairing_complete
+                progress_callback=on_pairing_complete,
             )
-            
+
             with self._ops_lock:
-                self._active_operations['device_pairing'] = operation_id
+                self._active_operations["device_pairing"] = operation_id
             self.logger.info(f"Device pairing started (operation: {operation_id})")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to submit pairing operation: {e}", exc_info=True)
             self._set_state(state, pairing_status=PairingStatus.FAILED)
-    
+
     def start_device_probe(self, on_result: Callable[[bool], None]) -> None:
         """Check asynchronously that the stored device is reachable.
 
@@ -406,11 +512,16 @@ class BluetoothSetupInterface:
             on_result: Called once, on a worker thread, with True if the
                 device answered and False otherwise.
         """
+
         def probe_task():
             """Connect to the primary device and disconnect again."""
             import socket as _socket
+
             from ....comm.rfcomm import RFCOMMTransport
-            if self._pairing_factory is not None or not hasattr(_socket, 'AF_BLUETOOTH'):
+
+            if self._pairing_factory is not None or not hasattr(
+                _socket, "AF_BLUETOOTH"
+            ):
                 return True
             device = self.device_store.get_primary_device()
             if device is None:
@@ -425,7 +536,9 @@ class BluetoothSetupInterface:
             try:
                 on_result(ok)
             except Exception as e:
-                self.logger.error(f"Device probe result handler failed: {e}", exc_info=True)
+                self.logger.error(
+                    f"Device probe result handler failed: {e}", exc_info=True
+                )
 
         def on_probe_complete(operation):
             """Report the probe outcome on a terminal status only."""
@@ -440,7 +553,7 @@ class BluetoothSetupInterface:
             self.async_manager.submit_operation(
                 OperationType.OBD_CONNECTION_TEST,
                 probe_task,
-                progress_callback=on_probe_complete
+                progress_callback=on_probe_complete,
             )
         except Exception as e:
             self.logger.error(f"Failed to submit device probe: {e}", exc_info=True)
@@ -484,7 +597,7 @@ class BluetoothSetupInterface:
         """Cancel operations and shut the pairing executor down."""
         self.cancel_operations()
         pairing = self.pairing
-        if pairing is not None and hasattr(pairing, 'shutdown'):
+        if pairing is not None and hasattr(pairing, "shutdown"):
             try:
                 pairing.shutdown()
             except Exception as e:
@@ -500,54 +613,68 @@ class BluetoothSetupInterface:
                 self.async_manager.cancel_operation(operation_id)
         except Exception as e:
             self.logger.error(f"Error cancelling async operations: {e}", exc_info=True)
-        
+
         if self.pairing is not None:
             try:
                 self.pairing.cancel_discovery()
                 self.pairing.cancel_pairing()
             except Exception as e:
                 self.logger.warning(f"Error cancelling pairing operations: {e}")
-    
+
     def get_active_operation_progress(self) -> dict:
         """Get progress information for active async operations"""
         progress_info = {
-            'has_active_operations': False,
-            'progress': 0.0,
-            'message': '',
-            'operation_type': None
+            "has_active_operations": False,
+            "progress": 0.0,
+            "message": "",
+            "operation_type": None,
         }
-        
+
         try:
             # Copy under the lock; query async_manager after release.
             with self._ops_lock:
                 active = dict(self._active_operations)
             if not active:
                 return progress_info
-            
+
             for operation_type, operation_id in active.items():
                 operation = self.async_manager.get_operation_status(operation_id)
                 if operation:
-                    progress_info['has_active_operations'] = True
-                    progress_info['progress'] = operation.progress
-                    progress_info['operation_type'] = operation_type
-                    
-                    if 'progress_message' in operation.metadata:
-                        progress_info['message'] = operation.metadata['progress_message']
+                    progress_info["has_active_operations"] = True
+                    progress_info["progress"] = operation.progress
+                    progress_info["operation_type"] = operation_type
+
+                    if "progress_message" in operation.metadata:
+                        progress_info["message"] = operation.metadata[
+                            "progress_message"
+                        ]
                     else:
-                        if operation.status.name == 'PENDING':
-                            progress_info['message'] = f"Starting {operation_type.replace('_', ' ').lower()}..."
-                        elif operation.status.name == 'RUNNING':
-                            progress_info['message'] = f"Running {operation_type.replace('_', ' ').lower()}..."
-                        elif operation.status.name == 'COMPLETED':
-                            progress_info['message'] = f"Completed {operation_type.replace('_', ' ').lower()}"
-                        elif operation.status.name == 'FAILED':
-                            progress_info['message'] = f"Failed {operation_type.replace('_', ' ').lower()}"
+                        if operation.status.name == "PENDING":
+                            progress_info["message"] = (
+                                "Starting "
+                                f"{operation_type.replace('_', ' ').lower()}..."
+                            )
+                        elif operation.status.name == "RUNNING":
+                            progress_info["message"] = (
+                                f"Running {operation_type.replace('_', ' ').lower()}..."
+                            )
+                        elif operation.status.name == "COMPLETED":
+                            progress_info["message"] = (
+                                f"Completed {operation_type.replace('_', ' ').lower()}"
+                            )
+                        elif operation.status.name == "FAILED":
+                            progress_info["message"] = (
+                                f"Failed {operation_type.replace('_', ' ').lower()}"
+                            )
                         else:
-                            progress_info['message'] = f"Processing {operation_type.replace('_', ' ').lower()}..."
-                    
+                            progress_info["message"] = (
+                                "Processing "
+                                f"{operation_type.replace('_', ' ').lower()}..."
+                            )
+
                     break
-            
+
         except Exception as e:
             self.logger.debug(f"Error getting operation progress: {e}")
-        
+
         return progress_info

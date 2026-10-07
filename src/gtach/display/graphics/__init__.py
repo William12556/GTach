@@ -11,14 +11,6 @@ Graphics utilities for OBDII display application.
 Provides automotive-themed graphics components and visual effects.
 """
 
-from .splash_graphics import (
-    draw_automotive_gauge,
-    AUTOMOTIVE_COLORS,
-    SPLASH_COLORS
-)
+from .splash_graphics import AUTOMOTIVE_COLORS, SPLASH_COLORS, draw_automotive_gauge
 
-__all__ = [
-    'draw_automotive_gauge',
-    'AUTOMOTIVE_COLORS',
-    'SPLASH_COLORS'
-]
+__all__ = ["draw_automotive_gauge", "AUTOMOTIVE_COLORS", "SPLASH_COLORS"]

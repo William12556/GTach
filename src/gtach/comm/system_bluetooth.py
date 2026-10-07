@@ -12,28 +12,33 @@ This provides Bluetooth functionality without requiring PyBluez.
 """
 
 import logging
-import subprocess
-import socket
 import re
-import time
+import socket
+import subprocess
 import threading
-from typing import Optional, List, Tuple, Dict
+import time
+from typing import Dict, List, Optional, Tuple
 
 
 class SystemBluetoothError(Exception):
     pass
 
+
 class BluetoothError(SystemBluetoothError):
     pass
+
 
 class BluetoothConnectionError(BluetoothError):
     pass
 
+
 class BluetoothDiscoveryError(BluetoothError):
     pass
 
+
 class BluetoothPairingError(BluetoothError):
     pass
+
 
 class BluetoothTimeoutError(BluetoothError):
     pass
@@ -42,7 +47,7 @@ class BluetoothTimeoutError(BluetoothError):
 class BluetoothSocket:
     """Simple Bluetooth socket wrapper using system RFCOMM"""
 
-    def __init__(self, socket_type: str = 'RFCOMM'):
+    def __init__(self, socket_type: str = "RFCOMM"):
         self.socket_type = socket_type
         self.sock = None
         self.connected = False
@@ -51,7 +56,9 @@ class BluetoothSocket:
     def connect(self, address_port: Tuple[str, int]) -> None:
         address, port = address_port
         try:
-            self.sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+            self.sock = socket.socket(
+                socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM
+            )
             # A timeout set before connect must bound the connect too
             # (issue-d140121d).
             if self.timeout is not None:
@@ -59,7 +66,9 @@ class BluetoothSocket:
             self.sock.connect((address, port))
             self.connected = True
         except Exception as e:
-            raise BluetoothConnectionError(f"Failed to connect to {address}:{port} - {e}")
+            raise BluetoothConnectionError(
+                f"Failed to connect to {address}:{port} - {e}"
+            )
 
     def send(self, data: bytes) -> int:
         if not self.connected or not self.sock:
@@ -92,25 +101,29 @@ class SystemBluetoothManager:
     """System-level Bluetooth manager using bluetoothctl / hcitool"""
 
     def __init__(self):
-        self.logger = logging.getLogger('SystemBluetoothManager')
+        self.logger = logging.getLogger("SystemBluetoothManager")
         self._check_bluetooth_availability()
 
     def _check_bluetooth_availability(self) -> None:
         try:
-            subprocess.run(['bluetoothctl', '--version'],
-                           capture_output=True, check=True, timeout=5)
+            subprocess.run(
+                ["bluetoothctl", "--version"],
+                capture_output=True,
+                check=True,
+                timeout=5,
+            )
         except (subprocess.SubprocessError, FileNotFoundError):
             raise BluetoothError("bluetoothctl not available - install bluez-utils")
 
     def _run_bluetoothctl(self, commands: List[str], timeout: int = 30) -> str:
         try:
-            script = '\n'.join(commands + ['quit'])
+            script = "\n".join(commands + ["quit"])
             process = subprocess.Popen(
-                ['bluetoothctl'],
+                ["bluetoothctl"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
             stdout, stderr = process.communicate(input=script, timeout=timeout)
             if process.returncode != 0:
@@ -123,7 +136,9 @@ class SystemBluetoothManager:
         except Exception as e:
             raise BluetoothError(f"bluetoothctl command failed: {e}")
 
-    def discover_devices(self, duration: int = 8, lookup_names: bool = True) -> List[Tuple[str, str]]:
+    def discover_devices(
+        self, duration: int = 8, lookup_names: bool = True
+    ) -> List[Tuple[str, str]]:
         """Discover nearby Bluetooth devices.
 
         Uses hcitool scan (clean output, reliable timeout).
@@ -131,18 +146,18 @@ class SystemBluetoothManager:
         """
         self.logger.info(f"Starting device discovery for {duration} seconds")
         devices = {}
-        mac_re = re.compile(r'^[0-9A-Fa-f:]{17}$')
+        mac_re = re.compile(r"^[0-9A-Fa-f:]{17}$")
 
         try:
             result = subprocess.run(
-                ['hcitool', 'scan', '--flush', '--length', str(duration)],
+                ["hcitool", "scan", "--flush", "--length", str(duration)],
                 capture_output=True,
                 text=True,
-                timeout=duration * 2 + 5
+                timeout=duration * 2 + 5,
             )
             # hcitool scan output lines: "\t<MAC>\t<Name>"
             for line in result.stdout.splitlines():
-                parts = line.strip().split('\t')
+                parts = line.strip().split("\t")
                 if len(parts) >= 2:
                     mac = parts[0].strip()
                     name = parts[1].strip()
@@ -166,17 +181,17 @@ class SystemBluetoothManager:
         """Fallback: parse live bluetoothctl scan output."""
         devices = {}
         devices_lock = threading.Lock()  # the reader thread writes devices
-        dev_re = re.compile(r'\[NEW\]\s+Device\s+([0-9A-Fa-f:]{17})\s+(.+)')
+        dev_re = re.compile(r"\[NEW\]\s+Device\s+([0-9A-Fa-f:]{17})\s+(.+)")
         try:
             process = subprocess.Popen(
-                ['bluetoothctl'],
+                ["bluetoothctl"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 text=True,
-                bufsize=1
+                bufsize=1,
             )
-            process.stdin.write('power on\nagent on\nscan on\n')
+            process.stdin.write("power on\nagent on\nscan on\n")
             process.stdin.flush()
 
             def _reader():
@@ -189,13 +204,15 @@ class SystemBluetoothManager:
                         if added:
                             devices[m.group(1)] = m.group(2).strip()
                     if added:
-                        self.logger.debug(f"btctl found: {m.group(2).strip()} ({m.group(1)})")
+                        self.logger.debug(
+                            f"btctl found: {m.group(2).strip()} ({m.group(1)})"
+                        )
 
             t = threading.Thread(target=_reader, daemon=True)
             t.start()
             time.sleep(duration)
             try:
-                process.stdin.write('scan off\nquit\n')
+                process.stdin.write("scan off\nquit\n")
                 process.stdin.flush()
             except Exception:
                 pass
@@ -215,20 +232,22 @@ class SystemBluetoothManager:
 
     def get_device_info(self, mac_address: str) -> Optional[Dict[str, str]]:
         try:
-            output = self._run_bluetoothctl([f'info {mac_address}'], timeout=10)
+            output = self._run_bluetoothctl([f"info {mac_address}"], timeout=10)
             info = {}
-            for line in output.split('\n'):
-                if ':' in line:
-                    key, value = line.split(':', 1)
+            for line in output.split("\n"):
+                if ":" in line:
+                    key, value = line.split(":", 1)
                     info[key.strip()] = value.strip()
             return info if info else None
         except Exception as e:
             self.logger.error(f"Failed to get device info: {e}", exc_info=True)
             return None
 
+
 # Compatibility functions to match PyBluez API
-def discover_devices(duration: int = 8, lookup_names: bool = True,
-                     flush_cache: bool = False) -> List[Tuple[str, str]]:
+def discover_devices(
+    duration: int = 8, lookup_names: bool = True, flush_cache: bool = False
+) -> List[Tuple[str, str]]:
     """Discover Bluetooth devices - compatibility function"""
     return SystemBluetoothManager().discover_devices(duration, lookup_names)
 
@@ -237,9 +256,9 @@ def lookup_name(mac_address: str, timeout: int = 10) -> Optional[str]:
     """Look up device name by MAC address - compatibility function"""
     info = SystemBluetoothManager().get_device_info(mac_address)
     if info:
-        return info.get('Name', info.get('Alias', None))
+        return info.get("Name", info.get("Alias", None))
     return None
 
 
 # Constants for compatibility
-RFCOMM = 'RFCOMM'
+RFCOMM = "RFCOMM"

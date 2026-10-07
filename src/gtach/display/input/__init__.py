@@ -12,13 +12,13 @@ This module provides touch event coordination and gesture recognition
 functionality extracted from the monolithic display manager.
 """
 
+from .interfaces import GestureType, TouchAction, TouchEventInterface, TouchRegion
 from .touch_coordinator import TouchEventCoordinator
-from .interfaces import TouchEventInterface, TouchRegion, TouchAction, GestureType
 
 __all__ = [
-    'TouchEventCoordinator',
-    'TouchEventInterface',
-    'TouchRegion', 
-    'TouchAction',
-    'GestureType'
+    "TouchEventCoordinator",
+    "TouchEventInterface",
+    "TouchRegion",
+    "TouchAction",
+    "GestureType",
 ]

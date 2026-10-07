@@ -15,9 +15,9 @@ import logging
 import threading
 import time
 from collections import deque
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
-# Import configuration classes  
+# Import configuration classes
 try:
     from ..utils.config import SplashConfig
 except ImportError:
@@ -26,8 +26,14 @@ except ImportError:
 
 # Import typography system for consistent font sizing
 try:
-    from .typography import (get_font_manager, get_title_display_font, get_body_font, 
-                            get_label_small_font, TypographyConstants)
+    from .typography import (
+        TypographyConstants,
+        get_body_font,
+        get_font_manager,
+        get_label_small_font,
+        get_title_display_font,
+    )
+
     TYPOGRAPHY_AVAILABLE = True
 except ImportError:
     # Fallback for development/testing without typography module
@@ -36,6 +42,7 @@ except ImportError:
 # Conditional import of pygame with fallback handling
 try:
     import pygame
+
     PYGAME_AVAILABLE = True
 except ImportError:
     pygame = None
@@ -45,45 +52,50 @@ except ImportError:
 class SplashScreen:
     """
     Thread-safe splash screen implementation for GTach application.
-    
+
     Provides animated startup screen with progress indicators, application branding,
     and graceful fallback for systems without pygame support. Designed for use
     in multi-threaded display management environments.
-    
+
     Attributes:
         surface_size (Tuple[int, int]): Target surface dimensions in pixels
         duration (float): Minimum display duration in seconds
         logger (logging.Logger): Logger instance for debug/error reporting
-        
+
     Thread Safety:
         All public methods are thread-safe using internal locking mechanisms.
         Safe to call from display manager threads and main application thread.
     """
-    
-    def __init__(self, surface_size: Tuple[int, int] = (480, 480), duration: float = 5.0, 
-                 config: Optional['SplashConfig'] = None):
+
+    def __init__(
+        self,
+        surface_size: Tuple[int, int] = (480, 480),
+        duration: float = 5.0,
+        config: Optional["SplashConfig"] = None,
+    ):
         """
         Initialize splash screen with specified dimensions and display duration.
-        
+
         Args:
             surface_size: Target surface size as (width, height) tuple
             duration: Minimum splash screen display time in seconds
             config: Optional SplashConfig object for advanced configuration
-            
+
         Raises:
-            ValueError: If surface_size contains non-positive values or duration is negative
+            ValueError: If surface_size contains non-positive values or duration
+                is negative
         """
         # Input validation
         if not isinstance(surface_size, (tuple, list)) or len(surface_size) != 2:
             raise ValueError("surface_size must be a tuple of (width, height)")
-        
+
         width, height = surface_size
         if width <= 0 or height <= 0:
             raise ValueError("Surface dimensions must be positive integers")
-            
+
         if duration < 0:
             raise ValueError("Duration must be non-negative")
-        
+
         # Apply configuration if provided
         if config is not None:
             self.duration = config.duration if config.enabled else 0.0
@@ -95,77 +107,83 @@ class SplashScreen:
             self._graphics_mode = "automotive"
             self._animation_speed = 1.0
             self._enabled = True
-            
+
         # Core configuration
         self.surface_size = surface_size
-        self.logger = logging.getLogger('SplashScreen')
-        
+        self.logger = logging.getLogger("SplashScreen")
+
         # Threading and timing controls
         self._start_time: Optional[float] = None
         self._completion_event = threading.Event()
         self._lock = threading.RLock()  # Reentrant lock for nested calls
-        
+
         # Animation state tracking
         self._animation_time = 0.0
         self._last_update = 0.0
-        
+
         # Graphics availability and fallback state
         self._graphics_available = PYGAME_AVAILABLE
         self._font_initialized = False
-        
+
         # Typography system integration and font caching
         self._typography_available = TYPOGRAPHY_AVAILABLE
         self._cached_fonts = {}  # Cache for font objects to improve performance
         self._font_cache_lock = threading.Lock()  # Thread-safe font cache access
-        
+
         # Performance monitoring for font operations
         # Track font rendering performance; bounded (issue-4005360c)
         self._font_render_times = deque(maxlen=100)
-        self._last_progress_log = float('-inf')  # monotonic
+        self._last_progress_log = float("-inf")  # monotonic
         self._total_render_time = 0.0
-        
+
         # Color scheme - professional dark theme. Deliberately excluded
         # from change-ba2d5de2's DISCONNECTED-matching scheme; the
         # splash screen remains black background / white text
         # (correction recorded 2026-08-13, trivial exemption P03
         # §1.4.12 — see change-ba2d5de2 version history).
         self._colors = {
-            'background': (15, 20, 25),      # Dark blue-gray background
-            'primary_text': (255, 255, 255), # Pure white for main text
-            'secondary_text': (180, 190, 200), # Light gray for secondary text
-            'accent': (64, 150, 255),        # Bright blue accent color
-            'progress_bg': (40, 45, 50),     # Dark gray for progress background
-            'progress_fill': (64, 150, 255), # Blue progress fill
-            'border': (80, 90, 100)          # Medium gray for borders
+            "background": (15, 20, 25),  # Dark blue-gray background
+            "primary_text": (255, 255, 255),  # Pure white for main text
+            "secondary_text": (180, 190, 200),  # Light gray for secondary text
+            "accent": (64, 150, 255),  # Bright blue accent color
+            "progress_bg": (40, 45, 50),  # Dark gray for progress background
+            "progress_fill": (64, 150, 255),  # Blue progress fill
+            "border": (80, 90, 100),  # Medium gray for borders
         }
-        
+
         # Application branding and version info
         self._app_title = "GTach"
         try:
             from importlib.metadata import version as _pkg_version
+
             self._version_text = f"v{_pkg_version('gtach')}"
         except Exception:
             self._version_text = "v?.?.?"
         self._subtitle = "Bluetooth OBD-II Monitor"
-        
+
         # Log initialization status
         if self._graphics_available:
-            self.logger.info(f"SplashScreen initialized with pygame support ({surface_size[0]}x{surface_size[1]}, {duration}s)")
+            self.logger.info(
+                "SplashScreen initialized with pygame support "
+                f"({surface_size[0]}x{surface_size[1]}, {duration}s)"
+            )
         else:
-            self.logger.warning("SplashScreen initialized in text-only mode (pygame not available)")
-        
+            self.logger.warning(
+                "SplashScreen initialized in text-only mode (pygame not available)"
+            )
+
         if self._typography_available:
             self.logger.debug("Typography system available for splash screen")
         else:
             self.logger.debug("Typography system not available - using fallback fonts")
-    
+
     def start(self) -> None:
         """
         Start the splash screen timing mechanism.
-        
+
         Records the current time as the splash screen start time and begins
         the countdown to completion. Thread-safe and idempotent.
-        
+
         Note:
             Multiple calls to start() will not reset the timer if already started.
             Use reset() to restart the timing if needed.
@@ -175,14 +193,16 @@ class SplashScreen:
                 self._start_time = time.monotonic()
                 self._last_update = self._start_time
                 self._completion_event.clear()
-                self.logger.debug(f"Splash screen timer started (duration: {self.duration}s)")
+                self.logger.debug(
+                    f"Splash screen timer started (duration: {self.duration}s)"
+                )
             else:
                 self.logger.debug("Splash screen timer already started")
-    
+
     def reset(self) -> None:
         """
         Reset the splash screen to initial state.
-        
+
         Clears timing information and resets animation state. Useful for
         restarting the splash screen or preparing for a new display cycle.
         Thread-safe operation.
@@ -193,97 +213,110 @@ class SplashScreen:
             self._last_update = 0.0
             self._completion_event.clear()
             self.logger.debug("Splash screen reset to initial state")
-    
+
     def is_complete(self) -> bool:
         """
         Check if the splash screen has completed its minimum display duration.
-        
+
         Returns:
             bool: True if minimum duration has elapsed since start(), False otherwise
-            
+
         Thread Safety:
             Safe to call from any thread. Uses internal locking for consistency.
-            
+
         Note:
             Returns False if start() has not been called yet.
         """
         with self._lock:
             if self._start_time is None:
                 return False
-            
+
             elapsed = time.monotonic() - self._start_time
             is_done = elapsed >= self.duration
-            
+
             # Set completion event for potential waiters
             if is_done and not self._completion_event.is_set():
                 self._completion_event.set()
                 self.logger.debug(f"Splash screen completed after {elapsed:.2f}s")
-            
+
             return is_done
-    
+
     def wait_for_completion(self, timeout: Optional[float] = None) -> bool:
         """
         Block until splash screen completes or timeout occurs.
-        
+
         Args:
             timeout: Maximum time to wait in seconds (None for indefinite wait)
-            
+
         Returns:
             bool: True if splash completed normally, False if timeout occurred
-            
+
         Thread Safety:
             Safe to call from any thread. Will not block if already completed.
         """
         # Start timing if not already started
         if self._start_time is None:
             self.start()
-        
+
         # Calculate remaining time if timeout specified
         effective_timeout = timeout
         if timeout is not None and self._start_time is not None:
             elapsed = time.monotonic() - self._start_time
             remaining = max(0, self.duration - elapsed)
             effective_timeout = min(timeout, remaining)
-        
+
         return self._completion_event.wait(effective_timeout)
-    
-    def _get_cached_font(self, font_type: str, fallback_size: int) -> Optional['pygame.font.Font']:
+
+    def _get_cached_font(
+        self, font_type: str, fallback_size: int
+    ) -> Optional["pygame.font.Font"]:
         """
         Get a cached font object with performance timing.
-        
+
         Args:
             font_type: Type of font ('title', 'body', 'label')
             fallback_size: Retained for call-site compatibility; unused
                 since the raw pygame fallback was removed
                 (change-ba672e81)
-            
+
         Returns:
             pygame.font.Font object or None if unavailable
         """
         start_time = time.monotonic()
-        
+
         try:
             with self._font_cache_lock:
                 # Check cache first
                 if font_type in self._cached_fonts:
                     return self._cached_fonts[font_type]
-                
+
                 # Get font from typography system if available
                 font = None
                 if self._typography_available:
                     try:
-                        if font_type == 'title':
+                        if font_type == "title":
                             font = get_title_display_font()
-                            self.logger.debug(f"Using typography title font ({TypographyConstants.FONT_TITLE}px)")
-                        elif font_type == 'body':
+                            self.logger.debug(
+                                "Using typography title font "
+                                f"({TypographyConstants.FONT_TITLE}px)"
+                            )
+                        elif font_type == "body":
                             font = get_body_font()
-                            self.logger.debug(f"Using typography body font ({TypographyConstants.FONT_BODY}px)")
-                        elif font_type == 'label':
+                            self.logger.debug(
+                                "Using typography body font "
+                                f"({TypographyConstants.FONT_BODY}px)"
+                            )
+                        elif font_type == "label":
                             font = get_label_small_font()
-                            self.logger.debug(f"Using typography small-text font ({TypographyConstants.FONT_SMALL_TEXT}px)")
+                            self.logger.debug(
+                                "Using typography small-text font "
+                                f"({TypographyConstants.FONT_SMALL_TEXT}px)"
+                            )
                     except Exception as e:
-                        self.logger.warning(f"Typography system error for {font_type}: {e}")
-                
+                        self.logger.warning(
+                            f"Typography system error for {font_type}: {e}"
+                        )
+
                 # No raw pygame fallback: FontManager is the single
                 # font-creation path and handles its own system-default
                 # fallback internally (change-ba672e81).
@@ -294,9 +327,9 @@ class SplashScreen:
                 # Cache the font for future use
                 if font is not None:
                     self._cached_fonts[font_type] = font
-                
+
                 return font
-                
+
         except Exception as e:
             self.logger.error(f"Font caching error for {font_type}: {e}", exc_info=True)
             return None
@@ -305,24 +338,26 @@ class SplashScreen:
             render_time = time.monotonic() - start_time
             self._font_render_times.append(render_time)
             self._total_render_time += render_time
-            
+
             # Log slow font operations
             if render_time > 0.01:  # > 10ms
-                self.logger.warning(f"Slow font operation for {font_type}: {render_time*1000:.1f}ms")
-    
+                self.logger.warning(
+                    f"Slow font operation for {font_type}: {render_time * 1000:.1f}ms"
+                )
+
     def render(self, surface) -> bool:
         """
         Render the splash screen graphics to the provided surface.
-        
+
         Args:
             surface: Pygame surface to render onto, or None for text-only mode
-            
+
         Returns:
             bool: True if rendering succeeded, False if errors occurred
-            
+
         Thread Safety:
             Safe to call from display thread. Uses internal locking for state updates.
-            
+
         Note:
             Automatically handles pygame availability and provides text fallback.
             Updates internal animation timing on each call.
@@ -335,33 +370,33 @@ class SplashScreen:
                     delta_time = current_time - self._last_update
                     self._animation_time += delta_time
                 self._last_update = current_time
-                
+
                 # Start timing if not already started
                 if self._start_time is None:
                     self.start()
-                
+
                 # Choose rendering method based on availability
                 if surface is not None and self._graphics_available:
                     return self._render_graphics(surface)
                 else:
                     return self._render_text_fallback()
-                    
+
         except Exception as e:
             self.logger.error(f"Splash screen rendering error: {e}", exc_info=True)
             return False
-    
+
     def _render_graphics(self, surface) -> bool:
         """
         Render graphical splash screen using pygame.
-        
+
         Args:
             surface: Pygame surface to draw on
-            
+
         Returns:
             bool: True if rendering succeeded, False otherwise
         """
         # Skip rendering if splash is disabled
-        if not getattr(self, '_enabled', True):
+        if not getattr(self, "_enabled", True):
             return True
         try:
             # Ensure pygame font system is initialized
@@ -369,23 +404,23 @@ class SplashScreen:
                 if not pygame.font.get_init():
                     pygame.font.init()
                 self._font_initialized = True
-            
+
             # Clear background with dark theme color
-            surface.fill(self._colors['background'])
-            
+            surface.fill(self._colors["background"])
+
             # Get surface dimensions
             width, height = surface.get_size()
             center_x, center_y = width // 2, height // 2
-            
+
             # Render based on graphics mode
-            graphics_mode = getattr(self, '_graphics_mode', 'automotive')
-            
-            if graphics_mode == 'text_only':
+            graphics_mode = getattr(self, "_graphics_mode", "automotive")
+
+            if graphics_mode == "text_only":
                 # Text-only mode - reduced spacing from 40px to 25px
                 self._draw_title_text(surface, center_x, center_y - 25)
                 self._draw_subtitle_text(surface, center_x, center_y)
                 self._draw_version_text(surface, center_x, center_y + 25)
-            elif graphics_mode == 'minimal':
+            elif graphics_mode == "minimal":
                 # Minimal mode - reduced spacing for more compact layout
                 self._draw_title_text(surface, center_x, center_y - 50)
                 self._draw_subtitle_text(surface, center_x, center_y - 25)
@@ -399,120 +434,152 @@ class SplashScreen:
                 # Circular red border removed 2026-08-13 (William's request,
                 # trivial exemption P03 §1.4.12) — the splash screen is now
                 # borderless, matching its restored black/white scheme.
-            
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Graphics rendering failed: {e}", exc_info=True)
             return False
-    
+
     def _draw_title_text(self, surface, center_x: int, center_y: int) -> None:
-        """Draw the main application title with minimalist typography (FONT_TITLE = 36px, was 56px)."""
+        """Draw the main application title with minimalist typography.
+
+        FONT_TITLE = 36px (was 56px).
+        """
         try:
             # 72px via FontManager, which resolves Michroma and owns
             # the system-default fallback (change-ba672e81). Replaces a
             # direct font-file load that bypassed the typography cache.
             font_large = get_font_manager().get_font(72)
 
-            title_surface = font_large.render(self._app_title, True, self._colors['primary_text'])
+            title_surface = font_large.render(
+                self._app_title, True, self._colors["primary_text"]
+            )
             title_rect = title_surface.get_rect(center=(center_x, center_y))
-            
-            # Shadow effect removed to reduce rendering overhead and establish minimalist tone
+
+            # Shadow effect removed to reduce rendering overhead and establish
+            # minimalist tone
             surface.blit(title_surface, title_rect)
-            
+
             # Validate text fits within circular display if typography system available
             if self._typography_available:
                 try:
                     manager = get_font_manager()
-                    if not manager.validate_text_fits_circular_display(self._app_title, TypographyConstants.FONT_TITLE):
-                        self.logger.warning("Splash title may not fit in circular display")
+                    if not manager.validate_text_fits_circular_display(
+                        self._app_title, TypographyConstants.FONT_TITLE
+                    ):
+                        self.logger.warning(
+                            "Splash title may not fit in circular display"
+                        )
                 except Exception as e:
                     self.logger.debug(f"Circular validation failed for title: {e}")
-            
+
         except Exception as e:
             self.logger.error(f"Title text rendering failed: {e}", exc_info=True)
-    
+
     def _draw_subtitle_text(self, surface, center_x: int, center_y: int) -> None:
-        """Draw the application subtitle with body typography (FONT_BODY = 20px, was 32px)."""
+        """Draw the application subtitle with body typography.
+
+        FONT_BODY = 20px (was 32px).
+        """
         try:
             # Use typography system for consistent body text sizing
-            font_medium = self._get_cached_font('body', 28)  # Fallback 28px instead of 32px
+            font_medium = self._get_cached_font(
+                "body", 28
+            )  # Fallback 28px instead of 32px
             if font_medium is None:
                 self.logger.error("Failed to get body font for subtitle")
                 return
-                
-            subtitle_surface = font_medium.render(self._subtitle, True, self._colors['secondary_text'])
+
+            subtitle_surface = font_medium.render(
+                self._subtitle, True, self._colors["secondary_text"]
+            )
             subtitle_rect = subtitle_surface.get_rect(center=(center_x, center_y))
             surface.blit(subtitle_surface, subtitle_rect)
-            
+
             # Validate text fits within circular display
             if self._typography_available:
                 try:
                     manager = get_font_manager()
-                    if not manager.validate_text_fits_circular_display(self._subtitle, TypographyConstants.FONT_BODY):
-                        self.logger.warning("Splash subtitle may not fit in circular display")
+                    if not manager.validate_text_fits_circular_display(
+                        self._subtitle, TypographyConstants.FONT_BODY
+                    ):
+                        self.logger.warning(
+                            "Splash subtitle may not fit in circular display"
+                        )
                 except Exception as e:
                     self.logger.debug(f"Circular validation failed for subtitle: {e}")
-            
+
         except Exception as e:
             self.logger.error(f"Subtitle text rendering failed: {e}", exc_info=True)
-    
+
     def _draw_progress_indicator(self, surface, center_x: int, center_y: int) -> None:
         """Draw simplified progress indicator with automotive gauge only."""
         try:
             # Import graphics functions
-            from .graphics.splash_graphics import (
-                draw_automotive_gauge
-            )
-            
+            from .graphics.splash_graphics import draw_automotive_gauge
+
             # Calculate animation progress (0.0 to 1.0)
             if self._start_time:
                 elapsed = time.monotonic() - self._start_time
                 progress = self._fraction(elapsed)
             else:
                 progress = 0.0
-            
+
             # Draw automotive gauge as the sole progress indicator
             gauge_radius = 60
-            gauge_success = draw_automotive_gauge(surface, (center_x, center_y - 20), 
-                                                gauge_radius, progress)
-            
+            gauge_success = draw_automotive_gauge(
+                surface, (center_x, center_y - 20), gauge_radius, progress
+            )
+
             if not gauge_success:
                 # Log warning but don't fall back to other indicators
-                self.logger.warning("Automotive gauge rendering failed - no fallback progress indicator")
-            
+                self.logger.warning(
+                    "Automotive gauge rendering failed - no fallback progress indicator"
+                )
+
         except Exception as e:
-            self.logger.error(f"Progress indicator rendering failed: {e}", exc_info=True)
-    
-    
+            self.logger.error(
+                f"Progress indicator rendering failed: {e}", exc_info=True
+            )
+
     def _draw_version_text(self, surface, center_x: int, center_y: int) -> None:
-        """Draw version information with small-text typography (FONT_SMALL_TEXT = 18px)."""
+        """Draw version information with small-text typography.
+
+        FONT_SMALL_TEXT = 18px.
+        """
         try:
             # 40px via FontManager, which resolves Michroma and owns
             # the system-default fallback (change-ba672e81). Replaces a
             # direct font-file load that bypassed the typography cache.
             font_ver = get_font_manager().get_font(40)
 
-            version_surface = font_ver.render(self._version_text, True, self._colors['secondary_text'])
+            version_surface = font_ver.render(
+                self._version_text, True, self._colors["secondary_text"]
+            )
             version_rect = version_surface.get_rect(center=(center_x, center_y))
             surface.blit(version_surface, version_rect)
-            
+
             # Validate text fits within circular display
             if self._typography_available:
                 try:
                     manager = get_font_manager()
-                    if not manager.validate_text_fits_circular_display(self._version_text, TypographyConstants.FONT_SMALL_TEXT):
-                        self.logger.warning("Splash version text may not fit in circular display")
+                    if not manager.validate_text_fits_circular_display(
+                        self._version_text, TypographyConstants.FONT_SMALL_TEXT
+                    ):
+                        self.logger.warning(
+                            "Splash version text may not fit in circular display"
+                        )
                 except Exception as e:
                     self.logger.debug(f"Circular validation failed for version: {e}")
-            
+
         except Exception as e:
             self.logger.error(f"Version text rendering failed: {e}", exc_info=True)
-    
+
     def _render_text_fallback(self) -> bool:
         """
         Provide text-based fallback when graphics are unavailable.
-        
+
         Returns:
             bool: Always returns True (text fallback cannot fail)
         """
@@ -523,24 +590,26 @@ class SplashScreen:
                 progress = self._fraction(elapsed)
             else:
                 progress = 0.0
-            
+
             # Create simple text progress indicator
             bar_length = 20
             filled_length = int(bar_length * progress)
-            bar = '█' * filled_length + '░' * (bar_length - filled_length)
-            
+            bar = "█" * filled_length + "░" * (bar_length - filled_length)
+
             # Log progress at most every 0.5 s (issue-4005360c)
             now = time.monotonic()
             if now - self._last_progress_log >= 0.5:
                 self._last_progress_log = now
-                self.logger.debug(f"{self._app_title} - Loading: [{bar}] {int(progress * 100)}%")
-            
+                self.logger.debug(
+                    f"{self._app_title} - Loading: [{bar}] {int(progress * 100)}%"
+                )
+
             return True
-            
+
         except Exception as e:
             self.logger.error(f"Text fallback rendering failed: {e}", exc_info=True)
             return True  # Fallback should never fail completely
-    
+
     def _fraction(self, elapsed: float) -> float:
         """Elapsed time as a fraction of the duration, capped at 1.0.
 
@@ -553,48 +622,51 @@ class SplashScreen:
     def get_progress(self) -> float:
         """
         Get current splash screen progress as a percentage.
-        
+
         Returns:
             float: Progress value between 0.0 and 1.0, or 0.0 if not started
-            
+
         Thread Safety:
             Safe to call from any thread.
         """
         with self._lock:
             if self._start_time is None:
                 return 0.0
-            
+
             elapsed = time.monotonic() - self._start_time
             return self._fraction(elapsed)
-    
+
     def get_remaining_time(self) -> float:
         """
         Get remaining splash screen display time in seconds.
-        
+
         Returns:
             float: Remaining time in seconds, or full duration if not started
-            
+
         Thread Safety:
             Safe to call from any thread.
         """
         with self._lock:
             if self._start_time is None:
                 return self.duration
-            
+
             elapsed = time.monotonic() - self._start_time
             return max(0.0, self.duration - elapsed)
-    
-    def set_custom_text(self, title: Optional[str] = None, 
-                       subtitle: Optional[str] = None, 
-                       version: Optional[str] = None) -> None:
+
+    def set_custom_text(
+        self,
+        title: Optional[str] = None,
+        subtitle: Optional[str] = None,
+        version: Optional[str] = None,
+    ) -> None:
         """
         Customize splash screen text content.
-        
+
         Args:
             title: Custom application title (None to keep default)
             subtitle: Custom subtitle text (None to keep default)
             version: Custom version string (None to keep default)
-            
+
         Thread Safety:
             Safe to call from any thread. Changes take effect on next render.
         """
@@ -602,98 +674,111 @@ class SplashScreen:
             if title is not None:
                 self._app_title = str(title)
                 self.logger.debug(f"Splash title updated to: {title}")
-            
+
             if subtitle is not None:
                 self._subtitle = str(subtitle)
                 self.logger.debug(f"Splash subtitle updated to: {subtitle}")
-            
+
             if version is not None:
                 self._version_text = str(version)
                 self.logger.debug(f"Splash version updated to: {version}")
-    
+
     def get_info(self) -> dict:
         """
         Get comprehensive splash screen state information for debugging.
-        
+
         Returns:
-            dict: Current state information including timing, progress, and configuration
-            
+            dict: Current state information including timing, progress, and
+                configuration
+
         Thread Safety:
             Safe to call from any thread.
         """
         with self._lock:
             return {
-                'surface_size': self.surface_size,
-                'duration': self.duration,
-                'graphics_available': self._graphics_available,
-                'font_initialized': self._font_initialized,
-                'started': self._start_time is not None,
-                'start_time': self._start_time,
-                'animation_time': self._animation_time,
-                'progress': self.get_progress(),
-                'remaining_time': self.get_remaining_time(),
-                'is_complete': self.is_complete(),
-                'app_title': self._app_title,
-                'version': self._version_text,
-                'typography_available': self._typography_available,
-                'cached_fonts': list(self._cached_fonts.keys()),
-                'font_performance': {
-                    'total_render_time': self._total_render_time,
-                    'average_render_time': (
-                        sum(self._font_render_times) / len(self._font_render_times) 
-                        if self._font_render_times else 0.0
+                "surface_size": self.surface_size,
+                "duration": self.duration,
+                "graphics_available": self._graphics_available,
+                "font_initialized": self._font_initialized,
+                "started": self._start_time is not None,
+                "start_time": self._start_time,
+                "animation_time": self._animation_time,
+                "progress": self.get_progress(),
+                "remaining_time": self.get_remaining_time(),
+                "is_complete": self.is_complete(),
+                "app_title": self._app_title,
+                "version": self._version_text,
+                "typography_available": self._typography_available,
+                "cached_fonts": list(self._cached_fonts.keys()),
+                "font_performance": {
+                    "total_render_time": self._total_render_time,
+                    "average_render_time": (
+                        sum(self._font_render_times) / len(self._font_render_times)
+                        if self._font_render_times
+                        else 0.0
                     ),
-                    'render_operations': len(self._font_render_times)
-                }
+                    "render_operations": len(self._font_render_times),
+                },
             }
-    
+
     def get_performance_report(self) -> dict:
         """
         Get splash screen performance report including font rendering metrics.
-        
+
         Returns:
             dict: Performance metrics and optimization suggestions
         """
         with self._lock:
             avg_render_time = (
-                sum(self._font_render_times) / len(self._font_render_times) 
-                if self._font_render_times else 0.0
+                sum(self._font_render_times) / len(self._font_render_times)
+                if self._font_render_times
+                else 0.0
             )
-            
+
             report = {
-                'typography_system': {
-                    'available': self._typography_available,
-                    'fonts_cached': len(self._cached_fonts),
-                    'cache_hit_rate': 'N/A'  # Would need to track hits vs misses
+                "typography_system": {
+                    "available": self._typography_available,
+                    "fonts_cached": len(self._cached_fonts),
+                    "cache_hit_rate": "N/A",  # Would need to track hits vs misses
                 },
-                'font_performance': {
-                    'total_render_time_ms': self._total_render_time * 1000,
-                    'average_render_time_ms': avg_render_time * 1000,
-                    'operations_count': len(self._font_render_times),
-                    'slow_operations': len([t for t in self._font_render_times if t > 0.01])
+                "font_performance": {
+                    "total_render_time_ms": self._total_render_time * 1000,
+                    "average_render_time_ms": avg_render_time * 1000,
+                    "operations_count": len(self._font_render_times),
+                    "slow_operations": len(
+                        [t for t in self._font_render_times if t > 0.01]
+                    ),
                 },
-                'optimization_status': {
-                    'shadow_effects_removed': True,
-                    'font_caching_enabled': True,
-                    'reduced_spacing': True,
-                    'minimalist_fonts': self._typography_available
+                "optimization_status": {
+                    "shadow_effects_removed": True,
+                    "font_caching_enabled": True,
+                    "reduced_spacing": True,
+                    "minimalist_fonts": self._typography_available,
                 },
-                'recommendations': []
+                "recommendations": [],
             }
-            
+
             # Generate performance recommendations
             if avg_render_time > 0.005:  # > 5ms average
-                report['recommendations'].append("Font rendering is slow - consider font preloading")
-            
+                report["recommendations"].append(
+                    "Font rendering is slow - consider font preloading"
+                )
+
             if not self._typography_available:
-                report['recommendations'].append("Typography system not available - using fallback fonts")
-            
+                report["recommendations"].append(
+                    "Typography system not available - using fallback fonts"
+                )
+
             if len(self._font_render_times) > 100:
                 # Clear old timing data to prevent memory growth
                 self._font_render_times = self._font_render_times[-50:]
-                report['recommendations'].append("Font timing data trimmed to prevent memory growth")
-            
-            if not report['recommendations']:
-                report['recommendations'].append("Performance is within acceptable limits")
-            
+                report["recommendations"].append(
+                    "Font timing data trimmed to prevent memory growth"
+                )
+
+            if not report["recommendations"]:
+                report["recommendations"].append(
+                    "Performance is within acceptable limits"
+                )
+
             return report

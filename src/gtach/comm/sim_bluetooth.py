@@ -18,41 +18,40 @@ import random
 import threading
 import time
 from datetime import datetime
-from typing import List, Optional, Callable
+from typing import Callable, List, Optional
 
 from ..display.setup_models import BluetoothDevice, PairingStatus
-
 
 # Hardcoded fake devices for discovery
 _FAKE_DEVICES = [
     BluetoothDevice(
-        name='ELM327 OBD Adapter',
-        mac_address='AA:BB:CC:DD:EE:01',
+        name="ELM327 OBD Adapter",
+        mac_address="AA:BB:CC:DD:EE:01",
         signal_strength=-60,
-        device_type='ELM327',
-        last_seen=datetime.now()
+        device_type="ELM327",
+        last_seen=datetime.now(),
     ),
     BluetoothDevice(
-        name='OBDLink MX+',
-        mac_address='AA:BB:CC:DD:EE:02',
+        name="OBDLink MX+",
+        mac_address="AA:BB:CC:DD:EE:02",
         signal_strength=-55,
-        device_type='ELM327',
-        last_seen=datetime.now()
+        device_type="ELM327",
+        last_seen=datetime.now(),
     ),
     BluetoothDevice(
-        name='VEEPEAK OBD2',
-        mac_address='AA:BB:CC:DD:EE:03',
+        name="VEEPEAK OBD2",
+        mac_address="AA:BB:CC:DD:EE:03",
         signal_strength=-70,
-        device_type='ELM327',
-        last_seen=datetime.now()
+        device_type="ELM327",
+        last_seen=datetime.now(),
     ),
     BluetoothDevice(
-        name='Generic BT Adapter',
-        mac_address='AA:BB:CC:DD:EE:04',
+        name="Generic BT Adapter",
+        mac_address="AA:BB:CC:DD:EE:04",
         signal_strength=-65,
-        device_type='Compatible',
-        last_seen=datetime.now()
-    )
+        device_type="Compatible",
+        last_seen=datetime.now(),
+    ),
 ]
 
 
@@ -65,7 +64,7 @@ class SimBluetoothPairing:
 
     def __init__(self):
         """Initialize simulation Bluetooth pairing."""
-        self.logger = logging.getLogger('SimBluetoothPairing')
+        self.logger = logging.getLogger("SimBluetoothPairing")
         self._discovery_active = False
         self._pairing_active = False
         self._cancel_discovery = threading.Event()
@@ -77,7 +76,7 @@ class SimBluetoothPairing:
         timeout: float = 10.0,
         progress_callback: Optional[Callable[[float], None]] = None,
         device_found_callback: Optional[Callable[[BluetoothDevice], None]] = None,
-        show_all_devices: bool = False
+        show_all_devices: bool = False,
     ) -> List[BluetoothDevice]:
         """Simulate Bluetooth device discovery.
 
@@ -120,11 +119,16 @@ class SimBluetoothPairing:
                     device_found_callback(device)
 
             self._discovery_active = False
-            self.logger.info(f"SimBluetoothPairing: discovery complete ({len(_FAKE_DEVICES)} devices)")
+            self.logger.info(
+                f"SimBluetoothPairing: discovery complete ({len(_FAKE_DEVICES)} "
+                "devices)"
+            )
             return _FAKE_DEVICES.copy()
 
         except Exception as e:
-            self.logger.error(f"SimBluetoothPairing discovery error: {e}", exc_info=True)
+            self.logger.error(
+                f"SimBluetoothPairing discovery error: {e}", exc_info=True
+            )
             self._discovery_active = False
             return []
 
@@ -132,7 +136,7 @@ class SimBluetoothPairing:
         self,
         timeout: float = 10.0,
         progress_callback: Optional[Callable[[float], None]] = None,
-        device_found_callback: Optional[Callable[[BluetoothDevice], None]] = None
+        device_found_callback: Optional[Callable[[BluetoothDevice], None]] = None,
     ) -> List[BluetoothDevice]:
         """Simulate discovery of all Bluetooth devices.
 
@@ -150,13 +154,13 @@ class SimBluetoothPairing:
             timeout=timeout,
             progress_callback=progress_callback,
             device_found_callback=device_found_callback,
-            show_all_devices=True
+            show_all_devices=True,
         )
 
     def pair_device(
         self,
         device: BluetoothDevice,
-        status_callback: Optional[Callable[[PairingStatus, str], None]] = None
+        status_callback: Optional[Callable[[PairingStatus, str], None]] = None,
     ) -> bool:
         """Simulate pairing with a Bluetooth device.
 
@@ -174,11 +178,13 @@ class SimBluetoothPairing:
             self._pairing_active = True
             # A previous cancel must not cancel this run (issue-4005360c).
             self._cancel_pairing.clear()
-            self.logger.info(f"SimBluetoothPairing: starting pairing with {device.name}")
+            self.logger.info(
+                f"SimBluetoothPairing: starting pairing with {device.name}"
+            )
 
             # Step 1: Connecting
             if status_callback:
-                status_callback(PairingStatus.CONNECTING, 'Connecting...')
+                status_callback(PairingStatus.CONNECTING, "Connecting...")
             time.sleep(1.0)
 
             if self._cancel_pairing.is_set():
@@ -188,7 +194,7 @@ class SimBluetoothPairing:
 
             # Step 2: Testing
             if status_callback:
-                status_callback(PairingStatus.CONNECTING, 'Testing...')
+                status_callback(PairingStatus.CONNECTING, "Testing...")
             time.sleep(1.0)
 
             if self._cancel_pairing.is_set():
@@ -201,24 +207,32 @@ class SimBluetoothPairing:
 
             if success:
                 if status_callback:
-                    status_callback(PairingStatus.SUCCESS, 'Connected')
-                self.logger.info(f"SimBluetoothPairing: pairing succeeded with {device.name}")
+                    status_callback(PairingStatus.SUCCESS, "Connected")
+                self.logger.info(
+                    f"SimBluetoothPairing: pairing succeeded with {device.name}"
+                )
                 # Persist device so verify_obd_connection can find it
                 try:
                     from ..comm.device_store import get_device_store
                     from ..comm.models import BluetoothDevice as CommBluetoothDevice
+
                     comm_device = CommBluetoothDevice(
                         name=device.name,
                         mac_address=device.mac_address,
-                        device_type=device.device_type
+                        device_type=device.device_type,
                     )
                     get_device_store().save_device(comm_device, is_primary=True)
                 except Exception as e:
-                    self.logger.warning(f"SimBluetoothPairing: could not save device to store: {e}")
+                    self.logger.warning(
+                        f"SimBluetoothPairing: could not save device to store: {e}"
+                    )
             else:
                 if status_callback:
-                    status_callback(PairingStatus.FAILED, 'Simulated failure')
-                self.logger.info(f"SimBluetoothPairing: pairing failed (simulated) with {device.name}")
+                    status_callback(PairingStatus.FAILED, "Simulated failure")
+                self.logger.info(
+                    "SimBluetoothPairing: pairing failed (simulated) with "
+                    f"{device.name}"
+                )
 
             self._pairing_active = False
             return success

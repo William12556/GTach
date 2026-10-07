@@ -27,7 +27,6 @@ import pytest
 
 from gtach.display.rendering.engine import DisplayRenderingEngine
 
-
 SURFACE_W = 32
 SURFACE_H = 32
 BYTES_PER_PIXEL = 4
@@ -58,8 +57,7 @@ class FakeFramebuffer:
 @pytest.fixture
 def engine(monkeypatch):
     """An engine wired to a fake framebuffer, single-buffer mode."""
-    monkeypatch.setattr(DisplayRenderingEngine, 'VERTICAL_OFFSET_PX',
-                        TEST_OFFSET_PX)
+    monkeypatch.setattr(DisplayRenderingEngine, "VERTICAL_OFFSET_PX", TEST_OFFSET_PX)
     pygame.init()
     eng = DisplayRenderingEngine()
     eng.surface_size = (SURFACE_W, SURFACE_H)
@@ -78,21 +76,22 @@ def engine(monkeypatch):
 
 def original_payload(eng):
     """The bytes write_to_framebuffer would have written before the change."""
-    return bytes(eng.back_surface.get_view('0'))
+    return bytes(eng.back_surface.get_view("0"))
 
 
 def test_payload_is_shifted_down_by_the_offset(engine):
     """Scenario 1: padding rows are prepended and the tail is dropped."""
     expected_before = original_payload(engine)
     shift = ROW_BYTES * DisplayRenderingEngine.VERTICAL_OFFSET_PX
-    assert expected_before[:ROW_BYTES] != bytes(ROW_BYTES), \
-        "fixture must present a non-zero first row for this test to discriminate"
+    assert expected_before[:ROW_BYTES] != bytes(
+        ROW_BYTES
+    ), "fixture must present a non-zero first row for this test to discriminate"
 
     assert engine.write_to_framebuffer() is True
 
     written = engine.fb.writes[0]
     assert written[:shift] == bytes(shift)
-    assert written[shift:] == expected_before[:FB_SIZE - shift]
+    assert written[shift:] == expected_before[: FB_SIZE - shift]
 
 
 def test_total_written_length_is_unchanged(engine):
@@ -117,7 +116,7 @@ def test_page_flip_branch_writes_the_same_shifted_payload(engine, monkeypatch):
     flip.fb_line_length = ROW_BYTES
     flip.page_flip = True
     flip.buffer_index = 0
-    monkeypatch.setattr(flip, '_pan_display', lambda index: True)
+    monkeypatch.setattr(flip, "_pan_display", lambda index: True)
 
     assert flip.write_to_framebuffer() is True
 
@@ -137,14 +136,14 @@ def test_row_bytes_falls_back_to_surface_width_when_stride_unknown(engine):
 
     written = engine.fb.writes[0]
     assert written[:shift] == bytes(shift)
-    assert written[shift:] == expected_before[:FB_SIZE - shift]
+    assert written[shift:] == expected_before[: FB_SIZE - shift]
     assert len(written) == engine.fb_size
 
 
 def test_oversized_offset_writes_the_unshifted_payload(engine, monkeypatch):
     """Scenario 5: an offset at or beyond the payload is a no-op, not a fault."""
     expected_before = original_payload(engine)
-    monkeypatch.setattr(engine, 'VERTICAL_OFFSET_PX', SURFACE_H + 1)
+    monkeypatch.setattr(engine, "VERTICAL_OFFSET_PX", SURFACE_H + 1)
 
     assert engine.write_to_framebuffer() is True
 
@@ -155,7 +154,7 @@ def test_oversized_offset_writes_the_unshifted_payload(engine, monkeypatch):
 def test_offset_exactly_equal_to_the_payload_is_a_no_op(engine, monkeypatch):
     """Edge case: a whole-frame shift would zero the frame; guard rejects it."""
     expected_before = original_payload(engine)
-    monkeypatch.setattr(engine, 'VERTICAL_OFFSET_PX', SURFACE_H)
+    monkeypatch.setattr(engine, "VERTICAL_OFFSET_PX", SURFACE_H)
 
     assert engine.write_to_framebuffer() is True
 
@@ -169,24 +168,27 @@ def test_shift_is_agnostic_to_the_framebuffer_object(engine, tmp_path):
     path = tmp_path / "fb0"
     path.write_bytes(bytes(FB_SIZE))
     engine.use_mmap = False
-    with open(path, 'r+b') as fh:
+    with open(path, "r+b") as fh:
         engine.fb = fh
         assert engine.write_to_framebuffer() is True
 
     written = path.read_bytes()
     assert len(written) == FB_SIZE
     assert written[:shift] == bytes(shift)
-    assert written[shift:] == expected_before[:FB_SIZE - shift]
+    assert written[shift:] == expected_before[: FB_SIZE - shift]
 
 
 def test_compensation_is_announced_once_per_session(engine, caplog):
     """The one-time INFO log fires on the first shifted frame only."""
-    with caplog.at_level(logging.INFO, logger='DisplayRenderingEngine'):
+    with caplog.at_level(logging.INFO, logger="DisplayRenderingEngine"):
         engine.write_to_framebuffer()
         engine.write_to_framebuffer()
 
-    announcements = [r for r in caplog.records
-                     if 'Vertical offset compensation active' in r.getMessage()]
+    announcements = [
+        r
+        for r in caplog.records
+        if "Vertical offset compensation active" in r.getMessage()
+    ]
     assert len(announcements) == 1
     assert announcements[0].levelno == logging.INFO
 
@@ -195,7 +197,7 @@ def _flip_engine(engine, monkeypatch):
     """The fixture engine with the second half displayed and pans failing."""
     engine.page_flip = True
     engine.buffer_index = 1
-    monkeypatch.setattr(engine, '_pan_display', lambda index: False)
+    monkeypatch.setattr(engine, "_pan_display", lambda index: False)
     return engine
 
 

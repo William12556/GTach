@@ -52,7 +52,7 @@ from gtach.display.touch import TouchHandler
 SWIPE_THRESHOLD = 100
 
 
-@pytest.fixture(autouse=True, scope='module')
+@pytest.fixture(autouse=True, scope="module")
 def _pygame_ready():
     """Off-screen surfaces and fonts, no display and no teardown.
 
@@ -96,14 +96,14 @@ class _Render:
         self.arrows = []
 
         host = types.SimpleNamespace()
-        host.logger = logging.getLogger('test.device_list')
+        host.logger = logging.getLogger("test.device_list")
         host.colors = {
-            'background': (216, 200, 146),
-            'text': (0, 0, 0),
-            'text_dim': (0, 0, 0),
-            'border': (80, 80, 90),
-            'primary': (100, 150, 250),
-            'danger': (255, 50, 50),
+            "background": (216, 200, 146),
+            "text": (0, 0, 0),
+            "text_dim": (0, 0, 0),
+            "border": (80, 80, 90),
+            "primary": (100, 150, 250),
+            "danger": (255, 50, 50),
         }
         host.state_coordinator = self.coordinator
         host.positioning_engine = CircularPositioningEngine()
@@ -119,7 +119,7 @@ class _Render:
 
     @property
     def device_regions(self):
-        return [region for region in self.regions if region[0] == 'device']
+        return [region for region in self.regions if region[0] == "device"]
 
     @property
     def focus_info(self):
@@ -129,24 +129,24 @@ class _Render:
 class TestSlotCount:
     """Three slots always, whatever the device count."""
 
-    @pytest.mark.parametrize('count', [1, 2, 3, 5, 9])
+    @pytest.mark.parametrize("count", [1, 2, 3, 5, 9])
     def test_layout_is_always_three_slots(self, count):
         layout = CircularPositioningEngine().calculate_focused_slot_layout()
 
         assert len(layout) == 3
-        assert [item['slot'] for item in layout] == ['top', 'middle', 'bottom']
+        assert [item["slot"] for item in layout] == ["top", "middle", "bottom"]
 
     def test_middle_slot_is_centred_on_the_display(self):
         engine = CircularPositioningEngine()
 
         middle = engine.calculate_focused_slot_layout()[1]
 
-        assert middle['y'] + middle['height'] // 2 == engine.display_center[1]
+        assert middle["y"] + middle["height"] // 2 == engine.display_center[1]
 
     def test_slots_are_evenly_pitched(self):
         layout = CircularPositioningEngine().calculate_focused_slot_layout()
 
-        top, middle, bottom = (item['y'] for item in layout)
+        top, middle, bottom = (item["y"] for item in layout)
 
         assert middle - top == bottom - middle
 
@@ -154,9 +154,9 @@ class TestSlotCount:
         engine = CircularPositioningEngine()
 
         layout = engine.calculate_focused_slot_layout()
-        result = engine.validate_all_layout_elements(layout, 'DEVICE_LIST')
+        result = engine.validate_all_layout_elements(layout, "DEVICE_LIST")
 
-        assert result['validation_summary']['passed'], result['invalid_elements']
+        assert result["validation_summary"]["passed"], result["invalid_elements"]
 
     def test_slot_column_clears_the_back_and_retry_buttons(self):
         """The buttons' top edge is y=340 and must stay clear."""
@@ -164,7 +164,7 @@ class TestSlotCount:
 
         bottom = layout[2]
 
-        assert bottom['y'] + bottom['height'] <= 340
+        assert bottom["y"] + bottom["height"] <= 340
 
 
 class TestTouchRegions:
@@ -180,7 +180,7 @@ class TestTouchRegions:
 
         assert len(render.device_regions) == 1
 
-    @pytest.mark.parametrize('count,focused', [(2, 0), (2, 1), (5, 2), (5, 4)])
+    @pytest.mark.parametrize("count,focused", [(2, 0), (2, 1), (5, 2), (5, 4)])
     def test_exactly_one_region_whatever_the_focus(self, count, focused):
         render = _Render(count, focused_index=focused)
 
@@ -199,13 +199,13 @@ class TestTouchRegions:
 
         _action, rect, _device = render.device_regions[0]
 
-        assert rect.top == middle['y']
-        assert rect.centery == pytest.approx(240, abs=middle['height'] // 2)
+        assert rect.top == middle["y"]
+        assert rect.centery == pytest.approx(240, abs=middle["height"] // 2)
 
     def test_back_and_retry_are_still_registered(self):
         render = _Render(3, focused_index=1)
 
-        assert [region[0] for region in render.regions[-2:]] == ['back', 'retry']
+        assert [region[0] for region in render.regions[-2:]] == ["back", "retry"]
 
 
 class TestSlotContents:
@@ -215,8 +215,11 @@ class TestSlotContents:
         """The device-or-None each slot resolves to, top to bottom."""
         devices = [_device(i) for i in range(count)]
         return [
-            devices[focused_index + offset]
-            if 0 <= focused_index + offset < count else None
+            (
+                devices[focused_index + offset]
+                if 0 <= focused_index + offset < count
+                else None
+            )
             for offset in (-1, 0, 1)
         ]
 
@@ -269,8 +272,8 @@ class TestSlotContents:
         plain, _a = renderer.create_slot_surface(_device(0), layout, selected=False)
         chosen, _b = renderer.create_slot_surface(_device(0), layout, selected=True)
 
-        assert pygame.image.tostring(plain, 'RGBA') != pygame.image.tostring(
-            chosen, 'RGBA'
+        assert pygame.image.tostring(plain, "RGBA") != pygame.image.tostring(
+            chosen, "RGBA"
         )
 
 
@@ -285,26 +288,26 @@ class TestArrows:
     def test_one_device_shows_neither_arrow(self):
         render = _Render(1)
 
-        assert render.focus_info['has_previous'] is False
-        assert render.focus_info['has_next'] is False
+        assert render.focus_info["has_previous"] is False
+        assert render.focus_info["has_next"] is False
 
     def test_two_devices_at_the_top_show_the_down_arrow_only(self):
         render = _Render(2, focused_index=0)
 
-        assert render.focus_info['has_previous'] is False
-        assert render.focus_info['has_next'] is True
+        assert render.focus_info["has_previous"] is False
+        assert render.focus_info["has_next"] is True
 
     def test_two_devices_at_the_bottom_show_the_up_arrow_only(self):
         render = _Render(2, focused_index=1)
 
-        assert render.focus_info['has_previous'] is True
-        assert render.focus_info['has_next'] is False
+        assert render.focus_info["has_previous"] is True
+        assert render.focus_info["has_next"] is False
 
     def test_mid_list_shows_both_arrows(self):
         render = _Render(5, focused_index=2)
 
-        assert render.focus_info['has_previous'] is True
-        assert render.focus_info['has_next'] is True
+        assert render.focus_info["has_previous"] is True
+        assert render.focus_info["has_next"] is True
 
 
 class TestArrowGlyphs:
@@ -315,18 +318,22 @@ class TestArrowGlyphs:
 
     def _draw(self, has_previous, has_next):
         host = types.SimpleNamespace()
-        host.logger = logging.getLogger('test.device_list')
-        host.colors = {'text': (0, 0, 0)}
+        host.logger = logging.getLogger("test.device_list")
+        host.colors = {"text": (0, 0, 0)}
         # Class constants, so a SimpleNamespace host must be given them.
-        for name in ('_ARROW_HALF_WIDTH', '_ARROW_HEIGHT',
-                     '_ARROW_UP_BASE_Y', '_ARROW_DOWN_BASE_Y'):
+        for name in (
+            "_ARROW_HALF_WIDTH",
+            "_ARROW_HEIGHT",
+            "_ARROW_UP_BASE_Y",
+            "_ARROW_DOWN_BASE_Y",
+        ):
             setattr(host, name, getattr(SetupDisplayManager, name))
 
         surface = pygame.Surface((480, 480))
         surface.fill((255, 255, 255))
-        SetupDisplayManager._draw_focus_arrows(host, surface, {
-            'has_previous': has_previous, 'has_next': has_next
-        })
+        SetupDisplayManager._draw_focus_arrows(
+            host, surface, {"has_previous": has_previous, "has_next": has_next}
+        )
         return surface
 
     def test_up_arrow_drawn_when_a_previous_device_exists(self):
@@ -351,11 +358,15 @@ class TestArrowGlyphs:
         layout = CircularPositioningEngine().calculate_focused_slot_layout()
 
         up_base = SetupDisplayManager._ARROW_UP_BASE_Y
-        down_apex = (SetupDisplayManager._ARROW_DOWN_BASE_Y
-                     + SetupDisplayManager._ARROW_HEIGHT)
+        down_apex = (
+            SetupDisplayManager._ARROW_DOWN_BASE_Y + SetupDisplayManager._ARROW_HEIGHT
+        )
 
-        assert up_base < layout[0]['y']
-        assert SetupDisplayManager._ARROW_DOWN_BASE_Y >= layout[2]['y'] + layout[2]['height']
+        assert up_base < layout[0]["y"]
+        assert (
+            SetupDisplayManager._ARROW_DOWN_BASE_Y
+            >= layout[2]["y"] + layout[2]["height"]
+        )
         assert down_apex < 340
 
 
@@ -366,7 +377,7 @@ class TestNoDevices:
         """No slots are drawn, so no touch region beyond Back/Retry."""
         render = _Render(0)
 
-        assert [region[0] for region in render.regions] == ['back', 'retry']
+        assert [region[0] for region in render.regions] == ["back", "retry"]
 
 
 class TestFocusShift:
@@ -378,7 +389,7 @@ class TestFocusShift:
         coordinator.focused_index = focused_index
 
         host = types.SimpleNamespace()
-        host.logger = logging.getLogger('test.device_list')
+        host.logger = logging.getLogger("test.device_list")
         host.state_coordinator = coordinator
         host.invalidated = []
         host._invalidate_render_cache = host.invalidated.append
@@ -441,7 +452,7 @@ class TestFocusClamping:
 
         state.discovered_devices = state.discovered_devices[:2]
 
-        assert coordinator.get_focus_info()['focused_index'] == 1
+        assert coordinator.get_focus_info()["focused_index"] == 1
 
     def test_focus_is_zero_when_all_devices_disappear(self):
         state = _state(3)
@@ -450,7 +461,7 @@ class TestFocusClamping:
 
         state.discovered_devices = []
 
-        assert coordinator.get_focus_info()['focused_index'] == 0
+        assert coordinator.get_focus_info()["focused_index"] == 0
 
     def test_render_survives_a_shrunken_list(self):
         render = _Render(5, focused_index=4)
@@ -496,7 +507,7 @@ class _FakeSetupManager:
 
 def _touch_host(setup_manager):
     host = types.SimpleNamespace()
-    host.logger = logging.getLogger('test.touch')
+    host.logger = logging.getLogger("test.touch")
     host.display_manager = types.SimpleNamespace(
         _setup_manager=setup_manager,
         touch_coordinator=types.SimpleNamespace(swipe_threshold=SWIPE_THRESHOLD),
@@ -549,13 +560,16 @@ class TestTouchSwipeDetection:
         assert _swipe(manager, SWIPE_THRESHOLD + 20, SWIPE_THRESHOLD) is False
         assert manager.swipes == []
 
-    @pytest.mark.parametrize('screen', [
-        SetupScreen.WELCOME,
-        SetupScreen.DISCOVERY,
-        SetupScreen.PAIRING,
-        SetupScreen.COMPLETE,
-        SetupScreen.CURRENT_DEVICE,
-    ])
+    @pytest.mark.parametrize(
+        "screen",
+        [
+            SetupScreen.WELCOME,
+            SetupScreen.DISCOVERY,
+            SetupScreen.PAIRING,
+            SetupScreen.COMPLETE,
+            SetupScreen.CURRENT_DEVICE,
+        ],
+    )
     def test_other_setup_screens_are_untouched(self, screen):
         manager = _FakeSetupManager(screen=screen)
 
@@ -595,7 +609,7 @@ class TestTouchSwipeDetection:
 
     def test_no_setup_manager_falls_through(self):
         host = types.SimpleNamespace()
-        host.logger = logging.getLogger('test.touch')
+        host.logger = logging.getLogger("test.touch")
         host.display_manager = types.SimpleNamespace()
 
         assert TouchHandler._handle_setup_swipe(host, 200, 400, 200, 200) is False

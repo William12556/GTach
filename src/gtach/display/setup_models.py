@@ -12,12 +12,14 @@ Defines data structures used during Bluetooth setup process.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum, auto
 from typing import List, Optional
-from datetime import datetime
+
 
 class SetupScreen(Enum):
     """Setup flow screen states"""
+
     WELCOME = auto()
     DISCOVERY = auto()
     DEVICE_LIST = auto()
@@ -27,23 +29,29 @@ class SetupScreen(Enum):
     DEVICE_MANAGEMENT = auto()
     CONFIRMATION = auto()
 
+
 class PairingStatus(Enum):
     """Bluetooth pairing status"""
+
     IDLE = auto()
     DISCOVERING = auto()
     CONNECTING = auto()
     SUCCESS = auto()
     FAILED = auto()
 
+
 class DeviceType(Enum):
     """Device type classification"""
+
     HIGHLY_LIKELY_ELM327 = auto()
     POSSIBLY_COMPATIBLE = auto()
     UNKNOWN = auto()
 
+
 @dataclass
 class BluetoothDevice:
     """Represents a discovered Bluetooth device"""
+
     name: str
     mac_address: str
     signal_strength: int
@@ -61,9 +69,11 @@ class BluetoothDevice:
             return self.mac_address == other.mac_address
         return False
 
-@dataclass 
+
+@dataclass
 class SetupState:
     """Current state of the setup process"""
+
     current_screen: SetupScreen
     discovered_devices: List[BluetoothDevice]
     selected_device: Optional[BluetoothDevice]
@@ -81,8 +91,10 @@ class SetupState:
         self.discovery_progress = 0.0
         self.error_message = None
 
+
 class SetupAction(Enum):
     """User actions during setup"""
+
     NEXT = auto()
     BACK = auto()
     SELECT_DEVICE = auto()

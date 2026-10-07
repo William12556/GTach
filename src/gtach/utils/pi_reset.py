@@ -48,16 +48,16 @@ logger = logging.getLogger(__name__)
 
 # Fixed, not configurable: a configurable value would be a value
 # reaching a command line.
-_REBOOT_PATH = '/sbin/reboot'
+_REBOOT_PATH = "/sbin/reboot"
 
 # Outcome strings. All 40 characters or fewer, so a future caller can
 # render one on the 480x480 display without measuring it.
-_OK = 'reboot initiated'
-_TIMED_OUT = 'reboot timed out'
-_NOT_PERMITTED = 'reboot not permitted'
-_NOT_FOUND = 'reboot command not found'
-_FAILED = 'reboot failed'
-_COMMAND_FAILED = 'reboot command failed'
+_OK = "reboot initiated"
+_TIMED_OUT = "reboot timed out"
+_NOT_PERMITTED = "reboot not permitted"
+_NOT_FOUND = "reboot command not found"
+_FAILED = "reboot failed"
+_COMMAND_FAILED = "reboot command failed"
 
 
 def reboot_device(timeout: float = 10.0) -> str:
@@ -81,13 +81,14 @@ def reboot_device(timeout: float = 10.0) -> str:
     """
     try:
         if not os.path.exists(_REBOOT_PATH):
-            logger.debug("%s does not exist; reboot not attempted",
-                         _REBOOT_PATH)
+            logger.debug("%s does not exist; reboot not attempted", _REBOOT_PATH)
             return _NOT_FOUND
 
         completed = subprocess.run(
             [_REBOOT_PATH],
-            capture_output=True, timeout=timeout, check=False,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
         )
         logger.debug("%s -> rc=%d", _REBOOT_PATH, completed.returncode)
 
@@ -104,12 +105,13 @@ def reboot_device(timeout: float = 10.0) -> str:
         logger.error("reboot timed out after %.1fs", timeout, exc_info=True)
         return _TIMED_OUT
     except PermissionError:
-        logger.error("reboot requires privileges GTach does not have",
-                     exc_info=True)
+        logger.error("reboot requires privileges GTach does not have", exc_info=True)
         return _NOT_PERMITTED
     except FileNotFoundError:
-        logger.error("reboot vanished between the existence check and "
-                     "invocation", exc_info=True)
+        logger.error(
+            "reboot vanished between the existence check and " "invocation",
+            exc_info=True,
+        )
         return _NOT_FOUND
     except Exception as e:
         logger.error("Reboot failed: %s", e, exc_info=True)

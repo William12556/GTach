@@ -7,12 +7,7 @@
 
 """Core application components for OBDII display application."""
 
-from .thread import ThreadManager, ThreadStatus, ThreadInfo
+from .thread import ThreadInfo, ThreadManager, ThreadStatus
 from .watchdog import WatchdogMonitor
 
-__all__ = [
-    'ThreadManager',
-    'ThreadStatus', 
-    'ThreadInfo',
-    'WatchdogMonitor'
-]
+__all__ = ["ThreadManager", "ThreadStatus", "ThreadInfo", "WatchdogMonitor"]

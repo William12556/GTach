@@ -51,7 +51,7 @@ def _code_only(path):
     import io
     import tokenize
 
-    text = path.read_text(encoding='utf-8')
+    text = path.read_text(encoding="utf-8")
     rows = [list(line) for line in text.splitlines(keepends=True)]
 
     for token in tokenize.generate_tokens(io.StringIO(text).readline):
@@ -63,10 +63,10 @@ def _code_only(path):
             begin = start_col if row == start_row else 0
             finish = end_col if row == end_row else len(line)
             for index in range(begin, min(finish, len(line))):
-                if line[index] != '\n':
-                    line[index] = ' '
+                if line[index] != "\n":
+                    line[index] = " "
 
-    return ''.join(''.join(row) for row in rows)
+    return "".join("".join(row) for row in rows)
 
 
 class _StubTransport(OBDTransport):
@@ -83,7 +83,7 @@ class _StubTransport(OBDTransport):
         self.closed_handles = []
 
     def _describe(self) -> str:
-        return 'stub-peer'
+        return "stub-peer"
 
     def _open(self):
         if isinstance(self._outcome, BaseException):
@@ -97,16 +97,12 @@ class _StubTransport(OBDTransport):
 @pytest.fixture
 def adapter_present(monkeypatch):
     """Force the sysfs probe to report a controller present."""
-    monkeypatch.setattr(
-        transport_module, '_bluetooth_adapter_present', lambda: True
-    )
+    monkeypatch.setattr(transport_module, "_bluetooth_adapter_present", lambda: True)
 
 
 @pytest.fixture
 def adapter_absent(monkeypatch):
-    monkeypatch.setattr(
-        transport_module, '_bluetooth_adapter_present', lambda: False
-    )
+    monkeypatch.setattr(transport_module, "_bluetooth_adapter_present", lambda: False)
 
 
 class TestSocketClosedOnFailure:
@@ -137,17 +133,15 @@ class TestSocketClosedOnFailure:
             BTPROTO_RFCOMM=3,
             socket=lambda *a, **k: _FakeSocket(),
         )
-        monkeypatch.setattr(rfcomm_module, 'socket', fake_socket_module)
+        monkeypatch.setattr(rfcomm_module, "socket", fake_socket_module)
 
-        transport = rfcomm_module.RFCOMMTransport.__new__(
-            rfcomm_module.RFCOMMTransport
-        )
-        transport._mac_address = 'AA:BB:CC:DD:EE:FF'
+        transport = rfcomm_module.RFCOMMTransport.__new__(rfcomm_module.RFCOMMTransport)
+        transport._mac_address = "AA:BB:CC:DD:EE:FF"
         transport._channel = 1
         return transport, record
 
     def test_socket_closed_when_connect_raises(self, monkeypatch):
-        failure = OSError(errno.EBUSY, 'Device or resource busy')
+        failure = OSError(errno.EBUSY, "Device or resource busy")
         transport, record = self._open_with(monkeypatch, failure)
 
         with pytest.raises(OSError) as caught:
@@ -159,9 +153,9 @@ class TestSocketClosedOnFailure:
         assert caught.value.errno == errno.EBUSY
 
     def test_close_error_is_swallowed(self, monkeypatch):
-        failure = OSError(errno.ETIMEDOUT, 'Connection timed out')
+        failure = OSError(errno.ETIMEDOUT, "Connection timed out")
         transport, record = self._open_with(
-            monkeypatch, failure, close_raises=OSError('close exploded')
+            monkeypatch, failure, close_raises=OSError("close exploded")
         )
 
         with pytest.raises(OSError) as caught:
@@ -197,7 +191,7 @@ class TestClassifyConnectError:
         stub = _StubTransport()
 
         cause = stub._classify_connect_error(
-            OSError(errno.EBUSY, 'Device or resource busy')
+            OSError(errno.EBUSY, "Device or resource busy")
         )
 
         assert cause == _CONNECT_FAULT_CAUSES[errno.EBUSY]
@@ -206,33 +200,31 @@ class TestClassifyConnectError:
     def test_ehostdown_maps_to_unreachable(self, adapter_present):
         stub = _StubTransport()
 
-        cause = stub._classify_connect_error(
-            OSError(errno.EHOSTDOWN, 'Host is down')
-        )
+        cause = stub._classify_connect_error(OSError(errno.EHOSTDOWN, "Host is down"))
 
-        assert cause == 'adapter not reachable'
+        assert cause == "adapter not reachable"
 
     def test_missing_adapter_overrides_the_errno_mapping(self, adapter_absent):
         """The more specific and more actionable fact wins."""
         stub = _StubTransport()
 
         for code in (errno.EBUSY, errno.ETIMEDOUT, errno.ECONNREFUSED):
-            cause = stub._classify_connect_error(OSError(code, 'whatever'))
-            assert cause == 'no bluetooth controller', code
+            cause = stub._classify_connect_error(OSError(code, "whatever"))
+            assert cause == "no bluetooth controller", code
 
     def test_unmapped_errno_returns_its_name(self, adapter_present):
         stub = _StubTransport()
 
         cause = stub._classify_connect_error(
-            OSError(errno.EPERM, 'Operation not permitted')
+            OSError(errno.EPERM, "Operation not permitted")
         )
 
-        assert cause == 'EPERM'
+        assert cause == "EPERM"
 
     def test_errno_none_does_not_raise(self, adapter_present):
         stub = _StubTransport()
 
-        cause = stub._classify_connect_error(OSError('no errno at all'))
+        cause = stub._classify_connect_error(OSError("no errno at all"))
 
         assert isinstance(cause, str)
         assert cause
@@ -244,10 +236,10 @@ class TestClassifyConnectError:
         class _Hostile(OSError):
             @property
             def errno(self):
-                raise RuntimeError('errno exploded')
+                raise RuntimeError("errno exploded")
 
             def __str__(self):
-                raise RuntimeError('str exploded')
+                raise RuntimeError("str exploded")
 
         cause = stub._classify_connect_error(_Hostile())
 
@@ -267,34 +259,33 @@ class TestAdapterProbe:
 
     def test_absent_path_returns_true(self, tmp_path, monkeypatch):
         monkeypatch.setattr(
-            transport_module, '_BLUETOOTH_SYSFS', str(tmp_path / 'nope')
+            transport_module, "_BLUETOOTH_SYSFS", str(tmp_path / "nope")
         )
 
         assert _bluetooth_adapter_present() is True
 
     def test_empty_directory_returns_false(self, tmp_path, monkeypatch):
-        empty = tmp_path / 'bluetooth'
+        empty = tmp_path / "bluetooth"
         empty.mkdir()
-        monkeypatch.setattr(transport_module, '_BLUETOOTH_SYSFS', str(empty))
+        monkeypatch.setattr(transport_module, "_BLUETOOTH_SYSFS", str(empty))
 
         assert _bluetooth_adapter_present() is False
 
     def test_populated_directory_returns_true(self, tmp_path, monkeypatch):
-        populated = tmp_path / 'bluetooth'
+        populated = tmp_path / "bluetooth"
         populated.mkdir()
-        (populated / 'hci0').mkdir()
-        monkeypatch.setattr(
-            transport_module, '_BLUETOOTH_SYSFS', str(populated)
-        )
+        (populated / "hci0").mkdir()
+        monkeypatch.setattr(transport_module, "_BLUETOOTH_SYSFS", str(populated))
 
         assert _bluetooth_adapter_present() is True
 
     def test_probe_failure_returns_true(self, monkeypatch):
         """An unknown state must never read as a hardware fault."""
-        def _boom(_path):
-            raise RuntimeError('sysfs exploded')
 
-        monkeypatch.setattr(transport_module.os.path, 'isdir', _boom)
+        def _boom(_path):
+            raise RuntimeError("sysfs exploded")
+
+        monkeypatch.setattr(transport_module.os.path, "isdir", _boom)
 
         assert _bluetooth_adapter_present() is True
 
@@ -306,7 +297,7 @@ class TestLastFailureCause:
         assert _StubTransport().last_failure_cause is None
 
     def test_set_after_a_failed_connect(self, adapter_present):
-        stub = _StubTransport(OSError(errno.EBUSY, 'Device or resource busy'))
+        stub = _StubTransport(OSError(errno.EBUSY, "Device or resource busy"))
 
         assert stub.connect() is False
 
@@ -314,7 +305,7 @@ class TestLastFailureCause:
         assert stub.state is TransportState.DISCONNECTED
 
     def test_cleared_after_a_successful_connect(self, adapter_present):
-        stub = _StubTransport(OSError(errno.EBUSY, 'busy'))
+        stub = _StubTransport(OSError(errno.EBUSY, "busy"))
         assert stub.connect() is False
         assert stub.last_failure_cause is not None
 
@@ -324,7 +315,7 @@ class TestLastFailureCause:
         assert stub.last_failure_cause is None
 
     def test_repeated_failures_overwrite_rather_than_accumulate(self, adapter_present):
-        stub = _StubTransport(OSError(errno.EBUSY, 'busy'))
+        stub = _StubTransport(OSError(errno.EBUSY, "busy"))
 
         for _ in range(3):
             stub.connect()
@@ -333,20 +324,20 @@ class TestLastFailureCause:
 
     def test_existing_log_content_is_retained(self, adapter_present, caplog):
         """The cause is added to the message, not substituted for it."""
-        stub = _StubTransport(OSError(errno.EBUSY, 'Device or resource busy'))
+        stub = _StubTransport(OSError(errno.EBUSY, "Device or resource busy"))
 
-        with caplog.at_level('ERROR'):
+        with caplog.at_level("ERROR"):
             stub.connect()
 
         messages = [r.getMessage() for r in caplog.records]
-        assert any('Failed to connect to stub-peer' in m for m in messages)
+        assert any("Failed to connect to stub-peer" in m for m in messages)
         assert any(_CONNECT_FAULT_CAUSES[errno.EBUSY] in m for m in messages)
 
     def test_property_is_read_only(self):
         stub = _StubTransport()
 
         with pytest.raises(AttributeError):
-            stub.last_failure_cause = 'nope'
+            stub.last_failure_cause = "nope"
 
 
 class TestDisconnectedStatusLine:
@@ -363,13 +354,12 @@ class TestDisconnectedStatusLine:
         import gtach.display.manager as manager_module
 
         monkeypatch.setattr(
-            manager_module, 'get_font_manager',
-            lambda: types.SimpleNamespace(get_font=lambda size: f'font-{size}')
+            manager_module,
+            "get_font_manager",
+            lambda: types.SimpleNamespace(get_font=lambda size: f"font-{size}"),
         )
-        monkeypatch.setattr(manager_module, 'get_title_display_font',
-                            lambda: 'font-36')
-        monkeypatch.setattr(manager_module, 'get_label_small_font',
-                            lambda: 'font-18')
+        monkeypatch.setattr(manager_module, "get_title_display_font", lambda: "font-36")
+        monkeypatch.setattr(manager_module, "get_label_small_font", lambda: "font-18")
 
     def _manager(self, cause_callback):
         """A DisplayManager stand-in exposing only what the render uses."""
@@ -378,7 +368,7 @@ class TestDisconnectedStatusLine:
         rendered = []
 
         host = types.SimpleNamespace()
-        host.logger = __import__('logging').getLogger('test.render')
+        host.logger = __import__("logging").getLogger("test.render")
         host._link_cause_callback = cause_callback
         host._disconnected_btn_setup = None
         host._DISCONNECTED_BG_COLOUR = DisplayManager._DISCONNECTED_BG_COLOUR
@@ -387,8 +377,11 @@ class TestDisconnectedStatusLine:
         host._draw_reconnect_spinner = lambda: None
         host.rendering_engine = types.SimpleNamespace(
             clear_surface=lambda *a, **k: None,
-            render_text=lambda target, text, font, colour, pos, center=False:
-                rendered.append((text, pos)),
+            render_text=(
+                lambda target, text, font, colour, pos, center=False: rendered.append(
+                    (text, pos)
+                )
+            ),
         )
         host.rendered = rendered
         host._render = DisplayManager._render_disconnected
@@ -400,7 +393,7 @@ class TestDisconnectedStatusLine:
         host._render(host)
 
         texts = [text for text, _ in host.rendered]
-        assert texts == ['Disconnected', 'OBD connection not available']
+        assert texts == ["Disconnected", "OBD connection not available"]
 
     def test_no_line_when_cause_is_none(self):
         host = self._manager(lambda: None)
@@ -408,24 +401,25 @@ class TestDisconnectedStatusLine:
         host._render(host)
 
         texts = [text for text, _ in host.rendered]
-        assert texts == ['Disconnected', 'OBD connection not available']
+        assert texts == ["Disconnected", "OBD connection not available"]
 
     def test_line_drawn_above_the_button_column(self):
-        host = self._manager(lambda: 'no bluetooth controller')
+        host = self._manager(lambda: "no bluetooth controller")
 
         host._render(host)
 
         drawn = dict((text, pos) for text, pos in host.rendered)
-        assert 'no bluetooth controller' in drawn
-        _x, y = drawn['no bluetooth controller']
+        assert "no bluetooth controller" in drawn
+        _x, y = drawn["no bluetooth controller"]
         # Below the message at y=180, above the column top at 240
         # (_register_disconnected_regions).
         assert 180 < y < 240
 
     def test_render_error_does_not_escape(self):
         """The screen must still draw when the callback misbehaves."""
+
         def _boom():
-            raise RuntimeError('cause exploded')
+            raise RuntimeError("cause exploded")
 
         host = self._manager(_boom)
 
@@ -436,11 +430,9 @@ class TestDisconnectedStatusLine:
 
         from gtach.display.manager import DisplayManager
 
-        source = inspect.getsource(
-            DisplayManager._register_disconnected_regions
-        )
-        assert 'top=240' in source
-        assert 'width=240' in source
+        source = inspect.getsource(DisplayManager._register_disconnected_regions)
+        assert "top=240" in source
+        assert "width=240" in source
 
 
 class TestNoHostActions:
@@ -455,10 +447,10 @@ class TestNoHostActions:
     # utils.terminal runs `stty sane`. All predate this change, all are
     # out of its scope, and none is a recovery action.
     EDITED_FILES = (
-        'gtach/comm/transport.py',
-        'gtach/comm/rfcomm.py',
-        'gtach/display/manager.py',
-        'gtach/app.py',
+        "gtach/comm/transport.py",
+        "gtach/comm/rfcomm.py",
+        "gtach/display/manager.py",
+        "gtach/app.py",
     )
 
     def test_no_shell_or_bluetooth_tooling_introduced(self):
@@ -466,17 +458,15 @@ class TestNoHostActions:
         import re
 
         forbidden = re.compile(
-            r'subprocess|os\.system|os\.popen|hcitool|hciconfig|btmgmt|rfkill'
+            r"subprocess|os\.system|os\.popen|hcitool|hciconfig|btmgmt|rfkill"
         )
-        root = pathlib.Path(__file__).resolve().parents[1] / 'src'
+        root = pathlib.Path(__file__).resolve().parents[1] / "src"
 
         offenders = []
         for relative in self.EDITED_FILES:
-            for number, line in enumerate(
-                _code_only(root / relative).splitlines(), 1
-            ):
+            for number, line in enumerate(_code_only(root / relative).splitlines(), 1):
                 if forbidden.search(line):
-                    offenders.append(f'{relative}:{number}: {line.strip()}')
+                    offenders.append(f"{relative}:{number}: {line.strip()}")
 
         assert offenders == [], offenders
 
@@ -488,7 +478,7 @@ class TestNoHostActions:
     # comm-layer diagnosis can reach it — which is the property
     # change-5e7a03c4 exists to protect. Matched as a whole line so
     # that any OTHER reboot reference in these files still fails.
-    SANCTIONED = ('outcome = pi_reset.reboot_device()',)
+    SANCTIONED = ("outcome = pi_reset.reboot_device()",)
 
     def test_no_recovery_action_introduced(self):
         """Reset, cycle, restart and reload must appear nowhere."""
@@ -496,19 +486,17 @@ class TestNoHostActions:
         import re
 
         forbidden = re.compile(
-            r'hciuart|modprobe|insmod|rmmod|systemctl|reboot', re.IGNORECASE
+            r"hciuart|modprobe|insmod|rmmod|systemctl|reboot", re.IGNORECASE
         )
-        root = pathlib.Path(__file__).resolve().parents[1] / 'src'
+        root = pathlib.Path(__file__).resolve().parents[1] / "src"
 
         offenders = []
         for relative in self.EDITED_FILES:
-            for number, line in enumerate(
-                _code_only(root / relative).splitlines(), 1
-            ):
+            for number, line in enumerate(_code_only(root / relative).splitlines(), 1):
                 if line.strip() in self.SANCTIONED:
                     continue
                 if forbidden.search(line):
-                    offenders.append(f'{relative}:{number}: {line.strip()}')
+                    offenders.append(f"{relative}:{number}: {line.strip()}")
 
         assert offenders == [], offenders
 
@@ -516,9 +504,9 @@ class TestNoHostActions:
         import inspect
 
         source = inspect.getsource(_bluetooth_adapter_present)
-        assert 'os.path.isdir' in source
-        assert 'os.listdir' in source
-        for verb in ('write', 'system', 'Popen', 'run('):
+        assert "os.path.isdir" in source
+        assert "os.listdir" in source
+        for verb in ("write", "system", "Popen", "run("):
             assert verb not in source, verb
 
 
@@ -547,15 +535,15 @@ class TestDropLinkRecordsACause:
     def test_explicit_cause_is_used(self):
         stub = _StubTransport()
 
-        stub.drop_link('custom reason')
+        stub.drop_link("custom reason")
 
-        assert stub.last_failure_cause == 'custom reason'
+        assert stub.last_failure_cause == "custom reason"
 
     def test_no_argument_call_sites_still_work(self):
         """Both existing callers pass nothing."""
         import inspect
 
-        parameter = inspect.signature(OBDTransport.drop_link).parameters['cause']
+        parameter = inspect.signature(OBDTransport.drop_link).parameters["cause"]
         assert parameter.default is None
 
         stub = _StubTransport()
@@ -577,13 +565,11 @@ class TestDropLinkRecordsACause:
         import inspect
 
         source = inspect.getsource(OBDTransport.drop_link)
-        assert source.count('with self._lock:') == 1
+        assert source.count("with self._lock:") == 1
 
     def test_still_never_touches_shutdown(self):
-        code = '\n'.join(
-            line for line in inspect_source_body(OBDTransport.drop_link)
-        )
-        assert '_shutdown' not in code
+        code = "\n".join(line for line in inspect_source_body(OBDTransport.drop_link))
+        assert "_shutdown" not in code
 
 
 def inspect_source_body(func):
@@ -594,15 +580,19 @@ def inspect_source_body(func):
 
     source = textwrap.dedent(inspect.getsource(func))
     tree = ast.parse(source).body[0]
-    if (tree.body and isinstance(tree.body[0], ast.Expr)
-            and isinstance(tree.body[0].value, ast.Constant)
-            and isinstance(tree.body[0].value.value, str)):
+    if (
+        tree.body
+        and isinstance(tree.body[0], ast.Expr)
+        and isinstance(tree.body[0].value, ast.Constant)
+        and isinstance(tree.body[0].value.value, str)
+    ):
         first = tree.body[1]
     else:
         first = tree.body[0]
-    lines = source.splitlines()[first.lineno - 1:]
-    return [line for line in lines
-            if line.strip() and not line.lstrip().startswith('#')]
+    lines = source.splitlines()[first.lineno - 1 :]
+    return [
+        line for line in lines if line.strip() and not line.lstrip().startswith("#")
+    ]
 
 
 class TestWedgeEscalation:
@@ -610,7 +600,7 @@ class TestWedgeEscalation:
 
     def _fail(self, stub, times, code=errno.EBUSY):
         for _ in range(times):
-            stub._outcome = OSError(code, 'Device or resource busy')
+            stub._outcome = OSError(code, "Device or resource busy")
             assert stub.connect() is False
 
     def test_threshold_constant(self):
@@ -648,15 +638,14 @@ class TestWedgeEscalation:
 
         self._fail(stub, 6)
 
-        assert stub.last_failure_cause == 'no bluetooth controller'
+        assert stub.last_failure_cause == "no bluetooth controller"
 
     def test_adapter_becoming_absent_mid_run(self, monkeypatch):
         """The absent-controller cause wins from that point."""
         stub = _StubTransport()
         present = [True]
         monkeypatch.setattr(
-            transport_module, '_bluetooth_adapter_present',
-            lambda: present[0]
+            transport_module, "_bluetooth_adapter_present", lambda: present[0]
         )
 
         self._fail(stub, 6)
@@ -665,7 +654,7 @@ class TestWedgeEscalation:
         present[0] = False
         self._fail(stub, 1)
 
-        assert stub.last_failure_cause == 'no bluetooth controller'
+        assert stub.last_failure_cause == "no bluetooth controller"
 
     def test_success_resets_the_counter(self, adapter_present):
         stub = _StubTransport()
@@ -707,18 +696,17 @@ class TestCountersAreIndependent:
                 pass
 
             def _read(self, handle, size):
-                raise TimeoutError('silent')
+                raise TimeoutError("silent")
 
         stub = _TimeoutStub()
         assert stub.connect() is True
 
         drops = []
         original = stub.drop_link
-        stub.drop_link = lambda cause=None: (drops.append(cause),
-                                             original(cause))[1]
+        stub.drop_link = lambda cause=None: (drops.append(cause), original(cause))[1]
 
         for _ in range(OBDTransport._MAX_CONSECUTIVE_TIMEOUTS):
-            assert stub.send_command('010C') is None
+            assert stub.send_command("010C") is None
 
         assert len(drops) == 1
         assert stub._consecutive_connect_failures == 0
@@ -740,41 +728,44 @@ class TestSuffixSuppression:
     """Stop emitting 'timed out (timed out)'."""
 
     def test_no_suffix_when_the_cause_duplicates_the_exception(
-            self, adapter_present, caplog):
+        self, adapter_present, caplog
+    ):
         # An errno-less exception: _classify_connect_error falls through
         # to str(exc), so cause == str(e).
-        stub = _StubTransport(OSError('timed out'))
+        stub = _StubTransport(OSError("timed out"))
 
-        with caplog.at_level('ERROR'):
+        with caplog.at_level("ERROR"):
             assert stub.connect() is False
 
         messages = [r.getMessage() for r in caplog.records]
-        assert any(m == 'Failed to connect to stub-peer: timed out'
-                   for m in messages), messages
-        assert not any('(timed out)' in m for m in messages)
+        assert any(
+            m == "Failed to connect to stub-peer: timed out" for m in messages
+        ), messages
+        assert not any("(timed out)" in m for m in messages)
         # The cause is still recorded — the display has no other source.
-        assert stub.last_failure_cause == 'timed out'
+        assert stub.last_failure_cause == "timed out"
 
     def test_suffix_present_when_the_cause_adds_information(
-            self, adapter_present, caplog):
-        stub = _StubTransport(OSError(errno.EBUSY, 'Device or resource busy'))
+        self, adapter_present, caplog
+    ):
+        stub = _StubTransport(OSError(errno.EBUSY, "Device or resource busy"))
 
-        with caplog.at_level('ERROR'):
+        with caplog.at_level("ERROR"):
             assert stub.connect() is False
 
         messages = [r.getMessage() for r in caplog.records]
         expected = _CONNECT_FAULT_CAUSES[errno.EBUSY]
-        assert any(f'({expected})' in m for m in messages), messages
+        assert any(f"({expected})" in m for m in messages), messages
 
 
 class TestEveryCauseFitsTheDisplay:
     """480x480 leaves no room for a long line."""
 
     def test_all_causes_within_forty_characters(self):
-        for text in (
-            list(_CONNECT_FAULT_CAUSES.values())
-            + [_SILENT_LINK_CAUSE, _WEDGED_LINK_CAUSE]
-        ):
+        for text in list(_CONNECT_FAULT_CAUSES.values()) + [
+            _SILENT_LINK_CAUSE,
+            _WEDGED_LINK_CAUSE,
+        ]:
             assert len(text) <= 40, (text, len(text))
             assert text == text.strip()
             assert text

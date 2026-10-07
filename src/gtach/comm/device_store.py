@@ -11,22 +11,24 @@ Persistent device storage for OBDII display application.
 Manages paired device configuration and setup state.
 """
 
-import os
 import logging
+import os
 import threading
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
 # Conditional import of yaml with fallback
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     yaml = None
     YAML_AVAILABLE = False
 
-from .models import BluetoothDevice
 from ..utils.home import gtach_home
+from .models import BluetoothDevice
+
 
 class DeviceStore:
     """Manages persistent storage of paired Bluetooth devices.
@@ -37,7 +39,7 @@ class DeviceStore:
     it, because threading.Lock is not reentrant (issue-453f0a80). Use
     get_device_store() for the shared instance.
     """
-    
+
     def __init__(self, config_path: Optional[str] = None):
         """Create a store.
 
@@ -45,51 +47,46 @@ class DeviceStore:
             config_path: The devices file. Defaults to
                 gtach_home()/config/devices.yaml.
         """
-        self.logger = logging.getLogger('DeviceStore')
+        self.logger = logging.getLogger("DeviceStore")
         if config_path is None:
-            config_path = str(gtach_home() / 'config' / 'devices.yaml')
+            config_path = str(gtach_home() / "config" / "devices.yaml")
         self.config_path = config_path
         self._lock = threading.Lock()
-        
+
         # Check yaml availability and warn if not available
         if not YAML_AVAILABLE:
-            self.logger.warning("YAML library not available - device storage will use in-memory fallback")
-            self.config = {
-                'paired_devices': {}
-            }
+            self.logger.warning(
+                "YAML library not available - device storage will use in-memory "
+                "fallback"
+            )
+            self.config = {"paired_devices": {}}
         else:
             self._ensure_config_dir()
             self._load_config()
-    
+
     def _ensure_config_dir(self) -> None:
         """Ensure config directory exists"""
         config_dir = os.path.dirname(self.config_path)
         if config_dir and not os.path.exists(config_dir):
             os.makedirs(config_dir, exist_ok=True)
-    
+
     def _load_config(self) -> None:
         """Load device configuration from file"""
         if not YAML_AVAILABLE:
             self.logger.debug("YAML not available - using default config")
-            self.config = {
-                'paired_devices': {}
-            }
+            self.config = {"paired_devices": {}}
             return
-            
+
         try:
             if os.path.exists(self.config_path):
-                with open(self.config_path, 'r') as f:
+                with open(self.config_path, "r") as f:
                     self.config = yaml.safe_load(f) or {}
             else:
-                self.config = {
-                    'paired_devices': {}
-                }
+                self.config = {"paired_devices": {}}
                 self._save_config()
         except Exception as e:
             self.logger.error(f"Failed to load device config: {e}", exc_info=True)
-            self.config = {
-                'paired_devices': {}
-            }
+            self.config = {"paired_devices": {}}
 
         # Runs on every exit path, including the error path above.
         self._normalise_config()
@@ -117,22 +114,22 @@ class DeviceStore:
             )
             self.config = {}
 
-        paired = self.config.get('paired_devices')
+        paired = self.config.get("paired_devices")
         if not isinstance(paired, dict):
             if paired is not None:
                 self.logger.warning(
                     f"paired_devices is {type(paired).__name__}, "
                     f"expected mapping — replacing"
                 )
-            self.config['paired_devices'] = {}
+            self.config["paired_devices"] = {}
 
-        secondary = self.config['paired_devices'].get('secondary')
+        secondary = self.config["paired_devices"].get("secondary")
         if secondary is not None and not isinstance(secondary, dict):
             self.logger.warning(
                 f"paired_devices.secondary is {type(secondary).__name__}, "
                 f"expected mapping — replacing"
             )
-            self.config['paired_devices']['secondary'] = {}
+            self.config["paired_devices"]["secondary"] = {}
 
     def _save_config(self) -> bool:
         """Save device configuration to file.
@@ -147,8 +144,8 @@ class DeviceStore:
             return False
 
         try:
-            tmp_path = self.config_path + '.tmp'
-            with open(tmp_path, 'w') as f:
+            tmp_path = self.config_path + ".tmp"
+            with open(tmp_path, "w") as f:
                 yaml.dump(self.config, f, default_flow_style=False)
                 # Durable before the rename (issue-453f0a80).
                 f.flush()
@@ -158,7 +155,7 @@ class DeviceStore:
         except Exception as e:
             self.logger.error(f"Failed to save device config: {e}", exc_info=True)
             return False
-    
+
     def save_device(self, device: BluetoothDevice, is_primary: bool = True) -> bool:
         """Save a paired device to storage.
 
@@ -193,7 +190,9 @@ class DeviceStore:
         with self._lock:
             return self._get_device_by_mac_locked(mac_address)
 
-    def _save_device_locked(self, device: BluetoothDevice, is_primary: bool = True) -> bool:
+    def _save_device_locked(
+        self, device: BluetoothDevice, is_primary: bool = True
+    ) -> bool:
         """Save a paired device to storage. Caller holds self._lock.
 
         Args:
@@ -209,109 +208,124 @@ class DeviceStore:
         """
         try:
             device_data = {
-                'name': device.name,
-                'mac_address': device.mac_address,
-                'device_type': device.device_type
+                "name": device.name,
+                "mac_address": device.mac_address,
+                "device_type": device.device_type,
             }
-            
+
             # Include last_connected if it exists
             if device.last_connected:
-                device_data['last_connected'] = device.last_connected.isoformat()
-            
+                device_data["last_connected"] = device.last_connected.isoformat()
+
             # setdefault rather than direct indexing: a devices.yaml
             # that exists but carries no paired_devices key raised
             # KeyError here, on BOTH branches, and the except below
             # swallowed it (core review §3.4, recommendation #4).
-            paired = self.config.setdefault('paired_devices', {})
+            paired = self.config.setdefault("paired_devices", {})
 
             if is_primary:
-                paired['primary'] = device_data
+                paired["primary"] = device_data
             else:
-                paired.setdefault('secondary', {})[device.mac_address] = device_data
+                paired.setdefault("secondary", {})[device.mac_address] = device_data
 
             saved = self._save_config()
             if saved:
-                self.logger.info(f"Saved {'primary' if is_primary else 'secondary'} device: {device.name}")
+                self.logger.info(
+                    f"Saved {'primary' if is_primary else 'secondary'} device: "
+                    f"{device.name}"
+                )
             else:
                 self.logger.error(f"Device {device.name} was not persisted")
             return saved
 
         except Exception as e:
-            self.logger.error(f"Failed to save device {device.name}: {e}", exc_info=True)
+            self.logger.error(
+                f"Failed to save device {device.name}: {e}", exc_info=True
+            )
             return False
-    
+
     def _get_primary_device_locked(self) -> Optional[BluetoothDevice]:
         """Get the primary paired device. Caller holds self._lock."""
         try:
-            primary_data = self.config.get('paired_devices', {}).get('primary')
+            primary_data = self.config.get("paired_devices", {}).get("primary")
             if primary_data:
                 last_connected = None
-                if primary_data.get('last_connected'):
-                    last_connected = datetime.fromisoformat(primary_data['last_connected'])
-                
+                if primary_data.get("last_connected"):
+                    last_connected = datetime.fromisoformat(
+                        primary_data["last_connected"]
+                    )
+
                 return BluetoothDevice(
-                    name=primary_data['name'],
-                    mac_address=primary_data['mac_address'],
-                    device_type=primary_data.get('device_type', 'UNKNOWN'),
-                    last_connected=last_connected
+                    name=primary_data["name"],
+                    mac_address=primary_data["mac_address"],
+                    device_type=primary_data.get("device_type", "UNKNOWN"),
+                    last_connected=last_connected,
                 )
             return None
         except Exception as e:
             self.logger.error(f"Failed to get primary device: {e}", exc_info=True)
             return None
-    
+
     def _get_all_devices_locked(self) -> List[BluetoothDevice]:
         """Get all paired devices. Caller holds self._lock."""
         devices = []
-        
+
         # Add primary device
         primary = self._get_primary_device_locked()
         if primary:
             devices.append(primary)
-        
+
         # Add secondary devices
         try:
-            secondary_devices = self.config.get('paired_devices', {}).get('secondary', {})
+            secondary_devices = self.config.get("paired_devices", {}).get(
+                "secondary", {}
+            )
             for mac_address, device_data in secondary_devices.items():
                 last_connected = None
-                if device_data.get('last_connected'):
-                    last_connected = datetime.fromisoformat(device_data['last_connected'])
+                if device_data.get("last_connected"):
+                    last_connected = datetime.fromisoformat(
+                        device_data["last_connected"]
+                    )
                 device = BluetoothDevice(
-                    name=device_data['name'],
-                    mac_address=device_data['mac_address'],
-                    device_type=device_data.get('device_type', 'UNKNOWN'),
-                    last_connected=last_connected
+                    name=device_data["name"],
+                    mac_address=device_data["mac_address"],
+                    device_type=device_data.get("device_type", "UNKNOWN"),
+                    last_connected=last_connected,
                 )
                 devices.append(device)
         except Exception as e:
             self.logger.error(f"Failed to get secondary devices: {e}", exc_info=True)
-        
+
         return devices
-    
+
     def _remove_device_locked(self, mac_address: str) -> bool:
         """Remove a device from storage. Caller holds self._lock."""
         try:
             # Check if it's the primary device
-            primary = self.config.get('paired_devices', {}).get('primary')
-            if primary and primary.get('mac_address') == mac_address:
-                del self.config['paired_devices']['primary']
+            primary = self.config.get("paired_devices", {}).get("primary")
+            if primary and primary.get("mac_address") == mac_address:
+                del self.config["paired_devices"]["primary"]
                 self._save_config()
                 self.logger.info(f"Removed primary device: {mac_address}")
                 return True
-            
+
             # Check secondary devices
-            secondary_devices = self.config.get('paired_devices', {}).get('secondary', {})
+            secondary_devices = self.config.get("paired_devices", {}).get(
+                "secondary", {}
+            )
             if mac_address in secondary_devices:
                 del secondary_devices[mac_address]
                 self._save_config()
                 self.logger.info(f"Removed secondary device: {mac_address}")
                 return True
-            
+
             return False
         except Exception as e:
-            self.logger.error(f"Failed to remove device {mac_address}: {e}", exc_info=True)
+            self.logger.error(
+                f"Failed to remove device {mac_address}: {e}", exc_info=True
+            )
             return False
-    
+
     def _get_device_by_mac_locked(self, mac_address: str) -> Optional[BluetoothDevice]:
         """Get a specific device by MAC address. Caller holds self._lock."""
         for device in self._get_all_devices_locked():

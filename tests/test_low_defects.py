@@ -33,7 +33,9 @@ from gtach.display.rendering.engine import DisplayRenderingEngine
 from gtach.display.setup_components.layout.circular_positioning import (
     CircularPositioningEngine,
 )
-from gtach.display.setup_components.rendering.device_surfaces import DeviceSurfaceRenderer
+from gtach.display.setup_components.rendering.device_surfaces import (
+    DeviceSurfaceRenderer,
+)
 from gtach.display.setup_models import BluetoothDevice
 from gtach.display.splash import SplashScreen
 from gtach.display.typography import (
@@ -46,7 +48,7 @@ from gtach.utils.config import ConfigStore
 JOIN_TIMEOUT = 5.0
 
 
-@pytest.fixture(autouse=True, scope='module')
+@pytest.fixture(autouse=True, scope="module")
 def _pygame_ready():
     """Off-screen surfaces and fonts; see tests/test_device_list_focus.py."""
     pygame.init()
@@ -62,22 +64,22 @@ class TestTcpOpenClosesOnFailure:  # A12
                 pass
 
             def connect(self, address):
-                raise ConnectionRefusedError('refused')
+                raise ConnectionRefusedError("refused")
 
             def close(self):
                 closed.append(True)
 
-        monkeypatch.setattr(socket, 'socket', lambda *a: _Sock())
+        monkeypatch.setattr(socket, "socket", lambda *a: _Sock())
 
         with pytest.raises(ConnectionRefusedError):
-            TCPTransport('localhost', 1)._open()
+            TCPTransport("localhost", 1)._open()
         assert closed == [True]
 
 
 class TestSimPairingCancelIsPerRun:  # A13
 
     def test_discovery_after_cancel(self, monkeypatch):
-        monkeypatch.setattr(sim_bluetooth_module.time, 'sleep', lambda s: None)
+        monkeypatch.setattr(sim_bluetooth_module.time, "sleep", lambda s: None)
         pairing = SimBluetoothPairing()
         pairing.cancel_discovery()
         found = []
@@ -91,23 +93,27 @@ class TestSimPairingCancelIsPerRun:  # A13
 class TestTransportExceptionNames:  # A16
 
     def test_no_builtin_shadowing(self):
-        assert 'ConnectionError' not in vars(transport_module)
-        assert 'TimeoutError' not in vars(transport_module)
-        assert issubclass(transport_module.TransportConnectionError, transport_module.TransportError)
-        assert issubclass(transport_module.TransportTimeoutError, transport_module.TransportError)
+        assert "ConnectionError" not in vars(transport_module)
+        assert "TimeoutError" not in vars(transport_module)
+        assert issubclass(
+            transport_module.TransportConnectionError, transport_module.TransportError
+        )
+        assert issubclass(
+            transport_module.TransportTimeoutError, transport_module.TransportError
+        )
 
 
 class TestRetryDelay:  # B09
 
     def test_configured_value(self):
-        assert RFCOMMTransport('00:11:22:33:44:55', retry_delay=7.0).retry_delay == 7.0
+        assert RFCOMMTransport("00:11:22:33:44:55", retry_delay=7.0).retry_delay == 7.0
 
 
 class TestObdStartedOnce:  # B12
 
     def test_two_threads(self):
         app = object.__new__(GTachApplication)
-        app.logger = logging.getLogger('test.low')
+        app.logger = logging.getLogger("test.low")
         app._obd_lock = threading.Lock()
         started = []
         barrier = threading.Barrier(2)
@@ -134,16 +140,16 @@ class TestObdStartedOnce:  # B12
 class TestConfigRanges:  # C10
 
     def test_out_of_range_values_use_defaults(self, tmp_path, caplog):
-        path = tmp_path / 'config.yaml'
-        path.write_text(yaml.safe_dump({'fps_limit': 0, 'touch_long_press': 9}))
+        path = tmp_path / "config.yaml"
+        path.write_text(yaml.safe_dump({"fps_limit": 0, "touch_long_press": 9}))
 
         with caplog.at_level(logging.WARNING):
             config = ConfigStore(path).load()
 
         assert config.fps_limit == 30
         assert config.touch_long_press == 1.0
-        messages = ' '.join(r.getMessage() for r in caplog.records)
-        assert 'fps_limit' in messages and 'touch_long_press' in messages
+        messages = " ".join(r.getMessage() for r in caplog.records)
+        assert "fps_limit" in messages and "touch_long_press" in messages
 
 
 class TestSplashZeroDuration:  # C13
@@ -175,9 +181,18 @@ class TestSignalStrength:  # D08
         renderer.display_available = True
         seen = []
         real = renderer.get_signal_bars
-        monkeypatch.setattr(renderer, 'get_signal_bars', lambda value: (seen.append(value), real(value))[1])
-        device = BluetoothDevice(name='OBD', mac_address='00:11:22:33:44:55', signal_strength=-60,
-                                 device_type='ELM327', last_seen=datetime.datetime(2026, 10, 7))
+        monkeypatch.setattr(
+            renderer,
+            "get_signal_bars",
+            lambda value: (seen.append(value), real(value))[1],
+        )
+        device = BluetoothDevice(
+            name="OBD",
+            mac_address="00:11:22:33:44:55",
+            signal_strength=-60,
+            device_type="ELM327",
+            last_seen=datetime.datetime(2026, 10, 7),
+        )
 
         layout = CircularPositioningEngine().calculate_focused_slot_layout()
         renderer.create_slot_surface(device, layout[1])

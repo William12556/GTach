@@ -11,30 +11,36 @@ Bluetooth pairing operations for OBDII display application.
 Handles device discovery, pairing, and connection testing.
 """
 
+import concurrent.futures
 import logging
 import threading
 import time
-import concurrent.futures
-from typing import List, Optional, Callable
 from datetime import datetime
+from typing import Callable, List, Optional
 
-# Try to import PyBluez, fall back to system-level implementation  
+# Try to import PyBluez, fall back to system-level implementation
 try:
     import bluetooth
-    BLUETOOTH_BACKEND = 'pybluez'
+
+    BLUETOOTH_BACKEND = "pybluez"
 except ImportError:
     try:
         from . import system_bluetooth as bluetooth
-        BLUETOOTH_BACKEND = 'system'
+
+        BLUETOOTH_BACKEND = "system"
     except ImportError:
         bluetooth = None
-        BLUETOOTH_BACKEND = 'none'
+        BLUETOOTH_BACKEND = "none"
 
-from ..display.setup_models import BluetoothDevice, PairingStatus, DeviceType
+from ..display.setup_models import BluetoothDevice, DeviceType, PairingStatus
+
 
 class BluetoothPairing:
-    """Manages Bluetooth device discovery and pairing operations with timeout protection"""
-    
+    """Manages Bluetooth device discovery and pairing operations.
+
+    All blocking operations are protected by timeouts.
+    """
+
     # Timeouts in seconds; constants since no configuration file defines
     # them (issue-5fbff586).
     DISCOVERY_TIMEOUT_S = 30
@@ -44,7 +50,7 @@ class BluetoothPairing:
     OPERATION_TIMEOUT_S = 30
 
     def __init__(self):
-        self.logger = logging.getLogger('BluetoothPairing')
+        self.logger = logging.getLogger("BluetoothPairing")
         self._discovery_thread = None
 
         self.discovery_timeout = self.DISCOVERY_TIMEOUT_S
@@ -53,54 +59,73 @@ class BluetoothPairing:
         self.initialization_timeout = self.INITIALIZATION_TIMEOUT_S
         self.operation_timeout = self.OPERATION_TIMEOUT_S
 
-        self.logger.info(f"Pairing timeouts: discovery={self.discovery_timeout}s, connection={self.connection_timeout}s")
-        
+        self.logger.info(
+            f"Pairing timeouts: discovery={self.discovery_timeout}s, "
+            f"connection={self.connection_timeout}s"
+        )
+
         # Thread pool for timeout operations
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix='BluetoothPairing')
-        
+        self._executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers=2, thread_name_prefix="BluetoothPairing"
+        )
+
         # Check bluetooth availability with timeout protection
         try:
             future = self._executor.submit(self._check_bluetooth_availability)
-            self.bluetooth_available = future.result(timeout=self.initialization_timeout)
+            self.bluetooth_available = future.result(
+                timeout=self.initialization_timeout
+            )
         except concurrent.futures.TimeoutError:
-            self.logger.error(f"Bluetooth initialization timed out after {self.initialization_timeout}s")
+            self.logger.error(
+                "Bluetooth initialization timed out after "
+                f"{self.initialization_timeout}s"
+            )
             self.bluetooth_available = False
         except Exception as e:
             self.logger.error(f"Bluetooth initialization failed: {e}", exc_info=True)
             self.bluetooth_available = False
-            
+
         self._pairing_thread = None
         self._discovery_active = False
         self._pairing_active = False
         self._cancel_discovery = threading.Event()
         self._cancel_pairing = threading.Event()
-        
+
     def _check_bluetooth_availability(self) -> bool:
         """Check bluetooth availability in separate thread with timeout protection"""
         try:
             if bluetooth is None:
-                self.logger.warning("No Bluetooth backend available - pairing will use mock functionality")
+                self.logger.warning(
+                    "No Bluetooth backend available - pairing will use mock "
+                    "functionality"
+                )
                 return False
             else:
                 self.logger.info(f"Using Bluetooth backend: {BLUETOOTH_BACKEND}")
                 return True
         except Exception as e:
-            self.logger.error(f"Bluetooth availability check failed: {e}", exc_info=True)
+            self.logger.error(
+                f"Bluetooth availability check failed: {e}", exc_info=True
+            )
             return False
-    
-    def discover_elm327_devices(self, timeout: int = None, 
-                               progress_callback: Optional[Callable[[float], None]] = None,
-                               device_found_callback: Optional[Callable[[BluetoothDevice], None]] = None,
-                               show_all_devices: bool = False) -> List[BluetoothDevice]:
+
+    def discover_elm327_devices(
+        self,
+        timeout: int = None,
+        progress_callback: Optional[Callable[[float], None]] = None,
+        device_found_callback: Optional[Callable[[BluetoothDevice], None]] = None,
+        show_all_devices: bool = False,
+    ) -> List[BluetoothDevice]:
         """
         Discover ELM327 devices with progress reporting
-        
+
         Args:
             timeout: Discovery timeout in seconds
             progress_callback: Called with progress percentage (0.0-1.0)
             device_found_callback: Called when a device is found
-            show_all_devices: If True, show all devices; if False, show only likely ELM327 devices
-            
+            show_all_devices: If True, show all devices; if False, show only
+                likely ELM327 devices
+
         Returns:
             List of discovered ELM327 devices
         """
@@ -123,25 +148,25 @@ class BluetoothPairing:
         devices = []
         self._discovery_active = True
         self._cancel_discovery.clear()
-        
+
         try:
             mode_desc = "all devices" if show_all_devices else "ELM327 devices"
             self.logger.info(f"Starting {mode_desc} discovery (timeout: {timeout}s)")
-            
+
             # Start discovery in chunks to provide progress updates
             chunk_duration = 4  # Discovery chunk duration
             chunks = max(1, timeout // chunk_duration)
-            
+
             for chunk in range(chunks):
                 if self._cancel_discovery.is_set():
                     self.logger.info("Discovery cancelled")
                     break
-                
+
                 # Report progress
                 progress = chunk / chunks
                 if progress_callback:
                     progress_callback(progress)
-                
+
                 try:
                     # Discover devices for this chunk with timeout protection
                     future = self._executor.submit(
@@ -149,35 +174,42 @@ class BluetoothPairing:
                         # The effective timeout, not the default (issue-d140121d).
                         duration=min(chunk_duration, max(1, timeout // chunks)),
                         lookup_names=True,
-                        flush_cache=True
+                        flush_cache=True,
                     )
                     try:
                         nearby_devices = future.result(timeout=chunk_duration + 5)
                     except concurrent.futures.TimeoutError:
-                        self.logger.warning(f"Bluetooth discovery chunk {chunk+1} timed out")
+                        self.logger.warning(
+                            f"Bluetooth discovery chunk {chunk + 1} timed out"
+                        )
                         nearby_devices = []
-                    
+
                     # Process all discovered devices
                     for addr, name in nearby_devices:
                         try:
                             # Classify device
                             device_classification = self._classify_device(name)
-                            
+
                             # Apply filtering based on discovery mode
-                            if not show_all_devices and device_classification == DeviceType.UNKNOWN:
+                            if (
+                                not show_all_devices
+                                and device_classification == DeviceType.UNKNOWN
+                            ):
                                 continue
-                            
+
                             # Get signal strength (RSSI)
                             signal_strength = self._get_signal_strength(addr)
-                            
+
                             # Determine device type string for backward compatibility
                             if device_classification == DeviceType.HIGHLY_LIKELY_ELM327:
-                                device_type = 'ELM327'
-                            elif device_classification == DeviceType.POSSIBLY_COMPATIBLE:
-                                device_type = 'Compatible'
+                                device_type = "ELM327"
+                            elif (
+                                device_classification == DeviceType.POSSIBLY_COMPATIBLE
+                            ):
+                                device_type = "Compatible"
                             else:
-                                device_type = 'Unknown'
-                            
+                                device_type = "Unknown"
+
                             device = BluetoothDevice(
                                 name=name or f"Unknown Device ({addr})",
                                 mac_address=addr,
@@ -186,20 +218,22 @@ class BluetoothPairing:
                                 last_seen=datetime.now(),
                                 is_paired=False,
                                 connection_verified=False,
-                                device_classification=device_classification
+                                device_classification=device_classification,
                             )
-                            
+
                             # Check if device already found
                             if device not in devices:
                                 devices.append(device)
-                                self.logger.info(f"Found {device_type} device: {name} ({addr})")
-                                
+                                self.logger.info(
+                                    f"Found {device_type} device: {name} ({addr})"
+                                )
+
                                 if device_found_callback:
                                     device_found_callback(device)
-                            
+
                         except Exception as e:
                             self.logger.warning(f"Error processing device {name}: {e}")
-                
+
                 except bluetooth.BluetoothError as e:
                     self.logger.error(f"Bluetooth discovery error: {e}")
                     break
@@ -213,130 +247,178 @@ class BluetoothPairing:
                     d.device_classification == DeviceType.HIGHLY_LIKELY_ELM327
                     for d in devices
                 ):
-                    self.logger.info("Confirmed ELM327 device found — ending discovery early")
+                    self.logger.info(
+                        "Confirmed ELM327 device found — ending discovery early"
+                    )
                     break
 
             # Final progress update
             if progress_callback:
                 progress_callback(1.0)
-                
+
             self.logger.info(f"Discovery complete. Found {len(devices)} devices")
-            
+
         except Exception as e:
             self.logger.error(f"Discovery failed: {e}", exc_info=True)
         finally:
             self._discovery_active = False
-        
+
         return devices
-    
+
     def _classify_device(self, device_name: str) -> DeviceType:
         """Classify device based on name to determine ELM327 compatibility"""
         if not device_name:
             return DeviceType.UNKNOWN
-        
+
         name_upper = device_name.upper()
-        
+
         # Highly likely ELM327 devices - explicit ELM327 indicators
         highly_likely_indicators = [
-            'ELM327', 'ELM', 'OBDII', 'OBD-II', 'OBD2', 'OBD', 
-            'SCAN', 'DIAGNOSTIC', 'AUTO', 'CAR', 'VEHICLE',
-            'TORQUE', 'VGATE', 'FOSEAL', 'KONNWEI', 'ANCEL',
-            'OBDLINK', 'SCANTOOL', 'VEEPEAK', 'BAFX', 'PANLONG'
+            "ELM327",
+            "ELM",
+            "OBDII",
+            "OBD-II",
+            "OBD2",
+            "OBD",
+            "SCAN",
+            "DIAGNOSTIC",
+            "AUTO",
+            "CAR",
+            "VEHICLE",
+            "TORQUE",
+            "VGATE",
+            "FOSEAL",
+            "KONNWEI",
+            "ANCEL",
+            "OBDLINK",
+            "SCANTOOL",
+            "VEEPEAK",
+            "BAFX",
+            "PANLONG",
         ]
-        
+
         # Possibly compatible devices - common Bluetooth modules used in ELM327 devices
         possibly_compatible_indicators = [
-            'HC-05', 'HC-06', 'HC-03', 'HC-07', 'HC-08', 'HC-09',
-            'SPP-CA', 'SPP-CB', 'SPP-CC', 'SPP-CD', 'SPP-CE', 'SPP-CF',
-            'LINVOR', 'JDY-', 'AT-09', 'DSD TECH', 'WAVGAT',
-            'SERIAL', 'BLUETOOTH', 'BT-', 'UART', 'TTL'
+            "HC-05",
+            "HC-06",
+            "HC-03",
+            "HC-07",
+            "HC-08",
+            "HC-09",
+            "SPP-CA",
+            "SPP-CB",
+            "SPP-CC",
+            "SPP-CD",
+            "SPP-CE",
+            "SPP-CF",
+            "LINVOR",
+            "JDY-",
+            "AT-09",
+            "DSD TECH",
+            "WAVGAT",
+            "SERIAL",
+            "BLUETOOTH",
+            "BT-",
+            "UART",
+            "TTL",
         ]
-        
+
         # Check for highly likely ELM327 devices first
         if any(indicator in name_upper for indicator in highly_likely_indicators):
             return DeviceType.HIGHLY_LIKELY_ELM327
-        
+
         # Check for possibly compatible devices
         if any(indicator in name_upper for indicator in possibly_compatible_indicators):
             return DeviceType.POSSIBLY_COMPATIBLE
-        
+
         # Check for numeric patterns that might indicate ELM327 devices
         # Many generic ELM327 devices use patterns like "OBDII-1234" or "BT-1234"
         import re
+
         numeric_patterns = [
-            r'.*-\d{4}',  # Pattern like "OBDII-1234" or "BT-5678"
-            r'V\d+\.\d+',  # Version patterns like "V1.5" or "V2.1"
-            r'^\d{6}$',    # 6-digit numbers (common in cheap ELM327 devices)
+            r".*-\d{4}",  # Pattern like "OBDII-1234" or "BT-5678"
+            r"V\d+\.\d+",  # Version patterns like "V1.5" or "V2.1"
+            r"^\d{6}$",  # 6-digit numbers (common in cheap ELM327 devices)
         ]
-        
+
         for pattern in numeric_patterns:
             if re.search(pattern, name_upper):
                 return DeviceType.POSSIBLY_COMPATIBLE
-        
+
         return DeviceType.UNKNOWN
-    
+
     def _get_signal_strength(self, mac_address: str) -> int:
         """Get approximate signal strength for a device"""
         try:
-            # This is a simplified approach - actual RSSI requires platform-specific code
+            # This is a simplified approach - actual RSSI requires platform-specific
+            # code
             # For now, return a default value
             return -50  # Reasonable default RSSI
         except Exception:
             return -80  # Weak signal default
-    
-    def pair_device(self, device: BluetoothDevice, 
-                   status_callback: Optional[Callable[[PairingStatus, str], None]] = None) -> bool:
+
+    def pair_device(
+        self,
+        device: BluetoothDevice,
+        status_callback: Optional[Callable[[PairingStatus, str], None]] = None,
+    ) -> bool:
         """
         Pair with a Bluetooth device
-        
+
         Args:
             device: Device to pair with
             status_callback: Called with pairing status updates
-            
+
         Returns:
             True if pairing successful, False otherwise
         """
         self._pairing_active = True
         self._cancel_pairing.clear()
-        
+
         try:
-            self.logger.info(f"Starting pairing with {device.name} ({device.mac_address})")
-            
+            self.logger.info(
+                f"Starting pairing with {device.name} ({device.mac_address})"
+            )
+
             if status_callback:
                 status_callback(PairingStatus.CONNECTING, "Connecting to device...")
-            
+
             # Create socket and attempt connection with configurable timeout
             sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
             sock.settimeout(self.connection_timeout)
-            
+
             try:
                 # Attempt connection on RFCOMM channel 1 (standard for SPP)
                 sock.connect((device.mac_address, 1))
-                
+
                 if status_callback:
                     status_callback(PairingStatus.CONNECTING, "Testing connection...")
-                
+
                 # Test basic communication
                 if self._test_basic_communication(sock):
                     device.is_paired = True
                     device.connection_verified = True
-                    
+
                     if status_callback:
                         status_callback(PairingStatus.SUCCESS, "Pairing successful!")
-                    
+
                     self.logger.info(f"Successfully paired with {device.name}")
                     return True
                 else:
                     if status_callback:
-                        status_callback(PairingStatus.FAILED, "Device communication test failed")
-                    
+                        status_callback(
+                            PairingStatus.FAILED, "Device communication test failed"
+                        )
+
                     self.logger.error(f"Communication test failed for {device.name}")
                     return False
-                    
+
             except bluetooth.BluetoothError as e:
                 if status_callback:
-                    status_callback(PairingStatus.FAILED, f"Connection failed: {str(e)}")
-                
+                    status_callback(
+                        PairingStatus.FAILED, f"Connection failed: {str(e)}"
+                    )
+
                 self.logger.error(f"Bluetooth connection failed: {e}")
                 return False
             finally:
@@ -344,28 +426,28 @@ class BluetoothPairing:
                     sock.close()
                 except Exception:
                     pass
-                    
+
         except Exception as e:
             if status_callback:
                 status_callback(PairingStatus.FAILED, f"Pairing error: {str(e)}")
-            
+
             self.logger.error(f"Pairing failed: {e}", exc_info=True)
             return False
         finally:
             self._pairing_active = False
-    
+
     def _recv_until_prompt(self, sock, timeout: float = 5.0) -> str:
         """Accumulate recv data until ELM327 prompt '>' or timeout."""
         sock.settimeout(timeout)
-        buf = ''
+        buf = ""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             try:
-                chunk = sock.recv(1024).decode('utf-8', errors='ignore')
+                chunk = sock.recv(1024).decode("utf-8", errors="ignore")
                 if not chunk:
                     break
                 buf += chunk
-                if '>' in buf:
+                if ">" in buf:
                     break
             except Exception:
                 break
@@ -384,62 +466,62 @@ class BluetoothPairing:
                 pass
 
             # Send reset command and accumulate full response
-            socket.send(b'ATZ\r')
+            socket.send(b"ATZ\r")
             response = self._recv_until_prompt(socket, timeout=5.0)
             self.logger.debug(f"ATZ response: {repr(response)}")
 
-            if 'ELM' not in response:
+            if "ELM" not in response:
                 return False
 
             # Send echo off
-            socket.send(b'ATE0\r')
+            socket.send(b"ATE0\r")
             self._recv_until_prompt(socket, timeout=3.0)
 
             # Send protocol auto
-            socket.send(b'ATSP0\r')
+            socket.send(b"ATSP0\r")
             response = self._recv_until_prompt(socket, timeout=3.0)
             self.logger.debug(f"ATSP0 response: {repr(response)}")
 
-            return 'OK' in response
+            return "OK" in response
 
         except Exception as e:
             self.logger.error(f"Communication test error: {e}", exc_info=True)
             return False
-    
+
     def cancel_discovery(self) -> None:
         """Cancel ongoing discovery operation"""
         self._cancel_discovery.set()
         self.logger.info("Discovery cancellation requested")
-    
+
     def cancel_pairing(self) -> None:
         """Cancel ongoing pairing operation"""
         self._cancel_pairing.set()
         self.logger.info("Pairing cancellation requested")
-        
+
     def shutdown(self) -> None:
         """Shutdown pairing operations and cleanup resources"""
         self.logger.info("Shutting down Bluetooth pairing")
         self._cancel_discovery.set()
         self._cancel_pairing.set()
-        
+
         # Do not wait: a running hcitool or bluetoothctl call would hold
         # shutdown (and __del__) for its full duration (issue-d140121d).
         try:
             self._executor.shutdown(wait=False, cancel_futures=True)
         except Exception as e:
             self.logger.error(f"Error shutting down thread pool: {e}", exc_info=True)
-            
+
     def __del__(self):
         """Cleanup on object destruction"""
         try:
             self.shutdown()
         except Exception:
             pass
-    
+
     def is_discovery_active(self) -> bool:
         """Check if discovery is currently active"""
         return self._discovery_active
-    
+
     def is_pairing_active(self) -> bool:
         """Check if pairing is currently active"""
         return self._pairing_active

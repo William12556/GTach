@@ -13,41 +13,54 @@ Orchestrates display rendering, touch handling, and performance monitoring
 through extracted components for improved maintainability.
 """
 
-import math
 import logging
+import math
 import queue
 import threading
 import time
-from typing import Optional, Tuple, Dict, Any, Sequence, Callable, List
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 # Conditional imports for hardware dependencies
 try:
     import pygame
+
     PYGAME_AVAILABLE = True
 except ImportError:
     pygame = None
     PYGAME_AVAILABLE = False
 
-# Component imports
-from .rendering import DisplayRenderingEngine, RenderTarget
-from .input import TouchEventCoordinator, TouchAction, GestureType
-from .performance import PerformanceMonitor
-
-# Legacy imports for compatibility
-from .models import (DisplayMode, DisplayConfig, ConnectionStatus,
-                     DAY_PALETTE, NIGHT_PALETTE)
-from .splash import SplashScreen
-from ..utils.config import AppConfig, ConfigStore
-from .typography import (get_font_manager, get_label_small_font, get_title_display_font, get_heading_font,
-                         TypographyConstants)
 from ..core import ThreadManager
 from ..utils import TerminalRestorer
 from ..utils.ack_state import AcknowledgementStateManager
+from ..utils.config import AppConfig, ConfigStore
+from .input import GestureType, TouchAction, TouchEventCoordinator
+
+# Legacy imports for compatibility
+from .models import (
+    DAY_PALETTE,
+    NIGHT_PALETTE,
+    ConnectionStatus,
+    DisplayConfig,
+    DisplayMode,
+)
+from .performance import PerformanceMonitor
+
+# Component imports
+from .rendering import DisplayRenderingEngine, RenderTarget
+from .splash import SplashScreen
+from .typography import (
+    TypographyConstants,
+    get_font_manager,
+    get_heading_font,
+    get_label_small_font,
+    get_title_display_font,
+)
+
 
 class DisplayManager:
     """
     Refactored display manager using component-based architecture.
-    
+
     Orchestrates display rendering, touch handling, and performance monitoring
     through specialized components for improved maintainability and testing.
     """
@@ -66,9 +79,13 @@ class DisplayManager:
     LINK_LOSS_TIMEOUT = 2.0
     LINK_RECOVERY_SAMPLES = 2
 
-    def __init__(self, thread_manager: ThreadManager, terminal_restorer: TerminalRestorer = None,
-                 config_store: Optional[ConfigStore] = None):
-        self.logger = logging.getLogger('DisplayManager')
+    def __init__(
+        self,
+        thread_manager: ThreadManager,
+        terminal_restorer: TerminalRestorer = None,
+        config_store: Optional[ConfigStore] = None,
+    ):
+        self.logger = logging.getLogger("DisplayManager")
         self.thread_manager = thread_manager
         # All configuration I/O goes through the store (issue-5fbff586).
         self._config_store = config_store or ConfigStore()
@@ -76,9 +93,9 @@ class DisplayManager:
         self.terminal_restorer = terminal_restorer
         self._sim_mode = False  # Session-only simulation mode flag
         self._debug_toggle_callback = None  # Set by app.py: Callable[[bool], None]
-        self._debug_logging_on = False      # Reflects current debug logging state
-        self._restart_callback = None       # Set by app.py: Callable[[], None]
-        self._options_view = 'menu'         # 'menu' | 'update' | 'confirm_clear'
+        self._debug_logging_on = False  # Reflects current debug logging state
+        self._restart_callback = None  # Set by app.py: Callable[[], None]
+        self._options_view = "menu"  # 'menu' | 'update' | 'confirm_clear'
 
         # The mode OPTIONS was entered from, restored on exit.
         # Not simply RADIAL: OPTIONS is reachable from the
@@ -95,7 +112,7 @@ class DisplayManager:
         # transport retries indefinitely, so thread liveness cannot
         # answer "is the adapter delivering data" (issue-4d9e2f18).
         # These are what answers it instead.
-        self._last_sample_ts = None          # monotonic time of the last real sample
+        self._last_sample_ts = None  # monotonic time of the last real sample
         self._link_connected_callback = None  # injected by app.py; asks the transport
         # Also injected by app.py; asks the transport why the last
         # connect failed. A callback rather than a transport reference
@@ -111,20 +128,20 @@ class DisplayManager:
         # degrades to its previous single-button form
         # (issue-4ab5ff88).
         self._reset_callback = None
-        self._link_ok = False                # latch: data is confirmed flowing
-        self._recovery_count = 0             # consecutive samples close enough together
+        self._link_ok = False  # latch: data is confirmed flowing
+        self._recovery_count = 0  # consecutive samples close enough together
 
-        self._update_status = 'idle'        # checking|available|none|error|pending
+        self._update_status = "idle"  # checking|available|none|error|pending
         self._update_wheel = None
         self._update_version = None
 
         # RPM signal conditioning (change-4c038bed)
-        self._rpm_display = 0.0          # EMA output — the displayed figure
-        self._rpm_ema_tau = 0.150        # EMA time constant, seconds
-        self._rpm_last_ts = None         # time.monotonic() of previous conditioning call
-        self._active_band = 0            # sticky band index for hysteresis
-        self._band_hysteresis = 75.0     # band transition margin, RPM
-        self._frame_counter = 0          # monotonic frame counter, advanced in _display_loop
+        self._rpm_display = 0.0  # EMA output — the displayed figure
+        self._rpm_ema_tau = 0.150  # EMA time constant, seconds
+        self._rpm_last_ts = None  # time.monotonic() of previous conditioning call
+        self._active_band = 0  # sticky band index for hysteresis
+        self._band_hysteresis = 75.0  # band transition margin, RPM
+        self._frame_counter = 0  # monotonic frame counter, advanced in _display_loop
 
         # Touch-region registration is driven by a change in this key
         # rather than by the render path (display review §8.2,
@@ -158,7 +175,7 @@ class DisplayManager:
 
         # Component initialization
         self._initialize_components()
-        
+
         # Configuration
         self._load_config()
 
@@ -170,29 +187,25 @@ class DisplayManager:
         # wrong at any other rate and reported a constant in the
         # startup line (issue-6a3b7c52).
         try:
-            _fps = getattr(self.config, 'fps_limit', 0) or 0
+            _fps = getattr(self.config, "fps_limit", 0) or 0
             if _fps <= 0:
                 _fps = DisplayConfig.fps_limit
             self.performance_monitor = PerformanceMonitor(target_fps=_fps)
             self.performance_monitor.start_monitoring()
         except Exception as e:
             self.logger.error(
-                f'Performance monitor initialization failed: {e}',
-                exc_info=True
+                f"Performance monitor initialization failed: {e}", exc_info=True
             )
 
         # Legacy components
         self._initialize_legacy_components()
-        
+
         # Display thread setup
         self.display_thread = threading.Thread(
-            target=self._display_loop,
-            name='DisplayManager',
-            daemon=True
+            target=self._display_loop, name="DisplayManager", daemon=True
         )
-        self.thread_manager.register_thread('display', self.display_thread)
+        self.thread_manager.register_thread("display", self.display_thread)
 
-    
     def _initialize_components(self) -> None:
         """Initialize the extracted components"""
         try:
@@ -216,7 +229,7 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Component initialization failed: {e}", exc_info=True)
             self.display_available = False
-    
+
     def _setup_touch_callbacks(self) -> None:
         """Setup touch gesture callbacks"""
         try:
@@ -248,7 +261,7 @@ class DisplayManager:
 
         except Exception as e:
             self.logger.error(f"Touch callback setup failed: {e}", exc_info=True)
-    
+
     def _toggle_palette(self) -> None:
         """Swap the active palette, notify, and persist the choice.
 
@@ -257,21 +270,17 @@ class DisplayManager:
         """
         try:
             self._palette = (
-                NIGHT_PALETTE if self._palette is DAY_PALETTE
-                else DAY_PALETTE
+                NIGHT_PALETTE if self._palette is DAY_PALETTE else DAY_PALETTE
             )
             self._palette_notice_until = time.monotonic() + 2.0
             self._save_config()
-            self.logger.info(
-                f'Palette switched to {self._palette.name}'
-            )
+            self.logger.info(f"Palette switched to {self._palette.name}")
         except Exception as e:
-            self.logger.error(
-                f'Palette toggle error: {e}', exc_info=True
-            )
+            self.logger.error(f"Palette toggle error: {e}", exc_info=True)
 
-    def _handle_long_press(self, start_pos: Tuple[int, int],
-                           end_pos: Tuple[int, int]) -> TouchAction:
+    def _handle_long_press(
+        self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]
+    ) -> TouchAction:
         """Toggle the day/night palette. Long press, RADIAL only.
 
         NOT the OPTIONS toggle. A method of this name existed on
@@ -298,11 +307,12 @@ class DisplayManager:
             self._toggle_palette()
             return TouchAction.SETTINGS_CHANGE
         except Exception as e:
-            self.logger.error(f'Double tap handling error: {e}', exc_info=True)
+            self.logger.error(f"Double tap handling error: {e}", exc_info=True)
             return TouchAction.NONE
 
-    def _handle_swipe_down(self, start_pos: Tuple[int, int],
-                           end_pos: Tuple[int, int]) -> TouchAction:
+    def _handle_swipe_down(
+        self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]
+    ) -> TouchAction:
         """Enter the OPTIONS screen.
 
         Paired with _handle_swipe_up. The long press that previously did
@@ -324,28 +334,27 @@ class DisplayManager:
         """
         try:
             if self._in_setup_mode:
-                self.logger.debug('Swipe down ignored: setup mode')
+                self.logger.debug("Swipe down ignored: setup mode")
                 return TouchAction.NONE
             if self.config.mode in (
                 DisplayMode.OPTIONS,
                 DisplayMode.SPLASH,
                 DisplayMode.ACKNOWLEDGEMENT,
             ):
-                self.logger.debug(
-                    f'Swipe down ignored: mode {self.config.mode.name}'
-                )
+                self.logger.debug(f"Swipe down ignored: mode {self.config.mode.name}")
                 return TouchAction.NONE
             self._pre_options_mode = self.config.mode
-            self._options_view = 'menu'
+            self._options_view = "menu"
             self._options_page = 0
             self.config.mode = DisplayMode.OPTIONS
             return TouchAction.NAVIGATION
         except Exception as e:
-            self.logger.error(f'Swipe down handling error: {e}', exc_info=True)
+            self.logger.error(f"Swipe down handling error: {e}", exc_info=True)
             return TouchAction.NONE
 
-    def _handle_swipe_up(self, start_pos: Tuple[int, int],
-                         end_pos: Tuple[int, int]) -> TouchAction:
+    def _handle_swipe_up(
+        self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]
+    ) -> TouchAction:
         """Return to the screen OPTIONS was entered from.
 
         Restores the mode recorded by _handle_swipe_down rather than
@@ -362,25 +371,22 @@ class DisplayManager:
         """
         try:
             if self._in_setup_mode:
-                self.logger.debug('Swipe up ignored: setup mode')
+                self.logger.debug("Swipe up ignored: setup mode")
                 return TouchAction.NONE
             if self.config.mode != DisplayMode.OPTIONS:
-                self.logger.debug(
-                    f'Swipe up ignored: mode {self.config.mode.name}'
-                )
+                self.logger.debug(f"Swipe up ignored: mode {self.config.mode.name}")
                 return TouchAction.NONE
-            self._options_view = 'menu'
-            self.config.mode = (
-                self._pre_options_mode or DisplayMode.RADIAL
-            )
+            self._options_view = "menu"
+            self.config.mode = self._pre_options_mode or DisplayMode.RADIAL
             self._pre_options_mode = None
             return TouchAction.NAVIGATION
         except Exception as e:
-            self.logger.error(f'Swipe up handling error: {e}', exc_info=True)
+            self.logger.error(f"Swipe up handling error: {e}", exc_info=True)
             return TouchAction.NONE
 
-    def _handle_swipe_left(self, start_pos: Tuple[int, int],
-                           end_pos: Tuple[int, int]) -> TouchAction:
+    def _handle_swipe_left(
+        self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]
+    ) -> TouchAction:
         """Page forward through the options menu, wrapping.
 
         Args:
@@ -392,8 +398,9 @@ class DisplayManager:
         """
         return self._page_options(+1)
 
-    def _handle_swipe_right(self, start_pos: Tuple[int, int],
-                            end_pos: Tuple[int, int]) -> TouchAction:
+    def _handle_swipe_right(
+        self, start_pos: Tuple[int, int], end_pos: Tuple[int, int]
+    ) -> TouchAction:
         """Page back through the options menu, wrapping.
 
         Args:
@@ -421,28 +428,26 @@ class DisplayManager:
         """
         try:
             if self._in_setup_mode:
-                self.logger.debug('Options paging ignored: setup mode')
+                self.logger.debug("Options paging ignored: setup mode")
                 return TouchAction.NONE
             if self.config.mode != DisplayMode.OPTIONS:
                 self.logger.debug(
-                    f'Options paging ignored: mode {self.config.mode.name}'
+                    f"Options paging ignored: mode {self.config.mode.name}"
                 )
                 return TouchAction.NONE
-            if self._options_view != 'menu':
+            if self._options_view != "menu":
                 self.logger.debug(
-                    f'Options paging ignored: sub-view {self._options_view}'
+                    f"Options paging ignored: sub-view {self._options_view}"
                 )
                 return TouchAction.NONE
 
             # Modulo gives the wrapping in both directions, and the
             # named count means a third page is a data change.
-            self._options_page = (
-                self._options_page + delta
-            ) % self.OPTIONS_PAGE_COUNT
-            self.logger.debug(f'Options page -> {self._options_page}')
+            self._options_page = (self._options_page + delta) % self.OPTIONS_PAGE_COUNT
+            self.logger.debug(f"Options page -> {self._options_page}")
             return TouchAction.NAVIGATION
         except Exception as e:
-            self.logger.error(f'Options paging error: {e}', exc_info=True)
+            self.logger.error(f"Options paging error: {e}", exc_info=True)
             return TouchAction.NONE
 
     def _initialize_legacy_components(self) -> None:
@@ -452,13 +457,16 @@ class DisplayManager:
             try:
                 from .touch import TouchHandler
                 from .touch_interface import create_touch_interface
+
                 _touch_interface = create_touch_interface()
                 _touch_interface.start()
-                self.touch_handler = TouchHandler(self, touch_interface=_touch_interface)
+                self.touch_handler = TouchHandler(
+                    self, touch_interface=_touch_interface
+                )
             except ImportError as e:
                 self.logger.warning(f"TouchHandler not available: {e}")
                 self.touch_handler = None
-            
+
             # Setup mode components
             self._setup_manager = None
             self._in_setup_mode = False
@@ -466,16 +474,22 @@ class DisplayManager:
 
             # Initialize splash screen
             try:
-                splash_config = getattr(self.config, 'splash', None)
-                self._splash_screen = SplashScreen(surface_size=(480, 480), duration=4.0, config=splash_config)
+                splash_config = getattr(self.config, "splash", None)
+                self._splash_screen = SplashScreen(
+                    surface_size=(480, 480), duration=4.0, config=splash_config
+                )
                 self.logger.info("Splash screen initialized successfully")
             except Exception as e:
-                self.logger.error(f"Failed to initialize splash screen: {e}", exc_info=True)
+                self.logger.error(
+                    f"Failed to initialize splash screen: {e}", exc_info=True
+                )
                 self._splash_screen = None
-            
+
         except Exception as e:
-            self.logger.error(f"Legacy component initialization failed: {e}", exc_info=True)
-    
+            self.logger.error(
+                f"Legacy component initialization failed: {e}", exc_info=True
+            )
+
     def _load_config(self) -> None:
         """Load display configuration from the ConfigStore"""
         try:
@@ -490,26 +504,31 @@ class DisplayManager:
             try:
                 saved_mode = DisplayMode[saved_mode_str]
                 # Transient modes must not be used as post-splash target
-                _transient = (DisplayMode.SPLASH, DisplayMode.OPTIONS, DisplayMode.ACKNOWLEDGEMENT)
+                _transient = (
+                    DisplayMode.SPLASH,
+                    DisplayMode.OPTIONS,
+                    DisplayMode.ACKNOWLEDGEMENT,
+                )
                 if saved_mode in _transient:
                     saved_mode = DisplayMode.RADIAL
             except KeyError:
-                self.logger.warning(f"Unknown display mode '{saved_mode_str}', using RADIAL")
+                self.logger.warning(
+                    f"Unknown display mode '{saved_mode_str}', using RADIAL"
+                )
                 saved_mode = DisplayMode.RADIAL
 
             palette_name = app.palette
-            if palette_name == 'night':
+            if palette_name == "night":
                 self._palette = NIGHT_PALETTE
-            elif palette_name == 'day':
+            elif palette_name == "day":
                 self._palette = DAY_PALETTE
             else:
-                self.logger.warning(
-                    f"Unknown palette '{palette_name}', using day"
-                )
+                self.logger.warning(f"Unknown palette '{palette_name}', using day")
                 self._palette = DAY_PALETTE
 
             # Load engine profile RPM bands
             from ..utils.config import load_engine_profile
+
             rpm_bands = load_engine_profile(app.engine_profile)
 
             self.config = DisplayConfig(
@@ -519,7 +538,7 @@ class DisplayManager:
                 fps_limit=app.fps_limit,
                 touch_long_press=app.touch_long_press,
                 engine_profile=app.engine_profile,
-                rpm_bands=rpm_bands
+                rpm_bands=rpm_bands,
             )
             self._post_splash_mode = saved_mode
 
@@ -529,17 +548,16 @@ class DisplayManager:
             # Fallback to defaults
             try:
                 from ..utils.config import load_engine_profile
-                rpm_bands = load_engine_profile('abarth_595_turismo')
+
+                rpm_bands = load_engine_profile("abarth_595_turismo")
             except Exception:
                 from .models import RPMBands
+
                 rpm_bands = RPMBands()
 
-            self.config = DisplayConfig(
-                mode=DisplayMode.SPLASH,
-                rpm_bands=rpm_bands
-            )
+            self.config = DisplayConfig(mode=DisplayMode.SPLASH, rpm_bands=rpm_bands)
             self._post_splash_mode = DisplayMode.RADIAL
-    
+
     def _save_config(self) -> None:
         """Save current configuration through the ConfigStore.
 
@@ -549,25 +567,31 @@ class DisplayManager:
         """
         try:
             # Do not persist transient modes: SPLASH, OPTIONS, ACKNOWLEDGEMENT
-            _transient = (DisplayMode.SPLASH, DisplayMode.OPTIONS, DisplayMode.ACKNOWLEDGEMENT)
+            _transient = (
+                DisplayMode.SPLASH,
+                DisplayMode.OPTIONS,
+                DisplayMode.ACKNOWLEDGEMENT,
+            )
             mode_to_save = (
                 self._post_splash_mode
                 if self.config.mode in _transient
                 else self.config.mode
             )
-            self._config_store.save(AppConfig(
-                mode=mode_to_save.name,
-                palette=self._palette.name,
-                engine_profile=self.config.engine_profile,
-                fps_limit=self.config.fps_limit,
-                touch_long_press=self.config.touch_long_press,
-                rpm_warning=self.config.rpm_warning,
-                rpm_danger=self.config.rpm_danger,
-            ))
+            self._config_store.save(
+                AppConfig(
+                    mode=mode_to_save.name,
+                    palette=self._palette.name,
+                    engine_profile=self.config.engine_profile,
+                    fps_limit=self.config.fps_limit,
+                    touch_long_press=self.config.touch_long_press,
+                    rpm_warning=self.config.rpm_warning,
+                    rpm_danger=self.config.rpm_danger,
+                )
+            )
 
         except Exception as e:
             self.logger.error(f"Config save failed: {e}", exc_info=True)
-    
+
     def start(self) -> None:
         """Start display manager."""
         self.start_splash()
@@ -582,12 +606,14 @@ class DisplayManager:
                 self.config.mode = DisplayMode.SPLASH
                 self.logger.info("Splash screen started")
             else:
-                self.logger.warning("No splash screen available - skipping to normal mode")
+                self.logger.warning(
+                    "No splash screen available - skipping to normal mode"
+                )
                 self._enter_post_splash_mode()
         except Exception as e:
             self.logger.error(f"Failed to start splash screen: {e}", exc_info=True)
             self._enter_post_splash_mode()
-    
+
     def stop(self) -> None:
         """Stop display manager"""
         self._shutdown_event.set()
@@ -596,7 +622,7 @@ class DisplayManager:
             self.logger.warning("Display thread did not stop cleanly within timeout")
 
         # The touch interface owns a thread of its own (issue-d140121d).
-        touch_handler = getattr(self, 'touch_handler', None)
+        touch_handler = getattr(self, "touch_handler", None)
         if touch_handler is not None:
             try:
                 touch_handler.stop()
@@ -610,15 +636,15 @@ class DisplayManager:
             self.logger.info("Display manager stopped")
         except Exception as e:
             self.logger.error(f"Error stopping display manager: {e}", exc_info=True)
-    
+
     def _display_loop(self) -> None:
         """Main display loop using component architecture"""
         if not PYGAME_AVAILABLE:
             self.logger.warning("Pygame not available - display loop disabled")
             return
-        
+
         self.logger.info("Display loop started with component architecture")
-        
+
         while not self._shutdown_event.is_set():
             try:
                 _frame_start = time.monotonic()
@@ -645,14 +671,14 @@ class DisplayManager:
 
                 # Record frame start for performance monitoring
                 frame_id = self.performance_monitor.record_frame_start()
-                
-                self.thread_manager.update_heartbeat('display')
+
+                self.thread_manager.update_heartbeat("display")
 
                 self._frame_counter += 1
 
                 # Clear back buffer
                 self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER)
-                
+
                 # Render current mode
                 if self.config.mode == DisplayMode.SPLASH:
                     self._draw_splash_mode()
@@ -660,11 +686,11 @@ class DisplayManager:
                     self._render_setup_mode()
                 else:
                     self._render_normal_modes()
-                
+
                 # Swap buffers and write to framebuffer
                 self.rendering_engine.swap_buffers()
                 self.rendering_engine.write_to_framebuffer()
-                
+
                 # Close the frame BEFORE the pacing sleep so the recorded
                 # interval measures render cost, not the loop period
                 # (display review §6.2, recommendation 15).
@@ -691,28 +717,30 @@ class DisplayManager:
                         f"{metrics.frame_time_ms:.1f}ms frame, "
                         f"{metrics.memory_usage_mb:.1f}MB mem"
                     )
-                
+
             except Exception as e:
                 self.logger.error(f"Display loop error: {e}", exc_info=True)
                 time.sleep(0.1)
-        
+
         self.logger.info("Display loop ended")
-    
+
     def _draw_splash_mode(self) -> None:
         """Draw splash screen"""
         try:
             if not self._splash_screen:
                 self._enter_post_splash_mode()
                 return
-            
+
             # Get back buffer surface for splash rendering
             back_surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
             if back_surface:
                 self._splash_screen.render(back_surface)
-                
+
                 if self._splash_screen.is_complete():
                     self._enter_post_splash_mode()
-                    self.logger.info(f"Splash completed - transitioning to {self.config.mode.name}")
+                    self.logger.info(
+                        f"Splash completed - transitioning to {self.config.mode.name}"
+                    )
 
                     self.rendering_engine.clear_surface(RenderTarget.BACK_BUFFER)
                     self.rendering_engine.swap_buffers()
@@ -720,8 +748,10 @@ class DisplayManager:
                     try:
                         self._splash_screen.reset()
                     except Exception as e:
-                        self.logger.error(f"Error resetting splash screen: {e}", exc_info=True)
-                        
+                        self.logger.error(
+                            f"Error resetting splash screen: {e}", exc_info=True
+                        )
+
         except Exception as e:
             self.logger.error(f"Splash mode error: {e}", exc_info=True)
             self._enter_post_splash_mode()
@@ -744,14 +774,13 @@ class DisplayManager:
         ACKNOWLEDGEMENT and is intentionally not gated.
         """
         try:
-            ack_manager = getattr(self, '_ack_state_manager', None)
+            ack_manager = getattr(self, "_ack_state_manager", None)
             if ack_manager is None:
                 self.config.mode = self._post_splash_mode
                 return
 
             if not ack_manager.is_acknowledged(
-                self.config.rpm_bands,
-                self.config.engine_profile
+                self.config.rpm_bands, self.config.engine_profile
             ):
                 self.config.mode = DisplayMode.ACKNOWLEDGEMENT
                 return
@@ -771,7 +800,7 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Setup mode render error: {e}", exc_info=True)
             self._draw_setup_mode_fallback()
-    
+
     def _drain_samples(self) -> None:
         """Consume queued RPM samples and record their arrival.
 
@@ -794,14 +823,12 @@ class DisplayManager:
         try:
             while True:
                 rpm_data = self.thread_manager.message_queue.get_nowait()
-                self._last_rpm = (
-                    (256 * rpm_data.data[0]) + rpm_data.data[1]
-                ) / 4
+                self._last_rpm = ((256 * rpm_data.data[0]) + rpm_data.data[1]) / 4
                 self._note_sample()
         except queue.Empty:
             pass
         except Exception as e:
-            self.logger.debug(f'Queue drain error: {e}')
+            self.logger.debug(f"Queue drain error: {e}")
 
     def _note_sample(self) -> None:
         """Record the arrival of one real sample from the adapter.
@@ -817,8 +844,10 @@ class DisplayManager:
         screen once per sample, which is worse than either state.
         """
         now = time.monotonic()
-        if (self._last_sample_ts is not None
-                and now - self._last_sample_ts <= self.LINK_LOSS_TIMEOUT):
+        if (
+            self._last_sample_ts is not None
+            and now - self._last_sample_ts <= self.LINK_LOSS_TIMEOUT
+        ):
             self._recovery_count += 1
         else:
             # A gap longer than the timeout is itself a loss condition,
@@ -834,7 +863,7 @@ class DisplayManager:
         self._last_sample_ts = now
         if self._recovery_count >= self.LINK_RECOVERY_SAMPLES:
             if not self._link_ok:
-                self.logger.info('Link restored')
+                self.logger.info("Link restored")
             self._link_ok = True
 
     def _link_lost(self) -> bool:
@@ -877,7 +906,7 @@ class DisplayManager:
                 try:
                     connected = bool(cb())
                 except Exception:
-                    connected = None   # unavailable, NOT connected
+                    connected = None  # unavailable, NOT connected
 
             if connected is False:
                 self._link_ok = False
@@ -890,7 +919,7 @@ class DisplayManager:
             age = time.monotonic() - self._last_sample_ts
             if age > self.LINK_LOSS_TIMEOUT:
                 if self._link_ok:
-                    self.logger.info('Link lost — no data for %.1fs', age)
+                    self.logger.info("Link lost — no data for %.1fs", age)
                 self._link_ok = False
                 self._recovery_count = 0
                 return True
@@ -898,7 +927,7 @@ class DisplayManager:
             return not self._link_ok
 
         except Exception as e:
-            self.logger.error(f'Link state error: {e}', exc_info=True)
+            self.logger.error(f"Link state error: {e}", exc_info=True)
             return True
 
     def _render_normal_modes(self) -> None:
@@ -973,7 +1002,7 @@ class DisplayManager:
             return self._rpm_display
 
         except Exception as e:
-            self.logger.error(f'RPM conditioning error: {e}', exc_info=True)
+            self.logger.error(f"RPM conditioning error: {e}", exc_info=True)
             return raw
 
     # Called once per frame by _draw_radial_mode for the band colour
@@ -1015,8 +1044,7 @@ class DisplayManager:
             # Clamp the hysteresis margin below half the narrowest gap so
             # a closely spaced RPMBands cannot make a band unreachable.
             gaps = [
-                thresholds[i + 1] - thresholds[i]
-                for i in range(len(thresholds) - 1)
+                thresholds[i + 1] - thresholds[i] for i in range(len(thresholds) - 1)
             ]
             narrowest = min(gaps) if gaps else self._band_hysteresis
             margin = min(self._band_hysteresis, 0.49 * narrowest)
@@ -1035,7 +1063,7 @@ class DisplayManager:
             return (band, palette[band])
 
         except Exception as e:
-            self.logger.error(f'Band colour calculation error: {e}', exc_info=True)
+            self.logger.error(f"Band colour calculation error: {e}", exc_info=True)
             # Fallback to band 0, black
             return (0, (0, 0, 0))
 
@@ -1068,7 +1096,7 @@ class DisplayManager:
                 # The queue is drained by _drain_samples, called from
                 # _render_normal_modes before the link test rather than
                 # here. See that method for why.
-                rpm = self._condition_rpm(getattr(self, '_last_rpm', 0))
+                rpm = self._condition_rpm(getattr(self, "_last_rpm", 0))
             # Clamp RPM to the gauge range, which covers the configured
             # redline (issue-674bec49)
             max_rpm = self._gauge_max_rpm()
@@ -1107,7 +1135,8 @@ class DisplayManager:
             inner_radius = 100
 
             # Angle conversion: clock degrees to canvas radians
-            # Active arc: 210 deg (7 o'clock) to 150 deg (5 o'clock) via top = 300 deg sweep
+            # Active arc: 210 deg (7 o'clock) to 150 deg (5 o'clock) via top = 300 deg
+            # sweep
             start_clock_deg = 210
             active_sweep_deg = 300
 
@@ -1186,7 +1215,9 @@ class DisplayManager:
                 inner_y = center[1] + inner_radius * math.sin(angle_rad)
                 outer_x = center[0] + outer_radius * math.cos(angle_rad)
                 outer_y = center[1] + outer_radius * math.sin(angle_rad)
-                pygame.draw.line(surface, palette.line, (inner_x, inner_y), (outer_x, outer_y), 2)
+                pygame.draw.line(
+                    surface, palette.line, (inner_x, inner_y), (outer_x, outer_y), 2
+                )
 
             # 6. Draw inner arc edge ring (subtle dark stroke)
             pygame.draw.circle(surface, palette.edge, center, inner_radius, 2)
@@ -1200,8 +1231,13 @@ class DisplayManager:
                 tick_start_y = center[1] + (outer_radius - 28) * math.sin(angle_rad)
                 tick_end_x = center[0] + outer_radius * math.cos(angle_rad)
                 tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
-                pygame.draw.line(surface, palette.tick,
-                               (tick_start_x, tick_start_y), (tick_end_x, tick_end_y), 7)
+                pygame.draw.line(
+                    surface,
+                    palette.tick,
+                    (tick_start_x, tick_start_y),
+                    (tick_end_x, tick_end_y),
+                    7,
+                )
 
                 # Numeral - positioned 58px inward from outer radius
                 if tick_font:
@@ -1209,8 +1245,12 @@ class DisplayManager:
                     num_x = center[0] + (outer_radius - 58) * math.cos(angle_rad)
                     num_y = center[1] + (outer_radius - 58) * math.sin(angle_rad)
                     self.rendering_engine.render_text(
-                        RenderTarget.BACK_BUFFER, numeral, tick_font, palette.tick,
-                        (int(num_x), int(num_y)), center=True
+                        RenderTarget.BACK_BUFFER,
+                        numeral,
+                        tick_font,
+                        palette.tick,
+                        (int(num_x), int(num_y)),
+                        center=True,
                     )
 
             # 8. Draw band boundary marks at thresholds.
@@ -1222,12 +1262,12 @@ class DisplayManager:
             # Each mark takes the colour of the band it opens, read from
             # the active palette rather than restated (change-5012004e).
             boundary_colors = [
-                (bands.idle_max, palette.bands[1]),       # Blue
-                (bands.torque_start, palette.bands[2]),   # Green
+                (bands.idle_max, palette.bands[1]),  # Blue
+                (bands.torque_start, palette.bands[2]),  # Green
                 (bands.caution_start, palette.bands[3]),  # Yellow
                 (bands.warning_start, palette.bands[4]),  # Orange
-                (bands.danger_start, palette.bands[5]),   # Red
-                (bands.redline_rpm, palette.bands[5])     # Red
+                (bands.danger_start, palette.bands[5]),  # Red
+                (bands.redline_rpm, palette.bands[5]),  # Red
             ]
 
             for threshold_rpm, color in boundary_colors:
@@ -1238,8 +1278,13 @@ class DisplayManager:
                     mark_start_y = center[1] + (outer_radius - 28) * math.sin(angle_rad)
                     mark_end_x = center[0] + outer_radius * math.cos(angle_rad)
                     mark_end_y = center[1] + outer_radius * math.sin(angle_rad)
-                    pygame.draw.line(surface, color,
-                                   (mark_start_x, mark_start_y), (mark_end_x, mark_end_y), 7)
+                    pygame.draw.line(
+                        surface,
+                        color,
+                        (mark_start_x, mark_start_y),
+                        (mark_end_x, mark_end_y),
+                        7,
+                    )
 
             # 9. Draw white indicator line at current RPM
             if rpm > 0:
@@ -1248,15 +1293,24 @@ class DisplayManager:
                 ind_inner_y = center[1] + inner_radius * math.sin(current_angle_rad)
                 ind_outer_x = center[0] + outer_radius * math.cos(current_angle_rad)
                 ind_outer_y = center[1] + outer_radius * math.sin(current_angle_rad)
-                pygame.draw.line(surface, (255, 255, 255),
-                               (ind_inner_x, ind_inner_y), (ind_outer_x, ind_outer_y), 3)
+                pygame.draw.line(
+                    surface,
+                    (255, 255, 255),
+                    (ind_inner_x, ind_inner_y),
+                    (ind_outer_x, ind_outer_y),
+                    3,
+                )
 
             # 10. Draw 'RPM x 1000' label in inert arc
             label_font = get_label_small_font()
             if label_font:
                 self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, "RPM \u00d7 1000", label_font, palette.label,
-                    (240, 420), center=True
+                    RenderTarget.BACK_BUFFER,
+                    "RPM \u00d7 1000",
+                    label_font,
+                    palette.label,
+                    (240, 420),
+                    center=True,
                 )
 
             # 11-13. Draw centre circle in the active band's colour.
@@ -1281,8 +1335,12 @@ class DisplayManager:
             readout_font = get_font_manager().get_font(72)
             if readout_font:
                 self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, f"{rpm/1000:.1f}",
-                    readout_font, (255, 255, 255), center, center=True
+                    RenderTarget.BACK_BUFFER,
+                    f"{rpm / 1000:.1f}",
+                    readout_font,
+                    (255, 255, 255),
+                    center,
+                    center=True,
                 )
 
             # Transient confirmation that the palette changed. Two
@@ -1293,9 +1351,11 @@ class DisplayManager:
                 if notice_font:
                     self.rendering_engine.render_text(
                         RenderTarget.BACK_BUFFER,
-                        'Night' if palette is NIGHT_PALETTE else 'Day',
-                        notice_font, palette.tick, (240, 330),
-                        center=True
+                        "Night" if palette is NIGHT_PALETTE else "Day",
+                        notice_font,
+                        palette.tick,
+                        (240, 330),
+                        center=True,
                     )
 
             # The f-string is formatted before the call, so at 60 Hz
@@ -1303,17 +1363,17 @@ class DisplayManager:
             # and production configures a NullHandler
             # (display review §5.6, recommendation 14).
             if self.logger.isEnabledFor(logging.DEBUG):
-                self.logger.debug(f'Radial mode: RPM={rpm:.0f}')
+                self.logger.debug(f"Radial mode: RPM={rpm:.0f}")
 
         except Exception as e:
             self.logger.error(f"Radial display error: {e}", exc_info=True)
-    
+
     def _draw_options_mode(self) -> None:
         """Draw options interface — menu, update or confirm sub-view."""
         try:
-            if self._options_view == 'update':
+            if self._options_view == "update":
                 self._draw_update_view()
-            elif self._options_view == 'confirm_clear':
+            elif self._options_view == "confirm_clear":
                 self._draw_confirm_view()
             else:
                 self._draw_options_menu()
@@ -1394,17 +1454,15 @@ class DisplayManager:
             # DISCONNECTED screen was drawn: Setup and Simulate would
             # be visible and dead, and that screen is the operator's
             # only route out of a lost link.
-            disconnected = (
-                self._link_lost() and self.config.mode == DisplayMode.RADIAL
-            )
+            disconnected = self._link_lost() and self.config.mode == DisplayMode.RADIAL
             if disconnected:
                 self._register_disconnected_regions()
                 return
 
             if self.config.mode == DisplayMode.OPTIONS:
-                if self._options_view == 'update':
+                if self._options_view == "update":
                     self._register_update_view_regions()
-                elif self._options_view == 'confirm_clear':
+                elif self._options_view == "confirm_clear":
                     self._register_confirm_view_regions()
                 else:
                     self._register_options_menu_regions()
@@ -1456,9 +1514,7 @@ class DisplayManager:
         """
         expansion = TypographyConstants.BUTTON_TOUCH_EXPANSION
         min_height = TypographyConstants.BUTTON_MIN_TOUCH_HEIGHT
-        min_separation = max(
-            TypographyConstants.BUTTON_MIN_SEPARATION, 2 * expansion
-        )
+        min_separation = max(TypographyConstants.BUTTON_MIN_SEPARATION, 2 * expansion)
 
         if height is None:
             height = min_height
@@ -1478,7 +1534,7 @@ class DisplayManager:
             )
             separation = min_separation
 
-        radius_sq = TypographyConstants.VIEWPORT_RADIUS ** 2
+        radius_sq = TypographyConstants.VIEWPORT_RADIUS**2
         rects: List[pygame.Rect] = []
 
         for index, (region_id, action, callback) in enumerate(specs):
@@ -1496,7 +1552,10 @@ class DisplayManager:
             # It is not raised: a layout fault must not crash the
             # instrument on a moving vehicle.
             for corner_x, corner_y in (
-                rect.topleft, rect.topright, rect.bottomleft, rect.bottomright
+                rect.topleft,
+                rect.topright,
+                rect.bottomleft,
+                rect.bottomright,
             ):
                 if (corner_x - 240) ** 2 + (corner_y - 240) ** 2 > radius_sq:
                     self.logger.error(
@@ -1544,17 +1603,29 @@ class DisplayManager:
 
         if self._options_page == 0:
             specs = (
-                ("clear_settings", TouchAction.SETTINGS_CHANGE,
-                 lambda pos: self._on_clear_settings_requested()),
-                ("check_updates", TouchAction.SETTINGS_CHANGE,
-                 lambda pos: self._on_check_updates()),
+                (
+                    "clear_settings",
+                    TouchAction.SETTINGS_CHANGE,
+                    lambda pos: self._on_clear_settings_requested(),
+                ),
+                (
+                    "check_updates",
+                    TouchAction.SETTINGS_CHANGE,
+                    lambda pos: self._on_check_updates(),
+                ),
             )
         else:
             specs = (
-                ("simulation_mode", TouchAction.SETTINGS_CHANGE,
-                 lambda pos: self._on_simulation_mode()),
-                ("debug_toggle", TouchAction.SETTINGS_CHANGE,
-                 lambda pos: self._on_debug_toggle()),
+                (
+                    "simulation_mode",
+                    TouchAction.SETTINGS_CHANGE,
+                    lambda pos: self._on_simulation_mode(),
+                ),
+                (
+                    "debug_toggle",
+                    TouchAction.SETTINGS_CHANGE,
+                    lambda pos: self._on_debug_toggle(),
+                ),
             )
 
         # Two 72 px targets separated by 16 px span y 185 to 345,
@@ -1577,10 +1648,16 @@ class DisplayManager:
         """
         rects = self._button_column(
             (
-                ("confirm_clear_yes", TouchAction.SETTINGS_CHANGE,
-                 lambda pos: self._on_clear_settings()),
-                ("confirm_clear_no", TouchAction.SETTINGS_CHANGE,
-                 lambda pos: self._on_cancel_clear()),
+                (
+                    "confirm_clear_yes",
+                    TouchAction.SETTINGS_CHANGE,
+                    lambda pos: self._on_clear_settings(),
+                ),
+                (
+                    "confirm_clear_no",
+                    TouchAction.SETTINGS_CHANGE,
+                    lambda pos: self._on_cancel_clear(),
+                ),
             ),
             width=300,
             top=250,
@@ -1603,22 +1680,31 @@ class DisplayManager:
         self._update_btn_install = None
         self._update_btn_cancel = None
 
-        if self._update_status == 'available':
+        if self._update_status == "available":
             self._update_btn_install, self._update_btn_cancel = self._button_column(
                 (
-                    ("update_install", TouchAction.SETTINGS_CHANGE,
-                     lambda pos: self._on_confirm_install()),
-                    ("update_cancel", TouchAction.SETTINGS_CHANGE,
-                     lambda pos: self._on_cancel_update()),
+                    (
+                        "update_install",
+                        TouchAction.SETTINGS_CHANGE,
+                        lambda pos: self._on_confirm_install(),
+                    ),
+                    (
+                        "update_cancel",
+                        TouchAction.SETTINGS_CHANGE,
+                        lambda pos: self._on_cancel_update(),
+                    ),
                 ),
                 width=280,
                 top=240,
             )
-        elif self._update_status in ('none', 'error'):
+        elif self._update_status in ("none", "error"):
             (self._update_btn_cancel,) = self._button_column(
                 (
-                    ("update_back", TouchAction.SETTINGS_CHANGE,
-                     lambda pos: self._on_cancel_update()),
+                    (
+                        "update_back",
+                        TouchAction.SETTINGS_CHANGE,
+                        lambda pos: self._on_cancel_update(),
+                    ),
                 ),
                 width=280,
                 top=300,
@@ -1631,7 +1717,7 @@ class DisplayManager:
             "acknowledgement_dismiss",
             self._ack_btn_dismiss,
             TouchAction.NAVIGATION,
-            lambda pos: self._on_acknowledgement_dismissed()
+            lambda pos: self._on_acknowledgement_dismissed(),
         )
 
     def _register_disconnected_regions(self) -> None:
@@ -1661,13 +1747,19 @@ class DisplayManager:
         registered.
         """
         specs = [
-            ("disconnected_setup", TouchAction.NAVIGATION,
-             lambda pos: self._enter_setup_from_disconnected()),
+            (
+                "disconnected_setup",
+                TouchAction.NAVIGATION,
+                lambda pos: self._enter_setup_from_disconnected(),
+            ),
         ]
         if self._reset_callback is not None:
             specs.append(
-                ("disconnected_reset", TouchAction.NAVIGATION,
-                 lambda pos: self._reset_callback())
+                (
+                    "disconnected_reset",
+                    TouchAction.NAVIGATION,
+                    lambda pos: self._reset_callback(),
+                )
             )
 
         rects = self._button_column(specs, width=240, top=240)
@@ -1709,15 +1801,21 @@ class DisplayManager:
         radius = TypographyConstants.BUTTON_CORNER_RADIUS
         pygame.draw.rect(surface, fill, rect, border_radius=radius)
         pygame.draw.rect(
-            surface, (140, 140, 160), rect,
+            surface,
+            (140, 140, 160),
+            rect,
             TypographyConstants.BUTTON_BORDER_WIDTH,
             border_radius=radius,
         )
 
         if font:
             self.rendering_engine.render_text(
-                RenderTarget.BACK_BUFFER, label, font, text_colour,
-                rect.center, center=True
+                RenderTarget.BACK_BUFFER,
+                label,
+                font,
+                text_colour,
+                rect.center,
+                center=True,
             )
 
     def _draw_options_menu(self) -> None:
@@ -1739,8 +1837,12 @@ class DisplayManager:
         font = get_title_display_font()
         if font:
             self.rendering_engine.render_text(
-                RenderTarget.BACK_BUFFER, "Options", font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 100), center=True
+                RenderTarget.BACK_BUFFER,
+                "Options",
+                font,
+                self._DISCONNECTED_TEXT_COLOUR,
+                (240, 100),
+                center=True,
             )
 
         # Geometry is owned by _register_options_menu_regions, so the
@@ -1791,8 +1893,12 @@ class DisplayManager:
         small_font = get_label_small_font()
         if small_font:
             self.rendering_engine.render_text(
-                RenderTarget.BACK_BUFFER, "Swipe up to return", small_font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 435), center=True
+                RenderTarget.BACK_BUFFER,
+                "Swipe up to return",
+                small_font,
+                self._DISCONNECTED_TEXT_COLOUR,
+                (240, 435),
+                center=True,
             )
 
     def _draw_confirm_view(self) -> None:
@@ -1811,8 +1917,12 @@ class DisplayManager:
         title_font = get_title_display_font()
         if title_font:
             self.rendering_engine.render_text(
-                RenderTarget.BACK_BUFFER, "Clear settings?", title_font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 100), center=True
+                RenderTarget.BACK_BUFFER,
+                "Clear settings?",
+                title_font,
+                self._DISCONNECTED_TEXT_COLOUR,
+                (240, 100),
+                center=True,
             )
 
         body_font = get_font_manager().get_font(22)
@@ -1822,8 +1932,12 @@ class DisplayManager:
                 ("Setup will run at the next start.", 205),
             ):
                 self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, _text, body_font,
-                    self._DISCONNECTED_TEXT_COLOUR, (240, _y), center=True
+                    RenderTarget.BACK_BUFFER,
+                    _text,
+                    body_font,
+                    self._DISCONNECTED_TEXT_COLOUR,
+                    (240, _y),
+                    center=True,
                 )
 
         button_font = get_font_manager().get_font(26)
@@ -1897,17 +2011,21 @@ class DisplayManager:
         font = get_title_display_font()
         if font:
             self.rendering_engine.render_text(
-                RenderTarget.BACK_BUFFER, "Update", font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 80), center=True
+                RenderTarget.BACK_BUFFER,
+                "Update",
+                font,
+                self._DISCONNECTED_TEXT_COLOUR,
+                (240, 80),
+                center=True,
             )
 
-        if self._update_status == 'checking':
+        if self._update_status == "checking":
             msg = "Checking\u2026"
-        elif self._update_status == 'available':
+        elif self._update_status == "available":
             msg = f"Available: v{self._update_version}"
-        elif self._update_status == 'pending':
+        elif self._update_status == "pending":
             msg = "Installing on restart\u2026"
-        elif self._update_status == 'none':
+        elif self._update_status == "none":
             msg = "No update found"
         else:
             msg = "Check failed"
@@ -1915,8 +2033,12 @@ class DisplayManager:
         status_font = get_font_manager().get_font(26)
         if status_font:
             self.rendering_engine.render_text(
-                RenderTarget.BACK_BUFFER, msg, status_font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 180), center=True
+                RenderTarget.BACK_BUFFER,
+                msg,
+                status_font,
+                self._DISCONNECTED_TEXT_COLOUR,
+                (240, 180),
+                center=True,
             )
 
         # A check has no reportable progress — find_available_update
@@ -1924,7 +2046,7 @@ class DisplayManager:
         # indeterminate. It exists to distinguish a running check
         # from a stalled application (display review §7.8,
         # recommendation 28).
-        if self._update_status == 'checking':
+        if self._update_status == "checking":
             self._draw_update_spinner()
 
         button_font = get_font_manager().get_font(26)
@@ -1932,7 +2054,7 @@ class DisplayManager:
         # Geometry is owned by _register_update_view_regions, which also
         # clears the rects a given status does not present, so nothing is
         # drawn that was not registered.
-        if self._update_status == 'available':
+        if self._update_status == "available":
             if self._update_btn_install is not None:
                 self._draw_button(
                     self._update_btn_install, "Install", (0, 120, 0), button_font
@@ -1941,7 +2063,7 @@ class DisplayManager:
                 self._draw_button(
                     self._update_btn_cancel, "Cancel", (80, 80, 100), button_font
                 )
-        elif self._update_status in ('none', 'error'):
+        elif self._update_status in ("none", "error"):
             if self._update_btn_cancel is not None:
                 self._draw_button(
                     self._update_btn_cancel, "Back", (80, 80, 100), button_font
@@ -1950,8 +2072,12 @@ class DisplayManager:
         small_font = get_label_small_font()
         if small_font:
             self.rendering_engine.render_text(
-                RenderTarget.BACK_BUFFER, "Swipe up to return", small_font,
-                self._DISCONNECTED_TEXT_COLOUR, (240, 410), center=True
+                RenderTarget.BACK_BUFFER,
+                "Swipe up to return",
+                small_font,
+                self._DISCONNECTED_TEXT_COLOUR,
+                (240, 410),
+                center=True,
             )
 
     def _on_clear_settings_requested(self) -> None:
@@ -1975,7 +2101,7 @@ class DisplayManager:
         one page would fail the geometry requirement recommendation 24
         exists to satisfy.
         """
-        self._options_view = 'confirm_clear'
+        self._options_view = "confirm_clear"
 
     def _on_cancel_clear(self) -> None:
         """Abandon the confirmation and return to the options menu.
@@ -1983,13 +2109,14 @@ class DisplayManager:
         Returns the sub-view and invokes nothing else. It must not
         reach DeviceStore or _on_clear_settings.
         """
-        self._options_view = 'menu'
+        self._options_view = "menu"
 
     def _on_clear_settings(self) -> None:
         """Clear DeviceStore and enter SETUP mode"""
         try:
             self.logger.info("Clearing device settings")
             from ..comm.device_store import get_device_store
+
             ds = get_device_store()
             device = ds.get_primary_device()
             if device:
@@ -2019,7 +2146,9 @@ class DisplayManager:
         """Toggle runtime debug logging via the application callback."""
         try:
             self._debug_logging_on = not self._debug_logging_on
-            self.logger.info(f"Debug logging toggle -> {'on' if self._debug_logging_on else 'off'}")
+            self.logger.info(
+                f"Debug logging toggle -> {'on' if self._debug_logging_on else 'off'}"
+            )
             if self._debug_toggle_callback is not None:
                 self._debug_toggle_callback(self._debug_logging_on)
             else:
@@ -2030,50 +2159,52 @@ class DisplayManager:
     def _on_check_updates(self) -> None:
         """Enter the update view and start an async check."""
         try:
-            self._options_view = 'update'
-            self._update_status = 'checking'
+            self._options_view = "update"
+            self._update_status = "checking"
             self._update_wheel = None
             self._update_version = None
             self.thread_manager.worker_pool.submit(self._run_update_check)
         except Exception as e:
             self.logger.error(f"Check updates error: {e}", exc_info=True)
-            self._update_status = 'error'
+            self._update_status = "error"
 
     def _run_update_check(self) -> None:
         """Worker: scan for an available update and set view state."""
         try:
             from ..utils import updater
+
             result = updater.find_available_update()
             if result is None:
-                self._update_status = 'none'
+                self._update_status = "none"
             else:
                 self._update_wheel, self._update_version = result
-                self._update_status = 'available'
+                self._update_status = "available"
         except Exception as e:
             self.logger.error(f"Update check worker error: {e}", exc_info=True)
-            self._update_status = 'error'
+            self._update_status = "error"
 
     def _on_confirm_install(self) -> None:
         """Stage the pending wheel and request a restart."""
         try:
             from ..utils import updater
+
             if self._update_wheel and updater.stage_pending(self._update_wheel):
-                self._update_status = 'pending'
+                self._update_status = "pending"
                 self.logger.info("Update staged — requesting restart")
                 if self._restart_callback is not None:
                     self._restart_callback()
                 else:
                     self.logger.warning("restart_callback not registered")
             else:
-                self._update_status = 'error'
+                self._update_status = "error"
         except Exception as e:
             self.logger.error(f"Confirm install error: {e}", exc_info=True)
-            self._update_status = 'error'
+            self._update_status = "error"
 
     def _on_cancel_update(self) -> None:
         """Return to the options menu."""
-        self._options_view = 'menu'
-        self._update_status = 'idle'
+        self._options_view = "menu"
+        self._update_status = "idle"
 
     def _draw_acknowledgement_mode(self) -> None:
         """Draw acknowledgement screen with blocking tap-to-dismiss interaction.
@@ -2098,7 +2229,7 @@ class DisplayManager:
                     title_font,
                     self._DISCONNECTED_TEXT_COLOUR,
                     (240, 120),
-                    center=True
+                    center=True,
                 )
 
             # Render body disclaimer text. Line breaks and coordinates
@@ -2112,7 +2243,7 @@ class DisplayManager:
                     body_font,
                     self._DISCONNECTED_TEXT_COLOUR,
                     (240, 208),
-                    center=True
+                    center=True,
                 )
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
@@ -2120,7 +2251,7 @@ class DisplayManager:
                     body_font,
                     self._DISCONNECTED_TEXT_COLOUR,
                     (240, 240),
-                    center=True
+                    center=True,
                 )
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
@@ -2128,7 +2259,7 @@ class DisplayManager:
                     body_font,
                     self._DISCONNECTED_TEXT_COLOUR,
                     (240, 272),
-                    center=True
+                    center=True,
                 )
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
@@ -2136,7 +2267,7 @@ class DisplayManager:
                     body_font,
                     self._DISCONNECTED_TEXT_COLOUR,
                     (240, 304),
-                    center=True
+                    center=True,
                 )
 
             # Render instruction text
@@ -2148,7 +2279,7 @@ class DisplayManager:
                     instruction_font,
                     self._DISCONNECTED_TEXT_COLOUR,
                     (240, 350),
-                    center=True
+                    center=True,
                 )
 
             self.logger.debug("Acknowledgement screen rendered")
@@ -2166,8 +2297,7 @@ class DisplayManager:
         try:
             # Save acknowledgement state
             self._ack_state_manager.set_acknowledged(
-                self.config.rpm_bands,
-                self.config.engine_profile
+                self.config.rpm_bands, self.config.engine_profile
             )
 
             # Clear touch regions
@@ -2176,13 +2306,16 @@ class DisplayManager:
             # Transition to post-splash mode
             self.config.mode = self._post_splash_mode
 
-            self.logger.info(f"Acknowledgement dismissed — transitioning to {self._post_splash_mode.name}")
+            self.logger.info(
+                "Acknowledgement dismissed — transitioning to "
+                f"{self._post_splash_mode.name}"
+            )
 
         except Exception as e:
             self.logger.error(f"Acknowledgement dismissal error: {e}", exc_info=True)
             # Fallback: transition anyway to prevent being stuck
             self.config.mode = self._post_splash_mode
-    
+
     # Background and text colours for the DISCONNECTED screen. Changed
     # from red-on-black (issue-<pending>) — a saturated red field with
     # light-grey/red text scored poorly for readability. Pale dusty
@@ -2221,7 +2354,7 @@ class DisplayManager:
                     title_font,
                     self._DISCONNECTED_TEXT_COLOUR,
                     (240, 145),
-                    center=True
+                    center=True,
                 )
 
             # Message
@@ -2233,7 +2366,7 @@ class DisplayManager:
                     msg_font,
                     self._DISCONNECTED_TEXT_COLOUR,
                     (240, 180),
-                    center=True
+                    center=True,
                 )
 
             # Cause line — why the last connect failed, when known.
@@ -2254,7 +2387,7 @@ class DisplayManager:
                         cause_font,
                         self._DISCONNECTED_TEXT_COLOUR,
                         (240, 210),
-                        center=True
+                        center=True,
                     )
 
             # Geometry is owned by _register_disconnected_regions, so the
@@ -2263,14 +2396,12 @@ class DisplayManager:
 
             if self._disconnected_btn_setup is not None:
                 self._draw_button(
-                    self._disconnected_btn_setup, "Setup",
-                    (60, 60, 80), button_font
+                    self._disconnected_btn_setup, "Setup", (60, 60, 80), button_font
                 )
 
             if self._disconnected_btn_reset is not None:
                 self._draw_button(
-                    self._disconnected_btn_reset, "Reset",
-                    (60, 60, 80), button_font
+                    self._disconnected_btn_reset, "Reset", (60, 60, 80), button_font
                 )
 
             self._draw_reconnect_spinner()
@@ -2327,9 +2458,11 @@ class DisplayManager:
             if self._retry_interval_callback:
                 try:
                     candidate = self._retry_interval_callback()
-                    if (isinstance(candidate, (int, float))
-                            and not isinstance(candidate, bool)
-                            and candidate > 0):
+                    if (
+                        isinstance(candidate, (int, float))
+                        and not isinstance(candidate, bool)
+                        and candidate > 0
+                    ):
                         period = float(candidate)
                 except Exception as e:
                     self.logger.debug(
@@ -2359,13 +2492,13 @@ class DisplayManager:
                     int(dim_colour[c] + (bright_colour[c] - dim_colour[c]) * weight)
                     for c in range(3)
                 )
-                angle = math.radians(
-                    i * (360.0 / self._SPINNER_DOT_COUNT) - 90.0
+                angle = math.radians(i * (360.0 / self._SPINNER_DOT_COUNT) - 90.0)
+                x = self._SPINNER_CENTRE[0] + self._SPINNER_RING_RADIUS * math.cos(
+                    angle
                 )
-                x = (self._SPINNER_CENTRE[0]
-                     + self._SPINNER_RING_RADIUS * math.cos(angle))
-                y = (self._SPINNER_CENTRE[1]
-                     + self._SPINNER_RING_RADIUS * math.sin(angle))
+                y = self._SPINNER_CENTRE[1] + self._SPINNER_RING_RADIUS * math.sin(
+                    angle
+                )
                 pygame.draw.circle(
                     surface, colour, (int(x), int(y)), self._SPINNER_DOT_RADIUS
                 )
@@ -2410,12 +2543,13 @@ class DisplayManager:
             # position is 180 px out, outside the RADIAL centre disc
             # and the numeric readout it now carries (display review
             # §8.1, recommendation 19).
-            self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER,
-                                            (color.r, color.g, color.b), (240, 60), 5)
-            
+            self.rendering_engine.draw_circle(
+                RenderTarget.BACK_BUFFER, (color.r, color.g, color.b), (240, 60), 5
+            )
+
         except Exception as e:
             self.logger.error(f"Status indicator error: {e}", exc_info=True)
-    
+
     def _draw_setup_mode_fallback(self) -> None:
         """Draw basic setup mode indicator"""
         try:
@@ -2427,12 +2561,12 @@ class DisplayManager:
                     font,
                     (255, 255, 0),
                     (240, 240),
-                    center=True
+                    center=True,
                 )
 
         except Exception as e:
             self.logger.error(f"Setup mode fallback error: {e}", exc_info=True)
-    
+
     def _get_plain_font(self, size: int) -> Optional[pygame.font.Font]:
         """Get a cached plain (SDL default) font for the given size.
 
@@ -2452,8 +2586,9 @@ class DisplayManager:
         try:
             return get_font_manager().get_plain_font(size)
         except Exception as e:
-            self.logger.error(f"Plain font creation failed for size {size}: {e}",
-                              exc_info=True)
+            self.logger.error(
+                f"Plain font creation failed for size {size}: {e}", exc_info=True
+            )
             return None
 
     def set_setup_mode(self, setup_manager) -> None:
@@ -2461,14 +2596,14 @@ class DisplayManager:
         self._setup_manager = setup_manager
         self._in_setup_mode = True
         self.logger.info("Entered setup mode")
-    
+
     def exit_setup_mode(self) -> None:
         """Exit setup mode"""
         self._in_setup_mode = False
         self._setup_manager = None
         self._enter_post_splash_mode()
         self.logger.info("Exited setup mode")
-    
+
     def is_in_setup_mode(self) -> bool:
         """Check if in setup mode"""
         return self._in_setup_mode
@@ -2477,7 +2612,7 @@ class DisplayManager:
         """Handle touch events using touch coordinator"""
         try:
             self.logger.debug(f"Touch event at {pos}")
-            
+
             if self._in_setup_mode and self._setup_manager:
                 # Route to setup manager
                 return self._setup_manager.handle_touch_event(pos)
@@ -2485,39 +2620,45 @@ class DisplayManager:
                 # Use touch coordinator
                 action = self.touch_coordinator.handle_touch_down(pos)
                 return action
-                
+
         except Exception as e:
             self.logger.error(f"Touch event error: {e}", exc_info=True)
             return None
-    
+
     # Performance and debugging methods
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get comprehensive performance statistics"""
         try:
             return {
-                'rendering_stats': self.rendering_engine.get_stats(),
-                'touch_stats': self.touch_coordinator.get_stats(),
-                'performance_metrics': self.performance_monitor.get_current_metrics().to_dict(),
-                'performance_summary': self.performance_monitor.get_performance_summary()
+                "rendering_stats": self.rendering_engine.get_stats(),
+                "touch_stats": self.touch_coordinator.get_stats(),
+                "performance_metrics": (
+                    self.performance_monitor.get_current_metrics().to_dict()
+                ),
+                "performance_summary": (
+                    self.performance_monitor.get_performance_summary()
+                ),
             }
         except Exception as e:
             self.logger.error(f"Performance stats error: {e}", exc_info=True)
             return {}
-    
+
     def get_display_state(self) -> Dict[str, Any]:
         """Get current display state"""
         try:
             return {
-                'display_mode': self.config.mode.name,
-                'in_setup_mode': self._in_setup_mode,
-                'components_initialized': {
-                    'rendering_engine': self.rendering_engine.is_initialized(),
-                    'touch_coordinator': True,
-                    'performance_monitor': self.performance_monitor._monitoring
+                "display_mode": self.config.mode.name,
+                "in_setup_mode": self._in_setup_mode,
+                "components_initialized": {
+                    "rendering_engine": self.rendering_engine.is_initialized(),
+                    "touch_coordinator": True,
+                    "performance_monitor": self.performance_monitor._monitoring,
                 },
-                'active_touch_regions': len(self.touch_coordinator.get_active_regions()),
-                'timestamp': time.time()
+                "active_touch_regions": len(
+                    self.touch_coordinator.get_active_regions()
+                ),
+                "timestamp": time.time(),
             }
         except Exception as e:
             self.logger.error(f"Display state error: {e}", exc_info=True)
-            return {'error': str(e)}
+            return {"error": str(e)}

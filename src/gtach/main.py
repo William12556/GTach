@@ -7,15 +7,15 @@
 
 """GTach application entry point."""
 
-import os
-import sys
-import logging
 import argparse
 import datetime
 import faulthandler
+import logging
+import os
+import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional
-from logging.handlers import RotatingFileHandler
 
 # Module-level handler references for runtime manipulation.
 _start_handler: Optional[logging.Handler] = None
@@ -32,11 +32,11 @@ _stacks_file = None
 # (issue-3b8c50f2).
 _stacks_rotated = False
 
-_LOG_FORMAT = '%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s'
-_LOG_DATE_FMT = '%Y-%m-%d %H:%M:%S'
-_START_LOG = '/opt/gtach/start.log'
-_DEBUG_LOG = '/opt/gtach/debug.log'
-_STACKS_LOG = '/opt/gtach/stacks.log'
+_LOG_FORMAT = "%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s"
+_LOG_DATE_FMT = "%Y-%m-%d %H:%M:%S"
+_START_LOG = "/opt/gtach/start.log"
+_DEBUG_LOG = "/opt/gtach/debug.log"
+_STACKS_LOG = "/opt/gtach/stacks.log"
 # A dump of four threads measures ~604 bytes and the interval is 15 s,
 # so an armed run produces ~145 KB per hour. Three backups plus the
 # live file bound cross-run accumulation at four files — enough to
@@ -54,7 +54,7 @@ _DEBUG_BACKUPS = 10
 # never rotated at start, so a fault that caused a restart is still in
 # the live file afterwards. Without it nothing at all was persisted
 # after startup with debug off (issue-269871a0).
-_ERROR_LOG = '/opt/gtach/error.log'
+_ERROR_LOG = "/opt/gtach/error.log"
 _ERROR_MAX_BYTES = 1 * 1024 * 1024
 _ERROR_BACKUPS = 5
 
@@ -82,12 +82,12 @@ def setup_logging(debug: bool = False) -> None:
 
     # start.log — truncated at boot; startup records only.
     try:
-        _start_handler = logging.FileHandler(_START_LOG, mode='w', encoding='utf-8')
+        _start_handler = logging.FileHandler(_START_LOG, mode="w", encoding="utf-8")
         _start_handler.setLevel(logging.DEBUG)
         _start_handler.setFormatter(formatter)
         root.addHandler(_start_handler)
     except OSError as e:
-        print(f'[gtach] WARNING: could not open {_START_LOG}: {e}', file=sys.stderr)
+        print(f"[gtach] WARNING: could not open {_START_LOG}: {e}", file=sys.stderr)
 
     # debug.log — rotated at boot, so each run has its own file
     # and the previous ten survive; suppressed unless toggled on.
@@ -112,37 +112,41 @@ def setup_logging(debug: bool = False) -> None:
 
     try:
         _debug_handler = RotatingFileHandler(
-            _DEBUG_LOG, maxBytes=_DEBUG_MAX_BYTES,
-            backupCount=_DEBUG_BACKUPS, encoding='utf-8'
+            _DEBUG_LOG,
+            maxBytes=_DEBUG_MAX_BYTES,
+            backupCount=_DEBUG_BACKUPS,
+            encoding="utf-8",
         )
         if _had_content:
             try:
                 _debug_handler.doRollover()
             except Exception as e:
                 print(
-                    f'[gtach] WARNING: could not rotate '
-                    f'{_DEBUG_LOG}: {e}', file=sys.stderr
+                    f"[gtach] WARNING: could not rotate " f"{_DEBUG_LOG}: {e}",
+                    file=sys.stderr,
                 )
         _debug_handler.setLevel(logging.CRITICAL + 1)  # suppressed
         _debug_handler.setFormatter(formatter)
         root.addHandler(_debug_handler)
     except OSError as e:
-        print(f'[gtach] WARNING: could not open {_DEBUG_LOG}: {e}', file=sys.stderr)
+        print(f"[gtach] WARNING: could not open {_DEBUG_LOG}: {e}", file=sys.stderr)
 
     # error.log — always on, WARNING and above. Deliberately no
     # doRollover here: a restart caused by a fault must leave that
     # fault's record in the live file (issue-269871a0).
     try:
         _error_handler = RotatingFileHandler(
-            _ERROR_LOG, maxBytes=_ERROR_MAX_BYTES,
-            backupCount=_ERROR_BACKUPS, encoding='utf-8'
+            _ERROR_LOG,
+            maxBytes=_ERROR_MAX_BYTES,
+            backupCount=_ERROR_BACKUPS,
+            encoding="utf-8",
         )
         _error_handler.setLevel(logging.WARNING)
         _error_handler.setFormatter(formatter)
         root.addHandler(_error_handler)
     except OSError as e:
         _error_handler = None
-        print(f'[gtach] WARNING: could not open {_ERROR_LOG}: {e}', file=sys.stderr)
+        print(f"[gtach] WARNING: could not open {_ERROR_LOG}: {e}", file=sys.stderr)
 
     if debug and _debug_handler is not None:
         _debug_handler.setLevel(logging.DEBUG)
@@ -174,11 +178,11 @@ def _rotate_stacks_log() -> None:
         return
 
     for i in range(_STACKS_BACKUPS - 1, 0, -1):
-        source = f'{_STACKS_LOG}.{i}'
+        source = f"{_STACKS_LOG}.{i}"
         if os.path.exists(source):
-            os.replace(source, f'{_STACKS_LOG}.{i + 1}')
+            os.replace(source, f"{_STACKS_LOG}.{i + 1}")
 
-    os.replace(_STACKS_LOG, f'{_STACKS_LOG}.1')
+    os.replace(_STACKS_LOG, f"{_STACKS_LOG}.1")
 
 
 def _stacks_header() -> str:
@@ -190,12 +194,13 @@ def _stacks_header() -> str:
     """
     try:
         from importlib.metadata import version as _pkg_version
-        _ver = _pkg_version('gtach')
-    except Exception:
-        _ver = 'unknown'
 
-    _now = datetime.datetime.now().isoformat(timespec='seconds')
-    return f'=== gtach {_ver} pid {os.getpid()} armed {_now} ===\n'
+        _ver = _pkg_version("gtach")
+    except Exception:
+        _ver = "unknown"
+
+    _now = datetime.datetime.now().isoformat(timespec="seconds")
+    return f"=== gtach {_ver} pid {os.getpid()} armed {_now} ===\n"
 
 
 def enable_stack_dumps() -> bool:
@@ -262,27 +267,30 @@ def enable_stack_dumps() -> bool:
         try:
             _rotate_stacks_log()
         except OSError as e:
-            print(f'[gtach] WARNING: could not rotate {_STACKS_LOG}: {e}',
-                  file=sys.stderr)
+            print(
+                f"[gtach] WARNING: could not rotate {_STACKS_LOG}: {e}", file=sys.stderr
+            )
         finally:
             # Set whether or not rotation succeeded, so a persistent
             # failure is not retried on every subsequent arm.
             _stacks_rotated = True
 
     try:
-        _stacks_file = open(_STACKS_LOG, mode='a', buffering=1, encoding='utf-8')
+        _stacks_file = open(_STACKS_LOG, mode="a", buffering=1, encoding="utf-8")
         # Before arming, so that no dump can be written above the
         # header identifying it.
         try:
             _stacks_file.write(_stacks_header())
         except Exception as e:
-            print(f'[gtach] WARNING: could not write {_STACKS_LOG} header: {e}',
-                  file=sys.stderr)
+            print(
+                f"[gtach] WARNING: could not write {_STACKS_LOG} header: {e}",
+                file=sys.stderr,
+            )
         faulthandler.enable(file=_stacks_file)
         faulthandler.dump_traceback_later(15, repeat=True, file=_stacks_file)
         return True
     except OSError as e:
-        print(f'[gtach] WARNING: could not open {_STACKS_LOG}: {e}', file=sys.stderr)
+        print(f"[gtach] WARNING: could not open {_STACKS_LOG}: {e}", file=sys.stderr)
         _stacks_file = None
         return False
 
@@ -308,32 +316,32 @@ def disable_stack_dumps() -> None:
     try:
         _stacks_file.close()
     except Exception as e:
-        print(f'[gtach] WARNING: could not close {_STACKS_LOG}: {e}', file=sys.stderr)
+        print(f"[gtach] WARNING: could not close {_STACKS_LOG}: {e}", file=sys.stderr)
     _stacks_file = None
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='GTach — real-time engine tachometer')
-    parser.add_argument('--config', type=Path)
-    parser.add_argument('--debug', action='store_true')
+    parser = argparse.ArgumentParser(description="GTach — real-time engine tachometer")
+    parser.add_argument("--config", type=Path)
+    parser.add_argument("--debug", action="store_true")
     try:
         from importlib.metadata import version as _pkg_version
+
         _ver = f'GTach {_pkg_version("gtach")}'
     except Exception:
-        _ver = 'GTach'
-    parser.add_argument('--version', action='version', version=_ver)
-    parser.add_argument('--validate-config', action='store_true')
-    parser.add_argument('--validate-dependencies', action='store_true')
+        _ver = "GTach"
+    parser.add_argument("--version", action="version", version=_ver)
+    parser.add_argument("--validate-config", action="store_true")
+    parser.add_argument("--validate-dependencies", action="store_true")
     # Imported here rather than at module scope: main.py is the entry
     # point and importing comm.transport at import time would pull the
     # transport stack in ahead of argument parsing (change-6481f8ce).
     from .comm.transport import TRANSPORT_NAMES
-    parser.add_argument('--transport',
-                        choices=list(TRANSPORT_NAMES),
-                        default=None)
-    parser.add_argument('--obd-host', default='localhost')
-    parser.add_argument('--obd-port', type=int, default=35000)
-    parser.add_argument('--serial-port', default=None)
+
+    parser.add_argument("--transport", choices=list(TRANSPORT_NAMES), default=None)
+    parser.add_argument("--obd-host", default="localhost")
+    parser.add_argument("--obd-port", type=int, default=35000)
+    parser.add_argument("--serial-port", default=None)
     return parser.parse_args()
 
 
@@ -346,26 +354,29 @@ def main() -> int:
 
     if args.validate_dependencies:
         from .utils import validate_dependencies
+
         v = validate_dependencies(debug=args.debug)
         v.print_report(show_successful=args.debug)
         return 0 if v.can_start_application() else 1
 
     if args.validate_config:
         from .utils.config import ConfigStore
+
         store = ConfigStore(Path(config_file) if config_file else None)
         errors = store.validate()
         for error in errors:
-            print(f'Config invalid: {error}')
+            print(f"Config invalid: {error}")
         if errors:
             return 1
-        print(f'Config valid: {store.path}')
+        print(f"Config valid: {store.path}")
         return 0
 
     from .app import GTachApplication
+
     app = GTachApplication(config_file, args.debug, args)
     app.run()
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

@@ -44,13 +44,13 @@ def app(tmp_path, monkeypatch):
     under test touches the terminal.
     """
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr('gtach.app.atexit.register', lambda *a, **k: None)
-    monkeypatch.setattr('gtach.app.TerminalRestorer', lambda *a, **k: object())
+    monkeypatch.setattr("gtach.app.atexit.register", lambda *a, **k: None)
+    monkeypatch.setattr("gtach.app.TerminalRestorer", lambda *a, **k: object())
 
     instance = GTachApplication(config_path=None, debug=False)
 
     forced = threading.Event()
-    monkeypatch.setattr(instance, '_force_exit', forced.set)
+    monkeypatch.setattr(instance, "_force_exit", forced.set)
     instance._forced_exit_event = forced
     return instance
 
@@ -61,7 +61,7 @@ class TestWatchdogShutdownCallback:
     def test_sets_stop_event_and_does_not_shut_down(self, app, monkeypatch):
         """It signals the main loop; teardown is run()'s responsibility."""
         calls = []
-        monkeypatch.setattr(app, 'shutdown', lambda: calls.append('shutdown'))
+        monkeypatch.setattr(app, "shutdown", lambda: calls.append("shutdown"))
 
         app._watchdog_shutdown()
 
@@ -70,7 +70,7 @@ class TestWatchdogShutdownCallback:
 
     def test_second_invocation_is_harmless(self, app, monkeypatch):
         """WatchdogMonitor guards against this, but it must not matter."""
-        monkeypatch.setattr(app, 'shutdown', lambda: pytest.fail('shutdown called'))
+        monkeypatch.setattr(app, "shutdown", lambda: pytest.fail("shutdown called"))
 
         app._watchdog_shutdown()
         app._watchdog_shutdown()
@@ -83,7 +83,7 @@ class TestWatchdogShutdownCallback:
         app._watchdog_shutdown()
         new = [t for t in threading.enumerate() if t not in before]
 
-        assert new, 'no backstop timer thread was started'
+        assert new, "no backstop timer thread was started"
         assert all(t.daemon for t in new)
 
     def test_backstop_delay_is_twenty_seconds(self):
@@ -96,8 +96,8 @@ class TestRunLoopExit:
     def test_run_returns_and_shuts_down_once(self, app, monkeypatch):
         """run() exits within EXIT_TIMEOUT of the callback returning."""
         shutdowns = []
-        monkeypatch.setattr(app, 'start', lambda: None)
-        monkeypatch.setattr(app, 'shutdown', lambda: shutdowns.append(time.time()))
+        monkeypatch.setattr(app, "start", lambda: None)
+        monkeypatch.setattr(app, "shutdown", lambda: shutdowns.append(time.time()))
 
         entered = threading.Event()
         returned = threading.Event()
@@ -107,16 +107,16 @@ class TestRunLoopExit:
             app.run()
             returned.set()
 
-        runner = threading.Thread(target=_run, name='run-under-test', daemon=True)
+        runner = threading.Thread(target=_run, name="run-under-test", daemon=True)
         runner.start()
-        assert entered.wait(EXIT_TIMEOUT), 'run() never started'
+        assert entered.wait(EXIT_TIMEOUT), "run() never started"
 
         # Let the loop reach its wait before signalling, so this
         # exercises the wake-up rather than the pre-loop test.
         time.sleep(0.05)
         app._watchdog_shutdown()
 
-        assert returned.wait(EXIT_TIMEOUT), 'run() did not exit promptly'
+        assert returned.wait(EXIT_TIMEOUT), "run() did not exit promptly"
         runner.join(timeout=EXIT_TIMEOUT)
         assert len(shutdowns) == 1
 
@@ -126,8 +126,8 @@ class TestRunLoopExit:
         The event is therefore settable before run() has been entered,
         and the loop must exit on its first test.
         """
-        monkeypatch.setattr(app, 'start', lambda: None)
-        monkeypatch.setattr(app, 'shutdown', lambda: None)
+        monkeypatch.setattr(app, "start", lambda: None)
+        monkeypatch.setattr(app, "shutdown", lambda: None)
 
         app._watchdog_shutdown()
 
@@ -137,7 +137,7 @@ class TestRunLoopExit:
         )
         runner.start()
 
-        assert returned.wait(EXIT_TIMEOUT), 'run() did not exit immediately'
+        assert returned.wait(EXIT_TIMEOUT), "run() did not exit immediately"
 
 
 class TestShutdownIdempotence:
@@ -148,10 +148,10 @@ class TestShutdownIdempotence:
 
         class _Recorder:
             def stop(self):
-                stops.append('stop')
+                stops.append("stop")
 
             def shutdown(self):
-                stops.append('shutdown')
+                stops.append("shutdown")
 
         app._watchdog = _Recorder()
         app._thread_manager = _Recorder()
@@ -161,8 +161,8 @@ class TestShutdownIdempotence:
         app.shutdown()
 
         assert stops == first
-        assert stops.count('stop') == 1
-        assert stops.count('shutdown') == 1
+        assert stops.count("stop") == 1
+        assert stops.count("shutdown") == 1
 
 
 def _aged_thread(manager: ThreadManager, name: str, age: float) -> None:
@@ -174,28 +174,34 @@ def _aged_thread(manager: ThreadManager, name: str, age: float) -> None:
 
 
 class TestAdvisoryTier:
-    """critical_threads == {'display', 'obd_protocol'}; advisory_threads == {'transport'}."""
+    """Tier membership.
+
+    critical_threads == {'display', 'obd_protocol'};
+    advisory_threads == {'transport'}.
+    """
 
     def test_membership(self):
         watchdog = WatchdogMonitor(ThreadManager())
-        assert watchdog.critical_threads == {'display', 'obd_protocol'}
-        assert watchdog.advisory_threads == {'transport'}
+        assert watchdog.critical_threads == {"display", "obd_protocol"}
+        assert watchdog.advisory_threads == {"transport"}
 
     def test_advisory_timeout_warns_but_never_recovers(self, caplog):
         """A stale advisory thread produces a warning and nothing more."""
         manager = ThreadManager()
         shutdowns = []
         watchdog = WatchdogMonitor(
-            manager, critical_timeout=1.0, recovery_timeout=0.5,
+            manager,
+            critical_timeout=1.0,
+            recovery_timeout=0.5,
             warning_timeout=0.25,
-            shutdown_callback=lambda: shutdowns.append('shutdown')
+            shutdown_callback=lambda: shutdowns.append("shutdown"),
         )
-        _aged_thread(manager, 'transport', age=600.0)
+        _aged_thread(manager, "transport", age=600.0)
 
-        with caplog.at_level('WARNING', logger='WatchdogMonitor'):
+        with caplog.at_level("WARNING", logger="WatchdogMonitor"):
             watchdog._check_thread_health()
 
-        assert any('transport' in r.message for r in caplog.records)
+        assert any("transport" in r.message for r in caplog.records)
 
         stats = watchdog.get_recovery_stats()
         assert stats.warnings_issued == 1
@@ -209,13 +215,15 @@ class TestAdvisoryTier:
         manager = ThreadManager()
         shutdowns = []
         watchdog = WatchdogMonitor(
-            manager, critical_timeout=1.0, recovery_timeout=0.5,
+            manager,
+            critical_timeout=1.0,
+            recovery_timeout=0.5,
             warning_timeout=0.25,
-            shutdown_callback=lambda: shutdowns.append('shutdown')
+            shutdown_callback=lambda: shutdowns.append("shutdown"),
         )
-        _aged_thread(manager, 'display', age=600.0)
+        _aged_thread(manager, "display", age=600.0)
 
         watchdog._check_thread_health()
 
-        assert shutdowns == ['shutdown']
+        assert shutdowns == ["shutdown"]
         assert watchdog.get_recovery_stats().shutdown_triggers == 1

@@ -14,18 +14,19 @@ ConfigStore its only owner (issue-5fbff586). load_engine_profile reads
 the packaged engine profiles; SplashConfig configures the splash screen.
 """
 
+import importlib.resources
+import logging
 import os
 import sys
-import logging
 import threading
-import importlib.resources
-from dataclasses import dataclass, asdict
-from typing import Optional, List, Dict, Any
+from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Conditional import of yaml
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     yaml = None
@@ -34,7 +35,7 @@ except ImportError:
 from .home import gtach_home
 
 
-def load_engine_profile(profile_name: str = 'abarth_595_turismo'):
+def load_engine_profile(profile_name: str = "abarth_595_turismo"):
     """Load engine profile from engine_profiles.yaml.
 
     Args:
@@ -46,7 +47,7 @@ def load_engine_profile(profile_name: str = 'abarth_595_turismo'):
     Raises:
         ImportError: If RPMBands cannot be imported
     """
-    logger = logging.getLogger(f'{__name__}.load_engine_profile')
+    logger = logging.getLogger(f"{__name__}.load_engine_profile")
 
     # Import RPMBands here to avoid circular imports
     try:
@@ -63,22 +64,28 @@ def load_engine_profile(profile_name: str = 'abarth_595_turismo'):
         try:
             if sys.version_info >= (3, 9):
                 import importlib.resources as pkg_resources
-                files = pkg_resources.files('gtach.assets')
-                profile_path = files / 'engine_profiles.yaml'
+
+                files = pkg_resources.files("gtach.assets")
+                profile_path = files / "engine_profiles.yaml"
             else:
                 # Fallback for older Python versions
                 import pkg_resources as pkg_res
-                profile_path = Path(pkg_res.resource_filename('gtach.assets', 'engine_profiles.yaml'))
+
+                profile_path = Path(
+                    pkg_res.resource_filename("gtach.assets", "engine_profiles.yaml")
+                )
         except Exception as e:
             logger.debug(f"importlib.resources failed: {e}")
 
         # Method 2: Try relative path from this file
         if profile_path is None or not Path(profile_path).exists():
-            config_dir = Path(__file__).parent.parent / 'assets'
-            profile_path = config_dir / 'engine_profiles.yaml'
+            config_dir = Path(__file__).parent.parent / "assets"
+            profile_path = config_dir / "engine_profiles.yaml"
 
         if not Path(profile_path).exists():
-            logger.warning(f"Engine profiles file not found at {profile_path}, using defaults")
+            logger.warning(
+                f"Engine profiles file not found at {profile_path}, using defaults"
+            )
             return RPMBands()
 
         # Load YAML file
@@ -86,15 +93,15 @@ def load_engine_profile(profile_name: str = 'abarth_595_turismo'):
             logger.warning("YAML not available, using default RPM bands")
             return RPMBands()
 
-        with open(profile_path, 'r') as f:
+        with open(profile_path, "r") as f:
             data = yaml.safe_load(f)
 
-        if not data or 'profiles' not in data:
+        if not data or "profiles" not in data:
             logger.warning("Invalid engine profiles file format, using defaults")
             return RPMBands()
 
         # Get the requested profile
-        profiles = data.get('profiles', {})
+        profiles = data.get("profiles", {})
         if profile_name not in profiles:
             logger.warning(f"Profile '{profile_name}' not found, using defaults")
             return RPMBands()
@@ -104,18 +111,21 @@ def load_engine_profile(profile_name: str = 'abarth_595_turismo'):
         # Construct RPMBands from profile
         try:
             rpm_bands = RPMBands(
-                idle_max=profile_data.get('idle_max', 999),
-                torque_start=profile_data.get('torque_start', 3000),
-                caution_start=profile_data.get('caution_start', 4500),
-                warning_start=profile_data.get('warning_start', 5500),
-                danger_start=profile_data.get('danger_start', 5800),
-                redline_rpm=profile_data.get('redline_rpm', 6000)
+                idle_max=profile_data.get("idle_max", 999),
+                torque_start=profile_data.get("torque_start", 3000),
+                caution_start=profile_data.get("caution_start", 4500),
+                warning_start=profile_data.get("warning_start", 5500),
+                danger_start=profile_data.get("danger_start", 5800),
+                redline_rpm=profile_data.get("redline_rpm", 6000),
             )
             logger.debug(f"Loaded engine profile '{profile_name}': {rpm_bands}")
             return rpm_bands
 
         except (KeyError, ValueError) as e:
-            logger.error(f"Error constructing RPMBands from profile '{profile_name}': {e}", exc_info=True)
+            logger.error(
+                f"Error constructing RPMBands from profile '{profile_name}': {e}",
+                exc_info=True,
+            )
             return RPMBands()
 
     except Exception as e:
@@ -126,9 +136,12 @@ def load_engine_profile(profile_name: str = 'abarth_595_turismo'):
 @dataclass
 class SplashConfig:
     """Splash screen configuration settings"""
+
     enabled: bool = True  # Enable/disable splash screen
     duration: float = 4.0  # Splash duration in seconds
-    graphics_mode: str = "automotive"  # Graphics mode: 'automotive', 'minimal', 'text_only'
+    graphics_mode: str = (
+        "automotive"  # Graphics mode: 'automotive', 'minimal', 'text_only'
+    )
     animation_speed: float = 1.0  # Animation speed multiplier
 
     def to_dict(self) -> Dict[str, Any]:
@@ -137,44 +150,43 @@ class SplashConfig:
             "enabled": self.enabled,
             "duration": self.duration,
             "graphics_mode": self.graphics_mode,
-            "animation_speed": self.animation_speed
+            "animation_speed": self.animation_speed,
         }
-        
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'SplashConfig':
+    def from_dict(cls, data: Dict[str, Any]) -> "SplashConfig":
         """Create instance from dictionary"""
         if not data:
             return cls()
-        
+
         # Validate graphics_mode
         valid_modes = ["automotive", "minimal", "text_only"]
         graphics_mode = data.get("graphics_mode", "automotive")
         if graphics_mode not in valid_modes:
             graphics_mode = "automotive"
-        
+
         # Validate duration (must be positive)
         duration = data.get("duration", 4.0)
         if duration <= 0:
             duration = 4.0
-        
+
         # Validate animation_speed (must be positive)
         animation_speed = data.get("animation_speed", 1.0)
         if animation_speed <= 0:
             animation_speed = 1.0
-            
+
         return cls(
             enabled=data.get("enabled", True),
             duration=duration,
             graphics_mode=graphics_mode,
-            animation_speed=animation_speed
+            animation_speed=animation_speed,
         )
 
 
-
 # Known config.yaml keys and accepted values (issue-5fbff586).
-MODE_VALUES = ('RADIAL',)
-LEGACY_MODE_VALUES = ('DIGITAL',)  # accepted on read, mapped to RADIAL
-PALETTE_VALUES = ('day', 'night')
+MODE_VALUES = ("RADIAL",)
+LEGACY_MODE_VALUES = ("DIGITAL",)  # accepted on read, mapped to RADIAL
+PALETTE_VALUES = ("day", "night")
 FPS_LIMIT_RANGE = (1, 60)
 TOUCH_LONG_PRESS_RANGE = (0.1, 5.0)
 
@@ -182,9 +194,10 @@ TOUCH_LONG_PRESS_RANGE = (0.1, 5.0)
 @dataclass
 class AppConfig:
     """Persisted display settings: the flat keys of config.yaml."""
-    mode: str = 'RADIAL'
-    palette: str = 'day'
-    engine_profile: str = 'abarth_595_turismo'
+
+    mode: str = "RADIAL"
+    palette: str = "day"
+    engine_profile: str = "abarth_595_turismo"
     fps_limit: int = 30
     touch_long_press: float = 1.0
     rpm_warning: int = 6500
@@ -193,13 +206,13 @@ class AppConfig:
 
 # Key -> type, in file order.
 CONFIG_KEYS: Dict[str, type] = {
-    'mode': str,
-    'palette': str,
-    'engine_profile': str,
-    'fps_limit': int,
-    'touch_long_press': float,
-    'rpm_warning': int,
-    'rpm_danger': int,
+    "mode": str,
+    "palette": str,
+    "engine_profile": str,
+    "fps_limit": int,
+    "touch_long_press": float,
+    "rpm_warning": int,
+    "rpm_danger": int,
 }
 
 
@@ -214,19 +227,21 @@ def _engine_profile_names() -> List[str]:
     """
     profile_path = None
     try:
-        profile_path = importlib.resources.files('gtach.assets') / 'engine_profiles.yaml'
+        profile_path = (
+            importlib.resources.files("gtach.assets") / "engine_profiles.yaml"
+        )
     except Exception:
         profile_path = None
     if profile_path is None or not Path(str(profile_path)).exists():
-        profile_path = Path(__file__).parent.parent / 'assets' / 'engine_profiles.yaml'
+        profile_path = Path(__file__).parent.parent / "assets" / "engine_profiles.yaml"
     try:
-        with open(profile_path, 'r') as f:
+        with open(profile_path, "r") as f:
             data = yaml.safe_load(f)
     except Exception:
         return []
-    if not isinstance(data, dict) or not isinstance(data.get('profiles'), dict):
+    if not isinstance(data, dict) or not isinstance(data.get("profiles"), dict):
         return []
-    return list(data['profiles'].keys())
+    return list(data["profiles"].keys())
 
 
 class ConfigStore:
@@ -244,14 +259,14 @@ class ConfigStore:
             path: The configuration file. Defaults to
                 gtach_home() / 'config.yaml'.
         """
-        self.path = Path(path) if path is not None else gtach_home() / 'config.yaml'
-        self.logger = logging.getLogger(f'{__name__}.ConfigStore')
+        self.path = Path(path) if path is not None else gtach_home() / "config.yaml"
+        self.logger = logging.getLogger(f"{__name__}.ConfigStore")
         self._lock = threading.Lock()
         self._unknown: Dict[str, Any] = {}
 
     def _read(self) -> Any:
         """Parse the file. Raises OSError or yaml.YAMLError."""
-        with open(self.path, 'r') as f:
+        with open(self.path, "r") as f:
             return yaml.safe_load(f)
 
     def load(self) -> AppConfig:
@@ -288,16 +303,21 @@ class ConfigStore:
                 values[key] = kind(data[key])
             except (TypeError, ValueError):
                 self.logger.warning(
-                    f"Invalid value for {key}: {data[key]!r}; using default {getattr(defaults, key)!r}")
-        if values.get('mode') in LEGACY_MODE_VALUES:
-            values['mode'] = 'RADIAL'
+                    f"Invalid value for {key}: {data[key]!r}; using default "
+                    f"{getattr(defaults, key)!r}"
+                )
+        if values.get("mode") in LEGACY_MODE_VALUES:
+            values["mode"] = "RADIAL"
         # Out-of-range values are replaced too (issue-4005360c).
-        for key, (low, high) in (('fps_limit', FPS_LIMIT_RANGE),
-                                 ('touch_long_press', TOUCH_LONG_PRESS_RANGE)):
+        for key, (low, high) in (
+            ("fps_limit", FPS_LIMIT_RANGE),
+            ("touch_long_press", TOUCH_LONG_PRESS_RANGE),
+        ):
             if key in values and not low <= values[key] <= high:
                 self.logger.warning(
                     f"Out-of-range value for {key}: {values[key]!r}; "
-                    f"using default {getattr(defaults, key)!r}")
+                    f"using default {getattr(defaults, key)!r}"
+                )
                 del values[key]
 
         unknown = {k: v for k, v in data.items() if k not in CONFIG_KEYS}
@@ -321,10 +341,10 @@ class ConfigStore:
         with self._lock:
             data = dict(self._unknown)
         data.update(asdict(config))
-        tmp_path = self.path.with_name(f'.{self.path.name}.{os.getpid()}.tmp')
+        tmp_path = self.path.with_name(f".{self.path.name}.{os.getpid()}.tmp")
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with open(tmp_path, 'w') as f:
+            with open(tmp_path, "w") as f:
                 yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
                 f.flush()
                 os.fsync(f.fileno())
@@ -364,7 +384,9 @@ class ConfigStore:
                 continue
             kind = CONFIG_KEYS[key]
             if kind is float:
-                type_ok = isinstance(value, (int, float)) and not isinstance(value, bool)
+                type_ok = isinstance(value, (int, float)) and not isinstance(
+                    value, bool
+                )
             elif kind is int:
                 type_ok = isinstance(value, int) and not isinstance(value, bool)
             else:
@@ -372,17 +394,27 @@ class ConfigStore:
             if not type_ok:
                 errors.append(f"{key}: expected {kind.__name__}, got {value!r}")
                 continue
-            if key == 'mode' and value not in MODE_VALUES + LEGACY_MODE_VALUES:
+            if key == "mode" and value not in MODE_VALUES + LEGACY_MODE_VALUES:
                 errors.append(f"mode: {value!r} not in {list(MODE_VALUES)}")
-            elif key == 'palette' and value not in PALETTE_VALUES:
+            elif key == "palette" and value not in PALETTE_VALUES:
                 errors.append(f"palette: {value!r} not in {list(PALETTE_VALUES)}")
-            elif key == 'engine_profile' and value not in _engine_profile_names():
-                errors.append(f"engine_profile: {value!r} not defined in engine_profiles.yaml")
-            elif key == 'fps_limit' and not FPS_LIMIT_RANGE[0] <= value <= FPS_LIMIT_RANGE[1]:
-                errors.append(f"fps_limit: {value} not in {FPS_LIMIT_RANGE[0]}..{FPS_LIMIT_RANGE[1]}")
-            elif key == 'touch_long_press' and not (
-                    TOUCH_LONG_PRESS_RANGE[0] <= value <= TOUCH_LONG_PRESS_RANGE[1]):
+            elif key == "engine_profile" and value not in _engine_profile_names():
+                errors.append(
+                    f"engine_profile: {value!r} not defined in engine_profiles.yaml"
+                )
+            elif (
+                key == "fps_limit"
+                and not FPS_LIMIT_RANGE[0] <= value <= FPS_LIMIT_RANGE[1]
+            ):
+                errors.append(
+                    f"fps_limit: {value} not in "
+                    f"{FPS_LIMIT_RANGE[0]}..{FPS_LIMIT_RANGE[1]}"
+                )
+            elif key == "touch_long_press" and not (
+                TOUCH_LONG_PRESS_RANGE[0] <= value <= TOUCH_LONG_PRESS_RANGE[1]
+            ):
                 errors.append(
                     f"touch_long_press: {value} not in "
-                    f"{TOUCH_LONG_PRESS_RANGE[0]}..{TOUCH_LONG_PRESS_RANGE[1]}")
+                    f"{TOUCH_LONG_PRESS_RANGE[0]}..{TOUCH_LONG_PRESS_RANGE[1]}"
+                )
         return errors

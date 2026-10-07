@@ -16,6 +16,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+
 from PIL import Image, ImageDraw, ImageFont
 
 SIZE = 480
@@ -24,9 +25,9 @@ CENTER = SIZE // 2
 # Colors sourced from src/gtach/display/graphics/splash_graphics.py
 # (AUTOMOTIVE_COLORS / SPLASH_COLORS) so this static splash matches the
 # app's own splash screen that follows it.
-BACKGROUND = (15, 20, 25)     # dark_background
-TITLE = (255, 255, 255)       # text_primary
-SUBTITLE = (150, 160, 170)    # text_tertiary
+BACKGROUND = (15, 20, 25)  # dark_background
+TITLE = (255, 255, 255)  # text_primary
+SUBTITLE = (150, 160, 170)  # text_tertiary
 
 DEFAULT_FONT_PATH = (
     "/Applications/FreeCAD.app/Contents/Resources/lib/python3.11/"
@@ -56,8 +57,10 @@ def resolve_font_path(argv=None) -> str:
 def main() -> None:
     font_path = resolve_font_path()
     if not Path(font_path).is_file():
-        sys.exit(f"ERROR: font not found: {font_path} "
-                 "(use --font PATH or set GTACH_SPLASH_FONT)")
+        sys.exit(
+            f"ERROR: font not found: {font_path} "
+            "(use --font PATH or set GTACH_SPLASH_FONT)"
+        )
 
     img = Image.new("RGB", (SIZE, SIZE), BACKGROUND)
     draw = ImageDraw.Draw(img)
@@ -83,9 +86,9 @@ def main() -> None:
     raw_bytes = raw_img.tobytes()
 
     expected_size = SIZE * SIZE * 4
-    assert len(raw_bytes) == expected_size, (
-        f"raw size {len(raw_bytes)} != expected {expected_size}"
-    )
+    assert (
+        len(raw_bytes) == expected_size
+    ), f"raw size {len(raw_bytes)} != expected {expected_size}"
 
     RAW_PATH.write_bytes(raw_bytes)
     print(f"saved: {RAW_PATH} ({len(raw_bytes)} bytes)")

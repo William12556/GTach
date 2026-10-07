@@ -15,30 +15,35 @@ import logging
 import math
 import threading
 import time
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 
 # Conditional import of pygame
 try:
     import pygame
+
     PYGAME_AVAILABLE = True
 except ImportError:
     pygame = None
     PYGAME_AVAILABLE = False
-
-from .setup_models import SetupScreen, SetupState, SetupAction, PairingStatus
-from .typography import (get_title_display_font, get_heading_font, get_body_font, get_button_font, 
-                         get_label_small_font)
 
 # Import extracted components
 from .setup_components.bluetooth.interface import BluetoothSetupInterface
 from .setup_components.layout.circular_positioning import CircularPositioningEngine
 from .setup_components.rendering.device_surfaces import DeviceSurfaceRenderer
 from .setup_components.state.coordinator import SetupStateCoordinator
+from .setup_models import PairingStatus, SetupAction, SetupScreen, SetupState
+from .typography import (
+    get_body_font,
+    get_button_font,
+    get_heading_font,
+    get_label_small_font,
+    get_title_display_font,
+)
 
 
 class SetupDisplayManager:
     """Manages setup mode display rendering with component-based architecture
-    
+
     This refactored version delegates responsibilities to specialized components:
     - BluetoothSetupInterface: Bluetooth operations
     - CircularPositioningEngine: Layout positioning
@@ -55,99 +60,125 @@ class SetupDisplayManager:
     _ARROW_UP_BASE_Y = 154
     _ARROW_DOWN_BASE_Y = 322
 
-
-    def __init__(self, surface, thread_manager, touch_handler, pairing_factory=None, on_complete=None):
-        self.logger = logging.getLogger('SetupDisplayManager')
+    def __init__(
+        self,
+        surface,
+        thread_manager,
+        touch_handler,
+        pairing_factory=None,
+        on_complete=None,
+    ):
+        self.logger = logging.getLogger("SetupDisplayManager")
         self.surface = surface
         self.thread_manager = thread_manager
         self.touch_handler = touch_handler
 
         # Check pygame availability
         if not PYGAME_AVAILABLE:
-            self.logger.warning("Pygame not available - setup display will use minimal functionality")
+            self.logger.warning(
+                "Pygame not available - setup display will use minimal functionality"
+            )
             self.display_available = False
         else:
             self.display_available = True
 
         # Initialize extracted components
         self.state_coordinator = SetupStateCoordinator()
-        self.bluetooth_interface = BluetoothSetupInterface(pairing_factory=pairing_factory, state_coordinator=self.state_coordinator)
+        self.bluetooth_interface = BluetoothSetupInterface(
+            pairing_factory=pairing_factory, state_coordinator=self.state_coordinator
+        )
         self.positioning_engine = CircularPositioningEngine()
         self.device_renderer = DeviceSurfaceRenderer()
         self._on_complete = on_complete
         self._probe_in_flight = False
         # Cached device presence; no per-frame file reads (issue-674bec49).
         self._has_device = False
-        
+
         # UI state and threading
         self.touch_regions = []  # Protected by _touch_regions_lock
         self._setup_thread = None
         self._shutdown_event = threading.Event()
         self._touch_regions_lock = threading.Lock()
-        
+
         # Render state tracking
         self._screen_render_cache = {}
         self._last_rendered_screen = None
         self._screen_needs_refresh = True
         self._render_cache_lock = threading.Lock()
-        
+
         # Colors for UI rendering
         # Background and text match the DISCONNECTED screen
         # (issue-ba2d5de2). The accents below are semantic and are
         # deliberately unchanged.
         self.colors = {
-            'background': (216, 200, 146),
-            'surface': (40, 40, 50),
-            'primary': (100, 150, 250),
-            'success': (50, 200, 50),
-            'warning': (255, 165, 0),
-            'danger': (255, 50, 50),
-            'text': (0, 0, 0),
-            'text_dim': (0, 0, 0),
-            'border': (80, 80, 90)
+            "background": (216, 200, 146),
+            "surface": (40, 40, 50),
+            "primary": (100, 150, 250),
+            "success": (50, 200, 50),
+            "warning": (255, 165, 0),
+            "danger": (255, 50, 50),
+            "text": (0, 0, 0),
+            "text_dim": (0, 0, 0),
+            "border": (80, 80, 90),
         }
-        
+
         # Register callbacks for component coordination
-        self.state_coordinator.register_screen_transition_callback(self._on_screen_transition)
+        self.state_coordinator.register_screen_transition_callback(
+            self._on_screen_transition
+        )
         self.state_coordinator.register_state_change_callback(self._on_state_change)
-        
+
         self.logger.info("SetupDisplayManager initialized with component architecture")
-    
-    def _on_screen_transition(self, old_screen: SetupScreen, new_screen: SetupScreen) -> None:
+
+    def _on_screen_transition(
+        self, old_screen: SetupScreen, new_screen: SetupScreen
+    ) -> None:
         """Handle screen transitions from state coordinator"""
         if new_screen == SetupScreen.WELCOME:
             self._refresh_has_device()
         self._invalidate_render_cache(new_screen)
-        self.logger.debug(f"Screen transition handled: {old_screen.name} -> {new_screen.name}")
-    
+        self.logger.debug(
+            f"Screen transition handled: {old_screen.name} -> {new_screen.name}"
+        )
+
     def _on_state_change(self, changed_fields: List[str]) -> None:
         """Handle state changes from state coordinator"""
         # Invalidate cache for dynamic content changes
-        if any(field in changed_fields for field in ['discovered_devices', 'pairing_status', 'selected_device', 'error_message']):
+        if any(
+            field in changed_fields
+            for field in [
+                "discovered_devices",
+                "pairing_status",
+                "selected_device",
+                "error_message",
+            ]
+        ):
             self._invalidate_render_cache()
         self.logger.debug(f"State change handled: {changed_fields}")
-    
+
     @property
     def state(self) -> SetupState:
         """Get current setup state from coordinator"""
         return self.state_coordinator.get_state()
-    
+
     def start_setup(self) -> None:
         """Start the setup process"""
         self.logger.info("Starting Bluetooth setup")
-        
+
         # Determine starting screen through state coordinator
         self._refresh_has_device()
         if not self._has_device:
             self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
         else:
             self.state_coordinator.transition_to_screen(SetupScreen.CURRENT_DEVICE)
-        
+
         # Start setup thread
-        self._setup_thread = threading.Thread(target=self._setup_loop, name='SetupManager', daemon=True)
-        self.thread_manager.register_thread('setup', self._setup_thread)
+        self._setup_thread = threading.Thread(
+            target=self._setup_loop, name="SetupManager", daemon=True
+        )
+        self.thread_manager.register_thread("setup", self._setup_thread)
         self._setup_thread.start()
-    
+
     def stop_setup(self) -> None:
         """Stop the setup process and cancel all async operations"""
         self._shutdown_event.set()
@@ -167,6 +198,7 @@ class SetupDisplayManager:
         """
         try:
             from ..comm.device_store import get_device_store
+
             self._has_device = get_device_store().get_primary_device() is not None
         except Exception as e:
             self.logger.error(f"Device presence check failed: {e}", exc_info=True)
@@ -189,59 +221,67 @@ class SetupDisplayManager:
         """
         if font.size(text)[0] <= max_width:
             return text
-        stop = text.find('. ')
+        stop = text.find(". ")
         if stop != -1:
-            sentence = text[:stop + 1]
+            sentence = text[: stop + 1]
             if font.size(sentence)[0] <= max_width:
                 return sentence
         shortened = text
-        while shortened and font.size(shortened + '…')[0] > max_width:
+        while shortened and font.size(shortened + "…")[0] > max_width:
             shortened = shortened[:-1]
-        return shortened + '…'
-    
+        return shortened + "…"
+
     def _setup_loop(self) -> None:
         """Main setup processing loop"""
         while not self._shutdown_event.is_set():
             try:
-                self.thread_manager.update_heartbeat('setup')
-                
+                self.thread_manager.update_heartbeat("setup")
+
                 # Update state coordinator animation
                 self.state_coordinator.update_animation(0.05)
-                
+
                 # Handle auto-discovery if needed
                 state = self.state_coordinator.get_state()
                 if state.current_screen == SetupScreen.COMPLETE:
                     if self._on_complete:
-                        self.logger.info("Setup complete — invoking on_complete callback")
+                        self.logger.info(
+                            "Setup complete — invoking on_complete callback"
+                        )
                         self._on_complete()
                     break
-                if (state.current_screen == SetupScreen.DISCOVERY and
-                        state.pairing_status == PairingStatus.IDLE):
+                if (
+                    state.current_screen == SetupScreen.DISCOVERY
+                    and state.pairing_status == PairingStatus.IDLE
+                ):
                     if state.discovered_devices:
                         # Discovery complete — advance to device list
-                        self.state_coordinator.transition_to_screen(SetupScreen.DEVICE_LIST)
-                    elif not self.bluetooth_interface.has_active_operation('device_discovery'):
+                        self.state_coordinator.transition_to_screen(
+                            SetupScreen.DEVICE_LIST
+                        )
+                    elif not self.bluetooth_interface.has_active_operation(
+                        "device_discovery"
+                    ):
                         # No active operation — start discovery
                         self.bluetooth_interface.start_discovery(
                             state,
-                            show_all_devices=self.state_coordinator.show_all_devices
+                            show_all_devices=self.state_coordinator.show_all_devices,
                         )
-                
+
                 time.sleep(0.05)
-                
+
             except Exception as e:
                 self.logger.error(f"Setup loop error: {e}", exc_info=True)
                 time.sleep(1.0)
-    
+
     def render(self, target_surface=None) -> None:
         """Render the current setup screen"""
         if not self.display_available:
             return
-        
+
         try:
             surface = target_surface or self.surface
             state = self.state_coordinator.get_state()
-            
+
             # Check cache first
             # Hold _render_cache_lock only for the read; the work below
             # takes other locks (issue-e9216e17).
@@ -251,30 +291,36 @@ class SetupDisplayManager:
                     cached_surface = self._screen_render_cache.get(state.current_screen)
                 if cached_surface is not None:
                     surface.blit(cached_surface, (0, 0))
-                    self.logger.debug(f"Using cached render for {state.current_screen.name}")
+                    self.logger.debug(
+                        f"Using cached render for {state.current_screen.name}"
+                    )
                     self._update_cached_screen_touch_regions()
                     self._draw_circular_border(surface)
                     return
-            
+
             # Create surface for rendering
             cache_surface = surface.copy()
-            cache_surface.fill(self.colors['background'])
-            
+            cache_surface.fill(self.colors["background"])
+
             # Render the appropriate screen
             self._render_screen(cache_surface, state)
-            
+
             # Cache static screens
             should_cache = state.current_screen in [
                 SetupScreen.WELCOME,
-                SetupScreen.COMPLETE, SetupScreen.CURRENT_DEVICE, SetupScreen.CONFIRMATION
+                SetupScreen.COMPLETE,
+                SetupScreen.CURRENT_DEVICE,
+                SetupScreen.CONFIRMATION,
             ]
-            
+
             if should_cache:
                 with self._render_cache_lock:
-                    self._screen_render_cache[state.current_screen] = cache_surface.copy()
+                    self._screen_render_cache[state.current_screen] = (
+                        cache_surface.copy()
+                    )
                     self._screen_needs_refresh = False
                     self._last_rendered_screen = state.current_screen
-            
+
             # Copy to target surface
             surface.blit(cache_surface, (0, 0))
 
@@ -283,7 +329,7 @@ class SetupDisplayManager:
 
         except Exception as e:
             self.logger.error(f"Render error: {e}", exc_info=True)
-    
+
     def _render_screen(self, surface, state: SetupState) -> None:
         """Render the appropriate screen based on current state"""
         if state.current_screen == SetupScreen.WELCOME:
@@ -302,7 +348,7 @@ class SetupDisplayManager:
             self._render_manual_entry_screen(surface)
         else:
             self._render_welcome_screen(surface)  # Fallback
-    
+
     def _draw_circular_border(self, surface) -> None:
         """Draw the circular border on the given surface.
 
@@ -310,9 +356,9 @@ class SetupDisplayManager:
         (issue-ba2d5de2).
         """
         try:
-            pygame.draw.circle(surface, self.colors['background'], (240, 240), 238, 4)
+            pygame.draw.circle(surface, self.colors["background"], (240, 240), 238, 4)
         except Exception as e:
-            self.logger.error(f'Circular border error: {e}', exc_info=True)
+            self.logger.error(f"Circular border error: {e}", exc_info=True)
 
     def _render_welcome_screen(self, surface) -> None:
         """Render the welcome screen"""
@@ -322,7 +368,7 @@ class SetupDisplayManager:
         try:
             font_large = get_title_display_font()
             if font_large:
-                title = font_large.render("Welcome", True, self.colors['text'])
+                title = font_large.render("Welcome", True, self.colors["text"])
                 title_rect = title.get_rect(center=(240, 80))
                 surface.blit(title, title_rect)
         except Exception as e:
@@ -331,13 +377,10 @@ class SetupDisplayManager:
         # Description
         font_medium = get_body_font()
         if font_medium:
-            desc_lines = [
-                "Setup your Bluetooth",
-                "ELM327 OBD-II adapter"
-            ]
+            desc_lines = ["Setup your Bluetooth", "ELM327 OBD-II adapter"]
             y_pos = 160
             for line in desc_lines:
-                text = font_medium.render(line, True, self.colors['text'])
+                text = font_medium.render(line, True, self.colors["text"])
                 text_rect = text.get_rect(center=(240, y_pos))
                 surface.blit(text, text_rect)
                 y_pos += 32
@@ -347,7 +390,9 @@ class SetupDisplayManager:
         if self._has_device:
             # Two-button layout: Start Setup + Cancel
             start_btn = pygame.Rect(110, 270, 260, 75)
-            pygame.draw.rect(surface, self.colors['primary'], start_btn, border_radius=10)
+            pygame.draw.rect(
+                surface, self.colors["primary"], start_btn, border_radius=10
+            )
             if btn_font:
                 btn_text = btn_font.render("Start Setup", True, (255, 255, 255))
                 btn_text_rect = btn_text.get_rect(center=start_btn.center)
@@ -355,7 +400,9 @@ class SetupDisplayManager:
             new_regions.append(("start", start_btn))
 
             cancel_btn = pygame.Rect(110, 360, 260, 75)
-            pygame.draw.rect(surface, self.colors['border'], cancel_btn, border_radius=10)
+            pygame.draw.rect(
+                surface, self.colors["border"], cancel_btn, border_radius=10
+            )
             if btn_font:
                 cancel_text = btn_font.render("Cancel", True, (255, 255, 255))
                 cancel_text_rect = cancel_text.get_rect(center=cancel_btn.center)
@@ -364,7 +411,9 @@ class SetupDisplayManager:
         else:
             # Single-button layout: Start Setup only
             start_btn = pygame.Rect(110, 330, 260, 90)
-            pygame.draw.rect(surface, self.colors['primary'], start_btn, border_radius=10)
+            pygame.draw.rect(
+                surface, self.colors["primary"], start_btn, border_radius=10
+            )
             if btn_font:
                 btn_text = btn_font.render("Start Setup", True, (255, 255, 255))
                 btn_text_rect = btn_text.get_rect(center=start_btn.center)
@@ -377,11 +426,11 @@ class SetupDisplayManager:
             font_small = get_label_small_font()
             if font_small:
                 text = self._fit_text(font_small, state.error_message)
-                msg = font_small.render(text, True, self.colors['warning'])
+                msg = font_small.render(text, True, self.colors["warning"])
                 surface.blit(msg, msg.get_rect(center=(240, 440)))
 
         self._update_touch_regions_safe(new_regions)
-    
+
     def _render_discovery_screen(self, surface, state: SetupState) -> None:
         """Render the discovery screen"""
         new_regions = []
@@ -389,7 +438,7 @@ class SetupDisplayManager:
         # Title
         font_heading = get_heading_font()
         if font_heading:
-            title = font_heading.render("Scanning...", True, self.colors['text'])
+            title = font_heading.render("Scanning...", True, self.colors["text"])
             title_rect = title.get_rect(center=(240, 80))
             surface.blit(title, title_rect)
 
@@ -402,21 +451,23 @@ class SetupDisplayManager:
             dot_x = int(center[0] + 20 * math.cos(dot_angle_rad))
             dot_y = int(center[1] + 20 * math.sin(dot_angle_rad))
             alpha = 255 - (i * 30)
-            color = (*self.colors['primary'][:3], alpha)
+            color = (*self.colors["primary"][:3], alpha)
             pygame.draw.circle(surface, color, (dot_x, dot_y), 4)
 
         # Progress message
         progress_info = self.bluetooth_interface.get_active_operation_progress()
-        if progress_info['has_active_operations']:
+        if progress_info["has_active_operations"]:
             font_small = get_label_small_font()
-            if font_small and progress_info['message']:
-                msg_text = font_small.render(progress_info['message'], True, self.colors['text_dim'])
+            if font_small and progress_info["message"]:
+                msg_text = font_small.render(
+                    progress_info["message"], True, self.colors["text_dim"]
+                )
                 msg_rect = msg_text.get_rect(center=(240, 260))
                 surface.blit(msg_text, msg_rect)
 
         # Cancel button — 140x60, centred, bottom at y=400
         cancel_btn = pygame.Rect(170, 340, 140, 60)
-        pygame.draw.rect(surface, self.colors['warning'], cancel_btn, border_radius=8)
+        pygame.draw.rect(surface, self.colors["warning"], cancel_btn, border_radius=8)
 
         btn_font = get_button_font()
         if btn_font:
@@ -426,7 +477,7 @@ class SetupDisplayManager:
 
         new_regions.append(("cancel", cancel_btn))
         self._update_touch_regions_safe(new_regions)
-    
+
     def _render_device_list_screen(self, surface, state: SetupState) -> None:
         """Render the device list screen using device renderer.
 
@@ -440,7 +491,7 @@ class SetupDisplayManager:
         # Title
         font_heading = get_heading_font()
         if font_heading:
-            title = font_heading.render("Select Device", True, self.colors['text'])
+            title = font_heading.render("Select Device", True, self.colors["text"])
             title_rect = title.get_rect(center=(240, 50))
             surface.blit(title, title_rect)
 
@@ -448,7 +499,7 @@ class SetupDisplayManager:
         if state.discovered_devices:
             devices = state.discovered_devices
             focus_info = self.state_coordinator.get_focus_info()
-            focused_index = focus_info['focused_index']
+            focused_index = focus_info["focused_index"]
 
             layout_data = self.positioning_engine.calculate_focused_slot_layout()
 
@@ -469,14 +520,14 @@ class SetupDisplayManager:
 
                 if slot_surface:
                     # Calculate position for scaled surface
-                    final_x = layout_item['x']
-                    final_y = layout_item['y']
+                    final_x = layout_item["x"]
+                    final_y = layout_item["y"]
 
-                    if layout_item['scale'] < 1.0:
+                    if layout_item["scale"] < 1.0:
                         surface_width = slot_surface.get_width()
                         surface_height = slot_surface.get_height()
-                        original_width = layout_item['width']
-                        original_height = layout_item['height']
+                        original_width = layout_item["width"]
+                        original_height = layout_item["height"]
 
                         # Center the scaled surface
                         final_x += (original_width - surface_width) // 2
@@ -495,7 +546,9 @@ class SetupDisplayManager:
             # No devices found message
             font_body = get_body_font()
             if font_body:
-                no_devices = font_body.render("No devices found", True, self.colors['text_dim'])
+                no_devices = font_body.render(
+                    "No devices found", True, self.colors["text_dim"]
+                )
                 no_devices_rect = no_devices.get_rect(center=(240, 200))
                 surface.blit(no_devices, no_devices_rect)
 
@@ -505,20 +558,22 @@ class SetupDisplayManager:
         if state.error_message:
             font_minimal = get_label_small_font()
             if font_minimal:
-                error_text = font_minimal.render(state.error_message, True, self.colors['danger'])
+                error_text = font_minimal.render(
+                    state.error_message, True, self.colors["danger"]
+                )
                 error_rect = error_text.get_rect(center=(240, 118))
                 surface.blit(error_text, error_rect)
 
         # Back and Retry buttons — 130x60 each, bottom at y=400
         back_btn = pygame.Rect(80, 340, 130, 60)
-        pygame.draw.rect(surface, self.colors['border'], back_btn, border_radius=8)
+        pygame.draw.rect(surface, self.colors["border"], back_btn, border_radius=8)
 
         retry_btn = pygame.Rect(270, 340, 130, 60)
-        pygame.draw.rect(surface, self.colors['primary'], retry_btn, border_radius=8)
+        pygame.draw.rect(surface, self.colors["primary"], retry_btn, border_radius=8)
 
         btn_font = get_button_font()
         if btn_font:
-            back_text = btn_font.render("Back", True, self.colors['text'])
+            back_text = btn_font.render("Back", True, self.colors["text"])
             back_text_rect = back_text.get_rect(center=back_btn.center)
             surface.blit(back_text, back_text_rect)
 
@@ -528,7 +583,7 @@ class SetupDisplayManager:
 
         new_regions.extend([("back", back_btn), ("retry", retry_btn)])
         self._update_touch_regions_safe(new_regions)
-    
+
     def _draw_focus_arrows(self, surface, focus_info: Dict[str, Any]) -> None:
         """Draw the up/down focus arrows for the DEVICE_LIST screen.
 
@@ -545,21 +600,29 @@ class SetupDisplayManager:
         try:
             half_width = self._ARROW_HALF_WIDTH
 
-            if focus_info.get('has_previous'):
+            if focus_info.get("has_previous"):
                 base_y = self._ARROW_UP_BASE_Y
-                pygame.draw.polygon(surface, self.colors['text'], [
-                    (240, base_y - self._ARROW_HEIGHT),
-                    (240 - half_width, base_y),
-                    (240 + half_width, base_y)
-                ])
+                pygame.draw.polygon(
+                    surface,
+                    self.colors["text"],
+                    [
+                        (240, base_y - self._ARROW_HEIGHT),
+                        (240 - half_width, base_y),
+                        (240 + half_width, base_y),
+                    ],
+                )
 
-            if focus_info.get('has_next'):
+            if focus_info.get("has_next"):
                 base_y = self._ARROW_DOWN_BASE_Y
-                pygame.draw.polygon(surface, self.colors['text'], [
-                    (240, base_y + self._ARROW_HEIGHT),
-                    (240 - half_width, base_y),
-                    (240 + half_width, base_y)
-                ])
+                pygame.draw.polygon(
+                    surface,
+                    self.colors["text"],
+                    [
+                        (240, base_y + self._ARROW_HEIGHT),
+                        (240 - half_width, base_y),
+                        (240 + half_width, base_y),
+                    ],
+                )
 
         except Exception as e:
             self.logger.error(f"Error drawing focus arrows: {e}", exc_info=True)
@@ -597,25 +660,27 @@ class SetupDisplayManager:
     def _render_pairing_screen(self, surface, state: SetupState) -> None:
         """Render the pairing screen"""
         new_regions = []
-        
+
         if not state.selected_device:
             self._update_touch_regions_safe(new_regions)
             return
-        
+
         # Title
         font_heading = get_heading_font()
         if font_heading:
-            title = font_heading.render("Pairing Device", True, self.colors['text'])
+            title = font_heading.render("Pairing Device", True, self.colors["text"])
             title_rect = title.get_rect(center=(240, 80))
             surface.blit(title, title_rect)
-        
+
         # Device name
         font_body = get_body_font()
         if font_body:
-            device_text = font_body.render(state.selected_device.name, True, self.colors['text'])
+            device_text = font_body.render(
+                state.selected_device.name, True, self.colors["text"]
+            )
             device_rect = device_text.get_rect(center=(240, 120))
             surface.blit(device_text, device_rect)
-        
+
         # Status indicator
         center = (240, 220)
         if state.pairing_status == PairingStatus.CONNECTING:
@@ -627,42 +692,64 @@ class SetupDisplayManager:
                 dot_x = int(center[0] + 20 * math.cos(dot_angle_rad))
                 dot_y = int(center[1] + 20 * math.sin(dot_angle_rad))
                 alpha = 255 - (i * 30)
-                color = (*self.colors['primary'][:3], alpha)
+                color = (*self.colors["primary"][:3], alpha)
                 pygame.draw.circle(surface, color, (dot_x, dot_y), 4)
         elif state.pairing_status == PairingStatus.SUCCESS:
             # Checkmark
-            pygame.draw.circle(surface, self.colors['success'], center, 30, 4)
-            pygame.draw.line(surface, self.colors['success'], 
-                           (center[0] - 15, center[1]), (center[0] - 5, center[1] + 10), 4)
-            pygame.draw.line(surface, self.colors['success'], 
-                           (center[0] - 5, center[1] + 10), (center[0] + 15, center[1] - 10), 4)
+            pygame.draw.circle(surface, self.colors["success"], center, 30, 4)
+            pygame.draw.line(
+                surface,
+                self.colors["success"],
+                (center[0] - 15, center[1]),
+                (center[0] - 5, center[1] + 10),
+                4,
+            )
+            pygame.draw.line(
+                surface,
+                self.colors["success"],
+                (center[0] - 5, center[1] + 10),
+                (center[0] + 15, center[1] - 10),
+                4,
+            )
         elif state.pairing_status == PairingStatus.FAILED:
             # X mark
-            pygame.draw.circle(surface, self.colors['danger'], center, 30, 4)
-            pygame.draw.line(surface, self.colors['danger'], 
-                           (center[0] - 15, center[1] - 15), (center[0] + 15, center[1] + 15), 4)
-            pygame.draw.line(surface, self.colors['danger'], 
-                           (center[0] - 15, center[1] + 15), (center[0] + 15, center[1] - 15), 4)
-        
+            pygame.draw.circle(surface, self.colors["danger"], center, 30, 4)
+            pygame.draw.line(
+                surface,
+                self.colors["danger"],
+                (center[0] - 15, center[1] - 15),
+                (center[0] + 15, center[1] + 15),
+                4,
+            )
+            pygame.draw.line(
+                surface,
+                self.colors["danger"],
+                (center[0] - 15, center[1] + 15),
+                (center[0] + 15, center[1] - 15),
+                4,
+            )
+
         # Status text
         font_small = get_label_small_font()
         if font_small:
             status_messages = {
                 PairingStatus.CONNECTING: "Connecting...",
                 PairingStatus.SUCCESS: "Connected successfully!",
-                PairingStatus.FAILED: state.error_message or "Connection failed"
+                PairingStatus.FAILED: state.error_message or "Connection failed",
             }
             status_text = status_messages.get(state.pairing_status, "")
             if status_text:
-                text = font_small.render(status_text, True, self.colors['text'])
+                text = font_small.render(status_text, True, self.colors["text"])
                 text_rect = text.get_rect(center=(240, 280))
                 surface.blit(text, text_rect)
-        
+
         # Action buttons
         if state.pairing_status == PairingStatus.SUCCESS:
             # Continue button — 260x90, centred, bottom at y=420
             continue_btn = pygame.Rect(110, 330, 260, 90)
-            pygame.draw.rect(surface, self.colors['success'], continue_btn, border_radius=10)
+            pygame.draw.rect(
+                surface, self.colors["success"], continue_btn, border_radius=10
+            )
 
             btn_font = get_button_font()
             if btn_font:
@@ -674,10 +761,12 @@ class SetupDisplayManager:
         elif state.pairing_status == PairingStatus.FAILED:
             # Retry / Back — 130x60 each, bottom at y=400
             retry_btn = pygame.Rect(80, 340, 130, 60)
-            pygame.draw.rect(surface, self.colors['warning'], retry_btn, border_radius=8)
+            pygame.draw.rect(
+                surface, self.colors["warning"], retry_btn, border_radius=8
+            )
 
             back_btn = pygame.Rect(270, 340, 130, 60)
-            pygame.draw.rect(surface, self.colors['border'], back_btn, border_radius=8)
+            pygame.draw.rect(surface, self.colors["border"], back_btn, border_radius=8)
 
             btn_font = get_button_font()
             if btn_font:
@@ -685,82 +774,88 @@ class SetupDisplayManager:
                 retry_text_rect = retry_text.get_rect(center=retry_btn.center)
                 surface.blit(retry_text, retry_text_rect)
 
-                back_text = btn_font.render("Back", True, self.colors['text'])
+                back_text = btn_font.render("Back", True, self.colors["text"])
                 back_text_rect = back_text.get_rect(center=back_btn.center)
                 surface.blit(back_text, back_text_rect)
 
             new_regions.extend([("retry", retry_btn), ("back", back_btn)])
-        
+
         self._update_touch_regions_safe(new_regions)
-    
-    
+
     def _render_complete_screen(self, surface, state: SetupState) -> None:
         """Render the completion screen"""
         new_regions = []
-        
+
         font_heading = get_heading_font()
         if font_heading:
-            title = font_heading.render("Setup Complete!", True, self.colors['success'])
+            title = font_heading.render("Setup Complete!", True, self.colors["success"])
             title_rect = title.get_rect(center=(240, 180))
             surface.blit(title, title_rect)
-        
+
         self._update_touch_regions_safe(new_regions)
-    
+
     def _render_current_device_screen(self, surface, state: SetupState) -> None:
         """Render the current device screen"""
         new_regions = []
 
         font_heading = get_heading_font()
         if font_heading:
-            title = font_heading.render("Current Device", True, self.colors['text'])
+            title = font_heading.render("Current Device", True, self.colors["text"])
             title_rect = title.get_rect(center=(240, 80))
             surface.blit(title, title_rect)
 
         # Show stored device name
         from ..comm.device_store import get_device_store
+
         device = get_device_store().get_primary_device()
         font_body = get_body_font()
         if font_body:
             name = device.name if device else "Unknown"
-            name_text = font_body.render(name, True, self.colors['text'])
+            name_text = font_body.render(name, True, self.colors["text"])
             surface.blit(name_text, name_text.get_rect(center=(240, 160)))
 
         # Continue button — use existing device
         continue_btn = pygame.Rect(110, 230, 260, 70)
-        pygame.draw.rect(surface, self.colors['success'], continue_btn, border_radius=10)
+        pygame.draw.rect(
+            surface, self.colors["success"], continue_btn, border_radius=10
+        )
 
         # New Setup button — clear and restart
         new_setup_btn = pygame.Rect(110, 330, 260, 70)
-        pygame.draw.rect(surface, self.colors['border'], new_setup_btn, border_radius=10)
+        pygame.draw.rect(
+            surface, self.colors["border"], new_setup_btn, border_radius=10
+        )
 
         btn_font = get_button_font()
         if btn_font:
             cont_text = btn_font.render("Continue", True, (255, 255, 255))
             surface.blit(cont_text, cont_text.get_rect(center=continue_btn.center))
-            new_text = btn_font.render("New Setup", True, self.colors['text'])
+            new_text = btn_font.render("New Setup", True, self.colors["text"])
             surface.blit(new_text, new_text.get_rect(center=new_setup_btn.center))
 
-        new_regions.extend([("current_continue", continue_btn), ("new_setup", new_setup_btn)])
+        new_regions.extend(
+            [("current_continue", continue_btn), ("new_setup", new_setup_btn)]
+        )
         self._update_touch_regions_safe(new_regions)
-    
+
     def _render_manual_entry_screen(self, surface) -> None:
         """Render the manual entry screen"""
         new_regions = []
-        
+
         font_heading = get_heading_font()
         if font_heading:
-            title = font_heading.render("Manual Entry", True, self.colors['text'])
+            title = font_heading.render("Manual Entry", True, self.colors["text"])
             title_rect = title.get_rect(center=(240, 120))
             surface.blit(title, title_rect)
-        
+
         self._update_touch_regions_safe(new_regions)
-    
+
     def handle_touch_event(self, pos: Tuple[int, int]) -> Optional[SetupAction]:
         """Handle touch events with state coordination"""
         try:
             # Register interaction for control visibility
             self.state_coordinator.register_interaction()
-            
+
             # Find the hit under the lock; dispatch after releasing it
             # (issue-e9216e17).
             hit = None
@@ -778,32 +873,34 @@ class SetupDisplayManager:
                 return self._handle_touch_action(*hit)
         except Exception as e:
             self.logger.error(f"Error handling touch event: {e}", exc_info=True)
-        
+
         return None
-    
+
     def _handle_touch_action(self, action: str, region: tuple) -> Optional[SetupAction]:
         """Handle specific touch actions with state coordinator"""
         try:
             if action == "start":
                 self.state_coordinator.handle_setup_action(SetupAction.START_DISCOVERY)
                 return SetupAction.START_DISCOVERY
-            
+
             elif action == "device" and len(region) > 2:
                 device = region[2]
-                self.state_coordinator.handle_setup_action(SetupAction.SELECT_DEVICE, device=device)
+                self.state_coordinator.handle_setup_action(
+                    SetupAction.SELECT_DEVICE, device=device
+                )
                 # Start pairing
                 state = self.state_coordinator.get_state()
                 self.bluetooth_interface.start_pairing(device, state)
                 return SetupAction.SELECT_DEVICE
-            
+
             elif action == "continue":
                 self.state_coordinator.handle_setup_action(SetupAction.NEXT)
                 return SetupAction.NEXT
-            
+
             elif action == "back":
                 self.state_coordinator.handle_setup_action(SetupAction.BACK)
                 return SetupAction.BACK
-            
+
             elif action == "retry":
                 self.state_coordinator.handle_setup_action(SetupAction.RETRY)
                 # Re-start pairing with the same device
@@ -811,7 +908,7 @@ class SetupDisplayManager:
                 if state.selected_device:
                     self.bluetooth_interface.start_pairing(state.selected_device, state)
                 return SetupAction.RETRY
-            
+
             elif action == "cancel":
                 self.state_coordinator.handle_setup_action(SetupAction.CANCEL)
                 return SetupAction.CANCEL
@@ -835,8 +932,12 @@ class SetupDisplayManager:
                     if ok:
                         self.state_coordinator.complete_setup()
                         return
-                    self.logger.warning("Stored device not reachable — returning to welcome")
-                    self.state_coordinator.update_state(error_message="Device not available")
+                    self.logger.warning(
+                        "Stored device not reachable — returning to welcome"
+                    )
+                    self.state_coordinator.update_state(
+                        error_message="Device not available"
+                    )
                     self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
 
                 self.bluetooth_interface.start_device_probe(_on_probe_result)
@@ -845,22 +946,25 @@ class SetupDisplayManager:
             elif action == "new_setup":
                 # Clear stored device and restart setup
                 from ..comm.device_store import get_device_store
+
                 dev = get_device_store().get_primary_device()
                 if dev:
                     get_device_store().remove_device(dev.mac_address)
                 self.state_coordinator.reset_discovery()
                 self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
                 return SetupAction.CANCEL
-            
+
             elif action == "complete":
                 self.state_coordinator.handle_setup_action(SetupAction.COMPLETE)
                 return SetupAction.COMPLETE
-            
+
         except Exception as e:
-            self.logger.error(f"Error handling touch action {action}: {e}", exc_info=True)
-        
+            self.logger.error(
+                f"Error handling touch action {action}: {e}", exc_info=True
+            )
+
         return None
-    
+
     def _update_touch_regions_safe(self, new_regions: List[tuple]) -> None:
         """Thread-safe update of touch regions"""
         try:
@@ -868,7 +972,7 @@ class SetupDisplayManager:
                 self.touch_regions = new_regions.copy()
         except Exception as e:
             self.logger.error(f"Error updating touch regions: {e}", exc_info=True)
-    
+
     def _update_cached_screen_touch_regions(self) -> None:
         """Update touch regions for cached screens"""
         state = self.state_coordinator.get_state()
@@ -876,11 +980,13 @@ class SetupDisplayManager:
             if self._has_device:
                 start_btn = pygame.Rect(110, 270, 260, 75)
                 cancel_btn = pygame.Rect(110, 360, 260, 75)
-                self._update_touch_regions_safe([("start", start_btn), ("cancel_setup", cancel_btn)])
+                self._update_touch_regions_safe(
+                    [("start", start_btn), ("cancel_setup", cancel_btn)]
+                )
             else:
                 start_btn = pygame.Rect(110, 330, 260, 90)
                 self._update_touch_regions_safe([("start", start_btn)])
-    
+
     def _invalidate_render_cache(self, screen_type: SetupScreen = None) -> None:
         """Invalidate render cache for specific screen or all screens"""
         with self._render_cache_lock:
@@ -893,7 +999,7 @@ class SetupDisplayManager:
                     del self._screen_render_cache[screen_type]
                 self._screen_needs_refresh = True
                 self.logger.debug(f"Invalidated render cache for {screen_type.name}")
-    
+
     def is_setup_complete(self) -> bool:
         """Check if setup is complete"""
         return self.state_coordinator.get_state().setup_complete

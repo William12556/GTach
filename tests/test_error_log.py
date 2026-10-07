@@ -28,22 +28,22 @@ import gtach.main  # noqa: F401  — ensures the module is in sys.modules
 
 # gtach/__init__.py re-exports the main FUNCTION under the name 'main';
 # the module is fetched from sys.modules (issue-c1d4b8e6).
-gtach_main = sys.modules['gtach.main']
+gtach_main = sys.modules["gtach.main"]
 
 
 @pytest.fixture
 def logs(tmp_path, monkeypatch):
     """Redirect every log path and restore the root logger afterwards."""
     paths = {
-        'start': tmp_path / 'start.log',
-        'debug': tmp_path / 'debug.log',
-        'error': tmp_path / 'error.log',
+        "start": tmp_path / "start.log",
+        "debug": tmp_path / "debug.log",
+        "error": tmp_path / "error.log",
     }
-    monkeypatch.setattr(gtach_main, '_START_LOG', str(paths['start']))
-    monkeypatch.setattr(gtach_main, '_DEBUG_LOG', str(paths['debug']))
-    monkeypatch.setattr(gtach_main, '_ERROR_LOG', str(paths['error']))
+    monkeypatch.setattr(gtach_main, "_START_LOG", str(paths["start"]))
+    monkeypatch.setattr(gtach_main, "_DEBUG_LOG", str(paths["debug"]))
+    monkeypatch.setattr(gtach_main, "_ERROR_LOG", str(paths["error"]))
     # Module-level handler references: restored by monkeypatch.
-    for name in ('_start_handler', '_debug_handler', '_error_handler'):
+    for name in ("_start_handler", "_debug_handler", "_error_handler"):
         monkeypatch.setattr(gtach_main, name, None)
 
     root = logging.getLogger()
@@ -74,17 +74,17 @@ class TestErrorLogHandler:
 
     def test_records_warning_and_error_but_not_info(self, logs):
         gtach_main.setup_logging(debug=False)
-        logger = logging.getLogger('test.error_log')
+        logger = logging.getLogger("test.error_log")
 
-        logger.info('info-line')
-        logger.warning('warning-line')
-        logger.error('error-line')
+        logger.info("info-line")
+        logger.warning("warning-line")
+        logger.error("error-line")
         _flush()
 
-        text = logs['error'].read_text(encoding='utf-8')
-        assert 'warning-line' in text
-        assert 'error-line' in text
-        assert 'info-line' not in text
+        text = logs["error"].read_text(encoding="utf-8")
+        assert "warning-line" in text
+        assert "error-line" in text
+        assert "info-line" not in text
 
     def test_handler_is_rotating_at_warning(self, logs):
         gtach_main.setup_logging(debug=False)
@@ -100,26 +100,26 @@ class TestErrorLogHandler:
         gtach_main.setup_logging(debug=False)
         gtach_main._start_handler.setLevel(logging.CRITICAL + 1)
 
-        logging.getLogger('test.error_log').error('after-startup')
+        logging.getLogger("test.error_log").error("after-startup")
         _flush()
 
-        assert 'after-startup' in logs['error'].read_text(encoding='utf-8')
-        assert 'after-startup' not in logs['start'].read_text(encoding='utf-8')
+        assert "after-startup" in logs["error"].read_text(encoding="utf-8")
+        assert "after-startup" not in logs["start"].read_text(encoding="utf-8")
 
     def test_not_rotated_at_start(self, logs):
-        logs['error'].write_text('previous-run fault\n', encoding='utf-8')
+        logs["error"].write_text("previous-run fault\n", encoding="utf-8")
 
         gtach_main.setup_logging(debug=False)
         _flush()
 
-        assert 'previous-run fault' in logs['error'].read_text(encoding='utf-8')
-        assert not (logs['error'].parent / 'error.log.1').exists()
+        assert "previous-run fault" in logs["error"].read_text(encoding="utf-8")
+        assert not (logs["error"].parent / "error.log.1").exists()
 
     def test_unopenable_path_does_not_raise(self, logs, tmp_path, monkeypatch, capsys):
-        missing = tmp_path / 'no' / 'such' / 'dir' / 'error.log'
-        monkeypatch.setattr(gtach_main, '_ERROR_LOG', str(missing))
+        missing = tmp_path / "no" / "such" / "dir" / "error.log"
+        monkeypatch.setattr(gtach_main, "_ERROR_LOG", str(missing))
 
         gtach_main.setup_logging(debug=False)
 
         assert gtach_main._error_handler is None
-        assert 'could not open' in capsys.readouterr().err
+        assert "could not open" in capsys.readouterr().err

@@ -11,20 +11,21 @@ Terminal settings restoration for OBDII display application.
 Handles saving and restoring terminal settings to ensure proper cleanup.
 """
 
+import atexit
+import logging
 import os
 import sys
-import logging
 import termios
-import atexit
+
 
 class TerminalRestorer:
     """Manages terminal settings and ensures restoration on exit"""
-    
+
     def __init__(self):
         """Initialize terminal settings backup"""
-        self.logger = logging.getLogger('TerminalRestorer')
+        self.logger = logging.getLogger("TerminalRestorer")
         self.original_termios = None
-        
+
         # Backup terminal settings right away if we're in a TTY
         if os.isatty(sys.stdin.fileno()):
             try:
@@ -32,17 +33,20 @@ class TerminalRestorer:
                 self.logger.debug("Terminal settings backed up")
             except Exception as e:
                 self.logger.warning(f"Failed to backup terminal settings: {e}")
-        
+
         # Register cleanup handler to ensure restoration
         atexit.register(self.restore_terminal)
-    
+
     def restore_terminal(self):
         """Restore terminal to original state"""
         if self.original_termios is not None:
             try:
                 if os.isatty(sys.stdin.fileno()):
-                    termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, self.original_termios)
+                    termios.tcsetattr(
+                        sys.stdin.fileno(), termios.TCSANOW, self.original_termios
+                    )
                     self.logger.debug("Terminal settings restored")
             except Exception as e:
-                self.logger.error(f"Failed to restore terminal settings: {e}", exc_info=True)
-
+                self.logger.error(
+                    f"Failed to restore terminal settings: {e}", exc_info=True
+                )

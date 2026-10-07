@@ -41,19 +41,18 @@ def _register(manager: ThreadManager, name: str) -> None:
 def _watchdog(manager: ThreadManager, shutdowns: list, **timeouts) -> WatchdogMonitor:
     return WatchdogMonitor(
         manager,
-        shutdown_callback=lambda: shutdowns.append('shutdown'),
+        shutdown_callback=lambda: shutdowns.append("shutdown"),
         **timeouts,
     )
 
 
 def _short_timeouts():
-    return {'critical_timeout': 1.0, 'recovery_timeout': 0.5,
-            'warning_timeout': 0.25}
+    return {"critical_timeout": 1.0, "recovery_timeout": 0.5, "warning_timeout": 0.25}
 
 
 def _step_wall_clock(monkeypatch, offset: float) -> None:
     real_time = time.time
-    monkeypatch.setattr(time, 'time', lambda: real_time() + offset)
+    monkeypatch.setattr(time, "time", lambda: real_time() + offset)
 
 
 class TestWallClockSteps:
@@ -63,42 +62,42 @@ class TestWallClockSteps:
         manager = ThreadManager()
         shutdowns = []
         watchdog = _watchdog(manager, shutdowns, **_short_timeouts())
-        _register(manager, 'display')
+        _register(manager, "display")
 
         _step_wall_clock(monkeypatch, CLOCK_STEP)
-        with caplog.at_level('WARNING', logger='WatchdogMonitor'):
+        with caplog.at_level("WARNING", logger="WatchdogMonitor"):
             watchdog._check_thread_health()
 
         assert shutdowns == []
-        assert not any('display' in r.getMessage() for r in caplog.records)
+        assert not any("display" in r.getMessage() for r in caplog.records)
 
     def test_backward_step_does_not_mask_a_genuine_stall(self, monkeypatch):
         manager = ThreadManager()
         shutdowns = []
         timeouts = _short_timeouts()
         watchdog = _watchdog(manager, shutdowns, **timeouts)
-        _register(manager, 'display')
+        _register(manager, "display")
 
         _step_wall_clock(monkeypatch, -CLOCK_STEP)
         with manager._lock:
-            manager.threads['display'].last_heartbeat = (
-                time.monotonic() - (timeouts['critical_timeout'] + 5)
+            manager.threads["display"].last_heartbeat = time.monotonic() - (
+                timeouts["critical_timeout"] + 5
             )
         watchdog._check_thread_health()
 
-        assert shutdowns == ['shutdown']
+        assert shutdowns == ["shutdown"]
 
     def test_advisory_thread_with_forward_step_is_not_warned(self, monkeypatch, caplog):
         manager = ThreadManager()
         shutdowns = []
         watchdog = _watchdog(manager, shutdowns, **_short_timeouts())
-        _register(manager, 'transport')
+        _register(manager, "transport")
 
         _step_wall_clock(monkeypatch, CLOCK_STEP)
-        with caplog.at_level('WARNING', logger='WatchdogMonitor'):
+        with caplog.at_level("WARNING", logger="WatchdogMonitor"):
             watchdog._check_thread_health()
 
-        assert not any('transport' in r.getMessage() for r in caplog.records)
+        assert not any("transport" in r.getMessage() for r in caplog.records)
         assert watchdog.get_recovery_stats().warnings_issued == 0
         assert shutdowns == []
 
@@ -111,41 +110,41 @@ class TestStallDetectionPreserved:
         shutdowns = []
         timeouts = _short_timeouts()
         watchdog = _watchdog(manager, shutdowns, **timeouts)
-        _register(manager, 'display')
+        _register(manager, "display")
 
         with manager._lock:
-            manager.threads['display'].last_heartbeat = (
-                time.monotonic() - (timeouts['critical_timeout'] + 5)
+            manager.threads["display"].last_heartbeat = time.monotonic() - (
+                timeouts["critical_timeout"] + 5
             )
         watchdog._check_thread_health()
 
-        assert shutdowns == ['shutdown']
+        assert shutdowns == ["shutdown"]
 
 
 class TestNeverDefaults:
     """'Never' is independent of where the monotonic clock starts."""
 
     def test_thread_health_defaults_are_minus_infinity(self):
-        health = ThreadHealth(name='x')
+        health = ThreadHealth(name="x")
 
-        assert health.last_warning_time == float('-inf')
-        assert health.last_recovery_time == float('-inf')
+        assert health.last_warning_time == float("-inf")
+        assert health.last_recovery_time == float("-inf")
 
     def test_first_warning_not_suppressed_shortly_after_boot(self, monkeypatch, caplog):
         """monotonic() near zero must not look like a recent warning."""
         manager = ThreadManager()
         shutdowns = []
         watchdog = _watchdog(manager, shutdowns)
-        _register(manager, 'display')
+        _register(manager, "display")
 
         now = 5.0
         elapsed = (watchdog.warning_timeout + watchdog.recovery_timeout) / 2
         with manager._lock:
-            manager.threads['display'].last_heartbeat = now - elapsed
+            manager.threads["display"].last_heartbeat = now - elapsed
 
-        monkeypatch.setattr(watchdog_module.time, 'monotonic', lambda: now)
-        with caplog.at_level('WARNING', logger='WatchdogMonitor'):
+        monkeypatch.setattr(watchdog_module.time, "monotonic", lambda: now)
+        with caplog.at_level("WARNING", logger="WatchdogMonitor"):
             watchdog._check_thread_health()
 
-        assert any('display' in r.getMessage() for r in caplog.records)
+        assert any("display" in r.getMessage() for r in caplog.records)
         assert shutdowns == []

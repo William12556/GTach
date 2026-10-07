@@ -31,7 +31,12 @@ class SerialTransport(OBDTransport):
     # empty read must NOT be treated as the peer closing.
     _EMPTY_READ_IS_EOF = False
 
-    def __init__(self, port: Optional[str] = None, baudrate: int = 38400, retry_delay: float = 5.0):
+    def __init__(
+        self,
+        port: Optional[str] = None,
+        baudrate: int = 38400,
+        retry_delay: float = 5.0,
+    ):
         super().__init__()
         self._port = port
         self._baudrate = baudrate
@@ -40,16 +45,16 @@ class SerialTransport(OBDTransport):
 
     def _describe(self) -> str:
         """Describe the endpoint, for log messages."""
-        port = self._resolved_port or self._port or 'auto'
+        port = self._resolved_port or self._port or "auto"
         return f"serial device {port} at {self._baudrate} baud"
 
-    def _open(self) -> Optional['serial.Serial']:
+    def _open(self) -> Optional["serial.Serial"]:
         """Discover the port if necessary and open it.
 
         Returns:
             The open port, or None if no device could be found.
         """
-        logger = logging.getLogger('SerialTransport')
+        logger = logging.getLogger("SerialTransport")
 
         # Discover port if not specified
         resolved_port = self._port
@@ -61,11 +66,7 @@ class SerialTransport(OBDTransport):
             return None
 
         self._resolved_port = resolved_port
-        return serial.Serial(
-            port=resolved_port,
-            baudrate=self._baudrate,
-            timeout=2
-        )
+        return serial.Serial(port=resolved_port, baudrate=self._baudrate, timeout=2)
 
     def _close(self, handle) -> None:
         """Close the serial port if it is open."""
@@ -83,7 +84,7 @@ class SerialTransport(OBDTransport):
         in one call, so the base class's loop breaks on the first
         iteration. n is part of the abstract signature and unused here.
         """
-        return handle.read_until(b'>')
+        return handle.read_until(b">")
 
     def _set_timeout(self, handle, timeout: float) -> None:
         """Apply the read timeout. pyserial uses an attribute."""
@@ -95,15 +96,15 @@ class SerialTransport(OBDTransport):
         Returns:
             Optional[str]: The device path if found, None otherwise.
         """
-        logger = logging.getLogger('SerialTransport')
+        logger = logging.getLogger("SerialTransport")
 
         # List of patterns to match against device names and descriptions
-        patterns = ['ELM', 'OBD', 'OBDII']
+        patterns = ["ELM", "OBD", "OBDII"]
 
         for port in list_ports.comports():
             # Check device name and description (case-insensitive)
             device_name = port.device
-            description = getattr(port, 'description', '')
+            description = getattr(port, "description", "")
 
             # Normalize strings for case-insensitive comparison
             device_name_lower = device_name.lower()
@@ -116,16 +117,26 @@ class SerialTransport(OBDTransport):
                     logger.info("ELM327 probe passed on %s", device_name)
                     return device_name
                 else:
-                    logger.warning("Port %s matched pattern but failed ELM327 probe — skipping", device_name)
+                    logger.warning(
+                        "Port %s matched pattern but failed ELM327 probe — skipping",
+                        device_name,
+                    )
                     continue
 
             if any(pattern.lower() in description_lower for pattern in patterns):
-                logger.debug("Probing port %s (matched description: %s)", device_name, description)
+                logger.debug(
+                    "Probing port %s (matched description: %s)",
+                    device_name,
+                    description,
+                )
                 if self._probe_port(device_name):
                     logger.info("ELM327 probe passed on %s", device_name)
                     return device_name
                 else:
-                    logger.warning("Port %s matched pattern but failed ELM327 probe — skipping", device_name)
+                    logger.warning(
+                        "Port %s matched pattern but failed ELM327 probe — skipping",
+                        device_name,
+                    )
                     continue
 
         logger.info("No OBD device found in available serial ports")
@@ -145,21 +156,21 @@ class SerialTransport(OBDTransport):
             bool: True if the device responds with an ELM327 identification string,
                   False otherwise (including on any errors).
         """
-        logger = logging.getLogger('SerialTransport')
+        logger = logging.getLogger("SerialTransport")
         probe_serial = None
         try:
             # Open the port with a 2-second timeout
             probe_serial = serial.Serial(device, self._baudrate, timeout=2)
 
             # Send ATZ (reset) command
-            probe_serial.write(b'ATZ\r')
+            probe_serial.write(b"ATZ\r")
 
             # Read response until '>' prompt
-            response = probe_serial.read_until(b'>')
+            response = probe_serial.read_until(b">")
 
             # Decode and check for ELM327 in response (case-insensitive)
-            decoded_response = response.decode('ascii', errors='ignore')
-            if 'ELM327' in decoded_response.upper():
+            decoded_response = response.decode("ascii", errors="ignore")
+            if "ELM327" in decoded_response.upper():
                 logger.debug("ELM327 identified on %s", device)
                 return True
             else:

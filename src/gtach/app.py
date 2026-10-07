@@ -11,21 +11,23 @@ Main application class for GTach display application.
 Manages component lifecycle and initialization.
 """
 
+import argparse
+import atexit
+import logging
 import os
 import signal
-import logging
-import atexit
 import threading
 from pathlib import Path
 from typing import Optional
-import argparse
-from .core import ThreadManager, WatchdogMonitor
+
 from .comm import OBDProtocol, select_transport
-from .comm.transport import TRANSPORT_NAMES, TRANSPORT_FORCED, TRANSPORT_FAST
 from .comm.device_store import get_device_store
+from .comm.transport import TRANSPORT_FAST, TRANSPORT_FORCED, TRANSPORT_NAMES
+from .core import ThreadManager, WatchdogMonitor
 from .display import DisplayManager
 from .display.setup import SetupDisplayManager
 from .utils import ConfigStore, TerminalRestorer, get_platform_type
+
 
 class GTachApplication:
     """Main application controller"""
@@ -36,7 +38,9 @@ class GTachApplication:
     # anyway so systemd (Restart=always) can relaunch it.
     _EXIT_BACKSTOP_SEC: float = 20.0
 
-    def __init__(self, config_path: Optional[str] = None, debug: bool = False, args=None):
+    def __init__(
+        self, config_path: Optional[str] = None, debug: bool = False, args=None
+    ):
         """Initialize application components"""
         # The single configuration store, injected into DisplayManager
         # (issue-5fbff586).
@@ -64,7 +68,7 @@ class GTachApplication:
             warning_timeout=15.0,
             recovery_timeout=30.0,
             critical_timeout=45.0,
-            shutdown_callback=self._watchdog_shutdown
+            shutdown_callback=self._watchdog_shutdown,
         )
 
         # Initialize device store for setup detection
@@ -119,7 +123,7 @@ class GTachApplication:
         the exit started from the watchdog or from shutdown()
         (issue-d140121d).
         """
-        if getattr(self, '_backstop_armed', False):
+        if getattr(self, "_backstop_armed", False):
             return
         self._backstop_armed = True
         timer = threading.Timer(self._EXIT_BACKSTOP_SEC, self._force_exit)
@@ -148,22 +152,30 @@ class GTachApplication:
         """Start application components"""
         try:
             from . import __version__
+
             self.logger.info(f"Starting GTach application v{__version__}")
-            
+
             # Check if setup is needed
             # If --transport is explicitly specified, bypass device store check
-            transport_arg = getattr(self._args, 'transport', None)
+            transport_arg = getattr(self._args, "transport", None)
             transport_forced = transport_arg in TRANSPORT_FORCED
             if transport_forced:
                 self.logger.info("Transport explicitly specified - skipping setup mode")
                 self._start_normal_mode()
             # The complement of the forced set, computed rather than
             # restated so the two cannot drift (core review §5.8).
-            elif (transport_arg in TRANSPORT_NAMES
-                  and transport_arg not in TRANSPORT_FORCED):
+            elif (
+                transport_arg in TRANSPORT_NAMES
+                and transport_arg not in TRANSPORT_FORCED
+            ):
                 # Bluetooth transport — always enter setup mode for device pairing
                 from .comm.sim_bluetooth import SimBluetoothPairing
-                pairing_factory = (lambda: SimBluetoothPairing()) if transport_arg == 'simbt' else None
+
+                pairing_factory = (
+                    (lambda: SimBluetoothPairing())
+                    if transport_arg == "simbt"
+                    else None
+                )
                 self.logger.info(f"{transport_arg} transport - entering setup mode")
                 self._setup_mode = True
                 self._start_setup_mode(pairing_factory=pairing_factory)
@@ -193,11 +205,14 @@ class GTachApplication:
         try:
             import os
             import sys
-            if sys.platform.startswith('linux'):
+
+            if sys.platform.startswith("linux"):
                 marker = "/opt/gtach/.update-probation"
                 if os.path.exists(marker):
                     os.remove(marker)
-                    self.logger.info("Cleared update probation marker — startup healthy")
+                    self.logger.info(
+                        "Cleared update probation marker — startup healthy"
+                    )
         except Exception as e:
             self.logger.debug(f"Could not clear probation marker: {e}")
 
@@ -210,7 +225,8 @@ class GTachApplication:
         try:
             import logging
             import sys
-            if sys.platform.startswith('linux'):
+
+            if sys.platform.startswith("linux"):
                 # gtach/__init__.py re-exports the main FUNCTION under
                 # the name 'main', so the package attribute shadows the
                 # module and 'from . import main' retrieves the
@@ -218,7 +234,7 @@ class GTachApplication:
                 # _start_handler. The module object is retrievable from
                 # sys.modules, which the import system keys by the full
                 # dotted name (issue-c1d4b8e6).
-                _main = sys.modules.get('gtach.main')
+                _main = sys.modules.get("gtach.main")
                 if _main is None:
                     return
                 if _main._start_handler is not None:
@@ -247,7 +263,8 @@ class GTachApplication:
         try:
             import logging
             import sys
-            if not sys.platform.startswith('linux'):
+
+            if not sys.platform.startswith("linux"):
                 return
             # gtach/__init__.py re-exports the main FUNCTION under the
             # name 'main', so the package attribute shadows the module
@@ -256,7 +273,7 @@ class GTachApplication:
             # module object is retrievable from sys.modules, which the
             # import system keys by the full dotted name
             # (issue-c1d4b8e6).
-            _main = sys.modules.get('gtach.main')
+            _main = sys.modules.get("gtach.main")
             if _main is None:
                 return
             if _main._debug_handler is None:
@@ -268,18 +285,16 @@ class GTachApplication:
                 # a partially loaded or older gtach.main must not raise
                 # out of the debug-handler toggle.
                 try:
-                    _arm = getattr(_main, 'enable_stack_dumps', None)
+                    _arm = getattr(_main, "enable_stack_dumps", None)
                     if _arm is not None:
                         _arm()
                 except Exception as e:
-                    self.logger.debug(
-                        f"Could not arm stack dumps: {e}", exc_info=True
-                    )
+                    self.logger.debug(f"Could not arm stack dumps: {e}", exc_info=True)
             else:
                 _main._debug_handler.setLevel(logging.CRITICAL + 1)
                 self.logger.info("Debug logging disabled")
                 try:
-                    _disarm = getattr(_main, 'disable_stack_dumps', None)
+                    _disarm = getattr(_main, "disable_stack_dumps", None)
                     if _disarm is not None:
                         _disarm()
                 except Exception as e:
@@ -298,9 +313,9 @@ class GTachApplication:
         Returns:
             The cause string, or None when there is nothing to show.
         """
-        transport = getattr(self, '_transport', None)
+        transport = getattr(self, "_transport", None)
 
-        return getattr(transport, 'last_failure_cause', None)
+        return getattr(transport, "last_failure_cause", None)
 
     def _on_reset_pi(self) -> None:
         """Dispatch an operator-requested reboot of the host.
@@ -334,6 +349,7 @@ class GTachApplication:
         def _worker() -> None:
             try:
                 from .utils import pi_reset
+
                 outcome = pi_reset.reboot_device()
                 self.logger.info(f"Reset outcome: {outcome}")
             except Exception as e:
@@ -343,7 +359,7 @@ class GTachApplication:
                 # button for the life of the process.
                 self._reset_in_flight.clear()
 
-        threading.Thread(target=_worker, name='pi_reset', daemon=True).start()
+        threading.Thread(target=_worker, name="pi_reset", daemon=True).start()
 
     def _request_restart(self) -> None:
         """Request a clean restart; systemd (Restart=always) relaunches,
@@ -358,9 +374,12 @@ class GTachApplication:
             self._watchdog.start()
 
         # Reuse existing DisplayManager on re-entry; only create on first call
-        if not hasattr(self, '_display') or self._display is None:
-            self._display = DisplayManager(self._thread_manager, self._terminal_restorer,
-                                           config_store=self._config_store)
+        if not hasattr(self, "_display") or self._display is None:
+            self._display = DisplayManager(
+                self._thread_manager,
+                self._terminal_restorer,
+                config_store=self._config_store,
+            )
             self._display._setup_entry_callback = self._re_enter_setup
             self._display._restart_callback = self._request_restart
             self._display._debug_toggle_callback = self.toggle_debug_logging
@@ -369,11 +388,8 @@ class GTachApplication:
             # Guarded: during setup, and before select_transport has
             # run, there is no transport — and 'no transport' is
             # correctly 'not connected' (issue-4d9e2f18).
-            self._display._link_connected_callback = (
-                lambda: bool(
-                    getattr(self, '_transport', None)
-                    and self._transport.is_connected()
-                )
+            self._display._link_connected_callback = lambda: bool(
+                getattr(self, "_transport", None) and self._transport.is_connected()
             )
             # Same guard, same reason: before select_transport has run
             # there is no transport, and 'no transport' has no failure
@@ -391,10 +407,8 @@ class GTachApplication:
             # is the value passed to reconnect_indefinitely, so the arc
             # follows the real retry period (issue-4f1e82b7,
             # issue-4005360c).
-            self._display._retry_interval_callback = (
-                lambda: getattr(
-                    getattr(self, '_transport', None), 'retry_delay', None
-                )
+            self._display._retry_interval_callback = lambda: getattr(
+                getattr(self, "_transport", None), "retry_delay", None
             )
             self._display.start()
             self.logger.info("Splash screen activated for setup mode")
@@ -404,28 +418,28 @@ class GTachApplication:
         # Initialize setup manager while splash is showing
         # Stop any previous setup manager before replacing it
         # (issue-674bec49).
-        manager = getattr(self, '_setup_manager', None)
+        manager = getattr(self, "_setup_manager", None)
         if manager:
             try:
                 manager.stop_setup()
             except Exception as e:
-                self.logger.error(f'Stopping setup manager failed: {e}', exc_info=True)
+                self.logger.error(f"Stopping setup manager failed: {e}", exc_info=True)
         self._setup_manager = SetupDisplayManager(
             self._display.rendering_engine.main_surface,
             self._thread_manager,
             self._display.touch_handler,
             pairing_factory=pairing_factory,
-            on_complete=self._on_setup_complete
+            on_complete=self._on_setup_complete,
         )
         self._setup_manager.start_setup()
-        
+
         # Set display to setup mode (will transition after splash completes)
         self._display.set_setup_mode(self._setup_manager)
-    
+
     def _on_setup_complete(self) -> None:
         """Called by SetupDisplayManager when setup finishes"""
         with self._obd_lock:
-            already_started = getattr(self, '_obd_started', False)
+            already_started = getattr(self, "_obd_started", False)
             self._obd_started = True
         if already_started:
             self.logger.warning("_on_setup_complete called more than once — ignoring")
@@ -433,12 +447,12 @@ class GTachApplication:
         self.logger.info("Setup complete — transitioning to normal mode")
         # Stop the finished setup manager; stop_setup does not join the
         # calling (setup) thread (issue-674bec49).
-        manager = getattr(self, '_setup_manager', None)
+        manager = getattr(self, "_setup_manager", None)
         if manager:
             try:
                 manager.stop_setup()
             except Exception as e:
-                self.logger.error(f'Stopping setup manager failed: {e}', exc_info=True)
+                self.logger.error(f"Stopping setup manager failed: {e}", exc_info=True)
         self._display.exit_setup_mode()
         self._start_obd()
 
@@ -455,9 +469,9 @@ class GTachApplication:
             # so the watchdog never sees a dead critical thread in
             # RUNNING (change-860fd5f7). 2.0s rather than the 5.0s
             # default because this runs on a UI-driven callback.
-            if hasattr(self, '_thread_manager'):
-                self._thread_manager.stop_thread('transport', timeout=2.0)
-                self._thread_manager.stop_thread('obd_protocol', timeout=2.0)
+            if hasattr(self, "_thread_manager"):
+                self._thread_manager.stop_thread("transport", timeout=2.0)
+                self._thread_manager.stop_thread("obd_protocol", timeout=2.0)
 
             with self._obd_lock:
                 self._obd_started = False
@@ -470,20 +484,30 @@ class GTachApplication:
         """Start transport and OBD protocol against the existing display"""
         platform_type = get_platform_type()
         self._transport = select_transport(platform_type, self._args)
-        transport_arg = getattr(self._args, 'transport', None)
+        transport_arg = getattr(self._args, "transport", None)
         _poll_interval = 0.02 if transport_arg in TRANSPORT_FAST else 0.05
-        self._obd = OBDProtocol(self._transport, self._thread_manager, poll_interval_s=_poll_interval, adapter_pre_initialised=True)
+        self._obd = OBDProtocol(
+            self._transport,
+            self._thread_manager,
+            poll_interval_s=_poll_interval,
+            adapter_pre_initialised=True,
+        )
         # Registration is what makes the thread visible to
         # WatchdogMonitor, which iterates thread_manager.threads only:
         # a bare Thread(name='transport') is not monitored however it
         # is named (issue-2ac1c602).
         transport_thread = threading.Thread(
             target=self._transport.reconnect_indefinitely,
-            kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport'),
-                    'retry_delay': self._transport.retry_delay},
-            name='transport', daemon=True
+            kwargs={
+                "heartbeat": lambda: self._thread_manager.update_heartbeat("transport"),
+                "retry_delay": self._transport.retry_delay,
+            },
+            name="transport",
+            daemon=True,
         )
-        self._thread_manager.register_thread('transport', transport_thread, stop_func=self._transport.disconnect)
+        self._thread_manager.register_thread(
+            "transport", transport_thread, stop_func=self._transport.disconnect
+        )
         transport_thread.start()
         self._obd.start()
         self.logger.info("OBD protocol started after setup")
@@ -491,8 +515,11 @@ class GTachApplication:
     def _start_normal_mode(self) -> None:
         """Start application in normal mode with splash screen"""
         # Initialize display manager first with splash screen
-        self._display = DisplayManager(self._thread_manager, self._terminal_restorer,
-                                       config_store=self._config_store)
+        self._display = DisplayManager(
+            self._thread_manager,
+            self._terminal_restorer,
+            config_store=self._config_store,
+        )
         self._display._setup_entry_callback = self._re_enter_setup
         self._display._restart_callback = self._request_restart
         self._display._debug_toggle_callback = self.toggle_debug_logging
@@ -501,11 +528,8 @@ class GTachApplication:
         # Guarded: before select_transport has run there is no
         # transport — and 'no transport' is correctly 'not connected'
         # (issue-4d9e2f18).
-        self._display._link_connected_callback = (
-            lambda: bool(
-                getattr(self, '_transport', None)
-                and self._transport.is_connected()
-            )
+        self._display._link_connected_callback = lambda: bool(
+            getattr(self, "_transport", None) and self._transport.is_connected()
         )
         # Same guard, same reason: before select_transport has run
         # there is no transport, and 'no transport' has no failure
@@ -516,22 +540,20 @@ class GTachApplication:
         # same way and for the same reason. OBDTransport.retry_delay is
         # the value passed to reconnect_indefinitely, so the arc follows
         # the real retry period (issue-4f1e82b7, issue-4005360c).
-        self._display._retry_interval_callback = (
-            lambda: getattr(
-                getattr(self, '_transport', None), 'retry_delay', None
-            )
+        self._display._retry_interval_callback = lambda: getattr(
+            getattr(self, "_transport", None), "retry_delay", None
         )
         self._display.start()  # This automatically starts the splash screen
         self.logger.info("Splash screen activated for normal mode")
-        
+
         # Initialize transport and OBD protocol
         platform_type = get_platform_type()
         self._transport = select_transport(platform_type, self._args)
         self._obd = OBDProtocol(self._transport, self._thread_manager)
-        
+
         # Start background components during splash screen
         self._watchdog.start()
-        
+
         # Start reconnect_indefinitely in a daemon thread.
         # Registration is what makes the thread visible to
         # WatchdogMonitor, which iterates thread_manager.threads only:
@@ -539,16 +561,23 @@ class GTachApplication:
         # is named (issue-2ac1c602).
         transport_thread = threading.Thread(
             target=self._transport.reconnect_indefinitely,
-            kwargs={'heartbeat': lambda: self._thread_manager.update_heartbeat('transport'),
-                    'retry_delay': self._transport.retry_delay},
-            name='transport', daemon=True
+            kwargs={
+                "heartbeat": lambda: self._thread_manager.update_heartbeat("transport"),
+                "retry_delay": self._transport.retry_delay,
+            },
+            name="transport",
+            daemon=True,
         )
-        self._thread_manager.register_thread('transport', transport_thread, stop_func=self._transport.disconnect)
+        self._thread_manager.register_thread(
+            "transport", transport_thread, stop_func=self._transport.disconnect
+        )
         transport_thread.start()
-        
+
         self._obd.start()
-        
-        self.logger.info("Background components initialized while splash screen displays")
+
+        self.logger.info(
+            "Background components initialized while splash screen displays"
+        )
 
     def run(self) -> None:
         """Run application main loop"""
@@ -565,7 +594,7 @@ class GTachApplication:
 
     def shutdown(self) -> None:
         """Shutdown application components"""
-        if getattr(self, '_shutdown_called', False):
+        if getattr(self, "_shutdown_called", False):
             return
         self._shutdown_called = True
 
@@ -580,24 +609,25 @@ class GTachApplication:
             # 3. Transport — closes socket, unblocks any OBD thread blocked on recv
             # 4. OBD — safe to join now that socket is closed
             # 5. Thread manager — final cleanup
-            if hasattr(self, '_watchdog'):
+            if hasattr(self, "_watchdog"):
                 self._watchdog.stop()
-            if hasattr(self, '_setup_manager'):
+            if hasattr(self, "_setup_manager"):
                 self._setup_manager.stop_setup()
             # The async workers own no other thread's resources; stop
             # them before the display (issue-d140121d).
             try:
                 from .display.async_operations import shutdown_async_manager
+
                 shutdown_async_manager()
             except Exception as e:
                 self.logger.error(f"Async manager shutdown failed: {e}", exc_info=True)
-            if hasattr(self, '_display'):
+            if hasattr(self, "_display"):
                 self._display.stop()
-            if hasattr(self, '_transport'):
+            if hasattr(self, "_transport"):
                 self._transport.disconnect()
-            if hasattr(self, '_obd'):
+            if hasattr(self, "_obd"):
                 self._obd.stop()
-            if hasattr(self, '_thread_manager'):
+            if hasattr(self, "_thread_manager"):
                 self._thread_manager.shutdown()
 
             # Terminal restoration will happen via atexit

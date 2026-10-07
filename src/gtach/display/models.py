@@ -11,9 +11,10 @@ Shared data models for display components.
 Contains enums and data classes used across display modules.
 """
 
-from enum import Enum, auto
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Tuple
+
 
 @dataclass
 class RPMBands:
@@ -27,6 +28,7 @@ class RPMBands:
         danger_start: Start of danger zone (red)
         redline_rpm: Redline RPM threshold
     """
+
     idle_max: int = 999
     torque_start: int = 3000
     caution_start: int = 4500
@@ -42,7 +44,7 @@ class RPMBands:
             self.caution_start,
             self.warning_start,
             self.danger_start,
-            self.redline_rpm
+            self.redline_rpm,
         ]
 
         # Check strictly ascending
@@ -60,20 +62,24 @@ class RPMBands:
                     f"RPM thresholds must be > 0 and <= 15000. Got {threshold}"
                 )
 
+
 class DisplayMode(Enum):
     """Display mode enumeration for different display screens"""
-    SPLASH = auto()           # Application startup splash screen
-    RADIAL = auto()           # The only normal display mode; carries the
-                              # arc, the indicator and the numeric readout
-                              # (change-378703da retired DIGITAL)
-    OPTIONS = auto()          # Options configuration screen
+
+    SPLASH = auto()  # Application startup splash screen
+    RADIAL = auto()  # The only normal display mode; carries the
+    # arc, the indicator and the numeric readout
+    # (change-378703da retired DIGITAL)
+    OPTIONS = auto()  # Options configuration screen
     ACKNOWLEDGEMENT = auto()  # RPM threshold acknowledgement screen
+
 
 class ConnectionStatus(Enum):
     """Connection status for indicator"""
-    DISCONNECTED = 'red'
-    CONNECTING = 'yellow'
-    CONNECTED = 'green'
+
+    DISCONNECTED = "red"
+    CONNECTING = "yellow"
+    CONNECTED = "green"
 
 
 @dataclass(frozen=True)
@@ -89,6 +95,7 @@ class Palette:
     Frozen so a drawing path cannot mutate the active
     palette.
     """
+
     name: str
     ground: Tuple[int, int, int]
     track: Tuple[int, int, int]
@@ -107,7 +114,7 @@ class Palette:
 # with the rim border they coloured (issue-950128c0); band_centres is
 # now the centre disc's unconditional source.
 DAY_PALETTE = Palette(
-    name='day',
+    name="day",
     ground=(16, 16, 16),
     track=(58, 58, 58),
     tick=(225, 225, 225),
@@ -136,12 +143,12 @@ DAY_PALETTE = Palette(
     # deliberately not brightened to lead the ordering: urgency is
     # carried by the shift-cue flash, not by band brightness.
     bands=(
-        (0, 0, 255),        # 0 idle
-        (0, 0, 255),        # 1 torque approach
-        (0, 170, 0),        # 2 torque
-        (205, 180, 0),      # 3 caution
-        (255, 128, 0),      # 4 warning
-        (255, 0, 0),        # 5 danger
+        (0, 0, 255),  # 0 idle
+        (0, 0, 255),  # 1 torque approach
+        (0, 170, 0),  # 2 torque
+        (205, 180, 0),  # 3 caution
+        (255, 128, 0),  # 4 warning
+        (255, 0, 0),  # 5 danger
     ),
     # The centre disc takes the active band's colour, so the zone
     # reading is present at the point of fixation and not only at the
@@ -151,12 +158,12 @@ DAY_PALETTE = Palette(
     # would reinstate the glare change-5014040c removed from the face,
     # and would leave the white readout at 1.07:1 against band 3.
     band_centres=(
-        (0, 0, 89),         # 0 idle
-        (0, 0, 89),         # 1 torque approach
-        (0, 89, 0),         # 2 torque
-        (89, 89, 0),        # 3 caution
-        (89, 45, 0),        # 4 warning
-        (89, 0, 0),         # 5 danger
+        (0, 0, 89),  # 0 idle
+        (0, 0, 89),  # 1 torque approach
+        (0, 89, 0),  # 2 torque
+        (89, 89, 0),  # 3 caution
+        (89, 45, 0),  # 4 warning
+        (89, 0, 0),  # 5 danger
     ),
 )
 
@@ -165,7 +172,7 @@ DAY_PALETTE = Palette(
 # primary signal — so value is reduced while hue separation is held, and
 # the separation is asserted by delta-E rather than judged by eye.
 NIGHT_PALETTE = Palette(
-    name='night',
+    name="night",
     ground=(3, 3, 3),
     track=(24, 24, 24),
     tick=(120, 120, 120),
@@ -173,12 +180,12 @@ NIGHT_PALETTE = Palette(
     edge=(30, 30, 30),
     label=(100, 38, 38),
     bands=(
-        (0, 0, 170),        # 0 idle
-        (0, 0, 170),        # 1 torque approach
-        (0, 140, 0),        # 2 torque
-        (150, 140, 0),      # 3 caution
-        (175, 75, 0),       # 4 warning
-        (200, 0, 0),        # 5 danger
+        (0, 0, 170),  # 0 idle
+        (0, 0, 170),  # 1 torque approach
+        (0, 140, 0),  # 2 torque
+        (150, 140, 0),  # 3 caution
+        (175, 75, 0),  # 4 warning
+        (200, 0, 0),  # 5 danger
     ),
     # The band-coloured centre disc, dimmed for night on the same
     # reasoning as the day tuple above (change-64d8d8fc).
@@ -192,32 +199,36 @@ NIGHT_PALETTE = Palette(
     ),
 )
 
+
 @dataclass
 class DisplayConfig:
     """Display configuration settings"""
+
     mode: DisplayMode
     rpm_warning: int = 6500  # Fiat 500 Abarth redline
-    rpm_danger: int = 7000   # Danger zone
+    rpm_danger: int = 7000  # Danger zone
     fps_limit: int = 60
     touch_long_press: float = 1.0  # seconds
 
     # Gesture navigation settings
-    gesture_swipe_threshold: int = 80          # Minimum swipe distance (px)
+    gesture_swipe_threshold: int = 80  # Minimum swipe distance (px)
     gesture_velocity_threshold: float = 200.0  # Minimum swipe velocity (px/s)
-    gesture_edge_width: int = 40              # Edge detection width (px)
-    gesture_max_time: float = 1.0             # Maximum gesture duration (s)
-    gesture_edge_timeout: float = 5.0         # Edge indicator timeout (s)
+    gesture_edge_width: int = 40  # Edge detection width (px)
+    gesture_max_time: float = 1.0  # Maximum gesture duration (s)
+    gesture_edge_timeout: float = 5.0  # Edge indicator timeout (s)
 
     # Gesture enables per context
-    gesture_enable_main: bool = True          # Enable gestures in main display
-    gesture_enable_setup: bool = True         # Enable gestures in setup mode
-    gesture_enable_settings: bool = True      # Enable gestures in options
+    gesture_enable_main: bool = True  # Enable gestures in main display
+    gesture_enable_setup: bool = True  # Enable gestures in setup mode
+    gesture_enable_settings: bool = True  # Enable gestures in options
 
     # Visual feedback settings
     gesture_transition_duration: float = 0.2  # Screen transition time (s)
-    gesture_edge_indicator_size: int = 20     # Edge indicator size (px)
-    gesture_debug_mode: bool = False          # Show gesture debug visualization
-    engine_profile: str = 'abarth_595_turismo'  # Engine profile identifier for acknowledgement state
+    gesture_edge_indicator_size: int = 20  # Edge indicator size (px)
+    gesture_debug_mode: bool = False  # Show gesture debug visualization
+    engine_profile: str = (
+        "abarth_595_turismo"  # Engine profile identifier for acknowledgement state
+    )
 
     # RPM colour bands
     rpm_bands: RPMBands = None  # Will be initialized with default in __post_init__

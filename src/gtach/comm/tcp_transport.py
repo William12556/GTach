@@ -27,7 +27,9 @@ class TCPTransport(OBDTransport):
     # separately to keep being caught first.
     _TIMEOUT_ERRORS = (socket.timeout,)
 
-    def __init__(self, host: str = 'localhost', port: int = 35000, retry_delay: float = 5.0):
+    def __init__(
+        self, host: str = "localhost", port: int = 35000, retry_delay: float = 5.0
+    ):
         super().__init__()
         self._host = host
         self._port = port
