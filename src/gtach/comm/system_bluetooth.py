@@ -213,42 +213,6 @@ class SystemBluetoothManager:
         with devices_lock:
             return dict(devices)
 
-    def pair_device(self, mac_address: str) -> bool:
-        try:
-            commands = ['power on', 'agent on',
-                        f'pair {mac_address}', f'trust {mac_address}']
-            output = self._run_bluetoothctl(commands, timeout=30)
-            if 'Pairing successful' in output:
-                self.logger.info(f"Successfully paired with {mac_address}")
-                return True
-            self.logger.error(f"Failed to pair with {mac_address}")
-            return False
-        except Exception as e:
-            self.logger.error(f"Pairing failed: {e}", exc_info=True)
-            return False
-
-    def connect_device(self, mac_address: str) -> bool:
-        try:
-            output = self._run_bluetoothctl(
-                ['power on', f'connect {mac_address}'], timeout=15)
-            if 'Connection successful' in output:
-                self.logger.info(f"Successfully connected to {mac_address}")
-                return True
-            self.logger.error(f"Failed to connect to {mac_address}")
-            return False
-        except Exception as e:
-            self.logger.error(f"Connection failed: {e}", exc_info=True)
-            return False
-
-    def disconnect_device(self, mac_address: str) -> bool:
-        try:
-            self._run_bluetoothctl([f'disconnect {mac_address}'], timeout=10)
-            self.logger.info(f"Disconnected from {mac_address}")
-            return True
-        except Exception as e:
-            self.logger.error(f"Disconnection failed: {e}", exc_info=True)
-            return False
-
     def get_device_info(self, mac_address: str) -> Optional[Dict[str, str]]:
         try:
             output = self._run_bluetoothctl([f'info {mac_address}'], timeout=10)
@@ -261,17 +225,6 @@ class SystemBluetoothManager:
         except Exception as e:
             self.logger.error(f"Failed to get device info: {e}", exc_info=True)
             return None
-
-    def is_device_connected(self, mac_address: str) -> bool:
-        try:
-            info = self.get_device_info(mac_address)
-            if info:
-                return info.get('Connected', 'no').lower() == 'yes'
-            return False
-        except Exception as e:
-            self.logger.error(f"Failed to check connection status: {e}", exc_info=True)
-            return False
-
 
 # Compatibility functions to match PyBluez API
 def discover_devices(duration: int = 8, lookup_names: bool = True,

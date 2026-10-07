@@ -13,7 +13,7 @@ Interfaces and data structures for performance monitoring.
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 
 class MetricType(Enum):
     """Types of performance metrics"""

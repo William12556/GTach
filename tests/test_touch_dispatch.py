@@ -257,14 +257,3 @@ class TestLongPress:
         assert 'ThreadStatus' not in inspect.getsource(touch_module)
 
 
-class TestDisplayModeImportRetained:
-    """touch.py:26 is still needed by change_mode at touch.py:306."""
-
-    def test_display_mode_still_referenced(self):
-        import inspect
-
-        import gtach.display.touch as touch_module
-
-        source = inspect.getsource(touch_module)
-        assert 'from .models import DisplayMode' in source
-        assert 'DisplayMode.RADIAL' in source

@@ -13,7 +13,7 @@ from typing import Optional
 import serial
 from serial.tools import list_ports
 
-from .transport import OBDTransport, TransportState, TransportError
+from .transport import OBDTransport
 
 
 class SerialTransport(OBDTransport):

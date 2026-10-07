@@ -16,7 +16,6 @@ Returns scripted ELM327 responses including a sine-wave RPM sweep.
 import logging
 import math
 import time
-import threading
 from typing import Optional
 
 from .transport import OBDTransport, TransportState

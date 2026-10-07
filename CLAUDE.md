@@ -46,7 +46,6 @@ unless explicitly requested by the T03 prompt task.
 - Trivial exemption (P04.12): single function, ≤20 line delta, no interface change,
   unambiguous, human-approved → git commit is the sole audit record
 - Active docs: `ai/workspace/{issues,change,prompt}/`; completed move to `closed/` subdirs
-- Backup files (`src/gtach/display/manager_backup.py`, `setup_original_backup.py`) are excluded from all changes and audits
 
 Task invocation:
 

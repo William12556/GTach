@@ -205,12 +205,8 @@ class TestPrivilegedSurfaceIsContained:
         #                     device DISCOVERY, not recovery.
         # platform          — capability detection.
         # dependencies      — dependency validation.
-        # manager_backup    — dead file. Unreferenced, 0% covered, and
-        #                     superseded by manager.py; it is in src/
-        #                     only because it was never deleted.
         allowed_files = {
             'system_bluetooth.py', 'platform.py', 'dependencies.py',
-            'manager_backup.py',
         }
         unexpected = [o for o in offenders
                       if o.split(':')[0] not in allowed_files]
@@ -229,6 +225,12 @@ class TestPrivilegedSurfaceIsContained:
     def test_no_shell_true_anywhere(self):
         for path in self._src_files():
             assert 'shell=True' not in _code_only(path), path
+
+    @pytest.mark.parametrize('call', ['os.system', 'os.popen'])
+    def test_no_shell_helpers_anywhere(self, call):
+        """The shell-spawning os helpers are not used at all (audit F03)."""
+        for path in self._src_files():
+            assert call not in _code_only(path), path
 
     def test_exactly_one_call_site(self):
         """Definition plus one caller; nothing automatic."""

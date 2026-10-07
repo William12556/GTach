@@ -13,14 +13,11 @@ Orchestrates display rendering, touch handling, and performance monitoring
 through extracted components for improved maintainability.
 """
 
-import os
-import sys
 import math
 import logging
 import queue
 import threading
 import time
-from enum import Enum, auto
 from typing import Optional, Tuple, Dict, Any, Sequence, Callable, List
 
 # Conditional imports for hardware dependencies
@@ -38,13 +35,11 @@ from .performance import PerformanceMonitor
 
 # Legacy imports for compatibility
 from .models import (DisplayMode, DisplayConfig, ConnectionStatus,
-                     Palette, DAY_PALETTE, NIGHT_PALETTE)
+                     DAY_PALETTE, NIGHT_PALETTE)
 from .splash import SplashScreen
 from ..utils.config import AppConfig, ConfigStore
-from .typography import (get_font_manager, get_title_font, get_medium_font, get_small_font,
-                         get_rpm_large_font, get_rpm_medium_font, get_label_small_font,
-                         get_title_display_font, get_heading_font, TypographyConstants,
-                         get_button_renderer, ButtonSize, ButtonState)
+from .typography import (get_font_manager, get_label_small_font, get_title_display_font, get_heading_font,
+                         TypographyConstants)
 from ..core import ThreadManager
 from ..utils import TerminalRestorer
 from ..utils.ack_state import AcknowledgementStateManager
@@ -478,29 +473,6 @@ class DisplayManager:
                 self.logger.error(f"Failed to initialize splash screen: {e}", exc_info=True)
                 self._splash_screen = None
             
-            # Navigation gesture handler
-            try:
-                from .navigation_gestures import NavigationGestureHandler, GestureConfig
-                
-                gesture_config = GestureConfig(
-                    swipe_threshold=getattr(self.config, 'gesture_swipe_threshold', 50),
-                    velocity_threshold=getattr(self.config, 'gesture_velocity_threshold', 100),
-                    edge_width=getattr(self.config, 'gesture_edge_width', 30),
-                    max_gesture_time=getattr(self.config, 'gesture_max_time', 2.0),
-                    edge_indicator_timeout=getattr(self.config, 'gesture_edge_timeout', 3.0),
-                    enable_main_navigation=getattr(self.config, 'gesture_enable_main', True),
-                    enable_setup_navigation=getattr(self.config, 'gesture_enable_setup', True),
-                    enable_settings_gestures=getattr(self.config, 'gesture_enable_settings', True),  # Note: kept for config compat
-                    debug_mode=getattr(self.config, 'gesture_debug_mode', False)
-                )
-                
-                self.gesture_handler = NavigationGestureHandler(self, gesture_config)
-                self.logger.info("Navigation gesture handler initialized")
-                
-            except ImportError as e:
-                self.logger.error(f"Failed to initialize gesture handler: {e}")
-                self.gesture_handler = None
-            
         except Exception as e:
             self.logger.error(f"Legacy component initialization failed: {e}", exc_info=True)
     
@@ -602,10 +574,6 @@ class DisplayManager:
         self.display_thread.start()
         self.logger.info("Display manager started")
 
-    def run_main_thread_loop(self) -> None:
-        """Retained for API compatibility."""
-        pass
-    
     def start_splash(self) -> None:
         """Start the splash screen"""
         try:
@@ -740,7 +708,7 @@ class DisplayManager:
             # Get back buffer surface for splash rendering
             back_surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
             if back_surface:
-                splash_success = self._splash_screen.render(back_surface)
+                self._splash_screen.render(back_surface)
                 
                 if self._splash_screen.is_complete():
                     self._enter_post_splash_mode()
@@ -1008,12 +976,8 @@ class DisplayManager:
             self.logger.error(f'RPM conditioning error: {e}', exc_info=True)
             return raw
 
-    # RETAINED DELIBERATELY. This method has no caller after DIGITAL's
-    # retirement (change-378703da) and a dead-code analysis will
-    # correctly report it as unreachable. It is kept because task 7.3.11
-    # (change-5014040c, the annular band indicator) requires exactly this
-    # band selection, including the hysteresis added by change-4c038bed.
-    # Do not remove it before that change lands.
+    # Called once per frame by _draw_radial_mode for the band colour
+    # of the sweep and centre disc (change-5014040c).
     def _get_band_colour(self, rpm: float) -> Tuple[int, Tuple[int, int, int]]:
         """Get the active band index and its colour for the given RPM.
 
@@ -1145,7 +1109,6 @@ class DisplayManager:
             # Angle conversion: clock degrees to canvas radians
             # Active arc: 210 deg (7 o'clock) to 150 deg (5 o'clock) via top = 300 deg sweep
             start_clock_deg = 210
-            end_clock_deg = 150
             active_sweep_deg = 300
 
             def clock_to_canvas_rad(clock_deg):
@@ -2112,88 +2075,6 @@ class DisplayManager:
         self._options_view = 'menu'
         self._update_status = 'idle'
 
-    def _register_rpm_sliders(self) -> None:
-        """Register RPM sliders with touch coordinator"""
-        try:
-            # Warning RPM slider
-            warning_rect = pygame.Rect(60, 120, 360, 55)
-            self.touch_coordinator.register_slider_region(
-                "warning_rpm", warning_rect,
-                track_start_x=180, track_width=200,
-                min_val=1000, max_val=8000, current_val=self.config.rpm_warning
-            )
-            
-            # Danger RPM slider
-            danger_rect = pygame.Rect(60, 170, 360, 55)
-            self.touch_coordinator.register_slider_region(
-                "danger_rpm", danger_rect,
-                track_start_x=180, track_width=200,
-                min_val=1000, max_val=9000, current_val=self.config.rpm_danger
-            )
-            
-            # Render slider visuals (simplified)
-            self._render_slider_visuals("Warning RPM:", self.config.rpm_warning, 120, (255, 165, 0))
-            self._render_slider_visuals("Danger RPM:", self.config.rpm_danger, 170, (255, 50, 50))
-            
-        except Exception as e:
-            self.logger.error(f"RPM sliders error: {e}", exc_info=True)
-    
-    def _render_slider_visuals(self, label: str, value: int, y_pos: int, color: Tuple[int, int, int]) -> None:
-        """Render slider visual elements"""
-        try:
-            # Label
-            font = get_label_small_font()
-            if font:
-                self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, label, font, (200, 200, 200),
-                    (120, y_pos + 27), center=True
-                )
-            
-            # Track
-            track_rect = (180, y_pos + 25, 200, 4)
-            self.rendering_engine.draw_rect(RenderTarget.BACK_BUFFER, (80, 80, 80), track_rect)
-            
-            # Thumb (simplified positioning)
-            thumb_x = 180 + int((value - 1000) / 7000 * 200)  # Approximate positioning
-            self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, color, 
-                                            (thumb_x, y_pos + 27), 10)
-            
-            # Value display
-            if font:
-                self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, str(value), font, color,
-                    (420, y_pos + 27), center=True
-                )
-                
-        except Exception as e:
-            self.logger.error(f"Slider visuals error: {e}", exc_info=True)
-    
-    def _register_save_button(self) -> None:
-        """Register save button with touch coordinator"""
-        try:
-            # Calculate button position in circular layout
-            save_rect = pygame.Rect(350, 300, 44, 44)
-
-            self.touch_coordinator.register_button_region(
-                "save", save_rect, TouchAction.SETTINGS_CHANGE,
-                lambda pos: self._save_config()
-            )
-
-            # Draw save button
-            self.rendering_engine.draw_circle(RenderTarget.BACK_BUFFER, (0, 150, 0),
-                                            (372, 322), 22)
-
-            # Checkmark (simplified)
-            font = get_font_manager().get_font(20)
-            if font:
-                self.rendering_engine.render_text(
-                    RenderTarget.BACK_BUFFER, "\u2713", font, (255, 255, 255),
-                    (372, 322), center=True
-                )
-
-        except Exception as e:
-            self.logger.error(f"Save button error: {e}", exc_info=True)
-
     def _draw_acknowledgement_mode(self) -> None:
         """Draw acknowledgement screen with blocking tap-to-dismiss interaction.
 
@@ -2575,24 +2456,18 @@ class DisplayManager:
                               exc_info=True)
             return None
 
-    # Legacy compatibility methods
-    def change_mode(self, mode: DisplayMode) -> None:
-        """Change display mode"""
-        self.config.mode = mode
-        self._save_config()
-    
     def set_setup_mode(self, setup_manager) -> None:
         """Enable setup mode"""
         self._setup_manager = setup_manager
         self._in_setup_mode = True
-        self.logger.info(f"Entered setup mode")
+        self.logger.info("Entered setup mode")
     
     def exit_setup_mode(self) -> None:
         """Exit setup mode"""
         self._in_setup_mode = False
         self._setup_manager = None
         self._enter_post_splash_mode()
-        self.logger.info(f"Exited setup mode")
+        self.logger.info("Exited setup mode")
     
     def is_in_setup_mode(self) -> bool:
         """Check if in setup mode"""
@@ -2609,30 +2484,11 @@ class DisplayManager:
             else:
                 # Use touch coordinator
                 action = self.touch_coordinator.handle_touch_down(pos)
-                
-                # Handle slider value updates
-                if action == TouchAction.SLIDER_INTERACTION:
-                    self._update_config_from_sliders()
-                
                 return action
                 
         except Exception as e:
             self.logger.error(f"Touch event error: {e}", exc_info=True)
             return None
-    
-    def _update_config_from_sliders(self) -> None:
-        """Update configuration from slider values"""
-        try:
-            warning_value = self.touch_coordinator.get_slider_value("warning_rpm")
-            if warning_value is not None:
-                self.config.rpm_warning = warning_value
-            
-            danger_value = self.touch_coordinator.get_slider_value("danger_rpm")
-            if danger_value is not None:
-                self.config.rpm_danger = danger_value
-                
-        except Exception as e:
-            self.logger.error(f"Config update error: {e}", exc_info=True)
     
     # Performance and debugging methods
     def get_performance_stats(self) -> Dict[str, Any]:

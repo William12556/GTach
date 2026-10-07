@@ -16,7 +16,7 @@ import time
 import threading
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Optional, Callable, Any
+from typing import Optional, Callable
 from dataclasses import dataclass
 
 # Cross-platform compatibility imports with mock objects for development
@@ -25,39 +25,9 @@ _RPI_AVAILABLE = False
 
 # Try to import RPi.GPIO for Raspberry Pi hardware detection
 try:
-    import RPi.GPIO as GPIO
+    import RPi.GPIO as GPIO  # noqa: F401 — availability probe only
     _RPI_AVAILABLE = True
 except ImportError:
-    # Create mock RPi.GPIO for development platforms
-    class MockGPIO:
-        """Mock RPi.GPIO module for development on non-Raspberry Pi platforms"""
-        BCM = "BCM"
-        OUT = "OUT"
-        IN = "IN"
-        HIGH = 1
-        LOW = 0
-        
-        @staticmethod
-        def setmode(mode):
-            pass
-        
-        @staticmethod
-        def setup(pin, mode, **kwargs):
-            pass
-        
-        @staticmethod
-        def output(pin, state):
-            pass
-        
-        @staticmethod
-        def input(pin):
-            return False
-        
-        @staticmethod
-        def cleanup():
-            pass
-    
-    GPIO = MockGPIO()
     _RPI_AVAILABLE = False
 
 # Try to detect hyperpixel2r availability (but don't import yet to avoid RPi dependency)
@@ -541,7 +511,6 @@ class MockTouchInterface(TouchInterface):
         if self._config['auto_feedback']:
             self.logger.info("🖱️  Mock touch interface started - Touch simulation available")
             self.logger.info("📝 Development mode: All touch events will be logged")
-            self._print_development_info()
     
     def stop(self) -> None:
         """Stop the mock touch interface with cleanup"""
@@ -557,190 +526,6 @@ class MockTouchInterface(TouchInterface):
             self.logger.info("Mock touch interface stopped")
             self._print_session_stats()
     
-    def configure(self, **kwargs) -> None:
-        """
-        Update mock interface configuration during runtime.
-        
-        Args:
-            **kwargs: Configuration options to update
-        """
-        for key, value in kwargs.items():
-            if key in self._config:
-                old_value = self._config[key]
-                self._config[key] = value
-                self.logger.debug(f"Config updated: {key} = {value} (was {old_value})")
-            else:
-                self.logger.warning(f"Unknown configuration option: {key}")
-    
-    def simulate_touch(self, x: float, y: float, event_type: TouchEventType = TouchEventType.TOUCH_DOWN) -> None:
-        """
-        Enhanced touch simulation with comprehensive logging.
-        
-        Args:
-            x: Normalized X coordinate (0.0 to 1.0)
-            y: Normalized Y coordinate (0.0 to 1.0)
-            event_type: Type of touch event to simulate
-        """
-        if not self._running:
-            self.logger.warning("❌ Cannot simulate touch - interface not running")
-            return
-        
-        if not self._simulation_enabled:
-            self.logger.warning("❌ Touch simulation disabled - call enable_simulation() first")
-            return
-        
-        try:
-            # Validate coordinates
-            if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
-                self.logger.error(f"❌ Invalid coordinates: ({x:.3f}, {y:.3f}) - must be 0.0-1.0")
-                return
-            
-            # Create and emit event
-            event = TouchEvent(event_type, x, y)
-            
-            # Log with detailed information
-            if self._config['log_coordinates']:
-                pixel_x, pixel_y = denormalize_coordinates(x, y)
-                self.logger.info(f"🖱️  Simulated {event_type.name}: ({x:.3f}, {y:.3f}) -> pixel ({pixel_x}, {pixel_y})")
-            
-            # Update statistics
-            self._update_stats(event_type)
-            
-            # Add to history
-            self._add_to_history(event)
-            
-            # Emit the event
-            self._emit_touch_event(event)
-            
-        except Exception as e:
-            self.logger.error(f"❌ Error simulating touch: {e}", exc_info=True)
-    
-    def simulate_tap(self, x: float, y: float, delay: Optional[float] = None) -> None:
-        """
-        Simulate a complete tap gesture with configurable timing.
-        
-        Args:
-            x: Normalized X coordinate (0.0 to 1.0)
-            y: Normalized Y coordinate (0.0 to 1.0)
-            delay: Optional delay between down/up (uses config default if None)
-        """
-        if delay is None:
-            delay = self._config['simulation_delay']
-        
-        self.logger.info(f"👆 Simulating tap at ({x:.3f}, {y:.3f}) with {delay*1000:.0f}ms delay")
-        
-        # Touch down
-        self.simulate_touch(x, y, TouchEventType.TOUCH_DOWN)
-        
-        # Realistic delay
-        time.sleep(delay)
-        
-        # Touch up
-        self.simulate_touch(x, y, TouchEventType.TOUCH_UP)
-        
-        # Update tap statistics
-        self._stats['simulated_taps'] += 1
-        
-        if self._config['gesture_recognition']:
-            self.logger.debug(f"✅ Tap gesture completed ({self._stats['simulated_taps']} total)")
-    
-    def simulate_long_press(self, x: float, y: float, duration: float = 1.0) -> None:
-        """
-        Simulate a long press gesture.
-        
-        Args:
-            x: Normalized X coordinate (0.0 to 1.0)
-            y: Normalized Y coordinate (0.0 to 1.0)  
-            duration: Press duration in seconds
-        """
-        self.logger.info(f"👆⏰ Simulating long press at ({x:.3f}, {y:.3f}) for {duration:.1f}s")
-        
-        # Touch down
-        self.simulate_touch(x, y, TouchEventType.TOUCH_DOWN)
-        
-        # Hold for specified duration
-        time.sleep(duration)
-        
-        # Touch up
-        self.simulate_touch(x, y, TouchEventType.TOUCH_UP)
-        
-        if self._config['gesture_recognition']:
-            self.logger.info(f"✅ Long press gesture completed ({duration:.1f}s)")
-    
-    def simulate_swipe(self, start_x: float, start_y: float, end_x: float, end_y: float, steps: int = 10, duration: float = 0.5) -> None:
-        """
-        Simulate a swipe gesture.
-        
-        Args:
-            start_x: Starting X coordinate (0.0 to 1.0)
-            start_y: Starting Y coordinate (0.0 to 1.0)
-            end_x: Ending X coordinate (0.0 to 1.0)
-            end_y: Ending Y coordinate (0.0 to 1.0)
-            steps: Number of intermediate points
-            duration: Total swipe duration in seconds
-        """
-        self.logger.info(f"👆↗️ Simulating swipe from ({start_x:.3f}, {start_y:.3f}) to ({end_x:.3f}, {end_y:.3f})")
-        
-        # Touch down at start
-        self.simulate_touch(start_x, start_y, TouchEventType.TOUCH_DOWN)
-        
-        # Generate intermediate points
-        step_delay = duration / steps
-        for i in range(1, steps):
-            progress = i / steps
-            curr_x = start_x + (end_x - start_x) * progress
-            curr_y = start_y + (end_y - start_y) * progress
-            
-            self.simulate_touch(curr_x, curr_y, TouchEventType.TOUCH_MOVE)
-            time.sleep(step_delay)
-        
-        # Touch up at end
-        self.simulate_touch(end_x, end_y, TouchEventType.TOUCH_UP)
-        
-        if self._config['gesture_recognition']:
-            self.logger.info(f"✅ Swipe gesture completed in {duration:.1f}s")
-    
-    def simulate_touch_event(self, event_type: TouchEventType, x: float, y: float) -> None:
-        """
-        Legacy method - redirects to simulate_touch for backward compatibility.
-        
-        Args:
-            event_type: Type of touch event to simulate
-            x: Normalized X coordinate (0.0 to 1.0)
-            y: Normalized Y coordinate (0.0 to 1.0)
-        """
-        self.simulate_touch(x, y, event_type)
-    
-    def enable_simulation(self) -> None:
-        """Enable touch event simulation with feedback"""
-        self._simulation_enabled = True
-        if self._config['auto_feedback']:
-            self.logger.info("✅ Touch simulation enabled - Ready for development testing")
-            self.logger.info("💡 Use simulate_tap(), simulate_long_press(), or simulate_swipe() methods")
-    
-    def disable_simulation(self) -> None:
-        """Disable touch event simulation with feedback"""
-        self._simulation_enabled = False
-        if self._config['auto_feedback']:
-            self.logger.info("⛔ Touch simulation disabled")
-    
-    def get_development_info(self) -> dict:
-        """
-        Get comprehensive development information.
-        
-        Returns:
-            dict: Detailed interface state and statistics
-        """
-        return {
-            'interface_type': 'MockTouchInterface',
-            'running': self._running,
-            'simulation_enabled': self._simulation_enabled,
-            'configuration': self._config.copy(),
-            'statistics': self._stats.copy(),
-            'event_history_size': len(self._event_history),
-            'last_event': self._event_history[-1] if self._event_history else None
-        }
-    
     def get_info(self) -> dict:
         """Get mock interface information (legacy compatibility)"""
         info = super().get_info()
@@ -750,52 +535,6 @@ class MockTouchInterface(TouchInterface):
             'total_events_processed': self._stats['total_events']
         })
         return info
-    
-    def print_statistics(self) -> None:
-        """Print detailed usage statistics for development"""
-        self.logger.info("📊 Touch Interface Statistics:")
-        for key, value in self._stats.items():
-            self.logger.info(f"   {key.replace('_', ' ').title()}: {value}")
-    
-    def clear_history(self) -> None:
-        """Clear event history and reset statistics"""
-        self._event_history.clear()
-        self._stats = {key: 0 for key in self._stats}
-        self.logger.info("🧹 Event history and statistics cleared")
-    
-    def _update_stats(self, event_type: TouchEventType) -> None:
-        """Update internal statistics"""
-        self._stats['total_events'] += 1
-        if event_type == TouchEventType.TOUCH_DOWN:
-            self._stats['touch_downs'] += 1
-        elif event_type == TouchEventType.TOUCH_UP:
-            self._stats['touch_ups'] += 1
-        elif event_type == TouchEventType.TOUCH_MOVE:
-            self._stats['touch_moves'] += 1
-    
-    def _add_to_history(self, event: TouchEvent) -> None:
-        """Add event to history with size management"""
-        self._event_history.append({
-            'type': event.event_type.name,
-            'x': event.x,
-            'y': event.y,
-            'timestamp': event.timestamp
-        })
-        
-        # Maintain history size limit
-        max_size = self._config['event_history_size']
-        if len(self._event_history) > max_size:
-            self._event_history = self._event_history[-max_size:]
-    
-    def _print_development_info(self) -> None:
-        """Print helpful development information"""
-        self.logger.info("🛠️  Development Features Available:")
-        self.logger.info("   • simulate_tap(x, y) - Simulate button/UI taps")
-        self.logger.info("   • simulate_long_press(x, y, duration) - Simulate long press gestures")
-        self.logger.info("   • simulate_swipe(x1, y1, x2, y2) - Simulate swipe gestures")
-        self.logger.info("   • get_development_info() - Get detailed interface state")
-        self.logger.info("   • print_statistics() - Show usage statistics")
-        self.logger.info("   • configure(**options) - Update runtime configuration")
     
     def _print_session_stats(self) -> None:
         """Print session statistics on shutdown"""
@@ -842,7 +581,7 @@ def create_touch_interface() -> TouchInterface:
             'platform_type': 'Raspberry Pi' if _RPI_AVAILABLE else 'Development Platform'
         }
         
-        logger.info(f"🔍 Platform Analysis:")
+        logger.info("🔍 Platform Analysis:")
         logger.info(f"   RPi Module: {'✅' if _RPI_AVAILABLE else '❌'}")
         logger.info(f"   HyperPixel: {'✅' if _HYPERPIXEL_AVAILABLE else '❌'}")
         logger.info(f"   Platform: {platform_info['platform_type']}")
@@ -911,81 +650,6 @@ class TouchInterfaceError(Exception):
 class TouchInterfaceNotAvailableError(TouchInterfaceError):
     """Exception raised when requested touch interface is not available"""
     pass
-
-
-def get_available_interfaces() -> list:
-    """
-    Get a list of available touch interface types with platform detection.
-    
-    Returns:
-        list: List of available interface class names with platform info
-    """
-    available = []
-    
-    # MockTouchInterface is always available
-    available.append({
-        'name': 'MockTouchInterface',
-        'type': 'Mock',
-        'platform_support': 'All Platforms',
-        'status': 'Available'
-    })
-    
-    # HyperPixelTouchInterface with cross-platform support
-    hyperpixel_status = 'Available (Cross-Platform)'
-    hyperpixel_details = []
-    
-    if _RPI_AVAILABLE:
-        hyperpixel_details.append('RPi.GPIO: ✅')
-    else:
-        hyperpixel_details.append('RPi.GPIO: ❌ (Mock fallback)')
-    
-    if _HYPERPIXEL_AVAILABLE:
-        hyperpixel_details.append('HyperPixel2R: ✅')
-    else:
-        hyperpixel_details.append('HyperPixel2R: ❌ (Mock fallback)')
-    
-    available.append({
-        'name': 'HyperPixelTouchInterface',
-        'type': 'Hardware/Mock Hybrid',
-        'platform_support': 'Raspberry Pi (Hardware) + Development Platforms (Mock)',
-        'status': hyperpixel_status,
-        'details': hyperpixel_details
-    })
-    
-    return available
-
-
-def create_specific_interface(interface_type: str) -> TouchInterface:
-    """
-    Create a specific type of touch interface.
-    
-    Args:
-        interface_type: Type of interface to create ('mock' or 'hyperpixel')
-        
-    Returns:
-        TouchInterface: Requested touch interface instance
-        
-    Raises:
-        TouchInterfaceNotAvailableError: If requested interface is not available
-        ValueError: If interface_type is not recognized
-    """
-    logger = logging.getLogger('TouchInterfaceFactory')
-    
-    interface_type = interface_type.lower()
-    
-    if interface_type == 'mock':
-        logger.info("Creating mock touch interface")
-        return MockTouchInterface()
-    
-    elif interface_type == 'hyperpixel':
-        try:
-            logger.info("Creating HyperPixel touch interface")
-            return HyperPixelTouchInterface()
-        except Exception as e:
-            raise TouchInterfaceNotAvailableError(f"HyperPixel interface not available: {e}")
-    
-    else:
-        raise ValueError(f"Unknown interface type: {interface_type}")
 
 
 # Module-level convenience functions

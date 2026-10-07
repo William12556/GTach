@@ -24,9 +24,6 @@ from typing import List
 
 SRC_ROOT = pathlib.Path(__file__).resolve().parents[1] / 'src' / 'gtach'
 
-# Excluded from all changes and audits by CLAUDE.md §2.
-EXCLUDED = {'manager_backup.py', 'setup_original_backup.py'}
-
 _BROAD_NAMES = {'Exception', 'BaseException'}
 _LOG_METHODS = {'error', 'critical'}
 
@@ -77,7 +74,7 @@ def find_violations(source: str, filename: str = '<string>') -> List[str]:
 
 
 def _source_files():
-    return sorted(p for p in SRC_ROOT.rglob('*.py') if p.name not in EXCLUDED)
+    return sorted(SRC_ROOT.rglob('*.py'))
 
 
 def test_no_broad_handler_logs_an_error_without_a_traceback():

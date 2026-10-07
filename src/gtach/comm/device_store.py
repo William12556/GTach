@@ -14,7 +14,7 @@ Manages paired device configuration and setup state.
 import os
 import logging
 import threading
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from datetime import datetime
 
 # Conditional import of yaml with fallback

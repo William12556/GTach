@@ -200,7 +200,6 @@ class TestAdvisoryTier:
         stats = watchdog.get_recovery_stats()
         assert stats.warnings_issued == 1
         assert stats.shutdown_triggers == 0
-        assert stats.hard_recovery_attempts == 0
         assert stats.soft_recovery_attempts == 0
         assert shutdowns == []
         assert watchdog._shutdown_initiated.is_set() is False

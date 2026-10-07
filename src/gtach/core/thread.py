@@ -20,9 +20,9 @@ import queue
 import time
 import weakref
 from enum import Enum, auto
-from typing import Dict, Optional, Callable, Any, Set
+from typing import Dict, Optional, Callable
 from dataclasses import dataclass, field
-from concurrent.futures import ThreadPoolExecutor, Future
+from concurrent.futures import ThreadPoolExecutor
 
 class ThreadStatus(Enum):
     """Thread status enumeration with atomic transitions"""
@@ -31,17 +31,15 @@ class ThreadStatus(Enum):
     STOPPING = auto()
     STOPPED = auto()
     FAILED = auto()
-    RESTARTING = auto()
     
     def can_transition_to(self, new_status: 'ThreadStatus') -> bool:
         """Check if transition to new status is valid"""
         valid_transitions = {
             ThreadStatus.STARTING: {ThreadStatus.RUNNING, ThreadStatus.FAILED, ThreadStatus.STOPPING},
-            ThreadStatus.RUNNING: {ThreadStatus.STOPPING, ThreadStatus.FAILED, ThreadStatus.RESTARTING},
+            ThreadStatus.RUNNING: {ThreadStatus.STOPPING, ThreadStatus.FAILED},
             ThreadStatus.STOPPING: {ThreadStatus.STOPPED, ThreadStatus.FAILED},
-            ThreadStatus.STOPPED: {ThreadStatus.STARTING, ThreadStatus.RESTARTING},
-            ThreadStatus.FAILED: {ThreadStatus.RESTARTING, ThreadStatus.STOPPING, ThreadStatus.STOPPED},
-            ThreadStatus.RESTARTING: {ThreadStatus.STARTING, ThreadStatus.FAILED, ThreadStatus.STOPPED}
+            ThreadStatus.STOPPED: {ThreadStatus.STARTING},
+            ThreadStatus.FAILED: {ThreadStatus.STOPPING, ThreadStatus.STOPPED},
         }
         return new_status in valid_transitions.get(self, set())
 
@@ -52,25 +50,13 @@ class ThreadInfo:
     status: ThreadStatus
     # time.monotonic() seconds, not wall-clock time (issue-b9ee7428).
     last_heartbeat: float
-    restart_count: int = 0
     last_error: Optional[Exception] = None
-    target_func: Optional[Callable] = None
-    target_args: tuple = field(default_factory=tuple)
-    target_kwargs: dict = field(default_factory=dict)
     stop_func: Optional[Callable] = None
     creation_time: float = field(default_factory=time.time)
-    restart_future: Optional[Future] = None
     
     def __hash__(self):
         """Make ThreadInfo hashable based on thread identity"""
         return hash((id(self.thread), self.creation_time))
-    
-    def __post_init__(self):
-        """Extract and store thread target info safely"""
-        if hasattr(self.thread, '_target') and self.thread._target:
-            self.target_func = self.thread._target
-            self.target_args = getattr(self.thread, '_args', ())
-            self.target_kwargs = getattr(self.thread, '_kwargs', {})
 
 class ThreadManager:
     """Thread-safe manager for application threads and worker pool
@@ -101,7 +87,6 @@ class ThreadManager:
         )
         
         # Resource tracking for cleanup verification
-        self._active_futures: Set[Future] = set()
         self._resource_tracker = weakref.WeakSet()
         
         # Message queue for thread communication — bounded to prevent stale data accumulation
@@ -178,10 +163,6 @@ class ThreadManager:
 
             thread_info.status = ThreadStatus.STOPPING
 
-            # Cancel any pending restart
-            if thread_info.restart_future and not thread_info.restart_future.done():
-                thread_info.restart_future.cancel()
-
         # stop_func runs after the lock is released and before the
         # join, so the thread is already STOPPING when it is released
         # (CLAUDE.md §4 rule 8, issue-860fd5f7).
@@ -223,15 +204,6 @@ class ThreadManager:
         # Signal shutdown to all components
         self._shutdown_event.set()
 
-        # Cancel all active futures
-        cancelled_count = 0
-        for future in list(self._active_futures):
-            if not future.done():
-                future.cancel()
-                cancelled_count += 1
-        if cancelled_count > 0:
-            self.logger.debug(f"Cancelled {cancelled_count} active futures")
-            
         # Shutdown worker pool with timeout (Python 3.9 doesn't support timeout parameter)
         try:
             self.worker_pool.shutdown(wait=True)
@@ -286,7 +258,6 @@ class ThreadManager:
         # Final cleanup
         with self._state_lock:
             self.threads.clear()
-            self._active_futures.clear()
             
     def __enter__(self):
         """Context manager entry"""

@@ -8,7 +8,7 @@ the appropriate transport based on platform and arguments.
 Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import Enum, auto
 import argparse
 import errno as _errno
@@ -677,7 +677,6 @@ def select_transport(platform_type: PlatformType, args: argparse.Namespace) -> O
     Raises:
         TransportError: If the platform is unsupported or no paired device is found.
     """
-    from .rfcomm import RFCOMMTransport
     from .serial_transport import SerialTransport
     from .tcp_transport import TCPTransport
 

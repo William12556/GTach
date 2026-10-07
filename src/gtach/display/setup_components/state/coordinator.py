@@ -392,36 +392,6 @@ class SetupStateCoordinator:
             self.logger.error(f"Error validating MAC address: {e}", exc_info=True)
             return False
     
-    def create_manual_device(self, mac_address: str, device_name: str = None) -> Optional[BluetoothDevice]:
-        """Create a BluetoothDevice from manual input"""
-        try:
-            if not self.is_valid_mac_address(mac_address):
-                self.logger.error(f"Invalid MAC address format: {mac_address}")
-                return None
-            
-            # Format MAC address with colons
-            clean_mac = mac_address.replace(':', '').replace('-', '').replace(' ', '').upper()
-            formatted_mac = ':'.join([clean_mac[i:i+2] for i in range(0, 12, 2)])
-            
-            # Create device with manual entry indication
-            device_name = device_name or f"Manual-{formatted_mac[-5:]}"
-            
-            from ...setup_models import DeviceType
-            manual_device = BluetoothDevice(
-                name=device_name,
-                mac_address=formatted_mac,
-                device_type="Manual Entry",
-                rssi=None,
-                device_classification=DeviceType.POSSIBLY_COMPATIBLE
-            )
-            
-            self.logger.info(f"Created manual device: {device_name} ({formatted_mac})")
-            return manual_device
-            
-        except Exception as e:
-            self.logger.error(f"Error creating manual device: {e}", exc_info=True)
-            return None
-    
     def _clamp_focused_index_locked(self) -> int:
         """Clamp focused_index to the discovered-device range.
 
@@ -515,34 +485,3 @@ class SetupStateCoordinator:
             return True
 
 
-    def get_setup_progress(self) -> Dict[str, Any]:
-        """Get overall setup progress information"""
-        with self._state_lock:
-            # Calculate progress based on current screen
-            progress_map = {
-                SetupScreen.WELCOME: 0.0,
-                SetupScreen.DISCOVERY: 0.2,
-                SetupScreen.DEVICE_LIST: 0.4,
-                SetupScreen.PAIRING: 0.6,
-                SetupScreen.COMPLETE: 1.0
-            }
-            
-            base_progress = progress_map.get(self.state.current_screen, 0.0)
-            
-            # Add sub-progress for current operations
-            if self.state.current_screen == SetupScreen.DISCOVERY:
-                base_progress += (self.state.discovery_progress or 0.0) * 0.2
-            elif self.state.current_screen == SetupScreen.PAIRING:
-                if self.state.pairing_status == PairingStatus.PAIRING:
-                    base_progress += 0.1
-                elif self.state.pairing_status == PairingStatus.SUCCESS:
-                    base_progress += 0.2
-            
-            return {
-                'progress': min(1.0, base_progress),
-                'current_screen': self.state.current_screen.name,
-                'setup_complete': self.state.setup_complete,
-                'selected_device': self.state.selected_device.name if self.state.selected_device else None,
-                'discovered_devices_count': len(self.state.discovered_devices),
-                'pairing_status': self.state.pairing_status.name
-            }

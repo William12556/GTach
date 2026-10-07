@@ -13,7 +13,7 @@ Interfaces and data structures for display rendering components.
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Tuple, Optional, Dict, Any, List
+from typing import Tuple, Optional
 import pygame
 
 class RenderTarget(Enum):

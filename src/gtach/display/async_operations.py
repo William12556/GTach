@@ -16,7 +16,7 @@ import threading
 import queue
 import time
 from enum import Enum, auto
-from typing import Dict, Any, Optional, Callable, Union
+from typing import Dict, Any, Optional, Callable
 from dataclasses import dataclass, field
 
 class OperationType(Enum):

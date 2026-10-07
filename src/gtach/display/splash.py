@@ -12,7 +12,6 @@ Provides animated startup screen with loading indicators and application brandin
 """
 
 import logging
-import math
 import threading
 import time
 from collections import deque
@@ -395,8 +394,6 @@ class SplashScreen:
             else:
                 # Full automotive mode - optimized spacing for minimalist design
                 self._draw_title_text(surface, center_x, center_y - 115)
-                # OBD-II icon removed to eliminate grey-to-green rectangle artifact behind gauge
-                # self._draw_obdii_icon(surface, center_x, center_y)
                 self._draw_progress_indicator(surface, center_x, center_y + 20)
                 self._draw_version_text(surface, center_x, center_y + 110)
                 # Circular red border removed 2026-08-13 (William's request,
@@ -460,40 +457,12 @@ class SplashScreen:
         except Exception as e:
             self.logger.error(f"Subtitle text rendering failed: {e}", exc_info=True)
     
-    def _draw_obdii_icon(self, surface, center_x: int, center_y: int) -> None:
-        """Draw animated OBD-II connector icon."""
-        try:
-            # Import graphics function
-            from .graphics.splash_graphics import draw_obdii_connector
-            
-            # Calculate connection animation (pulsing effect)
-            if self._start_time:
-                elapsed = time.monotonic() - self._start_time
-                # Animate connection state - start disconnected, connect halfway through
-                connected = elapsed > (self.duration / 2)
-            else:
-                connected = False
-            
-            # Draw OBD-II connector with animation
-            connector_size = 80
-            connector_success = draw_obdii_connector(surface, (center_x, center_y), 
-                                                   connector_size, connected)
-            
-            if not connector_success:
-                # Fallback: simple circle indicator
-                color = self._colors['accent'] if connected else self._colors['border']
-                radius = 20
-                pygame.draw.circle(surface, color, (center_x, center_y), radius, 3)
-                
-        except Exception as e:
-            self.logger.error(f"OBD-II icon rendering failed: {e}", exc_info=True)
-    
     def _draw_progress_indicator(self, surface, center_x: int, center_y: int) -> None:
         """Draw simplified progress indicator with automotive gauge only."""
         try:
             # Import graphics functions
             from .graphics.splash_graphics import (
-                draw_automotive_gauge, SPLASH_COLORS
+                draw_automotive_gauge
             )
             
             # Calculate animation progress (0.0 to 1.0)

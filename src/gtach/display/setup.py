@@ -25,12 +25,9 @@ except ImportError:
     pygame = None
     PYGAME_AVAILABLE = False
 
-from .setup_models import SetupScreen, SetupState, SetupAction, PairingStatus, BluetoothDevice, DeviceType
-from .typography import (get_font_manager, get_title_display_font, get_heading_font, get_body_font, 
-                         get_button_font, get_label_small_font, TypographyConstants,
-                         get_button_renderer, render_standard_button, ButtonSize, ButtonState)
-from .performance import get_performance_manager
-from .async_operations import get_async_manager, OperationType, OperationStatus
+from .setup_models import SetupScreen, SetupState, SetupAction, PairingStatus
+from .typography import (get_title_display_font, get_heading_font, get_body_font, get_button_font, 
+                         get_label_small_font)
 
 # Import extracted components
 from .setup_components.bluetooth.interface import BluetoothSetupInterface

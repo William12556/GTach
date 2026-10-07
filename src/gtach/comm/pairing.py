@@ -14,7 +14,6 @@ Handles device discovery, pairing, and connection testing.
 import logging
 import threading
 import time
-import signal
 import concurrent.futures
 from typing import List, Optional, Callable
 from datetime import datetime
@@ -276,11 +275,6 @@ class BluetoothPairing:
         
         return DeviceType.UNKNOWN
     
-    def _is_elm327_device(self, device_name: str) -> bool:
-        """Legacy method for backward compatibility"""
-        classification = self._classify_device(device_name)
-        return classification in [DeviceType.HIGHLY_LIKELY_ELM327, DeviceType.POSSIBLY_COMPATIBLE]
-    
     def _get_signal_strength(self, mac_address: str) -> int:
         """Get approximate signal strength for a device"""
         try:
@@ -411,146 +405,6 @@ class BluetoothPairing:
         except Exception as e:
             self.logger.error(f"Communication test error: {e}", exc_info=True)
             return False
-    
-    def test_obd_connection(self, device: BluetoothDevice,
-                           status_callback: Optional[Callable[[str], None]] = None) -> bool:
-        """
-        Test OBD-II communication with a paired device
-        
-        Args:
-            device: Device to test
-            status_callback: Called with status updates
-            
-        Returns:
-            True if OBD communication successful, False otherwise
-        """
-        try:
-            self.logger.info(f"Testing OBD connection to {device.name}")
-            
-            if status_callback:
-                status_callback("Connecting to device...")
-            
-            sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-            sock.settimeout(10.0)
-            
-            try:
-                sock.connect((device.mac_address, 1))
-                
-                if status_callback:
-                    status_callback("Testing ELM327 communication...")
-                
-                # Test basic ELM327 communication
-                if not self._test_basic_communication(sock):
-                    if status_callback:
-                        status_callback("ELM327 communication failed")
-                    return False
-                
-                if status_callback:
-                    status_callback("Testing OBD-II protocol...")
-                
-                # Test OBD-II communication
-                # Try to get vehicle identification
-                sock.send(b'0100\r')  # Request supported PIDs
-                # Accumulate to the ELM327 '>' prompt rather than
-                # taking one read. A response split across reads
-                # failed both tests below, reporting failure for an
-                # adapter that answered correctly (core review §5.6).
-                # _recv_until_prompt returns str, so no decode.
-                response = self._recv_until_prompt(sock, timeout=5.0)
-                
-                if '41 00' in response or 'NO DATA' in response:
-                    # Either we got a valid response or expected "NO DATA" (car not running)
-                    device.connection_verified = True
-                    
-                    if status_callback:
-                        status_callback("OBD-II connection verified!")
-                    
-                    self.logger.info(f"OBD connection test successful for {device.name}")
-                    return True
-                else:
-                    if status_callback:
-                        status_callback("OBD-II protocol not responding")
-                    
-                    self.logger.error(f"OBD test failed for {device.name}: {response}")
-                    return False
-                    
-            except bluetooth.BluetoothError as e:
-                if status_callback:
-                    status_callback(f"Connection error: {str(e)}")
-                
-                self.logger.error(f"OBD test connection failed: {e}")
-                return False
-            finally:
-                try:
-                    sock.close()
-                except Exception:
-                    pass
-                    
-        except Exception as e:
-            if status_callback:
-                status_callback(f"Test error: {str(e)}")
-            
-            self.logger.error(f"OBD connection test failed: {e}", exc_info=True)
-            return False
-    
-    def get_device_info(self, mac_address: str) -> Optional[BluetoothDevice]:
-        """Get detailed information about a specific device"""
-        try:
-            # Look up device name with timeout protection
-            try:
-                future = self._executor.submit(bluetooth.lookup_name, mac_address, self.lookup_timeout)
-                try:
-                    name = future.result(timeout=self.lookup_timeout + 2)
-                except concurrent.futures.TimeoutError:
-                    self.logger.warning(f"Device name lookup timed out for {mac_address}")
-                    name = f"Unknown Device ({mac_address})"  
-            except Exception as e:
-                self.logger.warning(f"Device name lookup failed for {mac_address}: {e}")
-                name = f"Unknown Device ({mac_address})"
-            
-            if name:
-                # Classify the device
-                device_classification = self._classify_device(name)
-                signal_strength = self._get_signal_strength(mac_address)
-                
-                # Determine device type string for backward compatibility
-                if device_classification == DeviceType.HIGHLY_LIKELY_ELM327:
-                    device_type = 'ELM327'
-                elif device_classification == DeviceType.POSSIBLY_COMPATIBLE:
-                    device_type = 'Compatible'
-                else:
-                    device_type = 'Unknown'
-                
-                return BluetoothDevice(
-                    name=name,
-                    mac_address=mac_address,
-                    signal_strength=signal_strength,
-                    device_type=device_type,
-                    last_seen=datetime.now(),
-                    is_paired=False,
-                    connection_verified=False,
-                    device_classification=device_classification
-                )
-        except Exception as e:
-            self.logger.error(f"Failed to get device info for {mac_address}: {e}", exc_info=True)
-        
-        return None
-    
-    def discover_all_devices(self, timeout: int = 30, 
-                           progress_callback: Optional[Callable[[float], None]] = None,
-                           device_found_callback: Optional[Callable[[BluetoothDevice], None]] = None) -> List[BluetoothDevice]:
-        """
-        Discover all Bluetooth devices (convenience method)
-        
-        Args:
-            timeout: Discovery timeout in seconds
-            progress_callback: Called with progress percentage (0.0-1.0)
-            device_found_callback: Called when a device is found
-            
-        Returns:
-            List of all discovered devices
-        """
-        return self.discover_elm327_devices(timeout, progress_callback, device_found_callback, show_all_devices=True)
     
     def cancel_discovery(self) -> None:
         """Cancel ongoing discovery operation"""

@@ -20,7 +20,7 @@ import time
 from datetime import datetime
 from typing import List, Optional, Callable
 
-from ..display.setup_models import BluetoothDevice, PairingStatus, DeviceType
+from ..display.setup_models import BluetoothDevice, PairingStatus
 
 
 # Hardcoded fake devices for discovery

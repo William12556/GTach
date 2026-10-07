@@ -90,7 +90,7 @@ def load_engine_profile(profile_name: str = 'abarth_595_turismo'):
             data = yaml.safe_load(f)
 
         if not data or 'profiles' not in data:
-            logger.warning(f"Invalid engine profiles file format, using defaults")
+            logger.warning("Invalid engine profiles file format, using defaults")
             return RPMBands()
 
         # Get the requested profile

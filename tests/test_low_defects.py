@@ -30,6 +30,9 @@ from gtach.comm.rfcomm import RFCOMMTransport
 from gtach.comm.sim_bluetooth import SimBluetoothPairing
 from gtach.comm.tcp_transport import TCPTransport
 from gtach.display.rendering.engine import DisplayRenderingEngine
+from gtach.display.setup_components.layout.circular_positioning import (
+    CircularPositioningEngine,
+)
 from gtach.display.setup_components.rendering.device_surfaces import DeviceSurfaceRenderer
 from gtach.display.setup_models import BluetoothDevice
 from gtach.display.splash import SplashScreen
@@ -176,7 +179,8 @@ class TestSignalStrength:  # D08
         device = BluetoothDevice(name='OBD', mac_address='00:11:22:33:44:55', signal_strength=-60,
                                  device_type='ELM327', last_seen=datetime.datetime(2026, 10, 7))
 
-        renderer.render_compact_device_item(device)
+        layout = CircularPositioningEngine().calculate_focused_slot_layout()
+        renderer.create_slot_surface(device, layout[1])
 
         assert seen == [-60]
 

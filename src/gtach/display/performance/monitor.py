@@ -16,13 +16,12 @@ and analysis for the OBDII display system.
 import time
 import threading
 import logging
-import os
 import psutil
 from collections import deque, defaultdict
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, List
 import pygame
 
-from .interfaces import PerformanceMonitorInterface, PerformanceMetrics, MetricType
+from .interfaces import PerformanceMonitorInterface, PerformanceMetrics
 
 class PerformanceMonitor(PerformanceMonitorInterface):
     """

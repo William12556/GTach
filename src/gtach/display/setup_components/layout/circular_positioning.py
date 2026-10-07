@@ -15,7 +15,7 @@ import logging
 import math
 import time
 import threading
-from typing import List, Dict, Tuple, Any, Optional
+from typing import List, Dict, Tuple, Any
 
 
 class CircularPositioningEngine:
@@ -74,50 +74,6 @@ class CircularPositioningEngine:
                 'max_radius': 220,
                 'size': (480, 480)
             }
-    
-    def position_in_circle(self, angle_degrees: float, radius: float, 
-                          element_size: Tuple[int, int] = (100, 30)) -> Tuple[int, int, int, int]:
-        """Position an element within the circular display using polar coordinates"""
-        start_time = time.time()
-        
-        try:
-            if radius < 0:
-                raise ValueError("Radius must be non-negative")
-            if radius > self.display_safe_radius:
-                self.logger.warning(f"Radius {radius} exceeds safe radius {self.display_safe_radius}")
-                radius = self.display_safe_radius
-            
-            angle_radians = math.radians(angle_degrees)
-            
-            center_x, center_y = self.display_center
-            element_width, element_height = element_size
-            
-            pos_x = center_x + radius * math.cos(angle_radians)
-            pos_y = center_y + radius * math.sin(angle_radians)
-            
-            rect_x = int(pos_x - element_width // 2)
-            rect_y = int(pos_y - element_height // 2)
-            
-            result = (rect_x, rect_y, element_width, element_height)
-            
-            if self._performance_monitoring['enabled']:
-                self._performance_monitoring['stats']['total_positioning_calls'] += 1
-                duration = time.time() - start_time
-                self._performance_monitoring['stats']['total_positioning_time'] += duration
-                self._performance_monitoring['stats']['average_positioning_time'] = (
-                    self._performance_monitoring['stats']['total_positioning_time'] / 
-                    self._performance_monitoring['stats']['total_positioning_calls']
-                )
-                
-                if duration > 0.01:
-                    self._performance_monitoring['stats']['slow_operations_count'] += 1
-            
-            return result
-            
-        except Exception as e:
-            self.logger.error(f"Error positioning element in circle: {e}", exc_info=True)
-            center_x, center_y = self.display_center
-            return (center_x - 50, center_y - 15, 100, 30)
     
     def validate_circular_bounds(self, rect_coords: Tuple[int, int, int, int]) -> Dict[str, Any]:
         """Validate if a rectangle fits within the circular display boundary"""
@@ -316,73 +272,6 @@ class CircularPositioningEngine:
                 )
             ]
 
-    def calculate_curved_list_layout(self, item_count: int, start_y: int = 100,
-                                   item_height: int = 45, item_spacing: int = 3) -> List[Dict[str, Any]]:
-        """Calculate curved list layout positions for circular display optimization"""
-        try:
-            layout_data = []
-
-            with self._cache_lock:
-                if not hasattr(self, '_circular_layout_cache'):
-                    self._circular_layout_cache = {}
-            
-            self.logger.debug(f"Calculating curved layout for {item_count} items starting at y={start_y}")
-            
-            for i in range(item_count):
-                y_pos = start_y + i * (item_height + item_spacing)
-
-                cache_key = f"curved_{y_pos}_{item_height}"
-                
-                with self._cache_lock:
-                    if cache_key in self._circular_layout_cache:
-                        layout_item = self._circular_layout_cache[cache_key].copy()
-                        layout_item['index'] = i
-                        layout_item['y'] = y_pos
-                    else:
-                        layout_item = self._calculate_curved_geometry(y_pos, item_height)
-                        layout_item['index'] = i
-                        layout_item['y'] = y_pos
-
-                        cache_item = layout_item.copy()
-                        del cache_item['index']
-                        del cache_item['y']
-                        self._circular_layout_cache[cache_key] = cache_item
-                
-                layout_data.append(layout_item)
-                
-                if self.logger.isEnabledFor(logging.DEBUG):
-                    self.logger.debug(f"Item {i}: x={layout_item['x']}, y={layout_item['y']}, "
-                                    f"w={layout_item['width']}, scale={layout_item['scale']:.2f}, "
-                                    f"opacity={layout_item['opacity']:.2f}, safe={layout_item['in_safe_area']}")
-            
-            with self._cache_lock:
-                cache_size = len(self._circular_layout_cache)
-                if cache_size > 100:
-                    cache_keys = list(self._circular_layout_cache.keys())
-                    for old_key in cache_keys[:cache_size // 2]:
-                        del self._circular_layout_cache[old_key]
-                    self.logger.debug(f"Trimmed circular layout cache from {cache_size} to {len(self._circular_layout_cache)} entries")
-            
-            self.logger.info(f"Generated curved layout for {len(layout_data)} items")
-            return layout_data
-            
-        except Exception as e:
-            self.logger.error(f"Error calculating curved list layout: {e}", exc_info=True)
-            fallback_layout = []
-            for i in range(item_count):
-                fallback_layout.append({
-                    'index': i,
-                    'x': 40,
-                    'y': start_y + i * (item_height + item_spacing),
-                    'width': 400,
-                    'height': item_height,
-                    'scale': 1.0,
-                    'opacity': 1.0,
-                    'center_distance': 0,
-                    'in_safe_area': True
-                })
-            return fallback_layout
-    
     def validate_all_layout_elements(self, layout_data: List[Dict[str, Any]], 
                                    screen_name: str = "current") -> Dict[str, Any]:
         """Validate all layout elements for circular boundary compliance"""
@@ -448,118 +337,6 @@ class CircularPositioningEngine:
                 'performance_stats': {},
                 'recommendations': ['Validation failed due to error']
             }
-    
-    def log_positioning_metrics(self, operation: str, start_time: float, element_count: int = 1, 
-                               additional_data: Dict[str, Any] = None) -> None:
-        """Log performance metrics for circular positioning operations"""
-        try:
-            duration = time.time() - start_time
-            elements_per_second = element_count / duration if duration > 0 else 0
-            
-            metrics = {
-                'operation': operation,
-                'duration_ms': duration * 1000,
-                'element_count': element_count,
-                'elements_per_second': elements_per_second
-            }
-            
-            if additional_data:
-                metrics.update(additional_data)
-            
-            if duration > 0.1:
-                self.logger.warning(f"Slow circular positioning: {operation} took {duration*1000:.1f}ms "
-                                   f"for {element_count} elements ({elements_per_second:.1f} elements/sec)")
-            elif duration > 0.05:
-                self.logger.info(f"Circular positioning: {operation} took {duration*1000:.1f}ms "
-                                f"for {element_count} elements")
-            else:
-                self.logger.debug(f"Circular positioning: {operation} completed in {duration*1000:.1f}ms")
-            
-            self.logger.debug(f"Positioning metrics: {metrics}")
-            
-        except Exception as e:
-            self.logger.error(f"Error logging positioning metrics: {e}", exc_info=True)
-    
-    def monitor_performance(self, enable_monitoring: bool = True) -> Dict[str, Any]:
-        """Enable or disable performance monitoring for circular positioning operations"""
-        try:
-            self._performance_monitoring['enabled'] = enable_monitoring
-            
-            current_config = {
-                'monitoring_enabled': enable_monitoring,
-                'stats': self._performance_monitoring['stats'].copy()
-            }
-            
-            if enable_monitoring:
-                self.logger.info("Circular positioning performance monitoring enabled")
-            else:
-                self.logger.info("Circular positioning performance monitoring disabled")
-            
-            return current_config
-            
-        except Exception as e:
-            self.logger.error(f"Error configuring performance monitoring: {e}", exc_info=True)
-            return {'error': str(e)}
-    
-    def get_performance_report(self) -> Dict[str, Any]:
-        """Generate a comprehensive performance report for circular positioning operations"""
-        try:
-            if not self._performance_monitoring['enabled']:
-                return {'error': 'Performance monitoring not enabled'}
-            
-            stats = self._performance_monitoring['stats']
-            
-            report = {
-                'monitoring_enabled': True,
-                'total_operations': stats['total_positioning_calls'] + stats['total_validation_calls'],
-                'positioning_operations': {
-                    'total_calls': stats['total_positioning_calls'],
-                    'total_time_ms': stats['total_positioning_time'] * 1000,
-                    'average_time_ms': stats['average_positioning_time'] * 1000
-                },
-                'validation_operations': {
-                    'total_calls': stats['total_validation_calls'],
-                    'total_time_ms': stats['total_validation_time'] * 1000,
-                    'average_time_ms': stats['average_validation_time'] * 1000
-                },
-                'performance_issues': {
-                    'slow_operations_count': stats['slow_operations_count']
-                },
-                'recommendations': []
-            }
-            
-            if stats['average_positioning_time'] > 0.01:
-                report['recommendations'].append("Consider optimizing positioning calculations")
-            if stats['average_validation_time'] > 0.005:
-                report['recommendations'].append("Consider caching validation results")
-            if stats['slow_operations_count'] > stats['total_positioning_calls'] * 0.1:
-                report['recommendations'].append("High percentage of slow operations detected")
-            
-            if not report['recommendations']:
-                report['recommendations'].append("Performance is within acceptable parameters")
-            
-            return report
-            
-        except Exception as e:
-            self.logger.error(f"Error generating performance report: {e}", exc_info=True)
-            return {'error': str(e)}
-    
-    def reset_performance_stats(self) -> None:
-        """Reset all circular positioning performance statistics"""
-        try:
-            self._performance_monitoring['stats'] = {
-                'total_positioning_calls': 0,
-                'total_validation_calls': 0,
-                'total_positioning_time': 0.0,
-                'total_validation_time': 0.0,
-                'average_positioning_time': 0.0,
-                'average_validation_time': 0.0,
-                'slow_operations_count': 0
-            }
-            self.logger.info("Circular positioning performance statistics reset")
-            
-        except Exception as e:
-            self.logger.error(f"Error resetting performance statistics: {e}", exc_info=True)
     
     def clear_layout_cache(self) -> None:
         """Clear the circular layout cache to free memory"""

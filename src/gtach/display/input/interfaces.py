@@ -13,7 +13,7 @@ Interfaces and data structures for touch event handling.
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Tuple, Optional, Dict, Any, List, Callable
+from typing import Tuple, Optional, Dict, Any, List
 import pygame
 
 class GestureType(Enum):

@@ -14,14 +14,13 @@ rendering primitives for the OBDII display system.
 """
 
 import os
-import sys
 import time
 import mmap
 import fcntl
 import struct
 import logging
 import threading
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict
 import pygame
 
 from .interfaces import RenderingEngineInterface, RenderTarget, RenderingStats
@@ -125,7 +124,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         
         # Check pygame availability
         try:
-            import pygame
+            import pygame  # noqa: F401 — availability probe
             self.pygame_available = True
         except ImportError:
             self.pygame_available = False

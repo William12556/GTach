@@ -12,8 +12,8 @@ Contains dataclasses and enums used across communication modules.
 """
 
 import datetime
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
 
 
 @dataclass

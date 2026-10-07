@@ -13,7 +13,7 @@ Handles device discovery coordination and setup mode Bluetooth operations.
 
 import logging
 import threading
-from typing import Optional, Dict, Any, Callable
+from typing import Dict, Callable
 from ...setup_models import PairingStatus, BluetoothDevice
 from ....comm.pairing import BluetoothPairing
 from ....comm.device_store import get_device_store
@@ -54,7 +54,6 @@ class BluetoothSetupInterface:
                     progress_callback(0.8, "Testing Bluetooth adapter...")
                 
                 try:
-                    adapter_available = hasattr(pairing, 'adapter') and pairing.adapter is not None
                     if progress_callback:
                         progress_callback(1.0, "Bluetooth initialization complete")
                 except Exception as e:

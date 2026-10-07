@@ -7,11 +7,10 @@ TCP sockets for network communication with an ELM327 OBD-II adapter or emulator.
 Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
 """
 
-import logging
 import socket
 from typing import Optional
 
-from .transport import OBDTransport, TransportState, TransportError
+from .transport import OBDTransport
 
 
 class TCPTransport(OBDTransport):

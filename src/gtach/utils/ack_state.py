@@ -19,7 +19,7 @@ import logging
 import os
 import uuid
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import TYPE_CHECKING, Optional, Dict, Any
 
 try:
     import yaml
@@ -29,6 +29,9 @@ except ImportError:
     YAML_AVAILABLE = False
 
 from .home import gtach_home
+
+if TYPE_CHECKING:
+    from ..display.models import RPMBands
 
 
 class AcknowledgementStateManager:

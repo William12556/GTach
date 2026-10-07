@@ -17,11 +17,10 @@ import os
 import platform
 import logging
 import subprocess
-import importlib.util
 import sys
 import threading
 import time
-from typing import Dict, Optional, Tuple, List, Any, Union, Set
+from typing import Dict, Optional, List, Any
 from pathlib import Path
 from enum import Enum, auto
 from dataclasses import dataclass
@@ -74,42 +73,6 @@ class PlatformCapabilities:
     spi_available: bool = False
 
 
-class MockRegistry:
-    """Simplified mock system using registry pattern"""
-    
-    def __init__(self):
-        self.logger = logging.getLogger('MockRegistry')
-        self._mocks: Dict[str, Any] = {}
-        self._lock = threading.RLock()
-    
-    def register_mock(self, module_name: str, mock_instance: Any) -> None:
-        """Register a mock for a module"""
-        with self._lock:
-            self._mocks[module_name] = mock_instance
-            self.logger.debug(f"Registered mock for {module_name}")
-    
-    def get_mock(self, module_name: str) -> Optional[Any]:
-        """Get registered mock for module"""
-        with self._lock:
-            return self._mocks.get(module_name)
-    
-    def has_mock(self, module_name: str) -> bool:
-        """Check if mock is registered"""
-        with self._lock:
-            return module_name in self._mocks
-    
-    def list_mocks(self) -> List[str]:
-        """List all registered mocks"""
-        with self._lock:
-            return list(self._mocks.keys())
-    
-    def clear_mocks(self) -> None:
-        """Clear all registered mocks"""
-        with self._lock:
-            self._mocks.clear()
-            self.logger.debug("Cleared all registered mocks")
-
-
 class PlatformDetector:
     """
     Unified platform detection with conflict resolution and capability verification.
@@ -134,10 +97,6 @@ class PlatformDetector:
         self._last_detection_time: float = 0
         self._cache_duration: float = 300.0  # 5 minutes
         
-        # Mock system
-        self.mock_registry = MockRegistry()
-        self._initialize_default_mocks()
-        
         # Detection method weights (higher = more reliable)
         self._method_weights = {
             DetectionMethod.DEVICE_TREE: 1.0,
@@ -146,12 +105,6 @@ class PlatformDetector:
             DetectionMethod.BCM_GPIO: 0.6,
             DetectionMethod.SYSTEM_PLATFORM: 0.4
         }
-    
-    def _initialize_default_mocks(self) -> None:
-        """Initialize default mock implementations"""
-        self.mock_registry.register_mock('RPi.GPIO', self._create_gpio_mock())
-        self.mock_registry.register_mock('hyperpixel2r', self._create_hyperpixel_mock())
-        self.mock_registry.register_mock('pygame', self._create_pygame_mock())
     
     def get_platform_type(self, force_refresh: bool = False) -> PlatformType:
         """
@@ -817,41 +770,6 @@ class PlatformDetector:
         }
         return variant_names.get(platform_type, "Not a Raspberry Pi")
     
-    def import_module_with_mock(self, module_name: str, 
-                               required_attrs: Optional[List[str]] = None) -> Tuple[Any, bool]:
-        """
-        Import module with automatic mock fallback.
-        
-        Args:
-            module_name: Module to import
-            required_attrs: Required attributes to validate
-            
-        Returns:
-            Tuple of (module, is_real)
-        """
-        try:
-            # Try real import
-            module = importlib.import_module(module_name)
-            
-            # Validate required attributes
-            if required_attrs:
-                missing = [attr for attr in required_attrs if not hasattr(module, attr)]
-                if missing:
-                    raise ImportError(f"Module {module_name} missing: {missing}")
-            
-            self.logger.debug(f"Successfully imported real {module_name}")
-            return module, True
-            
-        except ImportError as e:
-            # Try mock fallback
-            mock = self.mock_registry.get_mock(module_name)
-            if mock:
-                self.logger.info(f"Using mock for {module_name}: {e}")
-                return mock, False
-            else:
-                self.logger.error(f"No mock available for {module_name}: {e}")
-                raise
-    
     def clear_cache(self) -> None:
         """Clear cached detection results"""
         with self._lock:
@@ -861,92 +779,6 @@ class PlatformDetector:
             self._last_detection_time = 0
             self.logger.debug("Platform detection cache cleared")
     
-    def _create_gpio_mock(self):
-        """Create GPIO mock implementation"""
-        class MockGPIO:
-            BCM = "BCM"
-            BOARD = "BOARD"
-            OUT = "OUT"
-            IN = "IN"
-            HIGH = 1
-            LOW = 0
-            PUD_UP = "PUD_UP"
-            PUD_DOWN = "PUD_DOWN"
-            PUD_OFF = "PUD_OFF"
-            
-            @staticmethod
-            def setmode(mode): pass
-            
-            @staticmethod
-            def setwarnings(warnings): pass
-            
-            @staticmethod
-            def setup(pin, mode, **kwargs): pass
-            
-            @staticmethod
-            def output(pin, state): pass
-            
-            @staticmethod
-            def input(pin): return False
-            
-            @staticmethod
-            def cleanup(): pass
-        
-        return MockGPIO()
-    
-    def _create_hyperpixel_mock(self):
-        """Create HyperPixel mock implementation"""
-        class MockHyperPixel:
-            class MockTouch:
-                def __init__(self):
-                    self.running = False
-                
-                def setup_callback(self, callback): pass
-                def start(self): self.running = True
-                def stop(self): self.running = False
-                def is_running(self): return self.running
-            
-            @staticmethod
-            def get_touch():
-                return MockHyperPixel.MockTouch()
-        
-        return MockHyperPixel()
-    
-    def _create_pygame_mock(self):
-        """Create pygame mock implementation"""
-        class MockPygame:
-            class MockDisplay:
-                @staticmethod
-                def init(): return True
-                @staticmethod
-                def set_mode(size, **kwargs): return MockPygame.MockSurface(size)
-                @staticmethod
-                def flip(): pass
-                @staticmethod
-                def update(): pass
-            
-            class MockSurface:
-                def __init__(self, size): self.size = size
-                def fill(self, color): pass
-                def blit(self, surface, pos): pass
-                def get_rect(self): return MockPygame.MockRect(0, 0, *self.size)
-            
-            class MockRect:
-                def __init__(self, x, y, w, h):
-                    self.x, self.y, self.width, self.height = x, y, w, h
-                def collidepoint(self, x, y):
-                    return self.x <= x <= self.x + self.width and self.y <= y <= self.y + self.height
-            
-            @staticmethod
-            def init(): return True, 0
-            @staticmethod
-            def quit(): pass
-            
-            display = MockDisplay()
-        
-        return MockPygame()
-
-
 # Global instance with thread-safe initialization
 _detector_lock = threading.Lock()
 _detector_instance: Optional[PlatformDetector] = None
@@ -1015,17 +847,6 @@ def check_gpio_availability() -> PlatformCapabilities:
         return PlatformCapabilities()
 
 
-def import_module_with_mock(module_name: str, 
-                          required_attrs: Optional[List[str]] = None) -> Tuple[Any, bool]:
-    """Import module with automatic mock fallback"""
-    try:
-        return get_detector().import_module_with_mock(module_name, required_attrs)
-    except Exception as e:
-        logger = logging.getLogger('platform.import_module_with_mock')
-        logger.error(f"Module import failed: {module_name}: {e}", exc_info=True)
-        raise
-
-
 def clear_detection_cache() -> None:
     """Clear platform detection cache"""
     try:
@@ -1084,12 +905,12 @@ def run_platform_test():
         
         # Show detection details
         info = detector.get_platform_info()
-        print(f"\nDetection Methods:")
+        print("\nDetection Methods:")
         for method in info.get('detection_methods', []):
             print(f"  {method['method']}: {method['platform']} "
                   f"(conf: {method['confidence']:.2f})")
         
-        print(f"\nCapabilities:")
+        print("\nCapabilities:")
         caps = info.get('capabilities', {})
         for key, value in caps.items():
             print(f"  {key}: {value}")
@@ -1099,8 +920,6 @@ def run_platform_test():
 
 
 if __name__ == "__main__":
-    import sys
-    
     # Configure logging for test
     logging.basicConfig(
         level=logging.DEBUG,

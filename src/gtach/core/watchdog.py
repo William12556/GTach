@@ -14,17 +14,15 @@ Monitors thread health and triggers recovery actions.
 import logging
 import threading
 import time
-import signal
 from enum import Enum, auto
 from typing import Dict, Optional, Callable, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from .thread import ThreadManager, ThreadStatus
 
 class RecoveryLevel(Enum):
     """Recovery escalation levels"""
     WARNING = auto()      # Log warning, continue monitoring
     SOFT_RECOVERY = auto() # Attempt gentle recovery (signal, interrupt)
-    HARD_RECOVERY = auto() # Force thread restart
     GRACEFUL_SHUTDOWN = auto() # Controlled application shutdown
     EMERGENCY_SHUTDOWN = auto() # Immediate shutdown
 
@@ -34,8 +32,6 @@ class RecoveryStats:
     warnings_issued: int = 0
     soft_recovery_attempts: int = 0
     soft_recovery_successes: int = 0
-    hard_recovery_attempts: int = 0
-    hard_recovery_successes: int = 0
     shutdown_triggers: int = 0
     last_recovery_time: float = 0.0
 
@@ -141,7 +137,6 @@ class WatchdogMonitor:
             f"Watchdog monitor stopped. Final stats: "
             f"warnings={stats.warnings_issued}, "
             f"soft_recovery={stats.soft_recovery_successes}/{stats.soft_recovery_attempts}, "
-            f"hard_recovery={stats.hard_recovery_successes}/{stats.hard_recovery_attempts}, "
             f"shutdowns={stats.shutdown_triggers}"
         )
 
@@ -378,8 +373,6 @@ class WatchdogMonitor:
                 warnings_issued=self.recovery_stats.warnings_issued,
                 soft_recovery_attempts=self.recovery_stats.soft_recovery_attempts,
                 soft_recovery_successes=self.recovery_stats.soft_recovery_successes,
-                hard_recovery_attempts=self.recovery_stats.hard_recovery_attempts,
-                hard_recovery_successes=self.recovery_stats.hard_recovery_successes,
                 shutdown_triggers=self.recovery_stats.shutdown_triggers,
                 last_recovery_time=self.recovery_stats.last_recovery_time
             )
