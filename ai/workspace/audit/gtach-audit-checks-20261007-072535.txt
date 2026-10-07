@@ -1,0 +1,113 @@
+
+==== Context ====
+Host:        gtach
+Date:        2026-10-07T07:25:35+02:00
+Kernel:      6.1.21-v8+
+Python:      Python 3.9.2
+GTach:       0.4.3
+Service:     active  MainPID=824
+Started:     Wed 2026-10-07 07:18:35 CEST
+Environment: 
+Process cwd: /opt/gtach
+
+==== G01 — touch stack (hyperpixel2r, RPi.GPIO) ====
+
+-- pip show (venv)
+hyperpixel2r: INSTALLED 0.0.1
+RPi.GPIO: INSTALLED 0.7.1
+gpiozero: NOT INSTALLED
+
+-- Module resolution in the venv (find_spec; nothing is imported)
+hyperpixel2r: found at /opt/gtach/venv/lib/python3.9/site-packages/hyperpixel2r/__init__.py
+RPi.GPIO: found at /opt/gtach/venv/lib/python3.9/site-packages/RPi/GPIO/__init__.py
+gpiozero: NOT FOUND
+
+-- Touch implementation selected at last start (start.log)
+35:2026-10-07 07:18:36,781 HyperPixelTouchInterface INFO ✅ HyperPixel2R library imported successfully
+
+==== E01 — effective configuration files ====
+ConfigManager resolves OBDII_HOME, else ~/.local/share/obdii (root: /root/...).
+DisplayManager reads ./config.yaml relative to the working directory (/opt/gtach).
+DeviceStore reads ./config/devices.yaml relative to the working directory.
+
+-- Candidate files
+/root/.local/share/obdii/config/config.yaml        EXISTS    1005 bytes  mtime 2026-04-24 09:12:22
+      6:bluetooth:
+      25:display:
+      26:  mode: DIGITAL
+      29:  fps_limit: 60
+      43:  engine_profile: abarth_595_turismo
+/opt/obdii/config/config.yaml                      absent
+/usr/local/share/obdii/config/config.yaml          absent
+/opt/gtach/config.yaml                             EXISTS     132 bytes  mtime 2026-08-21 14:17:59
+      1:engine_profile: abarth_595_turismo
+      2:fps_limit: 30
+      3:mode: RADIAL
+/opt/gtach/config/config.yaml                      absent
+/opt/gtach/config/devices.yaml                     EXISTS     112 bytes  mtime 2026-08-19 15:02:35
+      2:  primary:
+/root/.local/share/obdii/config/devices.yaml       absent
+
+-- Other config.yaml / devices.yaml files on the system (excluding the venv)
+/etc/obdii/config.yaml
+/etc/obdii/devices.yaml
+/opt/gtach/config/devices.yaml
+/opt/gtach/config.yaml
+/root/config/devices.yaml
+/root/config.yaml
+/root/.local/share/obdii/config/config.yaml
+
+-- fps_limit in the file DisplayManager reads
+2:fps_limit: 30
+
+==== B04 — runtime logging ====
+
+-- Log files
+/opt/gtach/start.log             5932 bytes  mtime 2026-10-07 07:18:36
+/opt/gtach/debug.log                0 bytes  mtime 2026-10-02 10:14:35
+/opt/gtach/stacks.log            5986 bytes  mtime 2026-10-02 10:14:29
+  -rw-r--r-- 1 root root  355498 Oct  2 10:14 /opt/gtach/debug.log.1
+  -rw-r--r-- 1 root root  969547 Aug 12 13:43 /opt/gtach/debug.log.10
+  -rw-r--r-- 1 root root  198085 Aug 19 11:30 /opt/gtach/debug.log.2
+  -rw-r--r-- 1 root root  110906 Aug 19 11:26 /opt/gtach/debug.log.3
+  -rw-r--r-- 1 root root 2347040 Aug 13 14:03 /opt/gtach/debug.log.4
+  -rw-r--r-- 1 root root  453848 Aug 12 15:28 /opt/gtach/debug.log.5
+  -rw-r--r-- 1 root root  299505 Aug 12 15:26 /opt/gtach/debug.log.6
+  -rw-r--r-- 1 root root  602617 Aug 12 14:58 /opt/gtach/debug.log.7
+  -rw-r--r-- 1 root root 1010028 Aug 12 14:55 /opt/gtach/debug.log.8
+  -rw-r--r-- 1 root root 1090181 Aug 12 13:46 /opt/gtach/debug.log.9
+
+-- Last 5 lines of start.log (expect the startup-complete line last)
+2026-10-07 07:18:36,849 ThreadManager DEBUG Thread obd_protocol transitioned to RUNNING
+2026-10-07 07:18:36,850 FontManager DEBUG Created and cached font size 36
+2026-10-07 07:18:36,850 OBDProtocol INFO OBD protocol handler started
+2026-10-07 07:18:36,857 gtach.app INFO Background components initialized while splash screen displays
+2026-10-07 07:18:36,858 gtach.app INFO Startup complete — start.log closed
+
+-- Handler suppression in the installed package (static)
+Package: /opt/gtach/venv/lib/python3.9/site-packages/gtach
+/opt/gtach/venv/lib/python3.9/site-packages/gtach/main.py:104:        _debug_handler.setLevel(logging.CRITICAL + 1)  # suppressed
+/opt/gtach/venv/lib/python3.9/site-packages/gtach/app.py:209:                    _main._start_handler.setLevel(logging.CRITICAL + 1)
+/opt/gtach/venv/lib/python3.9/site-packages/gtach/app.py:262:                _main._debug_handler.setLevel(logging.CRITICAL + 1)
+No stream/syslog/journal handler in main.py.
+
+-- Journal output from gtach since boot (process stderr)
+pygame 2.6.1 (SDL 2.28.4, Python 3.9.2)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+stty: 'standard input': Inappropriate ioctl for device
+gtach.service: Succeeded.
+gtach.service: Consumed 10.004s CPU time.
+gtach.service: Scheduled restart job, restart counter is at 1.
+gtach.service: Consumed 10.004s CPU time.
+(lines above, if any, are process output; systemd start/stop lines filtered)
+
+==== Manual step for B04 (not performed by this script) ====
+With debug OFF and the service running:
+  1. Note:  stat -c '%s %y' /opt/gtach/start.log /opt/gtach/debug.log
+  2. Cause a runtime error, e.g. power off the ELM327 adapter (or stop the
+     emulator) for about 30 s, then restore it.
+  3. Repeat step 1 and run:  journalctl -u gtach --since "-5 min" --no-pager
+  B04 is confirmed if neither file grew and the journal shows nothing.
+
+==== Done ====
+Report saved to /tmp/gtach-audit-checks-20261007-072535.txt
