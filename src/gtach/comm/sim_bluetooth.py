@@ -201,14 +201,14 @@ class SimBluetoothPairing:
                 self.logger.info(f"SimBluetoothPairing: pairing succeeded with {device.name}")
                 # Persist device so verify_obd_connection can find it
                 try:
-                    from ..comm.device_store import DeviceStore
+                    from ..comm.device_store import get_device_store
                     from ..comm.models import BluetoothDevice as CommBluetoothDevice
                     comm_device = CommBluetoothDevice(
                         name=device.name,
                         mac_address=device.mac_address,
                         device_type=device.device_type
                     )
-                    DeviceStore().save_device(comm_device, is_primary=True)
+                    get_device_store().save_device(comm_device, is_primary=True)
                 except Exception as e:
                     self.logger.warning(f"SimBluetoothPairing: could not save device to store: {e}")
             else:

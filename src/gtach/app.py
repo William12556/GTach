@@ -22,7 +22,7 @@ import argparse
 from .core import ThreadManager, WatchdogMonitor
 from .comm import OBDProtocol, select_transport
 from .comm.transport import TRANSPORT_NAMES, TRANSPORT_FORCED, TRANSPORT_FAST
-from .comm.device_store import DeviceStore
+from .comm.device_store import get_device_store
 from .display import DisplayManager
 from .display.setup import SetupDisplayManager
 from .utils import ConfigStore, TerminalRestorer, get_platform_type
@@ -64,7 +64,7 @@ class GTachApplication:
         )
 
         # Initialize device store for setup detection
-        self._device_store = DeviceStore()
+        self._device_store = get_device_store()
         self._setup_mode = False
 
         # Debounce for the DISCONNECTED screen's Reset button. A press

@@ -19,7 +19,7 @@ import time
 from typing import Callable, Optional
 
 from ..utils.platform import PlatformType
-from .device_store import DeviceStore
+from .device_store import get_device_store
 
 
 # The transport name set and its classifications, defined
@@ -713,7 +713,7 @@ def _get_rfcomm() -> OBDTransport:
     """
     from .rfcomm import RFCOMMTransport
     
-    ds = DeviceStore()
+    ds = get_device_store()
     dev = ds.get_primary_device()
     if not dev:
         raise TransportError('No paired device found')

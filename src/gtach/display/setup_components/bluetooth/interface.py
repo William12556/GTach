@@ -16,7 +16,7 @@ import threading
 from typing import Optional, Dict, Any, Callable
 from ...setup_models import PairingStatus, BluetoothDevice
 from ....comm.pairing import BluetoothPairing
-from ....comm.device_store import DeviceStore
+from ....comm.device_store import get_device_store
 from ....comm.models import BluetoothDevice as CommBluetoothDevice
 from ...async_operations import get_async_manager, OperationType, OperationStatus
 
@@ -26,7 +26,7 @@ class BluetoothSetupInterface:
 
     def __init__(self, pairing_factory=None, state_coordinator=None):
         self.logger = logging.getLogger('BluetoothSetupInterface')
-        self.device_store = DeviceStore()
+        self.device_store = get_device_store()
         self.async_manager = get_async_manager()
         self._pairing_factory = pairing_factory
         self._state_coordinator = state_coordinator

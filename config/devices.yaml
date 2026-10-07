@@ -1,5 +1,0 @@
-paired_devices: {}
-setup:
-  completed: false
-  discovery_timeout: 30
-  first_run: true

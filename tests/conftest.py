@@ -36,6 +36,15 @@ def pytest_sessionfinish(session, exitstatus):
     shutil.rmtree(_TEST_HOME, ignore_errors=True)
 
 
+@pytest.fixture(autouse=True)
+def _reset_device_store():
+    """Discard the shared DeviceStore after each test (issue-453f0a80)."""
+    yield
+    from gtach.comm.device_store import reset_device_store
+
+    reset_device_store()
+
+
 # Bound applied to every blocking acquisition assertion in the suite. A
 # lost-wakeup defect manifests as a thread that never returns, so an
 # unbounded wait would convert a regression into a hung run with no

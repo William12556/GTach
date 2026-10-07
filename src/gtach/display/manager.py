@@ -2018,8 +2018,8 @@ class DisplayManager:
         """Clear DeviceStore and enter SETUP mode"""
         try:
             self.logger.info("Clearing device settings")
-            from ..comm.device_store import DeviceStore
-            ds = DeviceStore()
+            from ..comm.device_store import get_device_store
+            ds = get_device_store()
             device = ds.get_primary_device()
             if device:
                 ds.remove_device(device.mac_address)

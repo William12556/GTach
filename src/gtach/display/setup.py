@@ -168,8 +168,8 @@ class SetupDisplayManager:
         reads devices.yaml per frame (issue-674bec49).
         """
         try:
-            from ..comm.device_store import DeviceStore
-            self._has_device = DeviceStore().get_primary_device() is not None
+            from ..comm.device_store import get_device_store
+            self._has_device = get_device_store().get_primary_device() is not None
         except Exception as e:
             self.logger.error(f"Device presence check failed: {e}", exc_info=True)
             self._has_device = False
@@ -719,8 +719,8 @@ class SetupDisplayManager:
             surface.blit(title, title_rect)
 
         # Show stored device name
-        from ..comm.device_store import DeviceStore
-        device = DeviceStore().get_primary_device()
+        from ..comm.device_store import get_device_store
+        device = get_device_store().get_primary_device()
         font_body = get_body_font()
         if font_body:
             name = device.name if device else "Unknown"
@@ -846,10 +846,10 @@ class SetupDisplayManager:
 
             elif action == "new_setup":
                 # Clear stored device and restart setup
-                from ..comm.device_store import DeviceStore
-                dev = DeviceStore().get_primary_device()
+                from ..comm.device_store import get_device_store
+                dev = get_device_store().get_primary_device()
                 if dev:
-                    DeviceStore().remove_device(dev.mac_address)
+                    get_device_store().remove_device(dev.mac_address)
                 self.state_coordinator.reset_discovery()
                 self.state_coordinator.transition_to_screen(SetupScreen.WELCOME)
                 return SetupAction.CANCEL
