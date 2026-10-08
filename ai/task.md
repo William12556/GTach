@@ -25,15 +25,15 @@ Each issue and change T-Doc stays active until its steps pass; record the result
 |---|---|---|---|---|
 | Phase 0 | `b9ee7428` | Power the Pi off for more than a minute, then boot with Wi-Fi available. | `journalctl -u gtach -b` shows no 'Succeeded' or 'Scheduled restart' entries. | Passed 2026-10-07 (Session C); NTP stepped the clock ~13 min forward at 37 s, no restart (C1) |
 | Phase 0 | `269871a0` | With debug off, power the OBD adapter off for 30 s; then restart the service. | `error.log` records the event with a traceback, and the earlier records survive the restart. | Passed 2026-10-07 (Session D): link loss 15:29:54 and connect refusals recorded with debug off; message-only, as these pass through narrow OSError handlers outside the exc_info policy; broad-handler tracebacks recorded with debug off earlier the same day; 12:58 records survive restart |
-| Phase 1 | `e9216e17` | Enter setup; tap Start Setup and Cancel on WELCOME repeatedly for one minute. | Display stays responsive; `error.log` shows no watchdog shutdown. | Pending |
-| Phase 1 | `fbe7e98a` | DISCONNECTED → Setup; complete a full pairing; then CURRENT_DEVICE → Continue with the adapter powered off. | Display stays responsive throughout. | Pending |
+| Phase 1 | `e9216e17` | Enter setup; tap Start Setup and Cancel on WELCOME repeatedly for one minute. | Display stays responsive; `error.log` shows no watchdog shutdown. | Passed 2026-10-08 (Session E): 15 WELCOME↔DISCOVERY cycles 09:14–09:28, each transition within ~3 ms of the tap; no watchdog record |
+| Phase 1 | `fbe7e98a` | DISCONNECTED → Setup; complete a full pairing; then CURRENT_DEVICE → Continue with the adapter powered off. | Display stays responsive throughout. | Passed 2026-10-08 (Session E): four full pairings (09:17, 09:22, 09:22:52, 09:28); failed Continue probes returned to WELCOME in 0.03–2.4 s |
 | Phase 1 | `860fd5f7` | On the development host, run `gtach --transport simtcp` and send SIGTERM. | Process exits within a few seconds. | Pending |
 | Phase 1 | `860fd5f7` | On the Pi, soak for several hours with link losses, adapter power cycles and emulator restarts. | `/opt/gtach/error.log` has no 'appears unresponsive' warning for `obd_protocol` and no unexpected shutdown. | Pending |
-| Phase 2 | `907de6de` | With the ELM327 emulator and the vehicle off (0100 → NO DATA). | No init-success log; init retried every 2 s. | Pending |
-| Phase 2 | `907de6de` | Stop the emulator so it closes the socket. | DISCONNECTED screen shows 'adapter closed the connection'. | Pending |
+| Phase 2 | `907de6de` | With the ELM327 emulator and the vehicle off (0100 → NO DATA). | No init-success log; init retried every 2 s. | Passed 2026-10-08 from logs: 2026-10-07 error.log shows repeated initialisation failures on non-4100 0100 replies, retried every 2.5–3.5 s (2 s back-off plus command time), success only on a 4100 reply; NO DATA takes the same check (unit-tested) |
+| Phase 2 | `907de6de` | Stop the emulator so it closes the socket. | DISCONNECTED screen shows 'adapter closed the connection'. | Not applicable 2026-10-08: TCP-only cause; GTach connects over RFCOMM only (owner decision) |
 | Phase 2 | `674bec49` | Run with the current profile (abarth_595_turismo, redline 6000). | Gauge looks unchanged. | Passed 2026-10-07 (Session A) |
-| Phase 2 | `674bec49` | With debug on: guide Session E steps E2, E3, E5, E8 (log-based setup thread check). | Setup thread count never above 1; 0 after Cancel and after pairing. | Pending |
-| Phase 2 | `674bec49` | Fail a Continue probe (adapter off). | 'Device not available' shows on WELCOME until the next tap. | Pending |
+| Phase 2 | `674bec49` | With debug on: guide Session E steps E2, E3, E5, E8 (log-based setup thread check). | Setup thread count never above 1; 0 after Cancel and after pairing. | Passed 2026-10-08: count 1 in setup, 0 after every Cancel and completed pairing (09:08–09:28) |
+| Phase 2 | `674bec49` | Fail a Continue probe (adapter off). | 'Device not available' shows on WELCOME until the next tap. | FAILED 2026-10-08: error_message set (09:08:10, 09:25:24) but not visible on WELCOME; fix change-b0a9cb20 implemented, deploy and re-test pending |
 | Phase 3 | `5fbff586` | After deployment, use the existing `/opt/gtach/config.yaml`. | Display settings still apply. | Passed 2026-10-07 (Session A) |
 | Phase 3 | `5fbff586` | Run `/opt/gtach/venv/bin/gtach --validate-config`; then set `fps_limit: 0` and run it again (restore afterwards). | Prints 'Config valid'; then exits 1. | Passed 2026-10-07 (Session A); script C5a/C5b |
 | Phase 3 | `5fbff586` | First boots after the upgrade. | Acknowledgement screen appears once, then is remembered. | Passed 2026-10-07 (Session A); shown once at 12:58, not after reboot |
@@ -42,9 +42,9 @@ Each issue and change T-Doc stays active until its steps pass; record the result
 | Phase 5 | `52653cd6` | Run `systemd-analyze security gtach` and `time systemctl stop gtach`. | New directives listed; stop under 30 s. | Passed 2026-10-07 (Session A); script C8a, stop 3.0 s (C10) |
 | Phase 5 | `52653cd6` | Inspect `error.log` after start. | No mock-fallback ERROR. | Passed 2026-10-07 (Session A); script C7c |
 | Phase 5 | `d140121d` | Complete a full pairing; then `time systemctl stop gtach` during discovery. | Pairing works; stop well under 30 s. | Passed 2026-10-07 (Session B): stop during discovery 0.41 s (the issue's step covers the stop only; pairing is covered under fbe7e98a) |
-| Phase 5 | `4005360c` | Open DEVICE_LIST; run simbt discovery after a Cancel. | Signal bars show; discovery works after the Cancel. | Pending |
+| Phase 5 | `4005360c` | Open DEVICE_LIST; run simbt discovery after a Cancel. | Signal bars show; discovery works after the Cancel. | Partly passed 2026-10-08: signal bars shown on DEVICE_LIST but very small; simbt step pending (Session H) |
 | Phase 5 | `cd5ec050` | Deploy and use normally. | No regression (no step specific to this change). | Pending |
-| Follow-up | `1a8f40ea` | Guide Session E step E9: SIGUSR1 five times with debug on, once with debug off (0.4.7). | One dump per request; NRestarts unchanged. Closes `fe755cfd` with it. | Pending |
+| Follow-up | `1a8f40ea` | Guide Session E step E9: SIGUSR1 five times with debug on, once with debug off (0.4.7). | One dump per request; NRestarts unchanged. Closes `fe755cfd` with it. | Passed 2026-10-08: six dumps (five debug on, one off), same PID 453, no fault; 1a8f40ea and fe755cfd closed |
 
 ---
 

@@ -51,6 +51,13 @@ class SetupDisplayManager:
     - SetupStateCoordinator: State management
     """
 
+    # WELCOME error message centre (issue-b0a9cb20). The description's
+    # last line ends near y=208 and Start Setup begins at y=270
+    # (two-button layout) or y=330 (one-button layout); a 20 px line
+    # centred at y=235 sits in that gap, inside the 200 px safe radius.
+    # It was at y=440, under the Cancel button and outside the radius.
+    _WELCOME_MESSAGE_Y = 235
+
     # DEVICE_LIST focus arrows (change-479b2e51). The slot column runs
     # y=163..318 for the default 45px slots at 10px spacing, so the
     # arrows sit in the bands between the title and the top slot, and
@@ -427,7 +434,7 @@ class SetupDisplayManager:
             if font_small:
                 text = self._fit_text(font_small, state.error_message)
                 msg = font_small.render(text, True, self.colors["warning"])
-                surface.blit(msg, msg.get_rect(center=(240, 440)))
+                surface.blit(msg, msg.get_rect(center=(240, self._WELCOME_MESSAGE_Y)))
 
         self._update_touch_regions_safe(new_regions)
 
