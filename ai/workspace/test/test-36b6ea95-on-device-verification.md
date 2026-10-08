@@ -259,23 +259,12 @@ Issue: 860fd5f7.
 3. At the end, run the script with `--since "<start time>"`.
 4. Pass if C3a and C3b pass (no 'appears unresponsive' for `obd_protocol`, no unexpected shutdown) and NRestarts in the context block is 0.
 
-### 4.8 Session H: Development Host (Mac)
+### 4.8 Session H: Development Host (Mac) — Not Required
 
-Issues: 860fd5f7, 4005360c. This session needs a development install (`pip install -e .[dev]`) in a virtual environment on the Mac.
+Dropped 2026-10-08. Both steps are covered by automated tests run before every deployment, and by results on the Pi:
 
-1. SIGTERM with simtcp (860fd5f7):
-
-   ```bash
-   cd ~/Documents/GitHub/GTach
-   gtach --transport simtcp & PID=$!; sleep 15; time (kill -TERM $PID; wait $PID)
-   ```
-
-   Pass if the process exits within a few seconds.
-
-2. simbt discovery after Cancel (4005360c):
-   1. Run `gtach --transport simbt`.
-   2. Open Setup, start discovery, tap Cancel, then start discovery again.
-   3. Pass if the second discovery lists devices.
+- 860fd5f7 (simtcp SIGTERM): `tests/test_lifecycle_sim.py::test_sigterm_ends_simtcp_process`; on the Pi, `systemctl stop` completed in 0.5 s (C10) and 0.41 s during discovery (Session B).
+- 4005360c (simbt discovery after Cancel): `tests/test_low_defects.py::TestSimPairingCancelIsPerRun`; real discovery after a Cancel passed on the Pi (Session E).
 
 ### 4.9 Session I: Normal Use
 
@@ -329,8 +318,8 @@ scp 'root@gtach.local:/opt/gtach/{error,debug,start,stacks}.log*' ai/workspace/t
 | F | 907de6de | Vehicle off: no init success; retry every 2 s | | | |
 | F | 907de6de | Emulator stopped: 'adapter closed the connection' | | | |
 | G | 860fd5f7 | Soak: no `obd_protocol` stall; no unexpected shutdown (C3a, C3b) | | | |
-| H | 860fd5f7 | simtcp SIGTERM exits within seconds | | | |
-| H | 4005360c | simbt discovery after Cancel | | | |
+| H | 860fd5f7 | simtcp SIGTERM exits within seconds | Not required (automated test) | 2026-10-08 | Section 4.8 |
+| H | 4005360c | simbt discovery after Cancel | Not required (automated test) | 2026-10-08 | Section 4.8 |
 | I | cd5ec050 | Normal use; no regression | | | |
 
 [Return to Table of Contents](<#table of contents>)
@@ -344,6 +333,7 @@ scp 'root@gtach.local:/opt/gtach/{error,debug,start,stacks}.log*' ai/workspace/t
 | 1.0 | 2026-10-07 | Initial guide for the 21 pending on-device steps of audit-36b6ea95, with `bin/gtach-verify-36b6ea95.sh`. |
 | 1.1 | 2026-10-07 | Session E uses on-request stack dumps (SIGUSR1) after `change-fe755cfd`. Session A passed; results recorded in `ai/task.md`. |
 | 1.2 | 2026-10-07 | Section 4.5 rewritten: actual screen flow, single step sequence E0-E10, log-based setup thread check, timestamped commands, SIGUSR1 safety check for `change-1a8f40ea`. |
+| 1.3 | 2026-10-08 | Session H marked not required: both steps covered by automated tests and Pi results. |
 
 ---
 
