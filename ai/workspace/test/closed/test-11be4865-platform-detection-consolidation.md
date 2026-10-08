@@ -463,11 +463,11 @@ coverage:
 
 test_execution_summary:
   total_cases: 12
-  passed: 0
+  passed: 12
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
+  pass_rate: "100%"
   execution_time: ""
   test_cycle: "Initial"
 
@@ -521,17 +521,22 @@ notes: >
   does not affect any case here.
 
 version_history:
-  - version: "1.1"
-    date: "2026-10-08"
-    author: "William Watson"
-    changes:
-      - "Executed as automated pytest cases in tests/test_platform_detection.py; results recorded per case; status passed."
   - version: "1.0"
     date: "2026-07-30"
     author: "William Watson"
     changes:
       - "Initial test document for change-11be4865, per ai/task.md §8.2."
 
+  - version: "1.1"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Executed as automated pytest cases in tests/test_platform_detection.py; results recorded per case; status passed."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Errata: test_execution_summary corrected from passed 0 to passed 12, skipped 0, pass_rate 100%; version 1.1 omitted the summary update. Version history entries put in ascending order."
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -548,6 +553,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial test document for change-11be4865, per ai/task.md §8.2. |
 | 1.1 | 2026-10-08 | Executed as automated pytest cases in `tests/test_platform_detection.py`; results recorded per case; status passed. |
+| 1.2 | 2026-10-08 | Errata: execution summary corrected to 12 passed, 0 skipped (omitted in 1.1). |
 
 ---
 
