@@ -28,7 +28,7 @@ profiles:
     caution_start: 4500
     warning_start: 5500
     danger_start: 5800
-    redline_rpm: 6000
+    redline_rpm: 6500
 
   generic_turbo_4cyl:
     name: "Generic Turbocharged 4-cylinder"
