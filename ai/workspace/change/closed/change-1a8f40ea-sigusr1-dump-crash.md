@@ -19,7 +19,7 @@ change_info:
   title: "Replace faulthandler.register(SIGUSR1) with a Python-level SIGUSR1 handler installed for the process lifetime"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -131,9 +131,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude (planner session, approved by William Watson)"
-  verification_date: ""
-  verified_by: ""
-  test_results: "Pre-commit check (Python 3.10, stub environment): 20 signals -> 20 dumps; 300 signals with four busy threads -> no fault; off-main install False; unwritable path handled. Full pytest run pending (owner)."
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Pre-commit check (Python 3.10, stub environment): 20 signals -> 20 dumps; 300 signals with four busy threads -> no fault; off-main install False; unwritable path handled. Full suite on the Mac 2026-10-07: 471 passed, 2 xfailed. On device: Pi 0.4.7 pid 453, 2026-10-08 09:48-09:49: five SIGUSR1 requests with debug on and one with debug off (toggle off 09:49:29); six dumps appended, each naming all seven threads; same PID throughout (no restart); no fatal record."
   issues_found: []
 
 traceability:
@@ -171,6 +171,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial change document; approved and implemented. |
+| 1.1 | 2026-10-08 | Verified on device; closed. |
 
 ---
 

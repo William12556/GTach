@@ -19,7 +19,7 @@ issue_info:
   title: "faulthandler.register(SIGUSR1, all_threads=True) terminates gtach with a segmentation fault while dumping a running thread; with debug off SIGUSR1 terminates the process by default action"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -82,15 +82,15 @@ resolution:
   target_date: ""
   approach: "See change-1a8f40ea."
   change_ref: "change-1a8f40ea"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: "change-1a8f40ea implemented 2026-10-07; on-device verification pending."
+  resolved_date: "2026-10-08"
+  resolved_by: "change-1a8f40ea"
+  fix_description: "change-1a8f40ea implemented 2026-10-07; verified on device 2026-10-08."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Pi 0.4.7 pid 453, 2026-10-08 09:48-09:49: five SIGUSR1 requests with debug on and one with debug off (toggle off 09:49:29); six dumps appended, each naming all seven threads; same PID throughout (no restart); no fatal record."
+  closure_notes: "Closed after on-device verification."
 
 prevention:
   preventive_measures: "No faulthandler live-process dumps; test asserts neither register nor dump_traceback_later is armed."
@@ -99,7 +99,7 @@ prevention:
 verification_enhanced:
   verification_steps:
     - "Pi: with debug off and on, send SIGUSR1 ten times while RPM is shown and ten times in setup; NRestarts unchanged; each request appends one dump."
-  verification_results: ""
+  verification_results: "Passed 2026-10-08."
 
 traceability:
   design_refs: []
@@ -121,6 +121,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from Session E; approved with change-1a8f40ea."
+  - version: "1.1"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -137,6 +142,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. |
+| 1.1 | 2026-10-08 | Verified on device; closed. |
 
 ---
 

@@ -16,12 +16,12 @@ Created: 2026 October 08
 ```yaml
 change_info:
   id: "change-b0a9cb20"
-  title: "Draw the WELCOME error message centred at y=235, between the description and the Start Setup button"
+  title: "Draw the WELCOME error message centred at y=235 (iteration 1) in a dark red error_text colour with 6.0:1 contrast (iteration 2)"
   date: "2026-10-08"
   author: "William Watson"
   status: "implemented"
   priority: "medium"
-  iteration: 1
+  iteration: 2
   coupled_docs:
     issue_ref: "issue-b0a9cb20"
     issue_iteration: 1
@@ -42,7 +42,8 @@ scope:
       change_type: "add"
   affected_designs: []
   out_of_scope:
-    - "Message text, font and colour."
+    - "Message text and font."
+    - "Other uses of colors['warning']."
     - "Other setup screens' error display."
     - "DEVICE_LIST signal-bar size (separate task.md item)."
 
@@ -59,6 +60,14 @@ rational:
     20 px text band centred at y=235 lies within 200 px of the centre
     (240, 240) and does not intersect either button rectangle in either
     layout; source assertion that 440 is no longer used for the message.
+
+    ITERATION 2 (approved 2026-10-08; iteration 1 deployed in 0.4.8 left
+    the text hard to see). EDIT C — setup.py: new palette entry
+    colors['error_text'] = (139, 0, 0), contrast 6.0:1 on the background;
+    the WELCOME message uses it instead of colors['warning']. The orange
+    accent is unchanged elsewhere (Cancel and Retry buttons carry white
+    text). EDIT D — test: the message colour has at least 4.5:1 contrast
+    against the background, read from the palette literal.
   alternatives_considered:
     - option: "Shrink or move the buttons."
       reason_rejected: "Larger change; touch targets were sized deliberately."
@@ -109,7 +118,7 @@ verification:
   implemented_by: "Claude (planner session, approved by William Watson)"
   verification_date: ""
   verified_by: ""
-  test_results: "Geometry check: band 140..340 x 225..245 clear of all three button rectangles; farthest corner 101 px from centre. Full pytest run pending (owner)."
+  test_results: "Iteration 1: full suite 475 passed, 2 xfailed; on device (0.4.8) text present but hard to see. Iteration 2: contrast (139,0,0) on (216,200,146) = 6.0:1; full pytest run pending (owner)."
   issues_found: []
 
 traceability:
@@ -134,6 +143,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Approved; implemented."
+  - version: "2.0"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Iteration 2: dark red error_text colour (6.0:1) after the 0.4.8 re-test showed low contrast."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -151,6 +165,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-08 | Initial change document. |
 | 1.1 | 2026-10-08 | Approved and implemented. |
+| 2.0 | 2026-10-08 | Iteration 2: dark red message colour. |
 
 ---
 

@@ -124,6 +124,10 @@ class SetupDisplayManager:
             "success": (50, 200, 50),
             "warning": (255, 165, 0),
             "danger": (255, 50, 50),
+            # Error text on the background: 6.0:1 contrast. The orange
+            # "warning" accent is 1.18:1 there and was unreadable for
+            # the WELCOME message (issue-b0a9cb20).
+            "error_text": (139, 0, 0),
             "text": (0, 0, 0),
             "text_dim": (0, 0, 0),
             "border": (80, 80, 90),
@@ -433,7 +437,7 @@ class SetupDisplayManager:
             font_small = get_label_small_font()
             if font_small:
                 text = self._fit_text(font_small, state.error_message)
-                msg = font_small.render(text, True, self.colors["warning"])
+                msg = font_small.render(text, True, self.colors["error_text"])
                 surface.blit(msg, msg.get_rect(center=(240, self._WELCOME_MESSAGE_Y)))
 
         self._update_touch_regions_safe(new_regions)

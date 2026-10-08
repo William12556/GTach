@@ -16,7 +16,7 @@ Created: 2026 October 08
 ```yaml
 issue_info:
   id: "issue-b0a9cb20"
-  title: "The WELCOME screen draws error_message centred at y=440, overlapping the Cancel button (y 360-435) and at the edge of the round display, so 'Device not available' is not visible"
+  title: "The WELCOME screen draws error_message in orange on the beige setup background (contrast 1.18:1), so 'Device not available' is effectively not visible"
   date: "2026-10-08"
   reporter: "William Watson"
   status: "open"
@@ -65,10 +65,13 @@ environment:
 
 analysis:
   root_cause: >
-    Inference from source and screen geometry (moderate confidence): the
-    message is centred at y=440, 200 px below the screen centre, beyond the
-    200 px safe radius used by the setup layouts, and overlaps the bottom
-    of the Cancel button (110,360,260,75) in the two-button layout.
+    Confirmed on device 2026-10-08 (0.4.8): the text is drawn but hard to
+    see. It is rendered in colors['warning'] (255,165,0) on
+    colors['background'] (216,200,146), a contrast ratio of 1.18:1
+    (readable text needs at least 4.5:1). The first hypothesis, placement
+    at y=440 under the Cancel button and beyond the 200 px safe radius
+    (change-b0a9cb20 iteration 1), did not resolve the defect; the new
+    position (y=235) is retained.
   technical_notes: "Free band between the description (last line y=192) and the Start Setup button (y=270 two-button, y=330 one-button)."
   related_issues:
     - "issue-674bec49"
@@ -80,7 +83,7 @@ resolution:
   change_ref: "change-b0a9cb20"
   resolved_date: ""
   resolved_by: ""
-  fix_description: "change-b0a9cb20 implemented 2026-10-08; on-device verification pending."
+  fix_description: "change-b0a9cb20 iteration 1 (position y=235) deployed in 0.4.8, text still hard to see; iteration 2 (dark red error_text colour, 6.0:1) implemented 2026-10-08; on-device verification pending."
 
 verification:
   verified_date: ""
@@ -117,6 +120,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document from Session E."
+  - version: "1.1"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Root cause corrected to low contrast after the 0.4.8 re-test; placement hypothesis disproved."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -133,6 +141,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-08 | Initial issue document. |
+| 1.1 | 2026-10-08 | Root cause corrected: contrast 1.18:1, not placement. |
 
 ---
 

@@ -4,11 +4,12 @@
 # GTach is licensed under the MIT License.
 # See the LICENSE file in the project root for full license text.
 
-"""WELCOME error message placement (issue-b0a9cb20).
+"""WELCOME error message placement and contrast (issue-b0a9cb20).
 
-'Device not available' was drawn centred at y=440, under the Cancel
-button and outside the round display's 200 px safe radius, and was not
-visible on the Pi. These tests pin the new position geometrically.
+'Device not available' was drawn in orange on the beige setup
+background, a 1.18:1 contrast that made it unreadable on the Pi. It is
+now dark red (6.0:1) and centred at y=235, clear of the buttons. These
+tests pin both.
 """
 
 import inspect
@@ -58,3 +59,37 @@ class TestPlacement:
         source = inspect.getsource(SetupDisplayManager._render_welcome_screen)
         assert "self._WELCOME_MESSAGE_Y" in source
         assert "440" not in source
+
+
+def _luminance(rgb):
+    channels = []
+    for v in rgb:
+        v = v / 255
+        channels.append(v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4)
+    r, g, b = channels
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def _contrast(a, b):
+    la, lb = _luminance(a), _luminance(b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+
+class TestContrast:
+
+    def _colors(self):
+        """The palette literal from SetupDisplayManager.__init__."""
+        import ast
+
+        source = inspect.getsource(SetupDisplayManager.__init__)
+        start = source.index("{", source.index("self.colors = {"))
+        end = source.index("}", start) + 1
+        return ast.literal_eval(source[start:end])
+
+    def test_error_text_readable_on_background(self):
+        colors = self._colors()
+        assert _contrast(colors["error_text"], colors["background"]) >= 4.5
+
+    def test_renderer_uses_error_text_colour(self):
+        source = inspect.getsource(SetupDisplayManager._render_welcome_screen)
+        assert 'self.colors["error_text"]' in source
