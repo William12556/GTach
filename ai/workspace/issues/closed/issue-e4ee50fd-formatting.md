@@ -19,7 +19,7 @@ issue_info:
   title: "black and isort are configured for 88 columns while flake8 defaults to 79 and CLAUDE.md requires 79; neither formatter has been applied"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -75,15 +75,15 @@ resolution:
   target_date: ""
   approach: "See change-e4ee50fd."
   change_ref: "change-e4ee50fd"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-e4ee50fd"
   fix_description: "black and isort are applied at 88 columns to src, tests and bin/*.py, .flake8 sets the same limit, and CLAUDE.md §7 records it, with no change to any file's AST apart from import order (commit d44dca9b0d42de3358427f7851abae2336762557)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "No on-device step required (formatting only); test suite unchanged in pass count at the time; deployments 0.4.5-0.4.9 ran normally."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "black --check and isort --check-only are part of the success criteria of future changes."
@@ -92,7 +92,7 @@ prevention:
 verification_enhanced:
   verification_steps:
     - "After the fix: black --check, isort --check-only pass; flake8 reports no E501/W2xx/E1xx-E3xx findings; pytest passes."
-  verification_results: ""
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -120,6 +120,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in d44dca9b0d42de3358427f7851abae2336762557; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -137,6 +142,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Formatting at 88 columns. |
 | 1.1 | 2026-10-07 | Fix implemented in d44dca9b0d42de3358427f7851abae2336762557; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

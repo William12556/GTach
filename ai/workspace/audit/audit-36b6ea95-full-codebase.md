@@ -1271,6 +1271,7 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 | 1.5 | 2026-10-07 | Phase 3 implemented: issue refs for E01, E02, E04, E08, G07, X04, A09, A10 |
 | 1.6 | 2026-10-07 | Phase 5 implemented |
 | 1.7 | 2026-10-07 | Phase 4 completed: SimTransport lifecycle test |
+| 1.8 | 2026-10-08 | Remediation closed: on-device verification complete, all 15 remediation issue/change pairs closed (see report-36b6ea95 §7) |
 
 ---
 

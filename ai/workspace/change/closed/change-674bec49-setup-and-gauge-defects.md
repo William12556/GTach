@@ -19,7 +19,7 @@ change_info:
   title: "Stop the setup manager on completion, cancel and re-entry without self-join; derive the gauge range from the redline; cache device presence; keep setup errors until the next tap and show their text"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -203,9 +203,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Gauge unchanged with abarth_595_turismo (Session A); setup thread count never above 1 and 0 after Cancel and pairing (Session E, debug.log); 'Device not available' visible on WELCOME after follow-up change-b0a9cb20 (0.4.9)."
   issues_found: []
 
 traceability:
@@ -239,6 +239,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -257,6 +262,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. C01, C05, C06, C08. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

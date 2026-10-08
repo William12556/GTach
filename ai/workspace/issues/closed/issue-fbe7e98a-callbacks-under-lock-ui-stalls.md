@@ -19,7 +19,7 @@ issue_info:
   title: "AsyncOperationManager, TouchCoordinator and the touch interface invoke callbacks while holding their locks; the CURRENT_DEVICE Continue probe blocks the touch thread; setup completion callbacks also fire on every progress update"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -140,15 +140,15 @@ resolution:
     Continue probe as an async operation with a pass-through in
     simulation.
   change_ref: "change-fbe7e98a"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-fbe7e98a"
   fix_description: "Async operation, touch-coordinator button and touch-interface callbacks now run after their locks are released, the setup completion handlers ignore PENDING and RUNNING progress updates, and the Continue reachability probe runs on an async worker instead of the touch thread (commit 523bb218bead9e868b624d8facca4b233489ce4d)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session E (2026-10-08): four full pairings completed; failed Continue probes with the adapter off returned to WELCOME in 0.03-2.4 s; display responsive throughout."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "CLAUDE.md rule 8 (issue-e9216e17)."
@@ -159,7 +159,7 @@ verification_enhanced:
     - "Confirm from source. [DONE.]"
     - "After the fix: unit tests per change-fbe7e98a."
     - "After the fix: on the Pi, DISCONNECTED → Setup, pairing, and CURRENT_DEVICE → Continue with the adapter off; the display stays responsive."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -187,6 +187,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in 523bb218bead9e868b624d8facca4b233489ce4d; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -204,6 +209,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Callbacks under lock; blocking Continue probe; completion handlers firing on progress (D12, new). |
 | 1.1 | 2026-10-07 | Fix implemented in 523bb218bead9e868b624d8facca4b233489ce4d; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

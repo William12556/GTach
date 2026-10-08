@@ -19,7 +19,7 @@ change_info:
   title: "Notify coordinator callbacks after releasing _state_lock; hold _render_cache_lock only to read the cache; dispatch setup touch actions after releasing _touch_regions_lock; add a no-call-out-under-lock rule to CLAUDE.md"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "critical"
   iteration: 1
   coupled_docs:
@@ -174,9 +174,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session E (2026-10-08): 15 WELCOME/DISCOVERY Start Setup/Cancel cycles; each transition within ~3 ms of the tap; no watchdog record."
   issues_found: []
 
 traceability:
@@ -208,6 +208,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in f22640a18710bcce996835fe997979672ae6244b."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -226,6 +231,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Remove all three edges of the setup lock cycle; CLAUDE.md lock rule. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in f22640a18710bcce996835fe997979672ae6244b. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

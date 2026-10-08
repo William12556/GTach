@@ -19,7 +19,7 @@ issue_info:
   title: "DeviceStore is constructed independently at eight call sites with its own in-memory copy, has no lock, resolves devices.yaml relative to the working directory, and writes without fsync"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -88,15 +88,15 @@ resolution:
   target_date: ""
   approach: "See change-453f0a80."
   change_ref: "change-453f0a80"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-453f0a80"
   fix_description: "All production code now uses one shared DeviceStore from get_device_store(), stored at gtach_home()/config/devices.yaml, with every public method under a lock and saves fsync'd before the rename, and config/devices.yaml is removed from the repository (commit 3747d2fd16f15cecb30316b47cee8bfd7b8e5d1f)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session A (2026-10-07): devices.yaml read from the new location; paired adapter used via CURRENT_DEVICE without re-pairing."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "Single accessor; direct construction only in tests."
@@ -107,7 +107,7 @@ verification_enhanced:
     - "Confirm from source. [DONE.]"
     - "After the fix: unit tests per change-453f0a80."
     - "After the fix: on the Pi, the paired device is still found after the upgrade."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs:
@@ -136,6 +136,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in 3747d2fd16f15cecb30316b47cee8bfd7b8e5d1f; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -153,6 +158,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Unshared, unlocked DeviceStore. |
 | 1.1 | 2026-10-07 | Fix implemented in 3747d2fd16f15cecb30316b47cee8bfd7b8e5d1f; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

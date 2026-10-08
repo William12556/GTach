@@ -19,7 +19,7 @@ change_info:
   title: "Delete the backup modules and unreachable code listed in the audit, the in-process restart remnants, and unused imports and variables; adjust tests and CLAUDE.md"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -170,9 +170,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "No step specific to this change. Bench use 2026-10-07/08 on 0.4.5-0.4.9 (setup, pairing, link losses, soak) without regression attributable to the removal. In-car use is pending vehicle preparation and is tracked in task.md as a general check, not against this issue."
   issues_found: []
 
 traceability:
@@ -206,6 +206,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in f7899669ddad21b97dc81429595233e1d23d75b0."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -224,6 +229,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Dead code and backup modules removed. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in f7899669ddad21b97dc81429595233e1d23d75b0. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

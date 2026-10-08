@@ -19,7 +19,7 @@ change_info:
   title: "Replace time.time() with time.monotonic() for heartbeat stamps, watchdog elapsed-time checks and the ThreadManager shutdown budget; default ThreadHealth 'last' times to float('-inf')"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -192,9 +192,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session C (2026-10-07): cold boot; NTP stepped the clock ~13 min forward at 37 s; no exit or restart of gtach (verify script C1). Repeated on 2026-10-08 13:48 boot."
   issues_found: []
 
 traceability:
@@ -228,6 +228,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -246,6 +251,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Monotonic clock for core/ timing; ThreadHealth defaults. |
 | 1.1 | 2026-10-07 | Approved for implementation (recorded retrospectively). |
 | 1.2 | 2026-10-07 | Implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

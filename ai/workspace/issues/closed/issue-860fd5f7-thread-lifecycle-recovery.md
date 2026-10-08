@@ -19,7 +19,7 @@ issue_info:
   title: "In-process thread restart cannot recover a stalled thread and can run two copies; the OBD loop ignores its stop signal while connected; stop_thread never calls stop_func; dead registry entries block re-registration"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -143,15 +143,15 @@ resolution:
   target_date: ""
   approach: "See change-860fd5f7."
   change_ref: "change-860fd5f7"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-860fd5f7"
   fix_description: "In-process thread restart is removed in favour of process restart, obd_protocol is critical, exited started threads are marked STOPPED, stop_thread calls stop_func, dead entries are replaced, the OBD loop honours its stop signal with a heartbeat per command and a monotonic per-command deadline, SimTransport reports its real state, and setup re-entry stops transport then obd_protocol through stop_thread (commit f5d58f524eec17374c9cda9cad449616e4f65ba9)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "simtcp SIGTERM covered by tests/test_lifecycle_sim.py::test_sigterm_ends_simtcp_process (Session H dropped by owner); Pi systemctl stop 0.4-0.5 s. Session G soak 2026-10-08 08:00-13:54 with link losses, adapter and emulator restarts: no obd_protocol 'appears unresponsive', no shutdown or thread-exit record."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "Every operation on a monitored thread is time-bounded with a heartbeat between bounded steps."
@@ -163,7 +163,7 @@ verification_enhanced:
     - "After the fix: unit tests per change-860fd5f7."
     - "After the fix: `gtach --transport simtcp`, SIGTERM, exit within a few seconds."
     - "After the fix: soak test on the Pi of several hours with link losses, adapter power cycles and emulator restarts; error.log contains no 'appears unresponsive' warning for obd_protocol."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -191,6 +191,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in f5d58f524eec17374c9cda9cad449616e4f65ba9; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -208,6 +213,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Unsafe in-process restart, OBD stop signal, stop_func, dead registry entries; Option 1 resolution. |
 | 1.1 | 2026-10-07 | Fix implemented in f5d58f524eec17374c9cda9cad449616e4f65ba9; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

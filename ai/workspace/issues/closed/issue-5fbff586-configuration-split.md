@@ -19,7 +19,7 @@ issue_info:
   title: "Configuration is split across three files with three owners; the main ConfigManager file is loaded and discarded; --validate-config cannot fail; utils/config.py and utils/home.py carry obsolete code and write into the repository in development"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -131,15 +131,15 @@ resolution:
   target_date: ""
   approach: "See change-5fbff586."
   change_ref: "change-5fbff586"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-5fbff586"
   fix_description: "GTACH_HOME/config.yaml (flat schema, default /opt/gtach) is now the only configuration file, owned by a new ConfigStore that is injected into DisplayManager and checked strictly by --validate-config, with pairing timeouts as constants, acknowledgement state under GTACH_HOME, and the ConfigManager stack, OBDIIHome resolver, config/config.yaml and the RWLock tests removed (commit f5ab73a994fe898d521f26fdd41225a53c69f90c)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session A (2026-10-07): existing config applied; --validate-config valid, fps_limit 0 rejected (exit 1); acknowledgement shown once after upgrade, then remembered."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "A single configuration module with a validation command that is tested."
@@ -150,7 +150,7 @@ verification_enhanced:
     - "Confirm on device. [DONE: audit Section 6.]"
     - "After the fix: unit tests per change-5fbff586."
     - "After the fix: on the Pi, settings in /opt/gtach/config.yaml (fps_limit, palette, engine_profile) still apply; `gtach --validate-config` exits 0; an invalid value makes it exit 1."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs:
@@ -180,6 +180,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in f5ab73a994fe898d521f26fdd41225a53c69f90c; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -197,6 +202,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Configuration split, unvalidatable, obsolete code. |
 | 1.1 | 2026-10-07 | Fix implemented in f5ab73a994fe898d521f26fdd41225a53c69f90c; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

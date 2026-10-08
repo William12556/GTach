@@ -19,7 +19,7 @@ change_info:
   title: "Require a 41 00 answer to 0100; back off 2 s after init failure; drop_link with a cause on peer close; make adapter classification opt-in (RFCOMM only); count an empty serial read as a timeout; check the PID byte in RPM decoding"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -181,9 +181,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Vehicle-off test 2026-10-08 with emulator scenario engineoff: every 0100 reply ('SEARCHING...\\rUNABLE TO CONNECT') rejected; retries every ~7.1 s (4.5 s search + commands + 2 s back-off); no initialisation success. Closed-socket cause step not applicable (TCP only; GTach uses RFCOMM, owner decision)."
   issues_found: []
 
 traceability:
@@ -215,6 +215,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in 41dd663da6e046be30d1d7a9d4f5b7003752a4ae."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -233,6 +238,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Reconnect-path corrections A02-A06, A19. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in 41dd663da6e046be30d1d7a9d4f5b7003752a4ae. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

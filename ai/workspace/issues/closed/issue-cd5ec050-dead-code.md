@@ -19,7 +19,7 @@ issue_info:
   title: "Backup modules (about 5,700 lines) ship in the wheel; unreachable modules, classes, functions, restart remnants and unused imports remain across src/gtach"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -94,15 +94,15 @@ resolution:
   target_date: ""
   approach: "See change-cd5ec050."
   change_ref: "change-cd5ec050"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-cd5ec050"
   fix_description: "The backup modules, comm/bluetooth.py, navigation_gestures.py and the unreachable code listed in change-cd5ec050 are removed, along with the in-process restart remnants and all flake8 F401, F841, F811, F402 and F541 findings in src/gtach, and the test scans are extended to os.system and os.popen (commit f7899669ddad21b97dc81429595233e1d23d75b0)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "No step specific to this change. Bench use 2026-10-07/08 on 0.4.5-0.4.9 (setup, pairing, link losses, soak) without regression attributable to the removal. In-car use is pending vehicle preparation and is tracked in task.md as a general check, not against this issue."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "flake8 F401/F841/F811 clean after the formatting change."
@@ -112,7 +112,7 @@ verification_enhanced:
   verification_steps:
     - "Confirm from the audit. [DONE.]"
     - "After the fix: full test suite; application starts in simulation (`gtach --transport simbt`) on the development host."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -140,6 +140,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in f7899669ddad21b97dc81429595233e1d23d75b0; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -157,6 +162,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Dead code and backup modules. |
 | 1.1 | 2026-10-07 | Fix implemented in f7899669ddad21b97dc81429595233e1d23d75b0; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

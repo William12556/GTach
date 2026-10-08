@@ -19,7 +19,7 @@ issue_info:
   title: "Setup threads are not stopped on completion, cancel or re-entry; the gauge is fixed at 7000 RPM; devices.yaml is read every frame on WELCOME; setup error messages are visible for one frame or replaced by fixed text"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -120,15 +120,15 @@ resolution:
   target_date: ""
   approach: "See change-674bec49."
   change_ref: "change-674bec49"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-674bec49"
   fix_description: "Setup completion and setup re-entry now stop the active SetupDisplayManager without joining the calling thread, the gauge full scale follows the configured redline (7000 to 9000, unchanged at redline 6000), WELCOME uses a cached device-presence flag instead of per-frame devices.yaml reads, and setup error messages persist until the next tap and show their own fitted text on WELCOME (commit 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Gauge unchanged with abarth_595_turismo (Session A); setup thread count never above 1 and 0 after Cancel and pairing (Session E, debug.log); 'Device not available' visible on WELCOME after follow-up change-b0a9cb20 (0.4.9)."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "Unit tests per defect."
@@ -139,7 +139,7 @@ verification_enhanced:
     - "Confirm from source. [DONE.]"
     - "After the fix: unit tests per change-674bec49."
     - "After the fix: on the Pi, the gauge looks unchanged with abarth_595_turismo; Cancel on WELCOME and re-entry leave no extra SetupManager thread (stacks.log with debug on)."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -167,6 +167,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -184,6 +189,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Setup lifecycle, gauge range, per-frame reads, hidden errors. |
 | 1.1 | 2026-10-07 | Fix implemented in 5ea2cfd77665ae7fec7e7749f2d6e499136fee7a; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

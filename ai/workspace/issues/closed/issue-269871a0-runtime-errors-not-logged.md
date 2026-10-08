@@ -19,7 +19,7 @@ issue_info:
   title: "After startup every log record is discarded unless debug is enabled, and most broad exception handlers log without a traceback, so field faults leave no diagnosable record"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -167,15 +167,15 @@ resolution:
     inside a broad exception handler, and add a test that enforces the
     rule so that it holds for future code.
   change_ref: "change-269871a0"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-269871a0"
   fix_description: "setup_logging now adds an always-on WARNING-level error.log (1 MiB x 5, never rotated at start), and all 204 ERROR/CRITICAL calls in broad exception handlers pass exc_info=True, enforced by tests/test_logging_policy.py (commit 5f3c50be158bf2bea57f47edf7383062032c3213)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session D (2026-10-07): with debug off, link loss and connect refusals recorded in error.log; earlier records survived restart; broad-handler tracebacks recorded with debug off. Narrow OSError handlers log message-only, outside the exc_info policy."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: >
@@ -191,7 +191,7 @@ verification_enhanced:
     - "After the fix: with debug off, cause a runtime error and confirm it appears in /opt/gtach/error.log with a traceback."
     - "After the fix: restart the service and confirm error.log retains the previous run's records."
     - "After the fix: toggle debug on and off and confirm error.log continues to receive WARNING and above throughout."
-  verification_results: "First step complete. Remaining steps require the fix."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -220,6 +220,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in 5f3c50be158bf2bea57f47edf7383062032c3213; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -237,6 +242,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. No log sink after startup with debug off (B04); broad handlers log without tracebacks (A11). |
 | 1.1 | 2026-10-07 | Fix implemented in 5f3c50be158bf2bea57f47edf7383062032c3213; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

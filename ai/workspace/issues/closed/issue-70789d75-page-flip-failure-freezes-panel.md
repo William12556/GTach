@@ -19,7 +19,7 @@ issue_info:
   title: "After a pan failure with scan-out on the second buffer half, page flipping is disabled but every later frame is written to the first half, which is not displayed"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -94,15 +94,15 @@ resolution:
     failure, also write the current frame to the displayed half so it is
     not lost. Log the pan failure at WARNING so it reaches error.log.
   change_ref: "change-70789d75"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-70789d75"
   fix_description: "After a failed pan the current and all later frames are written to the displayed framebuffer half (buffer_index * fb_size), and the one-time pan failure is logged at WARNING (commit b814ed9ce2786808fc708578ab45e158ef53adc1)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "No on-device step required; covered by the test suite (475 passed, 2 xfailed) and deployments 0.4.5-0.4.9."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "Unit test of the pan-failure path."
@@ -112,7 +112,7 @@ verification_enhanced:
   verification_steps:
     - "Confirm from source. [DONE.]"
     - "After the fix: unit tests per change-70789d75."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -140,6 +140,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in b814ed9ce2786808fc708578ab45e158ef53adc1; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -157,6 +162,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Frames written to the undisplayed half after a pan failure. |
 | 1.1 | 2026-10-07 | Fix implemented in b814ed9ce2786808fc708578ab45e158ef53adc1; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

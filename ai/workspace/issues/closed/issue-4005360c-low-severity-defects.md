@@ -19,7 +19,7 @@ issue_info:
   title: "Low-severity correctness defects across comm, core, display and utils: socket and process leaks, stuck simulation cancel flags, shadowed builtins, unused retry delay, unguarded flag, unbounded lists, a font mutated in a shared cache, wall-clock durations, a wrong device attribute, stale framebuffer handles, out-of-range configuration values"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -107,15 +107,15 @@ resolution:
   target_date: ""
   approach: "See change-4005360c."
   change_ref: "change-4005360c"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-4005360c"
   fix_description: "Fourteen low-severity corrections (TCP socket closed on connect failure, per-run simulated cancel, renamed transport exceptions, reaped bluetoothctl children, no bare except, real retry_delay, Optional annotations, locked _obd_started, range-checked config values, bounded splash timing data, an unshared bold RPM font, monotonic durations, signal_strength in device surfaces, cleared framebuffer handles) and the CLAUDE.md rule 8 file-lock clarification (commit 2ade5a3769ce5396447b6526328a9b153af90182)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Signal bars shown on DEVICE_LIST (Session E; small, tracked separately in task.md); simbt discovery after Cancel covered by tests/test_low_defects.py::TestSimPairingCancelIsPerRun; real discovery after Cancel passed on the Pi."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "Unit tests per item."
@@ -125,7 +125,7 @@ verification_enhanced:
   verification_steps:
     - "Confirm from source. [DONE.]"
     - "After the fix: unit tests per change-4005360c; on the Pi, signal bars appear on DEVICE_LIST."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -153,6 +153,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in 2ade5a3769ce5396447b6526328a9b153af90182; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -170,6 +175,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Low-severity correctness defects. |
 | 1.1 | 2026-10-07 | Fix implemented in 2ade5a3769ce5396447b6526328a9b153af90182; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

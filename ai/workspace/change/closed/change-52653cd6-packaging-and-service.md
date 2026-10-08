@@ -19,7 +19,7 @@ change_info:
   title: "Declare and install the touch stack; ERROR on mock fallback on a Pi; harden and bound the service unit; refresh package metadata; single version source; correct deployment scripts; update the audit check script"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -193,9 +193,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session A/B (2026-10-07): deploy, service start and touch; unit directives as expected (C8a); stop 0.4-3.0 s; no mock fallback (C7c); [pi] extra installed; pip check clean."
   issues_found: []
 
 traceability:
@@ -227,6 +227,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in f9273e05eca60a5def61c5ecae60c4b46ba1c035."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -245,6 +250,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Packaging, service and scripts. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in f9273e05eca60a5def61c5ecae60c4b46ba1c035. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

@@ -1,0 +1,173 @@
+bash: line 90: warning: command substitution: ignored null byte in input
+
+==== Context ====
+Host:          gtach
+Date:          2026-10-08T13:54:22+02:00
+Booted:        2026-10-08 13:48:47  (up up 5 minutes)
+Log window:    records at or after '2026-10-08 08:00:00'
+Kernel:        6.1.21-v8+
+Python:        Python 3.9.2
+GTach:         0.4.9
+Service:       active  since Thu 2026-10-08 13:48:45 CEST
+NRestarts:     0
+error.log set: /opt/gtach/error.log
+debug.log set: /opt/gtach/debug.log.10 /opt/gtach/debug.log.9 /opt/gtach/debug.log.8 /opt/gtach/debug.log.7 /opt/gtach/debug.log.6 /opt/gtach/debug.log.5 /opt/gtach/debug.log.4 /opt/gtach/debug.log.3 /opt/gtach/debug.log.2 /opt/gtach/debug.log.1 /opt/gtach/debug.log
+Throttled:     throttled=0x0  Temp: temp=49.9'C
+>> C0   general  PASS   gtach.service active
+
+==== C1 b9ee7428 — no watchdog restart after boot clock step ====
+
+-- Clock synchronisation this boot (monotonic seconds since boot)
+[    6.551934] gtach systemd[1]: Reached target System Time Synchronized.
+[   36.846539] gtach systemd-timesyncd[297]: Initial synchronization to time server [2a01:239:25e:bd00::2]:123 (2.debian.pool.ntp.org).
+
+-- gtach.service journal this boot (state changes)
+Oct 08 13:48:45 gtach systemd[1]: Started GTach OBD-II Tachometer.
+>> C1   b9ee7428 PASS   no exit or restart of gtach this boot (NRestarts=0)
+   Note: meaningful only after a cold boot (power off > 1 min) with Wi-Fi; see guide session C (4.3).
+
+==== C2 269871a0 — error.log always on and preserved ====
+   /opt/gtach/error.log           345871 bytes  first 2026-10-07 12:58:06  last 2026-10-08 13:48:55
+   Records in window: 242 ; tracebacks: 30
+      2026-10-08 13:48:33,316 RFCOMMTransport ERROR Failed to connect to RFCOMM device DC:A6:32:54:AD:77 on channel 1: [Errno 16] Device or resource busy (bluetooth wedged - reset required)
+      2026-10-08 13:48:33,317 RFCOMMTransport WARNING Failed to connect, retrying in 5.0 seconds...
+      2026-10-08 13:48:41,216 RFCOMMTransport ERROR Failed to connect to RFCOMM device DC:A6:32:54:AD:77 on channel 1: [Errno 103] Software caused connection abort (bluetooth wedged - reset required)
+      2026-10-08 13:48:41,217 RFCOMMTransport WARNING Failed to connect, retrying in 5.0 seconds...
+      2026-10-08 13:48:49,451 RFCOMMTransport ERROR Failed to connect to RFCOMM device DC:A6:32:54:AD:77 on channel 1: [Errno 113] No route to host (no bluetooth controller)
+      2026-10-08 13:48:49,453 RFCOMMTransport WARNING Failed to connect, retrying in 5.0 seconds...
+      2026-10-08 13:48:55,948 RFCOMMTransport ERROR Error communicating with device: [Errno 103] Software caused connection abort
+      2026-10-08 13:48:55,950 OBDProtocol ERROR Initialization failed: No valid 0100 response: None
+>> C2   269871a0 PASS   error.log present; records older than this boot survive (2026-10-07 12:58:06)
+>> C2b  269871a0 MANUAL adapter-off event with traceback: guide session D (4.4), then rerun
+
+==== C3 e9216e17 / fbe7e98a / 860fd5f7 — watchdog and shutdown events ====
+   appears unresponsive             0
+   no in-process restart            0
+   exited unexpectedly              0
+   Initiating graceful shutdown     0
+   forcing process termination      0
+>> C3a  860fd5f7 PASS   no obd_protocol unresponsive record in window
+>> C3b  phase-1  PASS   no watchdog stall, thread exit or shutdown records in window
+
+==== C4 907de6de — OBD initialisation and link events ====
+   Initialization failed                    30
+   No valid 0100                            90
+   adapter closed the connection            0
+   consecutive timeouts                     1
+   dropped - will attempt to reconnect      0
+   Connected to                             12
+      2026-10-08 10:40:54,412 OBDProtocol ERROR Initialization failed: No valid 0100 response: None
+      2026-10-08 10:43:42,245 OBDProtocol ERROR Initialization failed: No valid 0100 response: None
+      2026-10-08 10:52:06,940 RFCOMMTransport INFO Connected to RFCOMM device DC:A6:32:54:AD:77 on channel 1
+      2026-10-08 10:57:27,040 OBDProtocol ERROR Initialization failed: No valid 0100 response: None
+      2026-10-08 13:17:16,160 OBDProtocol ERROR Initialization failed: No valid 0100 response: None
+      2026-10-08 13:45:52,703 RFCOMMTransport ERROR No response from RFCOMM device DC:A6:32:54:AD:77 on channel 1 after 5 consecutive timeouts - dropping link
+      2026-10-08 13:48:55,950 OBDProtocol ERROR Initialization failed: No valid 0100 response: None
+      Exception: No valid 0100 response: None
+      Exception: No valid 0100 response: 'SEARCHING...\rUNABLE TO CONNECT'
+          raise Exception(f"No valid 0100 response: {response!r}")
+>> C4   907de6de MANUAL evidence above; pass judged against guide session F (4.6)
+
+==== C5 5fbff586 — configuration ====
+   /opt/gtach/config.yaml  132 bytes  mtime 2026-08-21 14:17:59
+      engine_profile: abarth_595_turismo
+      fps_limit: 30
+      mode: RADIAL
+      palette: day
+      rpm_danger: 7000
+      rpm_warning: 6500
+      touch_long_press: 1.0
+
+-- gtach --validate-config
+      pygame 2.6.1 (SDL 2.28.4, Python 3.9.2)
+      Hello from the pygame community. https://www.pygame.org/contribute.html
+      Config valid: /opt/gtach/config.yaml
+>> C5a  5fbff586 PASS   --validate-config: valid (exit 0)
+
+-- gtach --validate-config on a temporary copy with fps_limit: 0
+      pygame 2.6.1 (SDL 2.28.4, Python 3.9.2)
+      Hello from the pygame community. https://www.pygame.org/contribute.html
+      Config invalid: fps_limit: 0 not in 1..60
+>> C5b  5fbff586 PASS   invalid fps_limit rejected (exit 1); real config untouched
+>> C5c  5fbff586 PASS   no 'Invalid value for' records at load
+
+-- Acknowledgement state
+   /opt/gtach/config/ack_state.yaml  mtime 2026-10-08 10:43:54
+>> C5d  5fbff586 PASS   ack_state.yaml at new location
+   Legacy /root/.local/share/obdii still present (no longer read; may be removed later).
+
+==== C6 453f0a80 — paired device store ====
+   /opt/gtach/config/devices.yaml  112 bytes  mtime 2026-10-08 09:45:05
+      2:  primary:
+      3:    device_type: ELM327
+      4:    mac_address: DC:A6:32:54:AD:77
+      5:    name: ELM327-Emulator
+>> C6   453f0a80 PASS   devices.yaml present with at least one MAC address
+>> C6b  453f0a80 MANUAL adapter used without re-pairing: guide session A (4.1)
+
+==== C7 52653cd6 — packaging ====
+   hyperpixel2r 0.0.1
+   RPi.GPIO 0.7.1
+>> C7a  52653cd6 PASS   [pi] extra installed (hyperpixel2r, RPi.GPIO)
+      No broken requirements found.
+>> C7b  52653cd6 PASS   pip check clean
+
+-- Mock fallback (start.log is this start only)
+>> C7c  52653cd6 PASS   no HyperPixel mock fallback
+
+==== C8 52653cd6 — service unit hardening ====
+   TimeoutStopUSec          30s      ok
+   NoNewPrivileges          yes      ok
+   PrivateTmp               yes      ok
+   ProtectHome              yes      ok
+   ProtectSystem            full     ok
+   StartLimitIntervalUSec   2min     ok
+   StartLimitBurst          5        ok
+   Restart                  always   ok
+   Wants                    bluetooth.service
+>> C8a  52653cd6 PASS   unit directives as expected
+
+-- systemd-analyze security gtach (summary)
+   ✓ NoNewPrivileges=                                            Service processes cannot acquire new privileges                         
+   ✓ PrivateTmp=                                                 Service has no access to other software's temporary files               
+   ✓ ProtectHome=                                                Service has no access to home directories                               
+   ✗ ProtectSystem=                                              Service has very limited write access to the OS file hierarchy               0.1
+   → Overall exposure level for gtach.service: 8.7 EXPOSED 🙁
+>> C8b  52653cd6 INFO   exposure level recorded above
+
+==== C9 674bec49 — SetupManager threads in stacks.log ====
+   dumps parsed: 6; max SetupManager threads in one dump: 0
+>> C9   674bec49 PASS   at most one SetupManager thread per stack dump
+   Run headers:
+      === gtach 0.4.7 pid 453 dump 2026-10-08T09:49:10 ===
+      === gtach 0.4.7 pid 453 dump 2026-10-08T09:49:37 ===
+      === gtach 0.4.7 pid 453 armed 2026-10-08T08:50:30 ===
+      === gtach 0.4.7 pid 453 armed 2026-10-08T09:07:11 ===
+      === gtach 0.4.7 pid 454 armed 2026-10-07T16:09:38 ===
+
+==== C10 52653cd6 / d140121d — service stop time ====
+>> C10  52653cd6 SKIP   rerun with --stop-test (interrupts the display)
+
+==== Summary ====
+C0   general  PASS   gtach.service active
+C1   b9ee7428 PASS   no exit or restart of gtach this boot (NRestarts=0)
+C2   269871a0 PASS   error.log present; records older than this boot survive (2026-10-07 12:58:06)
+C2b  269871a0 MANUAL adapter-off event with traceback: guide session D (4.4), then rerun
+C3a  860fd5f7 PASS   no obd_protocol unresponsive record in window
+C3b  phase-1  PASS   no watchdog stall, thread exit or shutdown records in window
+C4   907de6de MANUAL evidence above; pass judged against guide session F (4.6)
+C5a  5fbff586 PASS   --validate-config: valid (exit 0)
+C5b  5fbff586 PASS   invalid fps_limit rejected (exit 1); real config untouched
+C5c  5fbff586 PASS   no 'Invalid value for' records at load
+C5d  5fbff586 PASS   ack_state.yaml at new location
+C6   453f0a80 PASS   devices.yaml present with at least one MAC address
+C6b  453f0a80 MANUAL adapter used without re-pairing: guide session A (4.1)
+C7a  52653cd6 PASS   [pi] extra installed (hyperpixel2r, RPi.GPIO)
+C7b  52653cd6 PASS   pip check clean
+C7c  52653cd6 PASS   no HyperPixel mock fallback
+C8a  52653cd6 PASS   unit directives as expected
+C8b  52653cd6 INFO   exposure level recorded above
+C9   674bec49 PASS   at most one SetupManager thread per stack dump
+C10  52653cd6 SKIP   rerun with --stop-test (interrupts the display)
+
+PASS 15  FAIL 0  (report: /tmp/gtach-verify-20261008-135415.txt)

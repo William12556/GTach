@@ -12,7 +12,7 @@ Created: 2026 October 07
 4. [Tests and Tooling](<#4. tests and tooling>)
 5. [Open Issues Raised](<#5. open issues raised>)
 6. [Deviations](<#6. deviations>)
-7. [On-Device Verification Outstanding](<#7. on-device verification outstanding>)
+7. [On-Device Verification Outstanding](<#7. on-device verification>)
 8. [Version History](<#version history>)
 
 ---
@@ -158,14 +158,19 @@ Recorded per set in each implementation report. Recurring across phases:
 
 ---
 
-## 7. On-Device Verification Outstanding
+## 7. On-Device Verification
 
-All outstanding steps (21 across Phases 0, 1, 2, 3 and 5) are listed with pass criteria in [`ai/task.md`](../../task.md), section "On-Device Verification Outstanding (audit-36b6ea95)".
-- **No on-device step needed:** `70789d75`, `e4ee50fd` and Phase 4.
-- **Steps that must pass before the issue and change documents can close:**
-  - the soak test for `860fd5f7`;
-  - the post-upgrade checks for `5fbff586` and `453f0a80`, which cover configuration, acknowledgement and paired-adapter retention;
-  - the service checks for `52653cd6`: `systemd-analyze security` and stop under 30 s.
+Completed 2026-10-07 to 2026-10-08 on `gtach.local` (0.4.5 to 0.4.9) with `bin/gtach-verify-36b6ea95.sh` and the manual guide [`test-36b6ea95-on-device-verification.md`](../test/test-36b6ea95-on-device-verification.md). Results are recorded in each issue's `verification` block; all 15 remediation issue/change pairs are closed.
+
+- **Passed on device:** `b9ee7428`, `269871a0`, `e9216e17`, `fbe7e98a`, `860fd5f7` (including a 6 h soak), `907de6de` (vehicle-off test with the emulator `engineoff` scenario), `674bec49`, `5fbff586`, `453f0a80`, `52653cd6`, `d140121d`, `4005360c`.
+- **Not applicable:** the `907de6de` closed-socket step (TCP only; GTach uses RFCOMM).
+- **Covered by automated tests instead of a manual step:** simtcp SIGTERM (`860fd5f7`) and simbt discovery after Cancel (`4005360c`).
+- **No on-device step:** `70789d75`, `e4ee50fd`, `cd5ec050` (bench use without regression; in-car use pending vehicle preparation, tracked in `ai/task.md`).
+- **Defects found during verification and fixed (all closed):**
+  - `dc52c4e4`: OBD initialisation never recovered after a late `0100` reply (regression exposed by `907de6de`);
+  - `fe755cfd` and `1a8f40ea`: faulthandler stack dumps (periodic, then SIGUSR1) crashed the process; replaced by a Python-level SIGUSR1 handler;
+  - `b0a9cb20`: WELCOME error message unreadable (contrast 1.18:1); now dark red.
+- **Open items recorded in `ai/task.md`:** automatic recovery from the stuck Bluetooth (EBUSY) state as new work; small DEVICE_LIST signal bars; in-car use.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -176,6 +181,7 @@ All outstanding steps (21 across Phases 0, 1, 2, 3 and 5) are listed with pass c
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial remediation report for audit-36b6ea95, Phases 0-5. |
+| 1.1 | 2026-10-08 | Section 7: on-device verification completed; remediation documents closed; follow-up fixes and open items listed. |
 
 ---
 

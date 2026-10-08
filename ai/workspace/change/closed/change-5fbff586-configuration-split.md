@@ -19,7 +19,7 @@ change_info:
   title: "Replace ConfigManager and OBDIIHome with gtach_home() and a ConfigStore over the flat config.yaml; inject it into DisplayManager; strict --validate-config; constant pairing timeouts; acknowledgement state under GTACH_HOME; remove obsolete configuration code"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -296,9 +296,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session A (2026-10-07): existing config applied; --validate-config valid, fps_limit 0 rejected (exit 1); acknowledgement shown once after upgrade, then remembered."
   issues_found: []
 
 traceability:
@@ -336,6 +336,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in f5ab73a994fe898d521f26fdd41225a53c69f90c."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -354,6 +359,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Single ConfigStore under GTACH_HOME; obsolete code removed. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in f5ab73a994fe898d521f26fdd41225a53c69f90c. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

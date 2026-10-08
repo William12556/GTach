@@ -19,7 +19,7 @@ issue_info:
   title: "SetupDisplayManager and SetupStateCoordinator take three locks in opposite orders on the display and touch threads, so a tap on a cached setup screen can deadlock both"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "critical"
   type: "defect"
   iteration: 1
@@ -127,15 +127,15 @@ resolution:
     under _touch_regions_lock, dispatch the action after releasing it.
     4. Add a rule to CLAUDE.md §4: no call-outs while holding a lock.
   change_ref: "change-e9216e17"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-e9216e17"
   fix_description: "The setup state coordinator now notifies callbacks after releasing _state_lock, render holds _render_cache_lock only to read the cached surface, and handle_touch_event dispatches the touch action after releasing _touch_regions_lock, removing the three-lock cycle (commit f22640a18710bcce996835fe997979672ae6244b)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session E (2026-10-08): 15 WELCOME/DISCOVERY Start Setup/Cancel cycles; each transition within ~3 ms of the tap; no watchdog record."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "CLAUDE.md §4 lock rule; tests asserting no lock is held at each call-out."
@@ -146,7 +146,7 @@ verification_enhanced:
     - "Confirm the cycle from source. [DONE.]"
     - "After the fix: unit tests assert that callbacks, touch actions and cached-region updates run with the relevant locks released."
     - "After the fix: on the Pi, tap Start Setup and Cancel on WELCOME repeatedly for one minute; the display stays responsive."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -174,6 +174,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in f22640a18710bcce996835fe997979672ae6244b; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -191,6 +196,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Three-lock cycle between display and touch threads in setup mode. |
 | 1.1 | 2026-10-07 | Fix implemented in f22640a18710bcce996835fe997979672ae6244b; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

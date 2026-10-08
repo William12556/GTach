@@ -19,7 +19,7 @@ change_info:
   title: "Add an always-on, size-rotated WARNING-level error.log; add exc_info=True to every ERROR/CRITICAL log call in a broad exception handler, enforced by a policy test"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -217,9 +217,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session D (2026-10-07): with debug off, link loss and connect refusals recorded in error.log; earlier records survived restart; broad-handler tracebacks recorded with debug off. Narrow OSError handlers log message-only, outside the exc_info policy."
   issues_found: []
 
 traceability:
@@ -256,6 +256,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in 5f3c50be158bf2bea57f47edf7383062032c3213."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -274,6 +279,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Always-on error.log; exc_info on broad handlers; policy test. |
 | 1.1 | 2026-10-07 | Approved for implementation (recorded retrospectively). |
 | 1.2 | 2026-10-07 | Implemented in 5f3c50be158bf2bea57f47edf7383062032c3213. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

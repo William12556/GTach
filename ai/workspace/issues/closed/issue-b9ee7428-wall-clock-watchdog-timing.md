@@ -19,7 +19,7 @@ issue_info:
   title: "Heartbeat, recovery and shutdown timing use time.time(); a forward clock step of more than 45 s makes the display thread appear stalled and the watchdog shuts the application down"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -160,15 +160,15 @@ resolution:
     test helper that ages heartbeats and add a regression test that steps
     time.time() forward and asserts no shutdown.
   change_ref: "change-b9ee7428"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-b9ee7428"
   fix_description: "Heartbeat stamps, all watchdog elapsed-time checks and the ThreadManager shutdown budget now use time.monotonic(), and ThreadHealth's last-warning and last-recovery defaults are float('-inf'), so a wall-clock step no longer changes watchdog decisions (commit 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session C (2026-10-07): cold boot; NTP stepped the clock ~13 min forward at 37 s; no exit or restart of gtach (verify script C1). Repeated on 2026-10-08 13:48 boot."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: >
@@ -184,7 +184,7 @@ verification_enhanced:
     - "Confirm with: journalctl -b -o short-monotonic --no-pager | grep -E 'gtach\\[|gtach\\.service|timesyncd|Time has been changed|Synchroni[sz]ed' that the exit follows the clock correction within about one watchdog interval."
     - "After the fix: power-cycle the Pi with Wi-Fi available and confirm no gtach.service 'Succeeded'/'Scheduled restart' entries for the boot."
     - "After the fix: confirm a deliberately stalled display thread still triggers the watchdog (unit test)."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -212,6 +212,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -229,6 +234,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Wall-clock step causes watchdog shutdown; monotonic-default trap recorded. |
 | 1.1 | 2026-10-07 | Fix implemented in 29bdebedc0343da5eb20ddf25ca4b5e5c4c9c66a; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

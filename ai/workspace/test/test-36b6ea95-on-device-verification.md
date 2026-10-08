@@ -334,6 +334,7 @@ scp 'root@gtach.local:/opt/gtach/{error,debug,start,stacks}.log*' ai/workspace/t
 | 1.1 | 2026-10-07 | Session E uses on-request stack dumps (SIGUSR1) after `change-fe755cfd`. Session A passed; results recorded in `ai/task.md`. |
 | 1.2 | 2026-10-07 | Section 4.5 rewritten: actual screen flow, single step sequence E0-E10, log-based setup thread check, timestamped commands, SIGUSR1 safety check for `change-1a8f40ea`. |
 | 1.3 | 2026-10-08 | Session H marked not required: both steps covered by automated tests and Pi results. |
+| 1.4 | 2026-10-08 | Verification complete except Session I (in-car use, vehicle not prepared; tracked in `ai/task.md`). Results in the closed issue documents and report-36b6ea95 §7. |
 
 ---
 

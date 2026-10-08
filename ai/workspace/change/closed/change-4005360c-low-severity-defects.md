@@ -19,7 +19,7 @@ change_info:
   title: "Fourteen small corrections (A12, A13, A16, A18, B07, B09, B10, B12, C10, C13, C15, C16, D08, D11) and a CLAUDE.md rule 8 clarification"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -183,9 +183,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Signal bars shown on DEVICE_LIST (Session E; small, tracked separately in task.md); simbt discovery after Cancel covered by tests/test_low_defects.py::TestSimPairingCancelIsPerRun; real discovery after Cancel passed on the Pi."
   issues_found: []
 
 traceability:
@@ -217,6 +217,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in 2ade5a3769ce5396447b6526328a9b153af90182."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -235,6 +240,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Low-severity corrections. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in 2ade5a3769ce5396447b6526328a9b153af90182. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

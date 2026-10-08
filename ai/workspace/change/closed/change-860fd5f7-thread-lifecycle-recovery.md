@@ -19,7 +19,7 @@ change_info:
   title: "Remove in-process thread restart; make obd_protocol critical; treat dead started threads explicitly; call stop_func in stop_thread; replace dead registry entries; stop transport and OBD via stop_thread on setup re-entry; bound OBD heartbeat gaps (per-command deadline, timeout before write, heartbeat per command); OBD loop honours its stop signal; SimTransport reports disconnection"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -296,9 +296,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "simtcp SIGTERM covered by tests/test_lifecycle_sim.py::test_sigterm_ends_simtcp_process (Session H dropped by owner); Pi systemctl stop 0.4-0.5 s. Session G soak 2026-10-08 08:00-13:54 with link losses, adapter and emulator restarts: no obd_protocol 'appears unresponsive', no shutdown or thread-exit record."
   issues_found: []
 
 traceability:
@@ -334,6 +334,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in f5d58f524eec17374c9cda9cad449616e4f65ba9."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -352,6 +357,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. Process-restart recovery; bounded OBD heartbeat gaps; lifecycle fixes. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in f5d58f524eec17374c9cda9cad449616e4f65ba9. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

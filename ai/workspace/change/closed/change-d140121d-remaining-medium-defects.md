@@ -19,7 +19,7 @@ change_info:
   title: "Apply the socket timeout before connect; non-blocking pairing shutdown and correct chunk duration; get_state returns a copy and all setup-state writes go through the coordinator; lock the async-operations map; arm the exit backstop on every shutdown and stop touch, async and pairing threads"
   date: "2026-10-07"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -211,9 +211,9 @@ implementation:
 verification:
   implemented_date: "2026-10-07"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session B (2026-10-07): systemctl stop during discovery 0.41 s."
   issues_found: []
 
 traceability:
@@ -245,6 +245,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Implemented in 69eb605f2b086d666248bb39a4046032f9eb94d8."
+  - version: "1.3"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -263,6 +268,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial change document. A07, A08, A17, C14, D04, D05, X02. |
 | 1.1 | 2026-10-07 | Approved for implementation. |
 | 1.2 | 2026-10-07 | Implemented in 69eb605f2b086d666248bb39a4046032f9eb94d8. |
+| 1.3 | 2026-10-08 | Verified on device; closed at audit-36b6ea95 close-out. |
 
 ---
 

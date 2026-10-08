@@ -19,7 +19,7 @@ issue_info:
   title: "OBD init accepts error responses and retries without back-off; peer close leaks the handle and records no cause; Bluetooth fault classification applies to TCP and serial; serial dead-peer detection cannot trip; RPM decoding ignores the PID byte"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -115,15 +115,15 @@ resolution:
   target_date: ""
   approach: "See change-907de6de."
   change_ref: "change-907de6de"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-907de6de"
   fix_description: "OBD init now requires a positive 0100 reply and backs off 2 s on shutdown_event after a failure, a peer close drops the link with the cause 'adapter closed the connection', Bluetooth adapter diagnoses apply only to RFCOMM, an empty serial read with nothing buffered counts as a timeout, and RPM is decoded only from PID 0C (commit 41dd663da6e046be30d1d7a9d4f5b7003752a4ae)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Vehicle-off test 2026-10-08 with emulator scenario engineoff: every 0100 reply ('SEARCHING...\\rUNABLE TO CONNECT') rejected; retries every ~7.1 s (4.5 s search + commands + 2 s back-off); no initialisation success. Closed-socket cause step not applicable (TCP only; GTach uses RFCOMM, owner decision)."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "Unit tests per defect."
@@ -134,7 +134,7 @@ verification_enhanced:
     - "Confirm from source. [DONE.]"
     - "After the fix: unit tests per change-907de6de."
     - "After the fix: emulator with vehicle off; DISCONNECTED or no-data state, no init-success log; init retries every 2 s."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -162,6 +162,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in 41dd663da6e046be30d1d7a9d4f5b7003752a4ae; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -179,6 +184,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Reconnect-path defects A02-A06, A19. |
 | 1.1 | 2026-10-07 | Fix implemented in 41dd663da6e046be30d1d7a9d4f5b7003752a4ae; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 

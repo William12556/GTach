@@ -19,7 +19,7 @@ issue_info:
   title: "System Bluetooth socket ignores its timeout; hung discovery workers block shutdown; setup state is shared live and mutated without the coordinator lock; the async-operations map is unguarded; shutdown has no overall deadline and leaves touch, async and pairing threads running"
   date: "2026-10-07"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -112,15 +112,15 @@ resolution:
   target_date: ""
   approach: "See change-d140121d."
   change_ref: "change-d140121d"
-  resolved_date: ""
-  resolved_by: ""
+  resolved_date: "2026-10-08"
+  resolved_by: "change-d140121d"
   fix_description: "BluetoothSocket applies its timeout before connect, pairing shutdown no longer waits on running scans, the setup coordinator owns setup state (get_state returns copies; writes go through update_state and add_discovered_device) with _active_operations locked, and shutdown arms the exit backstop on every path and stops the async workers, the pairing executor and the touch handler (commit 69eb605f2b086d666248bb39a4046032f9eb94d8)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Session B (2026-10-07): systemctl stop during discovery 0.41 s."
+  closure_notes: "Closed at audit-36b6ea95 close-out after on-device verification."
 
 prevention:
   preventive_measures: "State writes only through the coordinator; one shutdown path that stops every thread owner."
@@ -131,7 +131,7 @@ verification_enhanced:
     - "Confirm from source. [DONE.]"
     - "After the fix: unit tests per change-d140121d."
     - "After the fix: `time systemctl stop gtach` during discovery completes well under 30 s."
-  verification_results: "First step complete."
+  verification_results: "All verification steps complete; see verification.test_results."
 
 traceability:
   design_refs: []
@@ -159,6 +159,11 @@ version_history:
     author: "Claude Code"
     changes:
       - "Fix implemented in 69eb605f2b086d666248bb39a4046032f9eb94d8; awaiting on-device verification."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "On-device verification complete; closed at audit-36b6ea95 close-out."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -176,6 +181,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. A07, A08, A17, C14, D04, D05, X02. |
 | 1.1 | 2026-10-07 | Fix implemented in 69eb605f2b086d666248bb39a4046032f9eb94d8; awaiting on-device verification. |
+| 1.2 | 2026-10-08 | On-device verification complete; closed at audit-36b6ea95 close-out. |
 
 ---
 
