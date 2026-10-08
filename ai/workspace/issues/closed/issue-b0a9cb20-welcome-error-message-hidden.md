@@ -19,7 +19,7 @@ issue_info:
   title: "The WELCOME screen draws error_message in orange on the beige setup background (contrast 1.18:1), so 'Device not available' is effectively not visible"
   date: "2026-10-08"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -81,15 +81,15 @@ resolution:
   target_date: ""
   approach: "See change-b0a9cb20."
   change_ref: "change-b0a9cb20"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: "change-b0a9cb20 iteration 1 (position y=235) deployed in 0.4.8, text still hard to see; iteration 2 (dark red error_text colour, 6.0:1) implemented 2026-10-08; on-device verification pending."
+  resolved_date: "2026-10-08"
+  resolved_by: "change-b0a9cb20"
+  fix_description: "change-b0a9cb20 iteration 1 (position y=235) deployed in 0.4.8, text still hard to see; iteration 2 (dark red error_text colour, 6.0:1) implemented 2026-10-08; verified on device in 0.4.9."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Pi 0.4.9: adapter off, DISCONNECTED -> Setup -> Continue; 'Device not available' clearly visible in dark red on WELCOME."
+  closure_notes: "Closed after on-device verification. Completes the remaining on-device step of issue-674bec49."
 
 prevention:
   preventive_measures: "Unit test asserting the message lies inside the safe radius and clear of the buttons."
@@ -98,7 +98,7 @@ prevention:
 verification_enhanced:
   verification_steps:
     - "Pi: adapter off; DISCONNECTED -> Setup -> Continue; 'Device not available' visible on WELCOME until the next tap."
-  verification_results: ""
+  verification_results: "Passed 2026-10-08 (0.4.9)."
 
 traceability:
   design_refs: []
@@ -125,6 +125,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Root cause corrected to low contrast after the 0.4.8 re-test; placement hypothesis disproved."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Verified on device (0.4.9); closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -142,6 +147,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-08 | Initial issue document. |
 | 1.1 | 2026-10-08 | Root cause corrected: contrast 1.18:1, not placement. |
+| 1.2 | 2026-10-08 | Verified on device (0.4.9); closed. |
 
 ---
 

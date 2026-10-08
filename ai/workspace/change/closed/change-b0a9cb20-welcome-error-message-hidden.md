@@ -19,7 +19,7 @@ change_info:
   title: "Draw the WELCOME error message centred at y=235 (iteration 1) in a dark red error_text colour with 6.0:1 contrast (iteration 2)"
   date: "2026-10-08"
   author: "William Watson"
-  status: "implemented"
+  status: "closed"
   priority: "medium"
   iteration: 2
   coupled_docs:
@@ -116,9 +116,9 @@ implementation:
 verification:
   implemented_date: "2026-10-08"
   implemented_by: "Claude (planner session, approved by William Watson)"
-  verification_date: ""
-  verified_by: ""
-  test_results: "Iteration 1: full suite 475 passed, 2 xfailed; on device (0.4.8) text present but hard to see. Iteration 2: contrast (139,0,0) on (216,200,146) = 6.0:1; full pytest run pending (owner)."
+  verification_date: "2026-10-08"
+  verified_by: "William Watson"
+  test_results: "Iteration 1: full suite 475 passed, 2 xfailed; on device (0.4.8) text present but hard to see. Iteration 2: contrast (139,0,0) on (216,200,146) = 6.0:1; full suite passed before deploy; on device (0.4.9) message clearly visible."
   issues_found: []
 
 traceability:
@@ -166,6 +166,7 @@ metadata:
 | 1.0 | 2026-10-08 | Initial change document. |
 | 1.1 | 2026-10-08 | Approved and implemented. |
 | 2.0 | 2026-10-08 | Iteration 2: dark red message colour. |
+| 2.1 | 2026-10-08 | Verified on device (0.4.9); closed. |
 
 ---
 
