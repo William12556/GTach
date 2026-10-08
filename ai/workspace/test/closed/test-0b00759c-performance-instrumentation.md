@@ -19,7 +19,7 @@ test_info:
   title: "Unit tests for render-time measurement, integer frame IDs, the periodic-logging gate and rate-limited memory sampling"
   date: "2026-07-30"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "high"
   iteration: 1
@@ -108,10 +108,10 @@ test_cases:
     postconditions:
       - "This is the case the pre-change implementation could not satisfy, because the sleep fell inside the bracket"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestFrameBracketing::test_bracketed_interval_reports_its_own_duration"
       pass_fail_criteria: "Measured duration reflects the bracket, not the frame target"
     defects: []
 
@@ -137,10 +137,10 @@ test_cases:
     postconditions:
       - "Guards against reintroduction of the §6.2 defect by a future edit to the loop tail"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestFrameBracketing::test_frame_end_precedes_pacing_sleep"
       pass_fail_criteria: "record_frame_end appears first"
     defects: []
 
@@ -163,10 +163,10 @@ test_cases:
     postconditions:
       - "No uuid allocation occurred"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestFrameBracketing::test_frame_ids_are_consecutive_positive_integers"
       pass_fail_criteria: "IDs are 1, 2, 3 and all are truthy ints"
     defects: []
 
@@ -197,10 +197,10 @@ test_cases:
     postconditions:
       - "No entry added to _active_frames"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestFrameBracketing::test_disabled_monitoring_yields_zero_sentinel"
       pass_fail_criteria: "0 returned and accepted silently"
     defects: []
 
@@ -228,10 +228,10 @@ test_cases:
     postconditions:
       - "Steady-state cost is a counter increment and a dict insert"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestFrameBracketing::test_expiry_scan_skipped_in_steady_state"
       pass_fail_criteria: "No spurious dropped frames"
     defects: []
 
@@ -261,10 +261,10 @@ test_cases:
     postconditions:
       - "The len > 1 guard is an optimisation, not a behaviour change"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestFrameBracketing::test_stale_frames_expire_when_several_are_open"
       pass_fail_criteria: "All three stale entries expired"
     defects: []
 
@@ -292,10 +292,10 @@ test_cases:
     postconditions:
       - "No metrics object was constructed on any other frame"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestPeriodicGate::test_fires_once_per_600_frames"
       pass_fail_criteria: "Two firings at the expected frame numbers"
     defects: []
 
@@ -319,10 +319,10 @@ test_cases:
     postconditions:
       - "No log line is emitted before any frame is recorded"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestPeriodicGate::test_false_at_frame_zero_and_when_disabled"
       pass_fail_criteria: "False in both cases"
     defects: []
 
@@ -349,10 +349,10 @@ test_cases:
     postconditions:
       - "Recommendation 16 cannot silently regress"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestPeriodicGate::test_display_loop_gates_metrics_construction"
       pass_fail_criteria: "No unguarded call and no len(frame_id)"
     defects: []
 
@@ -380,10 +380,10 @@ test_cases:
     postconditions:
       - "One /proc read per second replaces one per frame"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestMemoryCache::test_psutil_read_at_most_once_per_second"
       pass_fail_criteria: "Exactly one underlying read"
     defects: []
 
@@ -413,10 +413,10 @@ test_cases:
     postconditions:
       - "The figure remains diagnostically useful over a long run"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestMemoryCache::test_cache_refreshes_after_interval"
       pass_fail_criteria: "Two reads and the newer value returned"
     defects: []
 
@@ -446,10 +446,10 @@ test_cases:
     postconditions:
       - "A transient failure does not persist as a false zero"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestMemoryCache::test_failed_read_does_not_poison_cache"
       pass_fail_criteria: "0.0 returned and the cache preserved"
     defects: []
 
@@ -476,10 +476,10 @@ test_cases:
     postconditions:
       - "No stale reading survives a reset"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestMemoryCache::test_reset_clears_frame_counter_and_cache"
       pass_fail_criteria: "Counter restarts at 1 and the cache is cold"
     defects: []
 
@@ -504,10 +504,10 @@ test_cases:
     postconditions:
       - "A rise in this counter after change-0b00759c is the expected outcome, not a regression"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::TestFrameBracketing::test_genuine_overrun_counts_as_dropped"
       pass_fail_criteria: "Counter incremented once"
     defects: []
 
@@ -531,10 +531,10 @@ test_cases:
     postconditions:
       - "Interface and implementation cannot silently diverge again"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_performance_instrumentation.py::test_frame_id_annotations_are_int (two parameters)"
       pass_fail_criteria: "Annotations identical"
     defects: []
 
@@ -656,6 +656,11 @@ notes: >
   real 5 ms sleep because it is measuring the bracket itself.
 
 version_history:
+  - version: "1.1"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Executed as automated pytest cases in tests/test_performance_instrumentation.py; results recorded per case; status passed."
   - version: "1.0"
     date: "2026-07-30"
     author: "William Watson"
@@ -677,6 +682,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial test document for change-0b00759c and change-c5dedd71, per ai/task.md §8.2. |
+| 1.1 | 2026-10-08 | Executed as automated pytest cases in `tests/test_performance_instrumentation.py`; results recorded per case; status passed. |
 
 ---
 

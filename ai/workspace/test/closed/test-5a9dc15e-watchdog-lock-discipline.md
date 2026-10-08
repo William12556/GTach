@@ -19,7 +19,7 @@ test_info:
   title: "Unit tests for collect-then-dispatch health checking and two-phase soft-recovery heartbeat observation"
   date: "2026-07-30"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "high"
   iteration: 1
@@ -105,10 +105,10 @@ test_cases:
     postconditions:
       - "This case fails against the pre-change implementation, which held the lock across the sleep and so prevented the helper from writing"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestSoftRecovery::test_heartbeat_advancing_during_window_succeeds"
       pass_fail_criteria: "Success recorded and health reset"
     defects: []
 
@@ -139,10 +139,10 @@ test_cases:
     postconditions:
       - "Escalation to hard recovery remains available to the caller"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestSoftRecovery::test_static_heartbeat_is_not_a_success"
       pass_fail_criteria: "Attempt counted, success not counted"
     defects: []
 
@@ -170,10 +170,10 @@ test_cases:
     postconditions:
       - "No error logged at ERROR level; the disappearance is not an exceptional condition"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestSoftRecovery::test_thread_unregistered_during_window"
       pass_fail_criteria: "No exception and no false success"
     defects: []
 
@@ -199,10 +199,10 @@ test_cases:
     postconditions:
       - "soft_recovery_attempts was still incremented in the preamble"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestSoftRecovery::test_thread_absent_before_observation"
       pass_fail_criteria: "Returns quickly without sleeping"
     defects: []
 
@@ -229,10 +229,10 @@ test_cases:
     postconditions:
       - "Demonstrates §3.3 is corrected, not merely restructured"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestSoftRecovery::test_competing_lock_acquisition_is_not_blocked"
       pass_fail_criteria: "No acquisition blocked beyond the bound"
     defects: []
 
@@ -268,10 +268,10 @@ test_cases:
     postconditions:
       - "Comparison order critical, recovery, warning, else reset is preserved"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestHealthCheckDispatch::test_dispatch_per_severity_band"
       pass_fail_criteria: "Exactly one handler per thread, matching its band"
     defects: []
 
@@ -296,10 +296,10 @@ test_cases:
     postconditions:
       - "Confirms §4.1 is corrected: recovery is no longer serialized under the traversal lock"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestHealthCheckDispatch::test_lock_released_before_handlers_run"
       pass_fail_criteria: "Lock free during every handler invocation"
     defects: []
 
@@ -327,10 +327,10 @@ test_cases:
     postconditions:
       - "Skip semantics unchanged by the restructure"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestHealthCheckDispatch::test_non_running_threads_are_skipped"
       pass_fail_criteria: "STOPPED thread absent from thread_health and undispatched"
     defects: []
 
@@ -353,10 +353,10 @@ test_cases:
     postconditions:
       - "Method returns normally"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestHealthCheckDispatch::test_empty_threads_dictionary"
       pass_fail_criteria: "No dispatch, no exception"
     defects: []
 
@@ -381,10 +381,10 @@ test_cases:
     postconditions:
       - "Ordering is a property of the restructure that must not drift"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::TestHealthCheckDispatch::test_dispatch_order_follows_traversal_order"
       pass_fail_criteria: "Recorded order matches insertion order"
     defects: []
 
@@ -408,10 +408,10 @@ test_cases:
     postconditions:
       - "Guards against reintroduction by a future edit"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::test_no_sleep_under_thread_manager_lock"
       pass_fail_criteria: "Zero sleeps found inside the lock"
     defects: []
 
@@ -436,10 +436,10 @@ test_cases:
     postconditions:
       - "Statistics are a stable contract for the dashboard and logs"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_watchdog_lock_discipline.py::test_recovery_statistics_for_fixed_sequence. Adapted: no pre-change baseline was recorded and hard recovery was removed (issue-860fd5f7), so expected counts are derived from the current rules: warnings 2, soft attempts 2, successes 0, shutdowns 1"
       pass_fail_criteria: "Counters match the recorded baseline"
     defects: []
 
@@ -537,6 +537,11 @@ notes: >
   green run into the T06 result, then treat them as the baseline.
 
 version_history:
+  - version: "1.1"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Executed as automated pytest cases in tests/test_watchdog_lock_discipline.py; results recorded per case; status passed."
   - version: "1.0"
     date: "2026-07-30"
     author: "William Watson"
@@ -558,6 +563,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial test document for change-5a9dc15e, per ai/task.md §8.2. |
+| 1.1 | 2026-10-08 | Executed as automated pytest cases in `tests/test_watchdog_lock_discipline.py`; results recorded per case; status passed. |
 
 ---
 

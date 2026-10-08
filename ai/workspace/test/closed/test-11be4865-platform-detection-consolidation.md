@@ -19,7 +19,7 @@ test_info:
   title: "Unit tests for masked hardware-revision parsing and consolidated Raspberry Pi detection"
   date: "2026-07-30"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "high"
   iteration: 1
@@ -100,10 +100,10 @@ test_cases:
     postconditions:
       - "No exception raised"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestHardwareRevision::test_zero_2w_base_revision"
       pass_fail_criteria: "Both expected outputs match"
     defects: []
 
@@ -131,10 +131,10 @@ test_cases:
     postconditions:
       - "Result identical to TC-001"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestHardwareRevision::test_zero_2w_with_overvoltage_flag"
       pass_fail_criteria: "Same platform_type and confidence as TC-001"
     defects: []
 
@@ -164,10 +164,10 @@ test_cases:
     postconditions:
       - "Detection is not discarded"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestHardwareRevision::test_leading_zero_base_code_is_not_over_stripped. Asserts GENERIC at 0.7; clean_revision is a local, so the six-character mask result is asserted from the same expression"
       pass_fail_criteria: "clean_revision is six characters and detection is not None"
     defects: []
 
@@ -191,10 +191,10 @@ test_cases:
     postconditions:
       - "No mapped key regressed"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestHardwareRevision::test_pi4_and_pi5_mapped_revisions (six parameters)"
       pass_fail_criteria: "All six resolve to the mapped variant at 0.95"
     defects: []
 
@@ -224,10 +224,10 @@ test_cases:
     postconditions:
       - "Improvement on the previous behaviour, which returned None for this input"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestHardwareRevision::test_old_style_four_digit_code"
       pass_fail_criteria: "RASPBERRY_PI_GENERIC at 0.7"
     defects: []
 
@@ -254,10 +254,10 @@ test_cases:
     postconditions:
       - "The outer except Exception backstop is not reached"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestHardwareRevision::test_non_hex_revision_returns_none"
       pass_fail_criteria: "Returns None without raising"
     defects: []
 
@@ -281,10 +281,10 @@ test_cases:
     postconditions:
       - "No exception raised in either case"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestHardwareRevision::test_revision_line_absent; TestHardwareRevision::test_cpuinfo_absent"
       pass_fail_criteria: "None returned, no exception"
     defects: []
 
@@ -308,10 +308,10 @@ test_cases:
     postconditions:
       - "No key normalisation was required in revision_map"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestHardwareRevision::test_uppercase_and_prefixed_revisions (two parameters)"
       pass_fail_criteria: "Both resolve to RASPBERRY_PI_4"
     defects: []
 
@@ -339,10 +339,10 @@ test_cases:
     postconditions:
       - "No second /proc/cpuinfo read occurred"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestDependencyValidatorPlatform::test_agrees_with_platform_detector. Also asserts no /proc/cpuinfo read"
       pass_fail_criteria: "platform_info reflects the patched value"
     defects: []
 
@@ -371,10 +371,10 @@ test_cases:
     postconditions:
       - "DependencyValidator constructed successfully; no exception propagated"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestDependencyValidatorPlatform::test_falls_back_when_platform_detection_unavailable. ImportError induced by a None sys.modules entry"
       pass_fail_criteria: "Validator usable and fallback logged"
     defects: []
 
@@ -398,10 +398,10 @@ test_cases:
     postconditions:
       - "The change-11be4865 backward-compatibility claim holds"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestDependencyValidatorPlatform::test_platform_info_keys_and_types"
       pass_fail_criteria: "Key set and types match exactly"
     defects: []
 
@@ -428,10 +428,10 @@ test_cases:
     postconditions:
       - "No exception raised"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-08"
+      executed_by: "Claude (automated pytest)"
+      actual_result: "tests/test_platform_detection.py::TestDependencyValidatorPlatform::test_non_linux_host_without_cpuinfo. is_raspberry_pi also patched to False so the result does not depend on the host"
       pass_fail_criteria: "Validator constructs with sane defaults"
     defects: []
 
@@ -521,6 +521,11 @@ notes: >
   does not affect any case here.
 
 version_history:
+  - version: "1.1"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Executed as automated pytest cases in tests/test_platform_detection.py; results recorded per case; status passed."
   - version: "1.0"
     date: "2026-07-30"
     author: "William Watson"
@@ -542,6 +547,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial test document for change-11be4865, per ai/task.md §8.2. |
+| 1.1 | 2026-10-08 | Executed as automated pytest cases in `tests/test_platform_detection.py`; results recorded per case; status passed. |
 
 ---
 
