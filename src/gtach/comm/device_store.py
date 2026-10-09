@@ -15,7 +15,7 @@ import logging
 import os
 import threading
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 # Conditional import of yaml with fallback
 try:
@@ -23,7 +23,8 @@ try:
 
     YAML_AVAILABLE = True
 except ImportError:
-    yaml = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, PyYAML required
+    yaml = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     YAML_AVAILABLE = False
 
 from ..utils.home import gtach_home
@@ -59,7 +60,8 @@ class DeviceStore:
                 "YAML library not available - device storage will use in-memory "
                 "fallback"
             )
-            self.config = {"paired_devices": {}}
+            # Parsed YAML: whatever the file holds (_normalise_config).
+            self.config: Any = {"paired_devices": {}}
         else:
             self._ensure_config_dir()
             self._load_config()

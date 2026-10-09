@@ -29,7 +29,7 @@ class SimTransport(OBDTransport):
     All standard ELM327 init commands return canonical responses.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the simulation transport."""
         super().__init__()
         self.logger = logging.getLogger("SimTransport")

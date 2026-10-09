@@ -70,14 +70,14 @@ class RFCOMMTransport(OBDTransport):
             raise
         return sock
 
-    def _close(self, handle) -> None:
+    def _close(self, handle: socket.socket) -> None:
         """Close the socket."""
         handle.close()
 
-    def _write(self, handle, data: bytes) -> None:
+    def _write(self, handle: socket.socket, data: bytes) -> None:
         """Send bytes on the socket."""
         handle.sendall(data)
 
-    def _read(self, handle, n: int) -> bytes:
+    def _read(self, handle: socket.socket, n: int) -> bytes:
         """Receive up to n bytes from the socket."""
         return handle.recv(n)

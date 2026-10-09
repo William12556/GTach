@@ -193,7 +193,9 @@ class OBDProtocol:
             self.logger.error(f"Initialization failed: {e}", exc_info=True)
             return False
 
-    def _send_command(self, command: bytes, timeout: float = None) -> Optional[str]:
+    def _send_command(
+        self, command: bytes, timeout: Optional[float] = None
+    ) -> Optional[str]:
         """Send command to ELM327 device."""
         try:
             # One heartbeat per command bounds the gap (issue-860fd5f7).

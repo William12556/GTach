@@ -49,7 +49,7 @@ class BluetoothPairing:
     INITIALIZATION_TIMEOUT_S = 15
     OPERATION_TIMEOUT_S = 30
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("BluetoothPairing")
         self._discovery_thread = None
 
@@ -111,7 +111,7 @@ class BluetoothPairing:
 
     def discover_elm327_devices(
         self,
-        timeout: int = None,
+        timeout: Optional[int] = None,
         progress_callback: Optional[Callable[[float], None]] = None,
         device_found_callback: Optional[Callable[[BluetoothDevice], None]] = None,
         show_all_devices: bool = False,
@@ -436,7 +436,9 @@ class BluetoothPairing:
         finally:
             self._pairing_active = False
 
-    def _recv_until_prompt(self, sock, timeout: float = 5.0) -> str:
+    def _recv_until_prompt(
+        self, sock: bluetooth.BluetoothSocket, timeout: float = 5.0
+    ) -> str:
         """Accumulate recv data until ELM327 prompt '>' or timeout."""
         sock.settimeout(timeout)
         buf = ""
@@ -511,7 +513,7 @@ class BluetoothPairing:
         except Exception as e:
             self.logger.error(f"Error shutting down thread pool: {e}", exc_info=True)
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on object destruction"""
         try:
             self.shutdown()

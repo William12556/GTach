@@ -49,9 +49,9 @@ class BluetoothSocket:
 
     def __init__(self, socket_type: str = "RFCOMM"):
         self.socket_type = socket_type
-        self.sock = None
+        self.sock: Optional[socket.socket] = None
         self.connected = False
-        self.timeout = None
+        self.timeout: Optional[float] = None
 
     def connect(self, address_port: Tuple[str, int]) -> None:
         address, port = address_port
@@ -100,7 +100,7 @@ class BluetoothSocket:
 class SystemBluetoothManager:
     """System-level Bluetooth manager using bluetoothctl / hcitool"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("SystemBluetoothManager")
         self._check_bluetooth_availability()
 
@@ -191,10 +191,13 @@ class SystemBluetoothManager:
                 text=True,
                 bufsize=1,
             )
+            # Both are pipes: Popen was given PIPE for each.
+            assert process.stdin is not None and process.stdout is not None
             process.stdin.write("power on\nagent on\nscan on\n")
             process.stdin.flush()
 
-            def _reader():
+            def _reader() -> None:
+                assert process.stdout is not None
                 for line in process.stdout:
                     m = dev_re.search(line)
                     if not m:

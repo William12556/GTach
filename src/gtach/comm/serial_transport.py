@@ -41,7 +41,7 @@ class SerialTransport(OBDTransport):
         self._port = port
         self._baudrate = baudrate
         self._retry_delay = retry_delay
-        self._resolved_port = None
+        self._resolved_port: Optional[str] = None
 
     def _describe(self) -> str:
         """Describe the endpoint, for log messages."""
@@ -68,16 +68,16 @@ class SerialTransport(OBDTransport):
         self._resolved_port = resolved_port
         return serial.Serial(port=resolved_port, baudrate=self._baudrate, timeout=2)
 
-    def _close(self, handle) -> None:
+    def _close(self, handle: serial.Serial) -> None:
         """Close the serial port if it is open."""
         if handle.is_open:
             handle.close()
 
-    def _write(self, handle, data: bytes) -> None:
+    def _write(self, handle: serial.Serial, data: bytes) -> None:
         """Write bytes to the serial port."""
         handle.write(data)
 
-    def _read(self, handle, n: int) -> bytes:
+    def _read(self, handle: serial.Serial, n: int) -> bytes:
         """Read up to the '>' prompt.
 
         pyserial supplies read_until, which returns the whole response
@@ -86,11 +86,11 @@ class SerialTransport(OBDTransport):
         """
         return handle.read_until(b">")
 
-    def _set_timeout(self, handle, timeout: float) -> None:
+    def _set_timeout(self, handle: serial.Serial, timeout: float) -> None:
         """Apply the read timeout. pyserial uses an attribute."""
         handle.timeout = timeout
 
-    def _discard_input(self, handle) -> int:
+    def _discard_input(self, handle: serial.Serial) -> int:
         """Discard waiting input with pyserial's own buffer reset.
 
         Args:

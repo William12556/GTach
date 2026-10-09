@@ -17,7 +17,7 @@ import threading
 import time
 from abc import ABC
 from enum import Enum, auto
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from ..utils.platform import PlatformType
 from .device_store import get_device_store
@@ -206,7 +206,7 @@ class OBDTransport(ABC):
     # bluetooth controller', the wedge cause) (audit A05). RFCOMM opts in.
     _ADAPTER_CHECKS: bool = False
 
-    def __init__(self):
+    def __init__(self) -> None:
         # OBDTransport is abstract. The four handle primitives below are
         # deliberately NOT @abstractmethod: SimTransport overrides the
         # whole skeleton and supplies none of them, and change-6481f8ce
@@ -217,13 +217,14 @@ class OBDTransport(ABC):
             raise TypeError("OBDTransport is abstract and cannot be instantiated")
         self._shutdown = threading.Event()
         self._lock = threading.RLock()
-        self._handle = None
+        # The handle's type is per transport: socket, serial.Serial, ...
+        self._handle: Any = None
         self._state = TransportState.DISCONNECTED
         self._consecutive_timeouts = 0
         self._consecutive_connect_failures = 0
         self._last_failure_cause: Optional[str] = None
 
-    def _open(self):
+    def _open(self) -> Any:
         """Open and return a connected handle.
 
         Returns:
@@ -231,19 +232,19 @@ class OBDTransport(ABC):
         """
         raise NotImplementedError(f"{type(self).__name__} must implement _open")
 
-    def _close(self, handle) -> None:
+    def _close(self, handle: Any) -> None:
         """Close the given handle."""
         raise NotImplementedError(f"{type(self).__name__} must implement _close")
 
-    def _write(self, handle, data: bytes) -> None:
+    def _write(self, handle: Any, data: bytes) -> None:
         """Write bytes to the given handle."""
         raise NotImplementedError(f"{type(self).__name__} must implement _write")
 
-    def _read(self, handle, n: int) -> bytes:
+    def _read(self, handle: Any, n: int) -> bytes:
         """Read up to n bytes from the given handle."""
         raise NotImplementedError(f"{type(self).__name__} must implement _read")
 
-    def _set_timeout(self, handle, timeout: float) -> None:
+    def _set_timeout(self, handle: Any, timeout: float) -> None:
         """Apply a read timeout to the handle. Override if it differs."""
         handle.settimeout(timeout)
 
@@ -251,7 +252,7 @@ class OBDTransport(ABC):
     # pause cannot hold a command in the discard step.
     _DISCARD_MAX_READS: int = 64
 
-    def _discard_input(self, handle) -> int:
+    def _discard_input(self, handle: Any) -> int:
         """Discard bytes already waiting on the handle.
 
         Called by send_command before each write. A reply that arrived
@@ -292,7 +293,7 @@ class OBDTransport(ABC):
         """Describe the endpoint, for log messages."""
         return self.__class__.__name__
 
-    def _acquire_handle(self):
+    def _acquire_handle(self) -> Any:
         """Return the handle captured under the lock.
 
         is_connected() reads the state under the lock and releases it,
@@ -536,7 +537,8 @@ class OBDTransport(ABC):
             while True:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    return self._record_timeout(command, timeout)
+                    self._record_timeout(command, timeout)
+                    return None
                 self._set_timeout(handle, min(timeout, remaining))
                 data = self._read(handle, 1024)
                 if not data:
@@ -551,7 +553,8 @@ class OBDTransport(ABC):
                     # detection works (issue-907de6de); otherwise return
                     # what arrived, as the serial implementation always did.
                     if not buf:
-                        return self._record_timeout(command, timeout)
+                        self._record_timeout(command, timeout)
+                        return None
                     break
                 buf += data
                 if b">" in buf:
@@ -579,7 +582,8 @@ class OBDTransport(ABC):
                 self._consecutive_timeouts = 0
             return response
         except self._TIMEOUT_ERRORS:
-            return self._record_timeout(command, timeout)
+            self._record_timeout(command, timeout)
+            return None
         except self._IO_ERRORS as e:
             logger.error("Error communicating with device: %s", e)
             with self._lock:

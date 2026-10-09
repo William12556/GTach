@@ -37,11 +37,12 @@ class BluetoothDevice:
     device_type: str = "UNKNOWN"
     last_connected: Optional[datetime.datetime] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate and normalize device data"""
         # Convert string timestamp to datetime if needed
         if isinstance(self.last_connected, str):
-            try:
+            # TODO: issue-ac11505d candidate defect - annotation omits str input
+            try:  # type: ignore[unreachable]  # TODO: issue-ac11505d
                 self.last_connected = datetime.datetime.fromisoformat(
                     self.last_connected
                 )

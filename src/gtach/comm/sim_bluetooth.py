@@ -62,7 +62,7 @@ class SimBluetoothPairing:
     results and simulates pairing with 80% success rate.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize simulation Bluetooth pairing."""
         self.logger = logging.getLogger("SimBluetoothPairing")
         self._discovery_active = False
