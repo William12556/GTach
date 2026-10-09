@@ -32,7 +32,7 @@ context:
     - "ai/workspace/issues/issue-d26ca557-obd-verify-ebusy-after-pairing.md"
     - "ai/workspace/change/change-d26ca557-obd-verify-ebusy-after-pairing.md"
   constraints:
-    - "Implement after prompt-4f671d09; both edit transport.py."
+    - "Implement after prompt-4f671d09; both edit transport.py and interface.py (4f671d09 changes ensure_pairing_initialized only)."
     - "Retry ONLY when transport.last_failure_cause == LINK_BUSY_CAUSE. Any other failure returns False after one attempt."
     - "transport.py: add LINK_BUSY_CAUSE and use it in _CONNECT_FAULT_CAUSES; no other edit to that file in this change."
     - "Do not change start_device_probe, the pairing-success callback, or RFCOMMTransport."
@@ -151,6 +151,7 @@ notes: "Human verification on gtach.local: re-pair the ELM327 emulator several t
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-d26ca557 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-09 | Ordering constraint notes the shared interface.py. |
 
 ---
 

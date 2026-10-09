@@ -137,7 +137,7 @@ dependencies:
       impact: "none"
   required_changes:
     - change_ref: "change-4f671d09"
-      relationship: "related (both modify transport.py; implement after change-4f671d09)"
+      relationship: "related (both modify transport.py and interface.py; implement after change-4f671d09)"
 
 testing_requirements:
   test_approach: "Unit tests with a fake RFCOMMTransport and patched time.sleep; on-device re-pairing by the operator."
@@ -198,6 +198,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document from issue-d26ca557 iteration 1."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Dependency note: interface.py is also modified by change-4f671d09."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -214,6 +219,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document from issue-d26ca557 iteration 1. |
+| 1.1 | 2026-10-09 | Dependency note: interface.py is also modified by change-4f671d09. |
 
 ---
 

@@ -26,15 +26,17 @@ prompt_info:
     change_iteration: 1
 
 context:
-  purpose: "Timed waits in the transport, watchdog and OBD loops are not extended by a backward wall-clock step on Python 3.9."
-  integration: "New src/gtach/utils/waits.py; edits to comm/transport.py, core/watchdog.py, comm/obd.py; new tests/test_monotonic_waits.py."
+  purpose: "Timed waits in the transport, watchdog and OBD loops, and two one-shot waits, are not extended by a backward wall-clock step on Python 3.9."
+  integration: "New src/gtach/utils/waits.py; edits to comm/transport.py, core/watchdog.py, comm/obd.py, display/setup_components/bluetooth/interface.py, display/splash.py; new tests/test_monotonic_waits.py."
   knowledge_references:
     - "ai/workspace/issues/issue-4f671d09-backward-clock-step-freezes-waits.md"
     - "ai/workspace/change/change-4f671d09-backward-clock-step-freezes-waits.md"
   constraints:
     - "CRITICAL: wait_for_event must never call event.wait() or any timed lock acquire. Slicing Event.wait does NOT fix the defect: each slice has an absolute CLOCK_REALTIME deadline on Python < 3.11. Use only event.is_set(), time.sleep and time.monotonic."
-    - "Replace exactly six calls: transport.py reconnect_indefinitely (three _shutdown.wait), watchdog.py _monitor_loop (_stop_event.wait), obd.py _protocol_loop (shutdown_event.wait(_INIT_RETRY_DELAY_S)) and _initialize_protocol (settle-slice wait). Keep each caller's use of the return value."
-    - "Do not change app.py, interface.py, splash.py, async_operations.py or any join() call (out of scope per the change)."
+    - "Replace exactly eight calls: transport.py reconnect_indefinitely (three _shutdown.wait), watchdog.py _monitor_loop (_stop_event.wait), obd.py _protocol_loop (shutdown_event.wait(_INIT_RETRY_DELAY_S)) and _initialize_protocol (settle-slice wait), interface.py ensure_pairing_initialized (_pairing_ready.wait(timeout=10.0)), splash.py wait_for_completion (timed branch only). Keep each caller's use of the return value."
+    - "splash.py wait_for_completion: when effective_timeout is None keep self._completion_event.wait() unchanged (untimed waits are clock-step safe); otherwise return wait_for_event(self._completion_event, effective_timeout)."
+    - "In interface.py change only ensure_pairing_initialized; verify_obd_connection belongs to prompt-d26ca557."
+    - "Do not change app.py, async_operations.py or any join() call (out of scope per the change)."
     - "Do not add an import of gtach.utils.waits to gtach/utils/__init__.py; import the module directly where used."
     - "Line numbers are from b464bee; locate code by symbol."
 
@@ -114,6 +116,10 @@ testing:
       expected: "Returns; no AssertionError."
     - scenario: "Same double on OBDProtocol.shutdown_event: (a) _initialize_protocol fails once, then the event is set; (b) adapter_pre_initialised=True settle with the event set before the call."
       expected: "(a) _protocol_loop returns, no AssertionError; (b) _initialize_protocol returns False."
+    - scenario: "ensure_pairing_initialized with _pairing_ready replaced by the same double (set) and pairing non-None; build the instance via __new__ to avoid the async init."
+      expected: "True; no AssertionError."
+    - scenario: "SplashScreen.wait_for_completion(timeout=0.2) with _completion_event replaced by the same double; wait_for_completion() (no timeout) with a set real Event."
+      expected: "Timed: no AssertionError; untimed: True."
   edge_cases:
     - "timeout <= 0: return event.is_set() without sleeping."
   validation:
@@ -133,11 +139,15 @@ deliverable:
       content: "One wait replaced"
     - path: "src/gtach/comm/obd.py"
       content: "Two waits replaced"
+    - path: "src/gtach/display/setup_components/bluetooth/interface.py"
+      content: "ensure_pairing_initialized wait replaced"
+    - path: "src/gtach/display/splash.py"
+      content: "wait_for_completion timed branch replaced"
     - path: "tests/test_monotonic_waits.py"
       content: "Regression tests"
 
 success_criteria:
-  - "grep shows no '.wait(' in reconnect_indefinitely, _monitor_loop, _protocol_loop or _initialize_protocol."
+  - "No timed '.wait(' remains in reconnect_indefinitely, _monitor_loop, _protocol_loop, _initialize_protocol, ensure_pairing_initialized, or the timed branch of wait_for_completion."
   - "Call-site tests fail on the old source and pass on the new."
   - "pytest tests/ passes; mypy src/ 0 errors."
 
@@ -154,6 +164,10 @@ element_registry:
         module: "gtach.core.watchdog"
       - name: "OBDProtocol"
         module: "gtach.comm.obd"
+      - name: "BluetoothSetupInterface"
+        module: "gtach.display.setup_components.bluetooth.interface"
+      - name: "SplashScreen"
+        module: "gtach.display.splash"
     functions:
       - name: "wait_for_event"
         module: "gtach.utils.waits"
@@ -175,6 +189,7 @@ notes: "Human verification on gtach.local: repeat the issue reproduction steps (
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-4f671d09 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-09 | Aligned with change-4f671d09 v1.1: two one-shot waits added (interface.py, splash.py timed branch). |
 
 ---
 

@@ -16,7 +16,7 @@ Created: 2026 October 09
 ```yaml
 change_info:
   id: "change-4f671d09"
-  title: "Replace timed threading.Event.wait in the transport, watchdog and OBD loops with a sleep-polled wait that a backward wall-clock step cannot extend"
+  title: "Replace timed threading.Event.wait in the transport, watchdog and OBD loops and two one-shot waits with a sleep-polled wait that a backward wall-clock step cannot extend"
   date: "2026-10-09"
   author: "William Watson"
   status: "proposed"
@@ -41,7 +41,10 @@ scope:
     waits by polling event.is_set() between time.sleep slices against a
     time.monotonic() deadline. Use it at the six timed waits whose loops
     do periodic work: three in OBDTransport.reconnect_indefinitely, one in
-    WatchdogMonitor._monitor_loop, two in OBDProtocol.
+    WatchdogMonitor._monitor_loop, two in OBDProtocol. Also use it at two
+    one-shot timed waits, for robustness of their failure timeouts:
+    BluetoothSetupInterface.ensure_pairing_initialized and
+    SplashScreen.wait_for_completion (timed branch only).
   affected_components:
     - name: "wait_for_event (new)"
       file_path: "src/gtach/utils/waits.py"
@@ -55,6 +58,12 @@ scope:
     - name: "OBDProtocol._protocol_loop, OBDProtocol._initialize_protocol"
       file_path: "src/gtach/comm/obd.py"
       change_type: "modify"
+    - name: "BluetoothSetupInterface.ensure_pairing_initialized"
+      file_path: "src/gtach/display/setup_components/bluetooth/interface.py"
+      change_type: "modify"
+    - name: "SplashScreen.wait_for_completion"
+      file_path: "src/gtach/display/splash.py"
+      change_type: "modify"
     - name: "Regression tests (new)"
       file_path: "tests/test_monotonic_waits.py"
       change_type: "add"
@@ -64,7 +73,8 @@ scope:
         - ""
   out_of_scope:
     - "app.py:594 main loop. Listed in the issue, but the loop only re-checks _stop_event; set() wakes the waiter immediately whatever the clock does, so a backward step has no observable effect there."
-    - "interface.py:174 _pairing_ready.wait(10.0), splash.py:271 _completion_event.wait, async_operations.py:264 operation_queue.get(timeout=1.0), and Thread.join(timeout=...) calls. Same mechanism, but set()/put() still wake them; only their failure timeout is extended. Candidates for a follow-up issue if wanted."
+    - "async_operations.py:264 operation_queue.get(timeout=1.0) and Thread.join(timeout=...) calls. Same mechanism, but put()/thread exit still wake them; only their failure timeout is extended. Converting the queue loop would add permanent wake-ups and per-operation latency (decision 2026-10-09: robustness gain not worth the cost)."
+    - "SplashScreen.wait_for_completion with timeout=None: an untimed Event.wait has no deadline and is unaffected by clock steps; it stays as is."
     - "Upgrading the Pi interpreter to Python 3.11 or later."
     - "time.sleep call sites (already clock-step safe)."
 
@@ -105,16 +115,22 @@ technical_details:
     supervising and self._shutdown.wait(retry_delay) between attempts;
     _monitor_loop waits with self._stop_event.wait(self.check_interval);
     _protocol_loop waits with shutdown_event.wait(_INIT_RETRY_DELAY_S);
-    _initialize_protocol waits with shutdown_event.wait(min(slice, remaining)).
+    _initialize_protocol waits with shutdown_event.wait(min(slice, remaining));
+    ensure_pairing_initialized waits with _pairing_ready.wait(timeout=10.0);
+    wait_for_completion returns _completion_event.wait(effective_timeout),
+    where effective_timeout may be None.
   proposed_behavior: >
-    Each of those six calls becomes wait_for_event(<same event>, <same
-    timeout>). Return values are used exactly as before (the settle loop
-    still returns False when the event is set). No other logic changes.
+    Each of those eight timed calls becomes wait_for_event(<same event>,
+    <same timeout>). In wait_for_completion, a None timeout keeps the
+    untimed _completion_event.wait(). Return values are used exactly as
+    before (the settle loop still returns False when the event is set).
+    No other logic changes.
   implementation_approach: >
     1. Add src/gtach/utils/waits.py with _POLL_SLICE_S = 0.1 and
     wait_for_event(event, timeout) -> bool. Docstring cites issue-4f671d09
     and states why Event.wait is not used. timeout <= 0 returns
-    event.is_set() at once. 2. Replace the six calls. Update the
+    event.is_set() at once. 2. Replace the six loop calls and the two
+    one-shot calls (splash: timed branch only). Update the
     reconnect_indefinitely docstring sentence that says every wait is on
     _shutdown. 3. Add tests/test_monotonic_waits.py.
   code_changes:
@@ -146,6 +162,20 @@ technical_details:
         - "OBDProtocol._initialize_protocol"
       classes_affected:
         - "OBDProtocol"
+    - component: "bluetooth interface"
+      file: "src/gtach/display/setup_components/bluetooth/interface.py"
+      change_summary: "Pairing-ready wait uses wait_for_event."
+      functions_affected:
+        - "BluetoothSetupInterface.ensure_pairing_initialized"
+      classes_affected:
+        - "BluetoothSetupInterface"
+    - component: "splash"
+      file: "src/gtach/display/splash.py"
+      change_summary: "Timed completion wait uses wait_for_event; untimed branch unchanged."
+      functions_affected:
+        - "SplashScreen.wait_for_completion"
+      classes_affected:
+        - "SplashScreen"
   data_changes: []
   interface_changes:
     - interface: "gtach.utils.waits.wait_for_event(event: threading.Event, timeout: float) -> bool"
@@ -160,7 +190,7 @@ dependencies:
   external: []
   required_changes:
     - change_ref: "change-d26ca557"
-      relationship: "related (both modify transport.py; implement this change first)"
+      relationship: "related (both modify transport.py and interface.py; implement this change first)"
 
 testing_requirements:
   test_approach: "Unit tests on the helper and on each call site with an event double that fails any timed wait. On-device clock-step reproduction by the operator."
@@ -179,10 +209,14 @@ testing_requirements:
       expected_result: "Loop exits; no AssertionError."
     - scenario: "OBDProtocol init-retry and pre-initialised settle paths with the same double for shutdown_event."
       expected_result: "No AssertionError; settle still returns False when the event is set."
+    - scenario: "ensure_pairing_initialized with _pairing_ready replaced by the same double, already set, pairing non-None."
+      expected_result: "True; no AssertionError."
+    - scenario: "wait_for_completion(timeout=0.2) with _completion_event replaced by the same double; and wait_for_completion() with no timeout on a set real Event."
+      expected_result: "Timed: no AssertionError; untimed: True."
   regression_scope:
     - "tests/ (full suite)"
   validation_criteria:
-    - "No timed Event.wait remains in reconnect_indefinitely, _monitor_loop, _protocol_loop or _initialize_protocol."
+    - "No timed Event.wait remains in reconnect_indefinitely, _monitor_loop, _protocol_loop, _initialize_protocol, ensure_pairing_initialized or the timed branch of wait_for_completion."
     - "pytest tests/ passes."
     - "On gtach.local: issue reproduction steps produce no watchdog unresponsive warning, and a link drop after a backward step is reconnected without operator action."
 
@@ -222,7 +256,7 @@ traceability:
     - issue_ref: "issue-4f671d09"
       relationship: "source"
 
-notes: "Root cause is inferred from CPython 3.9 source behaviour and matches the observed 102.9 s silence exactly. Line numbers are from b464bee; locate code by symbol."
+notes: "Root cause is inferred from CPython 3.9 source behaviour and matches the observed 102.9 s silence exactly. SplashScreen.wait_for_completion has no callers in src/ or tests/ at b464bee; it is converted for consistency only. Line numbers are from b464bee; locate code by symbol."
 
 version_history:
   - version: "1.0"
@@ -230,6 +264,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document from issue-4f671d09 iteration 1."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Scope extended to the one-shot waits in ensure_pairing_initialized and SplashScreen.wait_for_completion (timed branch); async_operations queue and joins remain out of scope."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -246,6 +285,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document from issue-4f671d09 iteration 1. |
+| 1.1 | 2026-10-09 | Scope extended to two one-shot waits (interface.py, splash.py); queue and joins remain out of scope. |
 
 ---
 
