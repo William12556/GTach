@@ -20,3 +20,4 @@ approvals:
   - { uuid: "c9de5fb0", stage: "prompt", date: "2026-10-09T05:05:53Z", blobs: { "prompt/prompt-c9de5fb0-duplicate-bluetooth-device-models.md": "3a719e8b0cd748fc7ae7b9c5068a48fb78939a8d" } }
   - { uuid: "2b3a1547", stage: "change", date: "2026-10-09T05:05:55Z", blobs: { "change/change-2b3a1547-eager-package-import.md": "e83d15dfb731e83179da4886b3b3f517d996e02d" } }
   - { uuid: "2b3a1547", stage: "prompt", date: "2026-10-09T05:05:57Z", blobs: { "prompt/prompt-2b3a1547-eager-package-import.md": "16a36b2fcff47df717909157bdfc444e6ad9be01" } }
+  - { uuid: "8a9022fc", stage: "change", date: "2026-10-09T05:05:59Z", blobs: { "change/change-8a9022fc-slot-tests-reimplement-selection.md": "18e43c8ab1c12fd9caf57bc950460f2448c24178" } }
