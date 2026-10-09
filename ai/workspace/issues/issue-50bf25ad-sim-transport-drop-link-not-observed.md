@@ -25,8 +25,8 @@ issue_info:
   type: defect
   iteration: 1
   coupled_docs:
-    change_ref: ''
-    change_iteration: null
+    change_ref: change-50bf25ad
+    change_iteration: 1
 source:
   origin: test_result
   test_ref: tests/test_lifecycle_sim.py::TestLinkLoss::test_drop_is_observed_and_link_reconnects
@@ -86,7 +86,7 @@ resolution:
   approach: Override drop_link in SimTransport (clear _connected and _state under
     _lock, record the cause), or derive is_connected from _state; remove the xfail
     marker from the lifecycle test.
-  change_ref: ''
+  change_ref: change-50bf25ad
   resolved_date: ''
   resolved_by: ''
   fix_description: ''
@@ -107,7 +107,7 @@ traceability:
   design_refs:
   - ''
   change_refs:
-  - ''
+  - change-50bf25ad
   test_refs:
   - tests/test_lifecycle_sim.py::TestLinkLoss::test_drop_is_observed_and_link_reconnects
     (strict xfail)
@@ -123,6 +123,11 @@ version_history:
   author: Claude Code
   changes:
   - Initial issue document, raised at the close of audit-36b6ea95 remediation.
+- version: '1.1'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Coupled to change-50bf25ad (P03.7).
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -138,6 +143,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
+| 1.1 | 2026-10-09 | Coupled to change-50bf25ad. |
 
 ---
 

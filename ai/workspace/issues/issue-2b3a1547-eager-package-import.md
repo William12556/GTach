@@ -25,8 +25,8 @@ issue_info:
   type: defect
   iteration: 1
   coupled_docs:
-    change_ref: ''
-    change_iteration: null
+    change_ref: change-2b3a1547
+    change_iteration: 1
 source:
   origin: code_review
   test_ref: ''
@@ -77,7 +77,7 @@ resolution:
   target_date: ''
   approach: Make the re-exports lazy (module __getattr__) or drop them; the console
     script already targets gtach.main:main.
-  change_ref: ''
+  change_ref: change-2b3a1547
   resolved_date: ''
   resolved_by: ''
   fix_description: ''
@@ -97,7 +97,7 @@ traceability:
   design_refs:
   - ''
   change_refs:
-  - ''
+  - change-2b3a1547
   test_refs:
   - ''
 notes: audit-36b6ea95 B11 (partial).
@@ -112,6 +112,11 @@ version_history:
   author: Claude Code
   changes:
   - Initial issue document, raised at the close of audit-36b6ea95 remediation.
+- version: '1.1'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Coupled to change-2b3a1547 (P03.7); approach chosen - drop the re-exports.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -127,6 +132,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
+| 1.1 | 2026-10-09 | Coupled to change-2b3a1547; re-exports to be dropped. |
 
 ---
 

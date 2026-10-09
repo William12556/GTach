@@ -25,8 +25,8 @@ issue_info:
   type: defect
   iteration: 1
   coupled_docs:
-    change_ref: ''
-    change_iteration: null
+    change_ref: change-04c18cda
+    change_iteration: 1
 source:
   origin: test_result
   test_ref: tests/test_lifecycle_sim.py::TestWatchdogQuiet::test_no_obd_unresponsive_warning
@@ -80,7 +80,7 @@ resolution:
   target_date: ''
   approach: Replace the sleep with shutdown_event.wait(1.5) (returning early when
     set) and heartbeat before it; remove the xfail marker.
-  change_ref: ''
+  change_ref: change-04c18cda
   resolved_date: ''
   resolved_by: ''
   fix_description: ''
@@ -101,7 +101,7 @@ traceability:
   design_refs:
   - ''
   change_refs:
-  - ''
+  - change-04c18cda
   test_refs:
   - tests/test_lifecycle_sim.py::TestWatchdogQuiet::test_no_obd_unresponsive_warning
     (strict xfail)
@@ -117,6 +117,11 @@ version_history:
   author: Claude Code
   changes:
   - Initial issue document, raised at the close of audit-36b6ea95 remediation.
+- version: '1.1'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Coupled to change-04c18cda (P03.7). The change supersedes resolution.approach (a single 1.5 s wait leaves a gap above the test's 1.0 s warning timeout).
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -132,6 +137,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
+| 1.1 | 2026-10-09 | Coupled to change-04c18cda; resolution approach superseded by the change. |
 
 ---
 

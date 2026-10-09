@@ -25,8 +25,8 @@ issue_info:
   type: defect
   iteration: 1
   coupled_docs:
-    change_ref: ''
-    change_iteration: null
+    change_ref: change-ac11505d
+    change_iteration: 1
 source:
   origin: code_review
   test_ref: ''
@@ -75,7 +75,7 @@ resolution:
   target_date: ''
   approach: Address by module in small changes, starting with union-attr, arg-type
     and index errors, which are most likely to be real defects.
-  change_ref: ''
+  change_ref: change-ac11505d
   resolved_date: ''
   resolved_by: ''
   fix_description: ''
@@ -95,7 +95,7 @@ traceability:
   design_refs:
   - ''
   change_refs:
-  - ''
+  - change-ac11505d
   test_refs:
   - ''
 notes: audit-36b6ea95 Section 2 / CLAUDE.md §4 rule 2.
@@ -110,6 +110,11 @@ version_history:
   author: Claude Code
   changes:
   - Initial issue document, raised at the close of audit-36b6ea95 remediation.
+- version: '1.1'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Coupled to change-ac11505d (P03.7); scope chosen - full target in one behaviour-preserving change, suspected defects suppressed with TODO and reported.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -125,6 +130,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
+| 1.1 | 2026-10-09 | Coupled to change-ac11505d; full behaviour-preserving scope chosen. |
 
 ---
 

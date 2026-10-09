@@ -25,8 +25,8 @@ issue_info:
   type: defect
   iteration: 1
   coupled_docs:
-    change_ref: ''
-    change_iteration: null
+    change_ref: change-273ca048
+    change_iteration: 1
 source:
   origin: code_review
   test_ref: ''
@@ -93,7 +93,7 @@ resolution:
   assigned_to: ''
   target_date: ''
   approach: Remove after a fresh reference check.
-  change_ref: ''
+  change_ref: change-273ca048
   resolved_date: ''
   resolved_by: ''
   fix_description: ''
@@ -114,7 +114,7 @@ traceability:
   design_refs:
   - ''
   change_refs:
-  - ''
+  - change-273ca048
   test_refs:
   - ''
 notes: Follow-up to change-cd5ec050. Also covers report-b64d2b77 findings B and C; the owner confirmed on 2026-10-09 that neither screen is reserved for planned use.
@@ -134,6 +134,11 @@ version_history:
   author: William Watson
   changes:
   - Folded in report-b64d2b77 findings B and C (SetupScreen.DEVICE_MANAGEMENT, SetupScreen.CONFIRMATION and the setup.py:324 cache-list entry).
+- version: '1.2'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Coupled to change-273ca048 (P03.7).
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -150,6 +155,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
 | 1.1 | 2026-10-09 | Folded in report-b64d2b77 findings B and C. |
+| 1.2 | 2026-10-09 | Coupled to change-273ca048. |
 
 ---
 

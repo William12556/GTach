@@ -19,6 +19,16 @@ record the outcome.
 | —          | In-car normal use of GTach 0.4.9 (audit-36b6ea95 Session I); vehicle not yet prepared. General regression check; not tied to an open issue | Open — awaiting vehicle | `ai/workspace/test/closed/test-36b6ea95-on-device-verification.md` §4.9 |
 | —          | New work: automatic recovery from the stuck Bluetooth state. After an out-of-range link loss (2026-10-08 13:45) every reconnect failed with EBUSY ('Device or resource busy') for 2.5 min, including after the adapter was back in range; GTach correctly reported 'bluetooth wedged - reset required', but only a Pi reset restored the link. Scope (e.g. controller reset via btmgmt/hciconfig, or RFCOMM/ACL release, before falling back to operator reset) to be decided | Open — new work, T03 not yet raised | `comm/transport.py`, `comm/rfcomm.py`; related `issue-5e7a03c4`; evidence `logs/error.log` 2026-10-08 13:45–13:48 |
 | —          | Review `ai/workspace/design/` for stale designs and decide per document whether to update, merge or retire it. Known candidates: duplicate component designs for the device store (`a6b7c8d9`, `f6a7b8c9`) and the OBD protocol (`e5f6a7b8`, `f5a6b7c8`); TCP and serial transport designs (`d3e4f5a6`, `e4f5a6b7`) still marked "New — does not exist in current source". Check each design against `src/gtach/` before deciding | Open — review not started | `ai/workspace/design/`; `design-gtach-master.md` |
+| `50bf25ad` | SimTransport ignores `drop_link`; link loss cannot be exercised in simulation | Open — T-Docs ready, awaiting approval; batch order 1 | `issue-50bf25ad`, `change-50bf25ad`, `prompt-50bf25ad` |
+| `04c18cda` | OBD pre-initialised settle: 1.5 s heartbeat gap, ignores stop | Open — T-Docs ready, awaiting approval; batch order 2 | `issue-04c18cda`, `change-04c18cda`, `prompt-04c18cda` |
+| `ae65fa10` | `ConfigStore.save` without `load` drops unknown keys | Open — T-Docs ready, awaiting approval; batch order 3 | `issue-ae65fa10`, `change-ae65fa10`, `prompt-ae65fa10` |
+| `c9de5fb0` | Two hand-written BluetoothDevice conversions | Open — T-Docs ready, awaiting approval; batch order 4 | `issue-c9de5fb0`, `change-c9de5fb0`, `prompt-c9de5fb0` |
+| `2b3a1547` | Eager package re-exports import app and pygame | Open — T-Docs ready, awaiting approval; batch order 5 | `issue-2b3a1547`, `change-2b3a1547`, `prompt-2b3a1547` |
+| `8a9022fc` | Slot-contents tests re-implement the production rule | Open — T-Docs ready, awaiting approval; batch order 6 | `issue-8a9022fc`, `change-8a9022fc`, `prompt-8a9022fc` |
+| `273ca048` | Residual dead code (incl. unused SetupScreen members) | Open — T-Docs ready, awaiting approval; batch order 7 | `issue-273ca048`, `change-273ca048`, `prompt-273ca048` |
+| `e215a184` | Remaining wall-clock durations in five files | Open — T-Docs ready, awaiting approval; batch order 8 | `issue-e215a184`, `change-e215a184`, `prompt-e215a184` |
+| `ac11505d` | mypy strict errors in `src/` | Open — T-Docs ready, awaiting approval; batch order 9 | `issue-ac11505d`, `change-ac11505d`, `prompt-ac11505d` |
+| —          | `sim_transport.py` computes elapsed time with `time.time()` (lines 38, 142 at ba661d4); excluded from issue-e215a184 scope on 2026-10-09 | Open, not yet raised as a T03 | `comm/sim_transport.py` |
 
 ---
 

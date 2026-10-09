@@ -25,8 +25,8 @@ issue_info:
   type: defect
   iteration: 1
   coupled_docs:
-    change_ref: ''
-    change_iteration: null
+    change_ref: change-c9de5fb0
+    change_iteration: 1
 source:
   origin: code_review
   test_ref: ''
@@ -82,7 +82,7 @@ resolution:
   target_date: ''
   approach: Add a single conversion (for example a classmethod on the comm model)
     used by both sites, or merge the models.
-  change_ref: ''
+  change_ref: change-c9de5fb0
   resolved_date: ''
   resolved_by: ''
   fix_description: ''
@@ -102,7 +102,7 @@ traceability:
   design_refs:
   - ''
   change_refs:
-  - ''
+  - change-c9de5fb0
   test_refs:
   - ''
 notes: audit-36b6ea95 A14 (partial).
@@ -117,6 +117,11 @@ version_history:
   author: Claude Code
   changes:
   - Initial issue document, raised at the close of audit-36b6ea95 remediation.
+- version: '1.1'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Coupled to change-c9de5fb0 (P03.7); approach chosen - one shared conversion, both models kept.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -132,6 +137,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
+| 1.1 | 2026-10-09 | Coupled to change-c9de5fb0; shared conversion chosen. |
 
 ---
 

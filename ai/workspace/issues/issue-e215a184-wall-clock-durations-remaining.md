@@ -25,8 +25,8 @@ issue_info:
   type: defect
   iteration: 1
   coupled_docs:
-    change_ref: ''
-    change_iteration: null
+    change_ref: change-e215a184
+    change_iteration: 1
 source:
   origin: code_review
   test_ref: ''
@@ -85,7 +85,7 @@ resolution:
   assigned_to: ''
   target_date: ''
   approach: Switch the duration-only sites to time.monotonic().
-  change_ref: ''
+  change_ref: change-e215a184
   resolved_date: ''
   resolved_by: ''
   fix_description: ''
@@ -105,7 +105,7 @@ traceability:
   design_refs:
   - ''
   change_refs:
-  - ''
+  - change-e215a184
   test_refs:
   - ''
 notes: audit-36b6ea95 C16 (residual).
@@ -120,6 +120,11 @@ version_history:
   author: Claude Code
   changes:
   - Initial issue document, raised at the close of audit-36b6ea95 remediation.
+- version: '1.1'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Coupled to change-e215a184 (P03.7); scope kept to the five listed files (sim_transport.py excluded, tracked in task.md).
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -135,6 +140,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
+| 1.1 | 2026-10-09 | Coupled to change-e215a184; scope kept to the five listed files. |
 
 ---
 
