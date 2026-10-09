@@ -216,6 +216,18 @@ CONFIG_KEYS: Dict[str, type] = {
 }
 
 
+def _unknown_keys(data: Dict[str, Any]) -> Dict[str, Any]:
+    """Return the entries of a parsed config mapping not in CONFIG_KEYS.
+
+    Args:
+        data: Parsed config mapping.
+
+    Returns:
+        The keys not in CONFIG_KEYS, with their values.
+    """
+    return {k: v for k, v in data.items() if k not in CONFIG_KEYS}
+
+
 def _engine_profile_names() -> List[str]:
     """Names of the profiles in assets/engine_profiles.yaml.
 
@@ -248,8 +260,10 @@ class ConfigStore:
     """Sole owner of GTACH_HOME/config.yaml.
 
     load() never writes; save() writes atomically and keeps any keys it
-    does not know. The lock guards the retained unknown keys; file I/O
-    and logging happen outside it (CLAUDE.md §4 rule 8).
+    does not know, reading them from the file at save time so a save
+    without a prior load() does not drop them (issue-ae65fa10). The lock
+    guards the retained unknown keys; file I/O and logging happen
+    outside it (CLAUDE.md §4 rule 8).
     """
 
     def __init__(self, path: Optional[Path] = None):
@@ -320,7 +334,7 @@ class ConfigStore:
                 )
                 del values[key]
 
-        unknown = {k: v for k, v in data.items() if k not in CONFIG_KEYS}
+        unknown = _unknown_keys(data)
         with self._lock:
             self._unknown = unknown
         return AppConfig(**values)
@@ -328,9 +342,12 @@ class ConfigStore:
     def save(self, config: AppConfig) -> bool:
         """Write the configuration atomically.
 
-        Known fields are merged over the retained unknown keys, written
-        to a temporary file in the same directory, flushed, fsync'd and
-        moved into place. The directory is created if missing.
+        Unknown keys are read from the current file at save time
+        (issue-ae65fa10); if the file is missing, unreadable or not a
+        mapping, the keys retained by the last load() or save() are used.
+        Known fields are merged over the unknown keys, written to a
+        temporary file in the same directory, flushed, fsync'd and moved
+        into place. The directory is created if missing.
 
         Args:
             config: The configuration to write.
@@ -338,7 +355,20 @@ class ConfigStore:
         Returns:
             True on success, False (logged) on failure.
         """
+        file_unknown: Optional[Dict[str, Any]] = None
+        if self.path.exists():
+            try:
+                current = self._read()
+                if isinstance(current, dict):
+                    file_unknown = _unknown_keys(current)
+            except (OSError, yaml.YAMLError) as e:
+                self.logger.warning(
+                    f"Cannot read {self.path} before save: {e}; "
+                    "keeping retained unknown keys"
+                )
         with self._lock:
+            if file_unknown is not None:
+                self._unknown = file_unknown
             data = dict(self._unknown)
         data.update(asdict(config))
         tmp_path = self.path.with_name(f".{self.path.name}.{os.getpid()}.tmp")

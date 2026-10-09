@@ -27,7 +27,7 @@ import yaml
 import gtach.main  # noqa: F401  — ensures the module is in sys.modules
 from gtach.display.manager import DisplayManager
 from gtach.display.models import DAY_PALETTE, NIGHT_PALETTE, DisplayMode
-from gtach.utils.config import AppConfig, ConfigStore
+from gtach.utils.config import CONFIG_KEYS, AppConfig, ConfigStore
 from gtach.utils.home import DEFAULT_GTACH_HOME, gtach_home
 
 # gtach/__init__.py re-exports the main FUNCTION under the name 'main'
@@ -133,6 +133,45 @@ class TestSave:
         assert ConfigStore(path).save(AppConfig()) is True
         assert path.exists()
         assert list(path.parent.iterdir()) == [path]
+
+    # issue-ae65fa10: save() reads unknown keys from the file at save time.
+
+    def test_save_without_load_keeps_unknown_key(self, tmp_path):
+        path = _write(tmp_path / "config.yaml", dict(DEVICE_FILE, foo=1))
+
+        assert ConfigStore(path).save(AppConfig()) is True
+        assert yaml.safe_load(path.read_text())["foo"] == 1
+
+    def test_key_added_after_load_is_kept(self, tmp_path):
+        path = _write(tmp_path / "config.yaml", DEVICE_FILE)
+        store = ConfigStore(path)
+        store.load()
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("bar: 2\n")
+
+        assert store.save(AppConfig()) is True
+        assert yaml.safe_load(path.read_text())["bar"] == 2
+
+    def test_missing_file_writes_known_keys_only(self, tmp_path):
+        path = tmp_path / "config.yaml"
+
+        assert ConfigStore(path).save(AppConfig()) is True
+        assert set(yaml.safe_load(path.read_text())) == set(CONFIG_KEYS)
+
+    def test_invalid_yaml_warns_and_saves(self, tmp_path, caplog):
+        path = tmp_path / "config.yaml"
+        path.write_text("mode: [unclosed\n", encoding="utf-8")
+
+        with caplog.at_level(logging.WARNING):
+            assert ConfigStore(path).save(AppConfig()) is True
+        assert set(yaml.safe_load(path.read_text())) == set(CONFIG_KEYS)
+        assert any(r.levelno == logging.WARNING for r in caplog.records)
+
+    def test_list_file_gives_no_unknown_keys(self, tmp_path):
+        path = _write(tmp_path / "config.yaml", ["a", "b"])
+
+        assert ConfigStore(path).save(AppConfig()) is True
+        assert set(yaml.safe_load(path.read_text())) == set(CONFIG_KEYS)
 
 
 class TestValidate:
