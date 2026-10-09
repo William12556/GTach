@@ -31,7 +31,8 @@ source:
   origin: code_review
   test_ref: ''
   description: Recorded in report-cd5ec050 (kept items) and report-4005360c (unreachable
-    trim branch).
+    trim branch). Findings B and C of report-b64d2b77 (vestigial SetupScreen members)
+    folded in on 2026-10-09.
 affected_scope:
   components:
   - name: TouchHandler.get_touch_interface_info
@@ -49,6 +50,10 @@ affected_scope:
     file_path: src/gtach/display/splash.py
   - name: ACQUIRE_TIMEOUT
     file_path: tests/conftest.py
+  - name: SetupScreen.DEVICE_MANAGEMENT, SetupScreen.CONFIRMATION
+    file_path: src/gtach/display/setup_models.py
+  - name: SetupScreen.CONFIRMATION entry in the render-cache screen list
+    file_path: src/gtach/display/setup.py
   designs:
   - design_ref: ''
   version: 34c1ffd
@@ -66,7 +71,8 @@ behavior:
   actual: touch.py:345; circular_positioning.py:63,384; touch_interface.py:219,448,741,759;
     typography.py:49,59; performance/__init__.py:22,30 (exported only); splash.py:724
     (its trim branch at :772 is unreachable since change-4005360c bounded the deque);
-    conftest.py:53.
+    conftest.py:53; setup_models.py:29,30 (SetupScreen members with no render
+    branch or transition); setup.py:324 (CONFIRMATION in the should_cache list).
   impact: Maintenance cost only.
   workaround: ''
 environment:
@@ -111,7 +117,7 @@ traceability:
   - ''
   test_refs:
   - ''
-notes: Follow-up to change-cd5ec050.
+notes: Follow-up to change-cd5ec050. Also covers report-b64d2b77 findings B and C; the owner confirmed on 2026-10-09 that neither screen is reserved for planned use.
 loop_context:
   was_loop_execution: false
   blocked_at_iteration: 0
@@ -123,6 +129,11 @@ version_history:
   author: Claude Code
   changes:
   - Initial issue document, raised at the close of audit-36b6ea95 remediation.
+- version: '1.1'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Folded in report-b64d2b77 findings B and C (SetupScreen.DEVICE_MANAGEMENT, SetupScreen.CONFIRMATION and the setup.py:324 cache-list entry).
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -138,6 +149,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
+| 1.1 | 2026-10-09 | Folded in report-b64d2b77 findings B and C. |
 
 ---
 

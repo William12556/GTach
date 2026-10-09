@@ -190,6 +190,11 @@ hit-tested once active — the defect is entry, not exit.
 This report is investigative; no T03/T02/T04 documents have been
 created from it.
 
+**Disposition (2026-10-09).** Finding A was resolved by
+`issue-e22142da` (closed). Findings B and C were folded into
+`issue-273ca048` (residual dead code); the owner confirmed neither screen
+is reserved for planned use. No action remains on this report.
+
 [Return to Table of Contents](<#table of contents>)
 
 ---
@@ -199,6 +204,7 @@ created from it.
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-08-14 | Initial report. Records the navigation-reachability audit of `DisplayMode` and `SetupScreen`: `ACKNOWLEDGEMENT` fully built with no trigger; `DEVICE_MANAGEMENT` and `CONFIRMATION` vestigial with no render branch or transition. |
+| 1.1 | 2026-10-09 | §8.0: disposition recorded (A resolved by issue-e22142da; B and C folded into issue-273ca048); closed. |
 
 ---
 
