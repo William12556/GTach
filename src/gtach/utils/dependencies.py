@@ -271,7 +271,8 @@ class DependencyValidator:
         if dep.dependency_type == DependencyType.OPTIONAL:
             return True
 
-        return False
+        # TODO: issue-ac11505d candidate defect - fallback for non-enum type
+        return False  # type: ignore[unreachable]  # TODO: issue-ac11505d
 
     def _check_import(
         self, import_name: str
@@ -469,7 +470,7 @@ class DependencyValidator:
 
         return summary
 
-    def print_report(self, show_successful: bool = None) -> None:
+    def print_report(self, show_successful: Optional[bool] = None) -> None:
         """Print detailed dependency report"""
         if show_successful is None:
             show_successful = self.debug
@@ -668,7 +669,7 @@ def validate_dependencies(debug: bool = False) -> DependencyValidator:
     return validator
 
 
-def main():
+def main() -> None:
     """Main function for standalone dependency checking"""
     import argparse
 

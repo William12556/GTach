@@ -21,7 +21,7 @@ import sys
 import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 # Conditional import of yaml
 try:
@@ -29,13 +29,17 @@ try:
 
     YAML_AVAILABLE = True
 except ImportError:
-    yaml = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, PyYAML required
+    yaml = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     YAML_AVAILABLE = False
 
 from .home import gtach_home
 
+if TYPE_CHECKING:
+    from ..display.models import RPMBands
 
-def load_engine_profile(profile_name: str = "abarth_595_turismo"):
+
+def load_engine_profile(profile_name: str = "abarth_595_turismo") -> "RPMBands":
     """Load engine profile from engine_profiles.yaml.
 
     Args:
@@ -58,7 +62,7 @@ def load_engine_profile(profile_name: str = "abarth_595_turismo"):
 
     try:
         # Try to load engine_profiles.yaml from assets directory
-        profile_path = None
+        profile_path: Optional[Path] = None
 
         # Method 1: Try importlib.resources (Python 3.9+)
         try:
@@ -66,7 +70,7 @@ def load_engine_profile(profile_name: str = "abarth_595_turismo"):
                 import importlib.resources as pkg_resources
 
                 files = pkg_resources.files("gtach.assets")
-                profile_path = files / "engine_profiles.yaml"
+                profile_path = cast(Path, files / "engine_profiles.yaml")
             else:
                 # Fallback for older Python versions
                 import pkg_resources as pkg_res
@@ -237,10 +241,10 @@ def _engine_profile_names() -> List[str]:
     Returns:
         The profile names; empty if the file cannot be read.
     """
-    profile_path = None
+    profile_path: Optional[Path] = None
     try:
-        profile_path = (
-            importlib.resources.files("gtach.assets") / "engine_profiles.yaml"
+        profile_path = cast(
+            Path, importlib.resources.files("gtach.assets") / "engine_profiles.yaml"
         )
     except Exception:
         profile_path = None

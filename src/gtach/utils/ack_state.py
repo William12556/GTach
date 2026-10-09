@@ -26,7 +26,8 @@ try:
 
     YAML_AVAILABLE = True
 except ImportError:
-    yaml = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, PyYAML required
+    yaml = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     YAML_AVAILABLE = False
 
 from .home import gtach_home
@@ -252,7 +253,8 @@ class AcknowledgementStateManager:
 
         try:
             with open(self.state_file_path, "r") as f:
-                return yaml.safe_load(f)
+                # TODO: issue-ac11505d candidate defect - YAML may not be a mapping
+                return yaml.safe_load(f)  # type: ignore[no-any-return]  # TODO: issue-ac11505d  # noqa: E501
         except Exception as e:
             self.logger.error(f"Failed to read state info: {e}", exc_info=True)
             return None

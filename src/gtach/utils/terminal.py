@@ -21,7 +21,7 @@ import termios
 class TerminalRestorer:
     """Manages terminal settings and ensures restoration on exit"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize terminal settings backup"""
         self.logger = logging.getLogger("TerminalRestorer")
         self.original_termios = None
@@ -37,7 +37,7 @@ class TerminalRestorer:
         # Register cleanup handler to ensure restoration
         atexit.register(self.restore_terminal)
 
-    def restore_terminal(self):
+    def restore_terminal(self) -> None:
         """Restore terminal to original state"""
         if self.original_termios is not None:
             try:

@@ -90,7 +90,7 @@ class PlatformDetector:
     - Simplified mock system
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("PlatformDetector")
         self._lock = threading.RLock()
 
@@ -339,7 +339,7 @@ class PlatformDetector:
             with open(cpuinfo_path, "r", encoding="utf-8") as f:
                 cpuinfo = f.read().lower()
 
-            evidence = {"cpuinfo_checked": True}
+            evidence: Dict[str, Any] = {"cpuinfo_checked": True}
 
             # Check for Pi indicators
             pi_indicators = [
@@ -871,7 +871,7 @@ class PlatformError(Exception):
 
 
 # For testing purposes
-def run_platform_test():
+def run_platform_test() -> None:
     """Run platform detection test"""
     print("=== Platform Detection Test ===")
 

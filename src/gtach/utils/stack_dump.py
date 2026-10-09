@@ -30,6 +30,7 @@ import os
 import signal
 import sys
 import threading
+from types import FrameType
 from typing import Callable, Optional
 
 _LOG_PATH_DEFAULT = "/opt/gtach/stacks.log"
@@ -59,6 +60,7 @@ def format_all_threads() -> str:
     current = threading.get_ident()
     now = datetime.datetime.now().isoformat(timespec="seconds")
     lines = [f"=== gtach {_version()} pid {os.getpid()} dump {now} ==="]
+    frame: Optional[FrameType]
     for ident, frame in sys._current_frames().items():
         label = "Current thread" if ident == current else "Thread"
         name = names.get(ident, "?")
@@ -85,7 +87,7 @@ def make_handler(path_getter: Callable[[], str]) -> Callable:
         A signal handler that appends one dump and never raises.
     """
 
-    def _handler(signum, frame) -> None:
+    def _handler(signum: int, frame: Optional[FrameType]) -> None:
         try:
             text = format_all_threads()
             with open(path_getter(), "a", encoding="utf-8") as f:

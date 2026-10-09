@@ -47,6 +47,9 @@ dev = [
     "isort>=5.0",
     "flake8>=5.0",
     "mypy>=1.0",
+    "types-PyYAML",
+    "types-pyserial",
+    "types-psutil",
 ]
 pi = [
     "RPi.GPIO>=0.7.1",
