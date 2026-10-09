@@ -152,6 +152,7 @@ notes: "Human verification on gtach.local: re-pair the ELM327 emulator several t
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-d26ca557 iteration 1. Target profile claude_code. |
 | 1.1 | 2026-10-09 | Ordering constraint notes the shared interface.py. |
+| 1.2 | 2026-10-09 | Implemented; closed |
 
 ---
 

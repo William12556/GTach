@@ -50,8 +50,13 @@ TRANSPORT_FAST = ("simbt", "simtcp", "tcp")
 # Every value is 40 characters or fewer so it renders on the 480x480
 # display without truncation. A test asserts that bound over the whole
 # mapping; keep any addition within it.
+#
+# Public so callers can recognise a link-busy failure without
+# duplicating the literal (issue-d26ca557).
+LINK_BUSY_CAUSE = "bluetooth link busy - may need reset"
+
 _CONNECT_FAULT_CAUSES = {
-    _errno.EBUSY: "bluetooth link busy - may need reset",
+    _errno.EBUSY: LINK_BUSY_CAUSE,
     _errno.ETIMEDOUT: "connection timed out",
     _errno.EHOSTDOWN: "adapter not reachable",
     _errno.EHOSTUNREACH: "adapter not reachable",

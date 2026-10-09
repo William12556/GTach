@@ -13,11 +13,13 @@ Handles device discovery coordination and setup mode Bluetooth operations.
 
 import logging
 import threading
+import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from ....comm.device_store import get_device_store
 from ....comm.models import BluetoothDevice as CommBluetoothDevice
 from ....comm.pairing import BluetoothPairing
+from ....comm.transport import LINK_BUSY_CAUSE
 from ....utils.waits import wait_for_event
 from ...async_operations import (
     AsyncOperation,
@@ -36,6 +38,12 @@ class BluetoothSetupInterface:
 
     Uses thread-safe async coordination.
     """
+
+    # The RFCOMM connect issued milliseconds after pairing can fail with
+    # EBUSY while the link is still held. Retry that cause only, up to
+    # this many attempts in total, this far apart (issue-d26ca557).
+    _VERIFY_BUSY_ATTEMPTS: int = 3
+    _VERIFY_BUSY_RETRY_DELAY_S: float = 1.0
 
     def __init__(
         self,
@@ -218,10 +226,20 @@ class BluetoothSetupInterface:
                 return False
 
             transport = RFCOMMTransport(device.mac_address, channel=1)
-            connected = transport.connect()
-            if not connected:
-                self.logger.warning("OBD verify: RFCOMM connect failed")
-                return False
+            for attempt in range(1, self._VERIFY_BUSY_ATTEMPTS + 1):
+                if transport.connect():
+                    break
+                if (
+                    transport.last_failure_cause != LINK_BUSY_CAUSE
+                    or attempt == self._VERIFY_BUSY_ATTEMPTS
+                ):
+                    self.logger.warning("OBD verify: RFCOMM connect failed")
+                    return False
+                self.logger.info(
+                    "OBD verify: link busy, retrying "
+                    f"(attempt {attempt + 1}/{self._VERIFY_BUSY_ATTEMPTS})"
+                )
+                time.sleep(self._VERIFY_BUSY_RETRY_DELAY_S)
 
             try:
                 response = transport.send_command("ATZ", timeout=5.0)
