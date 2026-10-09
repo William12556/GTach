@@ -21,7 +21,8 @@ try:
 
     PYGAME_AVAILABLE = True
 except ImportError:
-    pygame = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
+    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     PYGAME_AVAILABLE = False
 
 from ...setup_models import BluetoothDevice, DeviceType
@@ -35,7 +36,7 @@ class DeviceSurfaceRenderer:
     SELECTED_BORDER_WIDTH = 3
     EMPTY_SLOT_BORDER_WIDTH = 2
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("DeviceSurfaceRenderer")
 
         # Check pygame availability
@@ -68,7 +69,7 @@ class DeviceSurfaceRenderer:
         }
 
         # Device surface cache with thread safety
-        self._device_item_cache = {}
+        self._device_item_cache: Dict[str, Tuple[pygame.Surface, pygame.Rect]] = {}
         self._device_cache_lock = threading.Lock()
 
         # Performance tracking

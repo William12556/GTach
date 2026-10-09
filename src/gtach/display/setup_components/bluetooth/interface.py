@@ -13,13 +13,21 @@ Handles device discovery coordination and setup mode Bluetooth operations.
 
 import logging
 import threading
-from typing import Callable, Dict
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from ....comm.device_store import get_device_store
 from ....comm.models import BluetoothDevice as CommBluetoothDevice
 from ....comm.pairing import BluetoothPairing
-from ...async_operations import OperationStatus, OperationType, get_async_manager
-from ...setup_models import BluetoothDevice, PairingStatus
+from ...async_operations import (
+    AsyncOperation,
+    OperationStatus,
+    OperationType,
+    get_async_manager,
+)
+from ...setup_models import BluetoothDevice, PairingStatus, SetupState
+
+if TYPE_CHECKING:
+    from ..state.coordinator import SetupStateCoordinator
 
 
 class BluetoothSetupInterface:
@@ -28,15 +36,20 @@ class BluetoothSetupInterface:
     Uses thread-safe async coordination.
     """
 
-    def __init__(self, pairing_factory=None, state_coordinator=None):
+    def __init__(
+        self,
+        pairing_factory: Optional[Callable[[], Any]] = None,
+        state_coordinator: Optional["SetupStateCoordinator"] = None,
+    ) -> None:
         self.logger = logging.getLogger("BluetoothSetupInterface")
         self.device_store = get_device_store()
         self.async_manager = get_async_manager()
         self._pairing_factory = pairing_factory
         self._state_coordinator = state_coordinator
 
-        # Bluetooth pairing state
-        self.pairing = None
+        # Bluetooth pairing state: a BluetoothPairing, or the duck-typed
+        # stand-in pairing_factory builds (SimBluetoothPairing).
+        self.pairing: Optional[BluetoothPairing] = None
         self._active_operations: Dict[str, str] = {}  # guarded by _ops_lock
         self._ops_lock = threading.Lock()
         self._pairing_ready = threading.Event()
@@ -47,7 +60,9 @@ class BluetoothSetupInterface:
     def _init_bluetooth_pairing_async(self) -> None:
         """Initialize Bluetooth pairing asynchronously to prevent UI blocking"""
 
-        def init_bluetooth_pairing(progress_callback=None):
+        def init_bluetooth_pairing(
+            progress_callback: Optional[Callable[[float, str], None]] = None,
+        ) -> Any:
             """Initialize BluetoothPairing in worker thread"""
             try:
                 if progress_callback:
@@ -80,7 +95,7 @@ class BluetoothSetupInterface:
                     progress_callback(1.0, f"Bluetooth initialization failed: {str(e)}")
                 raise
 
-        def on_bluetooth_init_complete(operation):
+        def on_bluetooth_init_complete(operation: AsyncOperation) -> None:
             """Callback when Bluetooth initialization completes"""
             try:
                 # Progress updates arrive here too; act only on a
@@ -175,7 +190,7 @@ class BluetoothSetupInterface:
             )
             return False
 
-    def verify_obd_connection(self, state) -> bool:
+    def verify_obd_connection(self, state: SetupState) -> bool:
         """Verify OBD connection using ATZ probe over RFCOMM
 
         Args:
@@ -222,14 +237,16 @@ class BluetoothSetupInterface:
 
     def start_discovery(
         self,
-        state,
-        progress_callback=None,
-        device_found_callback=None,
-        show_all_devices=False,
+        state: SetupState,
+        progress_callback: Optional[Callable[[float], None]] = None,
+        device_found_callback: Optional[Callable[[BluetoothDevice], None]] = None,
+        show_all_devices: bool = False,
     ) -> None:
         """Start device discovery using async operation framework"""
 
-        def discovery_task(progress_callback_inner=None):
+        def discovery_task(
+            progress_callback_inner: Optional[Callable[[float, str], None]] = None,
+        ) -> List[BluetoothDevice]:
             """Discover devices in worker thread"""
             try:
                 if not self.ensure_pairing_initialized():
@@ -252,7 +269,7 @@ class BluetoothSetupInterface:
                 self._set_state(state, discovery_progress=0.0)
                 self._set_state(state, discovered_devices=[])
 
-                def internal_progress_callback(progress):
+                def internal_progress_callback(progress: float) -> None:
                     """Update state and forward progress to the external callback"""
                     self._set_state(state, discovery_progress=progress)
                     if progress_callback:
@@ -262,13 +279,14 @@ class BluetoothSetupInterface:
                             progress, f"Discovering devices... {int(progress * 100)}%"
                         )
 
-                def internal_device_found_callback(device):
+                def internal_device_found_callback(device: BluetoothDevice) -> None:
                     """Internal device found callback"""
                     if device and self._add_device(state, device):
                         if device_found_callback:
                             device_found_callback(device)
 
-                devices = self.pairing.discover_elm327_devices(
+                # ensure_pairing_initialized() above checked for None.
+                devices = cast(BluetoothPairing, self.pairing).discover_elm327_devices(
                     timeout=state.discovery_timeout,
                     progress_callback=internal_progress_callback,
                     device_found_callback=internal_device_found_callback,
@@ -282,7 +300,7 @@ class BluetoothSetupInterface:
                 self._set_state(state, pairing_status=PairingStatus.FAILED)
                 raise
 
-        def on_discovery_complete(operation):
+        def on_discovery_complete(operation: AsyncOperation) -> None:
             """Callback when discovery operation completes"""
             try:
                 # Progress updates arrive here too; act only on a
@@ -345,11 +363,16 @@ class BluetoothSetupInterface:
             self._set_state(state, pairing_status=PairingStatus.FAILED)
 
     def start_pairing(
-        self, device: BluetoothDevice, state, progress_callback=None
+        self,
+        device: BluetoothDevice,
+        state: SetupState,
+        progress_callback: Optional[Callable[[float, str], None]] = None,
     ) -> None:
         """Start pairing with selected device using async operation framework"""
 
-        def pairing_task(progress_callback_inner=None):
+        def pairing_task(
+            progress_callback_inner: Optional[Callable[[float, str], None]] = None,
+        ) -> bool:
             """Pair with device in worker thread"""
             try:
                 if not self.ensure_pairing_initialized():
@@ -364,7 +387,7 @@ class BluetoothSetupInterface:
                         0.1, f"Starting pairing with {device.name}..."
                     )
 
-                def status_callback(status, message):
+                def status_callback(status: PairingStatus, message: str) -> None:
                     """Internal status callback to update state"""
                     self._set_state(state, pairing_status=status)
                     if status == PairingStatus.FAILED:
@@ -396,7 +419,10 @@ class BluetoothSetupInterface:
                                 1.0, f"Failed to pair with {device.name}: {message}"
                             )
 
-                success = self.pairing.pair_device(device, status_callback)
+                # ensure_pairing_initialized() above checked for None.
+                success = cast(BluetoothPairing, self.pairing).pair_device(
+                    device, status_callback
+                )
                 return success
 
             except Exception as e:
@@ -405,7 +431,7 @@ class BluetoothSetupInterface:
                 self._set_state(state, error_message=str(e))
                 raise
 
-        def on_pairing_complete(operation):
+        def on_pairing_complete(operation: AsyncOperation) -> None:
             """Callback when pairing operation completes"""
             try:
                 # Progress updates arrive here too; act only on a
@@ -509,7 +535,7 @@ class BluetoothSetupInterface:
                 device answered and False otherwise.
         """
 
-        def probe_task():
+        def probe_task() -> bool:
             """Connect to the primary device and disconnect again."""
             import socket as _socket
 
@@ -536,7 +562,7 @@ class BluetoothSetupInterface:
                     f"Device probe result handler failed: {e}", exc_info=True
                 )
 
-        def on_probe_complete(operation):
+        def on_probe_complete(operation: AsyncOperation) -> None:
             """Report the probe outcome on a terminal status only."""
             if operation.status in (OperationStatus.PENDING, OperationStatus.RUNNING):
                 return
@@ -555,7 +581,7 @@ class BluetoothSetupInterface:
             self.logger.error(f"Failed to submit device probe: {e}", exc_info=True)
             deliver(False)
 
-    def _set_state(self, state, **fields) -> None:
+    def _set_state(self, state: SetupState, **fields: Any) -> None:
         """Write setup state fields through the coordinator.
 
         The handlers receive a copy from get_state(), so writes must go
@@ -568,7 +594,7 @@ class BluetoothSetupInterface:
         for key, value in fields.items():
             setattr(state, key, value)
 
-    def _add_device(self, state, device) -> bool:
+    def _add_device(self, state: SetupState, device: BluetoothDevice) -> bool:
         """Record a discovered device; True if it was new."""
         if self._state_coordinator is not None:
             return self._state_coordinator.add_discovered_device(device)

@@ -59,10 +59,10 @@ class BluetoothDevice:
     connection_verified: bool = False
     device_classification: DeviceType = DeviceType.UNKNOWN
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.mac_address)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, BluetoothDevice):
             return self.mac_address == other.mac_address
         return False
@@ -81,7 +81,7 @@ class SetupState:
     discovery_progress: float = 0.0
     discovery_timeout: int = 30
 
-    def reset_discovery(self):
+    def reset_discovery(self) -> None:
         """Reset discovery state"""
         self.discovered_devices.clear()
         self.selected_device = None

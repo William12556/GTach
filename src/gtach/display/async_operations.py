@@ -17,7 +17,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 class OperationType(Enum):
@@ -80,12 +80,12 @@ class AsyncOperationManager:
 
         # Thread-safe data structures
         self.operations: Dict[str, AsyncOperation] = {}
-        self.operation_queue = queue.Queue()
-        self.result_queue = queue.Queue()
+        self.operation_queue: "queue.Queue[Dict[str, Any]]" = queue.Queue()
+        self.result_queue: "queue.Queue[Dict[str, Any]]" = queue.Queue()
         self._operations_lock = threading.Lock()
 
         # Worker threads
-        self.workers = []
+        self.workers: List[threading.Thread] = []
         self._shutdown_event = threading.Event()
         self._next_operation_id = 0
 
@@ -131,11 +131,11 @@ class AsyncOperationManager:
     def submit_operation(
         self,
         operation_type: OperationType,
-        task_func: Callable,
-        *args,
-        progress_callback: Optional[Callable] = None,
+        task_func: Callable[..., Any],
+        *args: Any,
+        progress_callback: Optional[Callable[..., Any]] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         """Submit an async operation
 
@@ -283,7 +283,7 @@ class AsyncOperationManager:
 
                 try:
                     # Create progress callback for this operation
-                    def progress_callback(progress: float, message: str = ""):
+                    def progress_callback(progress: float, message: str = "") -> None:
                         self._update_operation_progress(operation_id, progress, message)
 
                     # Execute the task

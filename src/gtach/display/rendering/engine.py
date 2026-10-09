@@ -20,7 +20,7 @@ import os
 import struct
 import threading
 import time
-from typing import Dict, Optional, Tuple
+from typing import Any, BinaryIO, Dict, Optional, Tuple, Union, cast
 
 import pygame
 
@@ -78,7 +78,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
     # can be re-activated without re-deriving the mechanism.
     VERTICAL_OFFSET_PX = 0
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("DisplayRenderingEngine")
         self._lock = threading.RLock()
 
@@ -88,8 +88,8 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         self.surface_size = (480, 480)  # HyperPixel 2" Round default
 
         # Framebuffer management
-        self.fb_dev = None
-        self.fb = None
+        self.fb_dev: Optional[BinaryIO] = None
+        self.fb: Optional[Union[mmap.mmap, BinaryIO]] = None
         self.fb_size = 0
         self.use_mmap = False
         self.framebuffer_path = "/dev/fb0"
@@ -99,8 +99,8 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         self.page_flip = False  # second half established
         self.vsync_available = False  # FBIO_WAITFORVSYNC works
         self.buffer_index = 0  # half currently displayed
-        self._original_var = None  # for restoration in cleanup
-        self._panning_var = None  # post-resize template for the pan
+        self._original_var: Optional[bytes] = None  # for restoration in cleanup
+        self._panning_var: Optional[bytes] = None  # post-resize template for the pan
         self._vsync_failed_logged = False
         self._pan_failed_logged = False
 
@@ -225,7 +225,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             var = struct.unpack(
                 FB_VAR_STRUCT,
                 fcntl.ioctl(
-                    self.fb_dev.fileno(),
+                    cast(BinaryIO, self.fb_dev).fileno(),
                     FBIOGET_VSCREENINFO,
                     bytes(struct.calcsize(FB_VAR_STRUCT)),
                 ),
@@ -398,7 +398,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
 
         try:
             raw = fcntl.ioctl(
-                self.fb_dev.fileno(),
+                cast(BinaryIO, self.fb_dev).fileno(),
                 FBIOGET_VSCREENINFO,
                 bytes(struct.calcsize(FB_VAR_STRUCT)),
             )
@@ -413,7 +413,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             var[FB_VAR_YRES_VIRTUAL] = yres * 2
             var[FB_VAR_ACTIVATE] = FB_ACTIVATE_NOW
             fcntl.ioctl(
-                self.fb_dev.fileno(),
+                cast(BinaryIO, self.fb_dev).fileno(),
                 FBIOPUT_VSCREENINFO,
                 struct.pack(FB_VAR_STRUCT, *var),
             )
@@ -422,7 +422,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             confirmed = struct.unpack(
                 FB_VAR_STRUCT,
                 fcntl.ioctl(
-                    self.fb_dev.fileno(),
+                    cast(BinaryIO, self.fb_dev).fileno(),
                     FBIOGET_VSCREENINFO,
                     bytes(struct.calcsize(FB_VAR_STRUCT)),
                 ),
@@ -438,7 +438,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             # the remap fails the engine must be left with a working
             # single-frame mapping; closing first would leave self.fb
             # closed and every subsequent write would fail on it.
-            new_map = mmap.mmap(self.fb_dev.fileno(), self.fb_size * 2)
+            new_map = mmap.mmap(cast(BinaryIO, self.fb_dev).fileno(), self.fb_size * 2)
             old_map = self.fb
             self.fb = new_map
             if old_map is not None:
@@ -475,7 +475,11 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             return False
 
         try:
-            fcntl.ioctl(self.fb_dev.fileno(), FBIO_WAITFORVSYNC, struct.pack("I", 0))
+            fcntl.ioctl(
+                cast(BinaryIO, self.fb_dev).fileno(),
+                FBIO_WAITFORVSYNC,
+                struct.pack("I", 0),
+            )
             return True
         except Exception as e:
             self.vsync_available = False
@@ -515,7 +519,9 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             if self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug(f"Panning to buffer {index}")
             fcntl.ioctl(
-                self.fb_dev.fileno(), FBIOPAN_DISPLAY, struct.pack(FB_VAR_STRUCT, *var)
+                cast(BinaryIO, self.fb_dev).fileno(),
+                FBIOPAN_DISPLAY,
+                struct.pack(FB_VAR_STRUCT, *var),
             )
             if self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug(f"Panned to buffer {index}")
@@ -752,7 +758,8 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 # mmap.write and file.write both accept it, so the frame
                 # is not materialised into a bytes object first
                 # (recommendation 8).
-                payload = None
+                # BufferProxy, bytes or memoryview, per the fallbacks below.
+                payload: Any = None
                 try:
                     payload = self.back_surface.get_view("0")
                 except Exception as e:
@@ -766,7 +773,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
 
                 if payload is None:
                     converted_surface = self.back_surface.convert(32, 0)
-                    buffer_data = converted_surface.get_buffer()
+                    buffer_data: Any = converted_surface.get_buffer()
                     try:
                         payload = bytes(buffer_data)
                     except (TypeError, ValueError):
@@ -959,7 +966,10 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             return self._stats
 
     def validate_circular_bounds(
-        self, center: Tuple[int, int], radius: int, safe_radius: int = None
+        self,
+        center: Tuple[int, int],
+        radius: int,
+        safe_radius: Optional[int] = None,
     ) -> bool:
         """
         Validate that rendering area fits within circular display bounds.
@@ -978,7 +988,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
         # Calculate distance from display center
         dx = center[0] - self.display_center[0]
         dy = center[1] - self.display_center[1]
-        distance_from_center = (dx * dx + dy * dy) ** 0.5
+        distance_from_center: float = (dx * dx + dy * dy) ** 0.5
 
         # Check if the entire circular area fits within safe radius
         return (distance_from_center + radius) <= safe_radius
@@ -998,7 +1008,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
                 if self._original_var is not None and self._fb_dev_usable():
                     try:
                         fcntl.ioctl(
-                            self.fb_dev.fileno(),
+                            cast(BinaryIO, self.fb_dev).fileno(),
                             FBIOPUT_VSCREENINFO,
                             self._original_var,
                         )

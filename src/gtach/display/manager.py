@@ -18,7 +18,17 @@ import math
 import queue
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    cast,
+)
 
 # Conditional imports for hardware dependencies
 try:
@@ -26,7 +36,8 @@ try:
 
     PYGAME_AVAILABLE = True
 except ImportError:
-    pygame = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
+    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     PYGAME_AVAILABLE = False
 
 from ..core import ThreadManager
@@ -56,6 +67,9 @@ from .typography import (
     get_title_display_font,
 )
 
+if TYPE_CHECKING:
+    from .setup import SetupDisplayManager
+
 
 class DisplayManager:
     """
@@ -82,9 +96,9 @@ class DisplayManager:
     def __init__(
         self,
         thread_manager: ThreadManager,
-        terminal_restorer: TerminalRestorer = None,
+        terminal_restorer: Optional[TerminalRestorer] = None,
         config_store: Optional[ConfigStore] = None,
-    ):
+    ) -> None:
         self.logger = logging.getLogger("DisplayManager")
         self.thread_manager = thread_manager
         # All configuration I/O goes through the store (issue-5fbff586).
@@ -92,16 +106,18 @@ class DisplayManager:
         self._shutdown_event = threading.Event()
         self.terminal_restorer = terminal_restorer
         self._sim_mode = False  # Session-only simulation mode flag
-        self._debug_toggle_callback = None  # Set by app.py: Callable[[bool], None]
+        # Set by app.py
+        self._debug_toggle_callback: Optional[Callable[[bool], None]] = None
         self._debug_logging_on = False  # Reflects current debug logging state
-        self._restart_callback = None  # Set by app.py: Callable[[], None]
+        # Set by app.py
+        self._restart_callback: Optional[Callable[[], None]] = None
         self._options_view = "menu"  # 'menu' | 'update' | 'confirm_clear'
 
         # The mode OPTIONS was entered from, restored on exit.
         # Not simply RADIAL: OPTIONS is reachable from the
         # DISCONNECTED condition too, and returning to a gauge with
         # no data would be wrong (change-3e8b1d72).
-        self._pre_options_mode = None
+        self._pre_options_mode: Optional[DisplayMode] = None
 
         # Which options page is displayed. Session state; not
         # persisted, so OPTIONS always opens on page 0
@@ -112,33 +128,37 @@ class DisplayManager:
         # transport retries indefinitely, so thread liveness cannot
         # answer "is the adapter delivering data" (issue-4d9e2f18).
         # These are what answers it instead.
-        self._last_sample_ts = None  # monotonic time of the last real sample
-        self._link_connected_callback = None  # injected by app.py; asks the transport
+        # monotonic time of the last real sample
+        self._last_sample_ts: Optional[float] = None
+        # injected by app.py; asks the transport
+        self._link_connected_callback: Optional[Callable[[], bool]] = None
         # Also injected by app.py; asks the transport why the last
         # connect failed. A callback rather than a transport reference
         # so the display keeps no hard dependency on comm, matching
         # _link_connected_callback above (issue-5e7a03c4).
-        self._link_cause_callback = None
+        self._link_cause_callback: Optional[Callable[[], Optional[str]]] = None
         # Same pattern again; supplies the retry-countdown arc's
         # PERIOD only. The arc's phase never comes from here — see
-        # _draw_retry_arc (issue-4f1e82b7).
-        self._retry_interval_callback = None
+        # _draw_retry_arc (issue-4f1e82b7). Returns whatever retry_delay
+        # holds; validated where it is read.
+        self._retry_interval_callback: Optional[Callable[[], Any]] = None
         # Also injected by app.py. Reboots the Pi. When left unset the
         # Reset button is neither registered nor drawn, so the screen
         # degrades to its previous single-button form
         # (issue-4ab5ff88).
-        self._reset_callback = None
+        self._reset_callback: Optional[Callable[[], None]] = None
         self._link_ok = False  # latch: data is confirmed flowing
         self._recovery_count = 0  # consecutive samples close enough together
 
         self._update_status = "idle"  # checking|available|none|error|pending
-        self._update_wheel = None
-        self._update_version = None
+        self._update_wheel: Optional[str] = None
+        self._update_version: Optional[str] = None
 
         # RPM signal conditioning (change-4c038bed)
         self._rpm_display = 0.0  # EMA output — the displayed figure
         self._rpm_ema_tau = 0.150  # EMA time constant, seconds
-        self._rpm_last_ts = None  # time.monotonic() of previous conditioning call
+        # time.monotonic() of previous conditioning call
+        self._rpm_last_ts: Optional[float] = None
         self._active_band = 0  # sticky band index for hysteresis
         self._band_hysteresis = 75.0  # band transition margin, RPM
         self._frame_counter = 0  # monotonic frame counter, advanced in _display_loop
@@ -146,26 +166,26 @@ class DisplayManager:
         # Touch-region registration is driven by a change in this key
         # rather than by the render path (display review §8.2,
         # recommendation 20).
-        self._registered_view = None
+        self._registered_view: Optional[Tuple[Any, ...]] = None
 
         # Plain (SDL default) fonts keyed by size, used only by the
         # acknowledgement screen. Kept separate from FontManager, which
         # resolves Michroma for every size (change-bdac4f18).
-        self._plain_font_cache = {}
+        self._plain_font_cache: Dict[int, "pygame.font.Font"] = {}
 
         # Populated by _register_view_regions; read by the render
         # methods. None until the first registration pass.
-        self._options_btn_clear = None
-        self._options_btn_sim = None
-        self._options_btn_debug = None
-        self._options_btn_update = None
-        self._update_btn_install = None
-        self._update_btn_cancel = None
-        self._disconnected_btn_setup = None
-        self._disconnected_btn_reset = None
-        self._ack_btn_dismiss = None
-        self._confirm_btn_yes = None
-        self._confirm_btn_no = None
+        self._options_btn_clear: Optional[pygame.Rect] = None
+        self._options_btn_sim: Optional[pygame.Rect] = None
+        self._options_btn_debug: Optional[pygame.Rect] = None
+        self._options_btn_update: Optional[pygame.Rect] = None
+        self._update_btn_install: Optional[pygame.Rect] = None
+        self._update_btn_cancel: Optional[pygame.Rect] = None
+        self._disconnected_btn_setup: Optional[pygame.Rect] = None
+        self._disconnected_btn_reset: Optional[pygame.Rect] = None
+        self._ack_btn_dismiss: Optional[pygame.Rect] = None
+        self._confirm_btn_yes: Optional[pygame.Rect] = None
+        self._confirm_btn_no: Optional[pygame.Rect] = None
 
         # Active palette. The panel's backlight cannot be dimmed in
         # software, so this is the only control over emitted light
@@ -460,7 +480,7 @@ class DisplayManager:
 
                 _touch_interface = create_touch_interface()
                 _touch_interface.start()
-                self.touch_handler = TouchHandler(
+                self.touch_handler: Optional["TouchHandler"] = TouchHandler(
                     self, touch_interface=_touch_interface
                 )
             except ImportError as e:
@@ -468,14 +488,14 @@ class DisplayManager:
                 self.touch_handler = None
 
             # Setup mode components
-            self._setup_manager = None
+            self._setup_manager: Optional["SetupDisplayManager"] = None
             self._in_setup_mode = False
-            self._setup_entry_callback = None
+            self._setup_entry_callback: Optional[Callable[[], None]] = None
 
             # Initialize splash screen
             try:
                 splash_config = getattr(self.config, "splash", None)
-                self._splash_screen = SplashScreen(
+                self._splash_screen: Optional[SplashScreen] = SplashScreen(
                     surface_size=(480, 480), duration=4.0, config=splash_config
                 )
                 self.logger.info("Splash screen initialized successfully")
@@ -1089,7 +1109,7 @@ class DisplayManager:
         try:
             # Use synthetic RPM in simulation mode
             if self._sim_mode:
-                rpm = int(3000 + 3000 * math.sin(time.time()))
+                rpm: float = int(3000 + 3000 * math.sin(time.time()))
                 self._last_rpm = rpm
                 rpm = self._condition_rpm(rpm)
             else:
@@ -1140,16 +1160,20 @@ class DisplayManager:
             start_clock_deg = 210
             active_sweep_deg = 300
 
-            def clock_to_canvas_rad(clock_deg):
+            def clock_to_canvas_rad(clock_deg: float) -> float:
                 """Convert clock angle to canvas radians"""
                 return math.radians(clock_deg - 90)
 
-            def rpm_to_angle_rad(rpm_val):
+            def rpm_to_angle_rad(rpm_val: float) -> float:
                 """Convert RPM to canvas angle in radians"""
                 clock_deg = start_clock_deg + (rpm_val / max_rpm) * active_sweep_deg
                 return clock_to_canvas_rad(clock_deg)
 
-            def draw_donut_arc(color, start_angle_rad, end_angle_rad):
+            def draw_donut_arc(
+                color: Tuple[int, int, int],
+                start_angle_rad: float,
+                end_angle_rad: float,
+            ) -> None:
                 """Draw a donut arc segment using polygon approximation"""
                 num_points = 60
                 angle_step = (end_angle_rad - start_angle_rad) / num_points
@@ -1758,7 +1782,8 @@ class DisplayManager:
                 (
                     "disconnected_reset",
                     TouchAction.NAVIGATION,
-                    lambda pos: self._reset_callback(),
+                    # Registered only when set, above.
+                    lambda pos: cast(Callable[[], None], self._reset_callback)(),
                 )
             )
 
@@ -1772,7 +1797,7 @@ class DisplayManager:
         rect: pygame.Rect,
         label: str,
         fill: Tuple[int, int, int],
-        font,
+        font: Optional["pygame.font.Font"],
         text_colour: Tuple[int, int, int] = (255, 255, 255),
     ) -> None:
         """Draw one button in the style TypographyConstants declares.
@@ -2591,7 +2616,7 @@ class DisplayManager:
             )
             return None
 
-    def set_setup_mode(self, setup_manager) -> None:
+    def set_setup_mode(self, setup_manager: "SetupDisplayManager") -> None:
         """Enable setup mode"""
         self._setup_manager = setup_manager
         self._in_setup_mode = True

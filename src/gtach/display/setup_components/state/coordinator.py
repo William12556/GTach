@@ -59,8 +59,10 @@ class SetupStateCoordinator:
 
         # Threading and state management
         self._state_lock = threading.Lock()
-        self._screen_transition_callbacks = []
-        self._state_change_callbacks = []
+        self._screen_transition_callbacks: List[
+            Callable[[SetupScreen, SetupScreen], None]
+        ] = []
+        self._state_change_callbacks: List[Callable[[List[str]], None]] = []
 
         # Control visibility state
         self._controls_visible = True
@@ -103,7 +105,7 @@ class SetupStateCoordinator:
             self._notify_state_change_callbacks(["discovered_devices"])
         return added
 
-    def update_state(self, **kwargs) -> None:
+    def update_state(self, **kwargs: Any) -> None:
         """Update setup state with thread safety"""
         changed_fields = []
         with self._state_lock:
@@ -181,7 +183,7 @@ class SetupStateCoordinator:
             self.state.current_screen = SetupScreen.COMPLETE
             self.logger.info("Setup marked as complete")
 
-    def handle_setup_action(self, action: SetupAction, **kwargs) -> bool:
+    def handle_setup_action(self, action: SetupAction, **kwargs: Any) -> bool:
         """Handle setup actions with state coordination"""
         try:
             self.logger.debug(f"Handling setup action: {action.name}")

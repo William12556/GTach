@@ -36,7 +36,7 @@ class RPMBands:
     danger_start: int = 5800
     redline_rpm: int = 6000
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate that thresholds are strictly ascending."""
         thresholds = [
             self.idle_max,
@@ -230,10 +230,12 @@ class DisplayConfig:
         "abarth_595_turismo"  # Engine profile identifier for acknowledgement state
     )
 
-    # RPM colour bands
-    rpm_bands: RPMBands = None  # Will be initialized with default in __post_init__
+    # RPM colour bands. Will be initialized with default in __post_init__.
+    # TODO: issue-ac11505d candidate defect - None default; use default_factory
+    rpm_bands: RPMBands = None  # type: ignore[assignment]  # TODO: issue-ac11505d
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize rpm_bands if not provided."""
         if self.rpm_bands is None:
-            self.rpm_bands = RPMBands()
+            # TODO: issue-ac11505d candidate defect - None default; use default_factory
+            self.rpm_bands = RPMBands()  # type: ignore[unreachable]  # TODO: issue-ac11505d  # noqa: E501

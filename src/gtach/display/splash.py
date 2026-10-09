@@ -15,14 +15,15 @@ import logging
 import threading
 import time
 from collections import deque
-from typing import Optional, Tuple
+from typing import Deque, Dict, Optional, Tuple
 
 # Import configuration classes
 try:
     from ..utils.config import SplashConfig
 except ImportError:
     # Fallback for development/testing
-    SplashConfig = None
+    # TODO: issue-ac11505d candidate defect - dead fallback; import cannot fail
+    SplashConfig = None  # type: ignore[misc, assignment]  # TODO: issue-ac11505d
 
 # Import typography system for consistent font sizing
 try:
@@ -45,7 +46,8 @@ try:
 
     PYGAME_AVAILABLE = True
 except ImportError:
-    pygame = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
+    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     PYGAME_AVAILABLE = False
 
 
@@ -127,12 +129,13 @@ class SplashScreen:
 
         # Typography system integration and font caching
         self._typography_available = TYPOGRAPHY_AVAILABLE
-        self._cached_fonts = {}  # Cache for font objects to improve performance
+        # Cache for font objects to improve performance
+        self._cached_fonts: Dict[str, "pygame.font.Font"] = {}
         self._font_cache_lock = threading.Lock()  # Thread-safe font cache access
 
         # Performance monitoring for font operations
         # Track font rendering performance; bounded (issue-4005360c)
-        self._font_render_times = deque(maxlen=100)
+        self._font_render_times: Deque[float] = deque(maxlen=100)
         self._last_progress_log = float("-inf")  # monotonic
         self._total_render_time = 0.0
 
@@ -345,7 +348,7 @@ class SplashScreen:
                     f"Slow font operation for {font_type}: {render_time * 1000:.1f}ms"
                 )
 
-    def render(self, surface) -> bool:
+    def render(self, surface: "pygame.Surface") -> bool:
         """
         Render the splash screen graphics to the provided surface.
 
@@ -385,7 +388,7 @@ class SplashScreen:
             self.logger.error(f"Splash screen rendering error: {e}", exc_info=True)
             return False
 
-    def _render_graphics(self, surface) -> bool:
+    def _render_graphics(self, surface: "pygame.Surface") -> bool:
         """
         Render graphical splash screen using pygame.
 
@@ -441,7 +444,9 @@ class SplashScreen:
             self.logger.error(f"Graphics rendering failed: {e}", exc_info=True)
             return False
 
-    def _draw_title_text(self, surface, center_x: int, center_y: int) -> None:
+    def _draw_title_text(
+        self, surface: "pygame.Surface", center_x: int, center_y: int
+    ) -> None:
         """Draw the main application title with minimalist typography.
 
         FONT_TITLE = 36px (was 56px).
@@ -477,7 +482,9 @@ class SplashScreen:
         except Exception as e:
             self.logger.error(f"Title text rendering failed: {e}", exc_info=True)
 
-    def _draw_subtitle_text(self, surface, center_x: int, center_y: int) -> None:
+    def _draw_subtitle_text(
+        self, surface: "pygame.Surface", center_x: int, center_y: int
+    ) -> None:
         """Draw the application subtitle with body typography.
 
         FONT_BODY = 20px (was 32px).
@@ -513,7 +520,9 @@ class SplashScreen:
         except Exception as e:
             self.logger.error(f"Subtitle text rendering failed: {e}", exc_info=True)
 
-    def _draw_progress_indicator(self, surface, center_x: int, center_y: int) -> None:
+    def _draw_progress_indicator(
+        self, surface: "pygame.Surface", center_x: int, center_y: int
+    ) -> None:
         """Draw simplified progress indicator with automotive gauge only."""
         try:
             # Import graphics functions
@@ -543,7 +552,9 @@ class SplashScreen:
                 f"Progress indicator rendering failed: {e}", exc_info=True
             )
 
-    def _draw_version_text(self, surface, center_x: int, center_y: int) -> None:
+    def _draw_version_text(
+        self, surface: "pygame.Surface", center_x: int, center_y: int
+    ) -> None:
         """Draw version information with small-text typography.
 
         FONT_SMALL_TEXT = 18px.

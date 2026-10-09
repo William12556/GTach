@@ -21,7 +21,8 @@ try:
 
     PYGAME_AVAILABLE = True
 except ImportError:
-    pygame = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
+    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     PYGAME_AVAILABLE = False
 
 # Professional automotive color palette
@@ -69,7 +70,7 @@ SPLASH_COLORS = {
 
 
 def draw_automotive_gauge(
-    surface, center: Tuple[int, int], radius: int, progress: float
+    surface: "pygame.Surface", center: Tuple[int, int], radius: int, progress: float
 ) -> bool:
     """
     Draw an automotive-style circular gauge with progress indication.

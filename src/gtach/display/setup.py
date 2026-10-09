@@ -15,7 +15,7 @@ import logging
 import math
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 # Conditional import of pygame
 try:
@@ -23,7 +23,8 @@ try:
 
     PYGAME_AVAILABLE = True
 except ImportError:
-    pygame = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
+    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     PYGAME_AVAILABLE = False
 
 # Import extracted components
@@ -39,6 +40,13 @@ from .typography import (
     get_label_small_font,
     get_title_display_font,
 )
+
+if TYPE_CHECKING:
+    from ..core.thread import ThreadManager
+    from .touch import TouchHandler
+
+# (action, rect) or (action, rect, device)
+TouchRegion = Tuple[Any, ...]
 
 
 class SetupDisplayManager:
@@ -69,12 +77,12 @@ class SetupDisplayManager:
 
     def __init__(
         self,
-        surface,
-        thread_manager,
-        touch_handler,
-        pairing_factory=None,
-        on_complete=None,
-    ):
+        surface: "pygame.Surface",
+        thread_manager: "ThreadManager",
+        touch_handler: Optional["TouchHandler"],
+        pairing_factory: Optional[Callable[[], Any]] = None,
+        on_complete: Optional[Callable[[], None]] = None,
+    ) -> None:
         self.logger = logging.getLogger("SetupDisplayManager")
         self.surface = surface
         self.thread_manager = thread_manager
@@ -102,14 +110,14 @@ class SetupDisplayManager:
         self._has_device = False
 
         # UI state and threading
-        self.touch_regions = []  # Protected by _touch_regions_lock
-        self._setup_thread = None
+        self.touch_regions: List[TouchRegion] = []  # Protected by _touch_regions_lock
+        self._setup_thread: Optional[threading.Thread] = None
         self._shutdown_event = threading.Event()
         self._touch_regions_lock = threading.Lock()
 
         # Render state tracking
-        self._screen_render_cache = {}
-        self._last_rendered_screen = None
+        self._screen_render_cache: Dict[SetupScreen, "pygame.Surface"] = {}
+        self._last_rendered_screen: Optional[SetupScreen] = None
         self._screen_needs_refresh = True
         self._render_cache_lock = threading.Lock()
 
@@ -215,7 +223,9 @@ class SetupDisplayManager:
             self.logger.error(f"Device presence check failed: {e}", exc_info=True)
             self._has_device = False
 
-    def _fit_text(self, font, text: str, max_width: int = 400) -> str:
+    def _fit_text(
+        self, font: "pygame.font.Font", text: str, max_width: int = 400
+    ) -> str:
         """Shorten text to fit max_width pixels in font.
 
         Returns the full text if it fits; otherwise the first sentence
@@ -284,7 +294,7 @@ class SetupDisplayManager:
                 self.logger.error(f"Setup loop error: {e}", exc_info=True)
                 time.sleep(1.0)
 
-    def render(self, target_surface=None) -> None:
+    def render(self, target_surface: Optional["pygame.Surface"] = None) -> None:
         """Render the current setup screen"""
         if not self.display_available:
             return
@@ -340,7 +350,7 @@ class SetupDisplayManager:
         except Exception as e:
             self.logger.error(f"Render error: {e}", exc_info=True)
 
-    def _render_screen(self, surface, state: SetupState) -> None:
+    def _render_screen(self, surface: "pygame.Surface", state: SetupState) -> None:
         """Render the appropriate screen based on current state"""
         if state.current_screen == SetupScreen.WELCOME:
             self._render_welcome_screen(surface)
@@ -354,12 +364,13 @@ class SetupDisplayManager:
             self._render_complete_screen(surface, state)
         elif state.current_screen == SetupScreen.CURRENT_DEVICE:
             self._render_current_device_screen(surface, state)
-        elif self.state_coordinator.manual_entry_mode:
+        # TODO: issue-ac11505d candidate defect - screens exhausted; never reached
+        elif self.state_coordinator.manual_entry_mode:  # type: ignore[unreachable]  # TODO: issue-ac11505d  # noqa: E501
             self._render_manual_entry_screen(surface)
         else:
             self._render_welcome_screen(surface)  # Fallback
 
-    def _draw_circular_border(self, surface) -> None:
+    def _draw_circular_border(self, surface: "pygame.Surface") -> None:
         """Draw the circular border on the given surface.
 
         Matches the background, as the DISCONNECTED screen's does
@@ -370,9 +381,9 @@ class SetupDisplayManager:
         except Exception as e:
             self.logger.error(f"Circular border error: {e}", exc_info=True)
 
-    def _render_welcome_screen(self, surface) -> None:
+    def _render_welcome_screen(self, surface: "pygame.Surface") -> None:
         """Render the welcome screen"""
-        new_regions = []
+        new_regions: List[TouchRegion] = []
 
         # Title
         try:
@@ -435,15 +446,17 @@ class SetupDisplayManager:
         if state.error_message:
             font_small = get_label_small_font()
             if font_small:
-                text = self._fit_text(font_small, state.error_message)
-                msg = font_small.render(text, True, self.colors["error_text"])
+                message = self._fit_text(font_small, state.error_message)
+                msg = font_small.render(message, True, self.colors["error_text"])
                 surface.blit(msg, msg.get_rect(center=(240, self._WELCOME_MESSAGE_Y)))
 
         self._update_touch_regions_safe(new_regions)
 
-    def _render_discovery_screen(self, surface, state: SetupState) -> None:
+    def _render_discovery_screen(
+        self, surface: "pygame.Surface", state: SetupState
+    ) -> None:
         """Render the discovery screen"""
-        new_regions = []
+        new_regions: List[TouchRegion] = []
 
         # Title
         font_heading = get_heading_font()
@@ -488,7 +501,9 @@ class SetupDisplayManager:
         new_regions.append(("cancel", cancel_btn))
         self._update_touch_regions_safe(new_regions)
 
-    def _render_device_list_screen(self, surface, state: SetupState) -> None:
+    def _render_device_list_screen(
+        self, surface: "pygame.Surface", state: SetupState
+    ) -> None:
         """Render the device list screen using device renderer.
 
         Three fixed slots, centred on the display: the focused device
@@ -496,7 +511,7 @@ class SetupDisplayManager:
         empty frame wherever a neighbour does not exist. Only the
         middle slot is selectable (change-479b2e51).
         """
-        new_regions = []
+        new_regions: List[TouchRegion] = []
 
         # Title
         font_heading = get_heading_font()
@@ -594,7 +609,9 @@ class SetupDisplayManager:
         new_regions.extend([("back", back_btn), ("retry", retry_btn)])
         self._update_touch_regions_safe(new_regions)
 
-    def _draw_focus_arrows(self, surface, focus_info: Dict[str, Any]) -> None:
+    def _draw_focus_arrows(
+        self, surface: "pygame.Surface", focus_info: Dict[str, Any]
+    ) -> None:
         """Draw the up/down focus arrows for the DEVICE_LIST screen.
 
         Each arrow states that a device exists on that side of the
@@ -667,9 +684,11 @@ class SetupDisplayManager:
             self.logger.error(f"Error handling setup swipe: {e}", exc_info=True)
             return False
 
-    def _render_pairing_screen(self, surface, state: SetupState) -> None:
+    def _render_pairing_screen(
+        self, surface: "pygame.Surface", state: SetupState
+    ) -> None:
         """Render the pairing screen"""
-        new_regions = []
+        new_regions: List[TouchRegion] = []
 
         if not state.selected_device:
             self._update_touch_regions_safe(new_regions)
@@ -792,9 +811,11 @@ class SetupDisplayManager:
 
         self._update_touch_regions_safe(new_regions)
 
-    def _render_complete_screen(self, surface, state: SetupState) -> None:
+    def _render_complete_screen(
+        self, surface: "pygame.Surface", state: SetupState
+    ) -> None:
         """Render the completion screen"""
-        new_regions = []
+        new_regions: List[TouchRegion] = []
 
         font_heading = get_heading_font()
         if font_heading:
@@ -804,9 +825,11 @@ class SetupDisplayManager:
 
         self._update_touch_regions_safe(new_regions)
 
-    def _render_current_device_screen(self, surface, state: SetupState) -> None:
+    def _render_current_device_screen(
+        self, surface: "pygame.Surface", state: SetupState
+    ) -> None:
         """Render the current device screen"""
-        new_regions = []
+        new_regions: List[TouchRegion] = []
 
         font_heading = get_heading_font()
         if font_heading:
@@ -848,9 +871,9 @@ class SetupDisplayManager:
         )
         self._update_touch_regions_safe(new_regions)
 
-    def _render_manual_entry_screen(self, surface) -> None:
+    def _render_manual_entry_screen(self, surface: "pygame.Surface") -> None:
         """Render the manual entry screen"""
-        new_regions = []
+        new_regions: List[TouchRegion] = []
 
         font_heading = get_heading_font()
         if font_heading:
@@ -975,7 +998,7 @@ class SetupDisplayManager:
 
         return None
 
-    def _update_touch_regions_safe(self, new_regions: List[tuple]) -> None:
+    def _update_touch_regions_safe(self, new_regions: List[TouchRegion]) -> None:
         """Thread-safe update of touch regions"""
         try:
             with self._touch_regions_lock:
@@ -997,7 +1020,9 @@ class SetupDisplayManager:
                 start_btn = pygame.Rect(110, 330, 260, 90)
                 self._update_touch_regions_safe([("start", start_btn)])
 
-    def _invalidate_render_cache(self, screen_type: SetupScreen = None) -> None:
+    def _invalidate_render_cache(
+        self, screen_type: Optional[SetupScreen] = None
+    ) -> None:
         """Invalidate render cache for specific screen or all screens"""
         with self._render_cache_lock:
             if screen_type is None:

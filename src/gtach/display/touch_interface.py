@@ -17,7 +17,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 # Cross-platform compatibility imports with mock objects for development
 _HYPERPIXEL_AVAILABLE = False
@@ -66,7 +66,7 @@ class TouchEvent:
     y: float
     timestamp: float = 0.0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize timestamp if not provided"""
         if self.timestamp == 0.0:
             self.timestamp = time.monotonic()
@@ -84,7 +84,7 @@ class TouchInterface(ABC):
     implementations including HyperPixel displays and mock implementations.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(self.__class__.__name__)
         self._callback: Optional[Callable[[TouchEvent], None]] = None
         self._running = False
@@ -190,12 +190,14 @@ class MockHyperPixelTouch:
     with simulation capabilities for development and testing.
     """
 
-    def __init__(self):
-        self._callback = None
+    def __init__(self) -> None:
+        self._callback: Optional[Callable[[int, int, int, bool], None]] = None
         self._running = False
         self.logger = logging.getLogger("MockHyperPixelTouch")
 
-    def on_touch(self, callback):
+    def on_touch(
+        self, callback: Callable[[int, int, int, bool], None]
+    ) -> Callable[[int, int, int, bool], None]:
         """
         Decorator to register touch event callback.
 
@@ -206,12 +208,12 @@ class MockHyperPixelTouch:
         self.logger.debug("Touch callback registered for mock HyperPixel device")
         return callback
 
-    def start(self):
+    def start(self) -> None:
         """Start the mock touch interface"""
         self._running = True
         self.logger.info("Mock HyperPixel touch interface started")
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the mock touch interface"""
         self._running = False
         self.logger.info("Mock HyperPixel touch interface stopped")
@@ -225,9 +227,10 @@ class HyperPixelTouchInterface(TouchInterface):
     implementation on non-Raspberry Pi systems for development.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self._touch_device = None
+        # The mock, or hyperpixel2r.Touch (untyped), whose interface it mirrors.
+        self._touch_device: Optional[MockHyperPixelTouch] = None
         self._hyperpixel_available = False
         self._rpi_available = _RPI_AVAILABLE
         self._using_mock = False
@@ -287,8 +290,9 @@ class HyperPixelTouchInterface(TouchInterface):
             self.logger.info("✅ Real HyperPixel touch device initialized")
 
             # Set up touch event handler for real hardware
-            @self._touch_device.on_touch
-            def handle_real_touch(touch_id: int, x: int, y: int, state: bool):
+            # TODO: issue-ac11505d candidate defect - hyperpixel2r is untyped
+            @self._touch_device.on_touch  # type: ignore[untyped-decorator]  # TODO: issue-ac11505d  # noqa: E501
+            def handle_real_touch(touch_id: int, x: int, y: int, state: bool) -> None:
                 """Handle real touch events from HyperPixel device"""
                 try:
                     # Convert pixel coordinates to normalized coordinates
@@ -328,7 +332,7 @@ class HyperPixelTouchInterface(TouchInterface):
             )
             raise RuntimeError(f"Real HyperPixel hardware startup failed: {e}")
 
-    def _mock_fallback_log(self):
+    def _mock_fallback_log(self) -> Callable[..., None]:
         """Logger method for the mock-fallback messages.
 
         On a Raspberry Pi the mock means touch input is dead, so it is
@@ -358,7 +362,7 @@ class HyperPixelTouchInterface(TouchInterface):
 
             # Set up touch event handler for mock device
             @self._touch_device.on_touch
-            def handle_mock_touch(touch_id: int, x: int, y: int, state: bool):
+            def handle_mock_touch(touch_id: int, x: int, y: int, state: bool) -> None:
                 """Handle mock touch events"""
                 try:
                     # Convert pixel coordinates to normalized coordinates
@@ -449,7 +453,7 @@ class MockTouchInterface(TouchInterface):
     def __init__(self, config: Optional[dict] = None):
         super().__init__()
         self._simulation_enabled = False
-        self._simulated_events = []
+        self._simulated_events: List[TouchEvent] = []
         self._touch_simulation_thread = None
         self._simulation_running = False
 
@@ -469,7 +473,7 @@ class MockTouchInterface(TouchInterface):
             self._config.update(config)
 
         # Event history for development debugging
-        self._event_history = []
+        self._event_history: List[TouchEvent] = []
 
         # Touch statistics for development insights
         self._stats = {
@@ -565,7 +569,7 @@ def create_touch_interface() -> TouchInterface:
 
     try:
         # Enhanced platform detection with RPi module availability
-        platform_info = {
+        platform_info: Dict[str, Any] = {
             "rpi_module_available": _RPI_AVAILABLE,
             "hyperpixel_available": _HYPERPIXEL_AVAILABLE,
             "platform_type": (
@@ -617,7 +621,7 @@ def create_touch_interface() -> TouchInterface:
         # It will automatically handle real hardware vs mock implementation
         try:
             logger.info("🔄 Creating cross-platform HyperPixel touch interface...")
-            interface = HyperPixelTouchInterface()
+            interface: TouchInterface = HyperPixelTouchInterface()
             logger.info("✅ HyperPixel touch interface created successfully")
             with _touch_interface_lock:
                 _touch_interface_singleton = interface

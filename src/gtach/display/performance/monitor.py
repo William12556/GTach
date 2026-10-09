@@ -17,7 +17,7 @@ import logging
 import threading
 import time
 from collections import defaultdict, deque
-from typing import Any, Dict, List
+from typing import Any, DefaultDict, Deque, Dict, List
 
 import psutil
 import pygame
@@ -51,7 +51,8 @@ class PerformanceMonitor(PerformanceMonitorInterface):
 
         # Frame tracking
         self._active_frames: Dict[int, float] = {}  # frame_id -> start_time
-        self._frame_history = deque(maxlen=target_fps * 10)  # Last 10 seconds
+        # Last 10 seconds
+        self._frame_history: Deque[Dict[str, float]] = deque(maxlen=target_fps * 10)
         self._frame_count = 0
         self._dropped_frames = 0
 
@@ -63,14 +64,17 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         self._log_interval_frames = 600  # periodic log cadence
 
         # Render operation tracking
-        self._render_operations = defaultdict(list)  # operation -> [durations]
-        self._operation_counts = defaultdict(int)
+        # operation -> [durations]
+        self._render_operations: DefaultDict[str, List[float]] = defaultdict(list)
+        self._operation_counts: DefaultDict[str, int] = defaultdict(int)
 
         # Cache tracking
-        self._cache_stats = defaultdict(lambda: {"hits": 0, "misses": 0})
+        self._cache_stats: DefaultDict[str, Dict[str, int]] = defaultdict(
+            lambda: {"hits": 0, "misses": 0}
+        )
 
         # Memory tracking
-        self._memory_samples = deque(maxlen=60)  # Last 60 samples
+        self._memory_samples: Deque[Dict[str, float]] = deque(maxlen=60)  # Last 60
         self._process = psutil.Process() if psutil else None
 
         # Performance thresholds
@@ -82,16 +86,18 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         }
 
         # Metrics history
-        self._metrics_history = deque(maxlen=history_duration)
+        self._metrics_history: Deque[PerformanceMetrics] = deque(
+            maxlen=history_duration
+        )
         self._last_metrics_update = 0.0
 
         # Dirty regions tracking (for optimization)
-        self._dirty_regions = []
+        self._dirty_regions: List[Dict[str, Any]] = []
         self._total_dirty_area = 0
 
         # Font cache integration
         self._font_cache_enabled = False
-        self._font_cache = {}
+        self._font_cache: Dict[str, Any] = {}
 
     def start_monitoring(self) -> bool:
         """Start performance monitoring"""

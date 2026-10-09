@@ -13,7 +13,11 @@ Manages touch events and gestures using the touch interface abstraction layer.
 
 import logging
 import time
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
+
+if TYPE_CHECKING:
+    from .manager import DisplayManager
+    from .touch_interface import TouchInterface
 
 # Import touch interface abstraction
 try:
@@ -28,7 +32,11 @@ except ImportError:
 class TouchHandler:
     """Handles touch input and gestures using the touch interface abstraction layer"""
 
-    def __init__(self, display_manager, touch_interface=None):
+    def __init__(
+        self,
+        display_manager: "DisplayManager",
+        touch_interface: Optional["TouchInterface"] = None,
+    ) -> None:
         """Initialize touch handler
 
         Args:
@@ -40,6 +48,7 @@ class TouchHandler:
         self.display_manager = display_manager
         self._touch_start: Optional[Tuple[float, int, int]] = None
 
+        self.touch_interface: Optional["TouchInterface"]
         if touch_interface is not None:
             self.touch_interface = touch_interface
         else:
@@ -47,7 +56,7 @@ class TouchHandler:
 
         self._setup_touch_handler()
 
-    def _initialize_touch_interface(self):
+    def _initialize_touch_interface(self) -> Optional["TouchInterface"]:
         """Initialize touch interface using the abstraction layer"""
         try:
             if not TOUCH_INTERFACE_AVAILABLE:
@@ -117,7 +126,12 @@ class TouchHandler:
             self.logger.error(f"Error handling touch event: {e}", exc_info=True)
 
     def _process_touch(
-        self, touch_id: int, x: int, y: int, state: bool, timestamp: float = None
+        self,
+        touch_id: int,
+        x: int,
+        y: int,
+        state: bool,
+        timestamp: Optional[float] = None,
     ) -> None:
         """Process touch events with gesture recognition integration"""
         try:

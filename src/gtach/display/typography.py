@@ -25,7 +25,7 @@ The typography system is optimized for:
 import logging
 import threading
 from enum import Enum
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 # Conditional imports for hardware dependencies
 try:
@@ -33,7 +33,8 @@ try:
 
     PYGAME_AVAILABLE = True
 except ImportError:
-    pygame = None
+    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
+    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
     PYGAME_AVAILABLE = False
 
 
@@ -134,7 +135,7 @@ class FontManager:
     and ensure consistent font rendering across the application.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger("FontManager")
         self._font_cache: Dict[int, pygame.font.Font] = {}
         self._plain_font_cache: Dict[int, pygame.font.Font] = {}
@@ -148,7 +149,9 @@ class FontManager:
         _font_dir = _os.path.normpath(
             _os.path.join(_os.path.dirname(__file__), "..", "assets", "fonts")
         )
-        self._michroma_path = _os.path.join(_font_dir, "Michroma-Regular.ttf")
+        self._michroma_path: Optional[str] = _os.path.join(
+            _font_dir, "Michroma-Regular.ttf"
+        )
         if not _os.path.exists(self._michroma_path):
             self.logger.warning(f"Michroma font not found at {self._michroma_path}")
             self._michroma_path = None
@@ -405,7 +408,7 @@ class FontManager:
             return (int(len(text) * char_width), font_size)
 
     def validate_text_fits_circular_display(
-        self, text: str, font_size: int, center: Tuple[int, int] = None
+        self, text: str, font_size: int, center: Optional[Tuple[int, int]] = None
     ) -> bool:
         """
         Validate that text fits within the circular display constraints.
@@ -451,7 +454,7 @@ class FontManager:
             self._bold_font_cache.clear()
             self.logger.debug("Font cache cleared")
 
-    def get_cache_info(self) -> Dict[str, int]:
+    def get_cache_info(self) -> Dict[str, Any]:
         """Get information about the current font cache."""
         with self._cache_lock:
             return {

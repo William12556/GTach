@@ -22,7 +22,8 @@ try:
     _logger = logging.getLogger("gtach.display")
     _logger.debug("TouchHandler imported successfully")
 except ImportError as e:
-    TouchHandler = None
+    # TODO: issue-ac11505d candidate defect - dead fallback; import cannot fail
+    TouchHandler = None  # type: ignore[misc, assignment]  # TODO: issue-ac11505d
     TOUCH_HANDLER_AVAILABLE = False
     _logger = logging.getLogger("gtach.display")
     _logger.warning(f"TouchHandler import failed: {e}")

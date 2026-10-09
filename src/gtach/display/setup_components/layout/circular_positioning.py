@@ -41,7 +41,7 @@ class CircularPositioningEngine:
         self._cache_lock = threading.Lock()
 
         # Performance monitoring
-        self._performance_monitoring = {
+        self._performance_monitoring: Dict[str, Any] = {
             "enabled": False,
             "stats": {
                 "total_positioning_calls": 0,
@@ -329,7 +329,7 @@ class CircularPositioningEngine:
                 ),
             }
 
-            result = {
+            result: Dict[str, Any] = {
                 "screen_name": screen_name,
                 "validation_summary": validation_summary,
                 "invalid_elements": invalid_elements,
