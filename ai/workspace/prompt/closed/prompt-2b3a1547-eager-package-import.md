@@ -130,6 +130,7 @@ notes: "Human verification on the Pi: the gtach service starts and gtach --valid
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-2b3a1547 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-09 | Implemented; closed |
 
 ---
 

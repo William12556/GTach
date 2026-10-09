@@ -11,13 +11,12 @@
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _version
 
-from .app import GTachApplication
-from .main import main
-
 try:
     __version__ = _version("gtach")
 except PackageNotFoundError:
     __version__ = "0+unknown"
 __author__ = "William Watson"
 
-__all__ = ["GTachApplication", "main", "__version__"]
+# No re-exports: importing gtach must not import gtach.app or pygame
+# (issue-2b3a1547).
+__all__ = ["__version__"]

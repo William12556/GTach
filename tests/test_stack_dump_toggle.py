@@ -29,13 +29,10 @@ import pytest
 import gtach.main  # noqa: F401  — ensures the module is in sys.modules
 from gtach.app import GTachApplication
 
-# gtach/__init__.py re-exports the main FUNCTION under the name 'main',
-# so `from gtach import main` retrieves the function and not the module
-# — whose namespace has no _stacks_file or _STACKS_LOG. The module is
-# retrievable from sys.modules, keyed by the full dotted name. This is
-# the same trap issue-c1d4b8e6 documents in
-# GTachApplication.toggle_debug_logging, and the reason that method
-# reaches for sys.modules rather than importing.
+# gtach.main is the submodule holding _stacks_file and _STACKS_LOG; the
+# package no longer re-exports the main function (issue-2b3a1547). The
+# module is fetched from sys.modules, keyed by the full dotted name, as
+# GTachApplication.toggle_debug_logging does (issue-c1d4b8e6).
 gtach_main = sys.modules["gtach.main"]
 
 

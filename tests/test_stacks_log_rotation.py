@@ -20,9 +20,9 @@ this file exists to capture.
 
 As in tests/test_stack_dump_toggle.py, faulthandler is replaced by a
 recording double and the module is fetched from sys.modules rather than
-imported — gtach/__init__.py re-exports the main FUNCTION under the name
-'main', so `from gtach import main` yields the function, whose namespace
-has none of this module state (issue-c1d4b8e6).
+imported. gtach.main is the submodule holding this module state; the
+package no longer re-exports the main function (issue-2b3a1547,
+issue-c1d4b8e6).
 """
 
 import os
