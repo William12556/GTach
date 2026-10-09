@@ -126,6 +126,7 @@ notes: "The TODO suppression list is the input for follow-up issues raised by th
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-ac11505d iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-09 | Implemented; closed |
 
 ---
 
