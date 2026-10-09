@@ -13,7 +13,8 @@ Created: 2026 October 07
 5. [Limitations](<#5. limitations>)
 6. [On-Device Verification](<#6. on-device verification>)
 7. [Remediation Plan](<#7. remediation plan>)
-8. [Version History](<#version history>)
+8. [Closure](<#8. closure>)
+9. [Version History](<#version history>)
 
 ---
 
@@ -1259,6 +1260,24 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 
 ---
 
+## 8. Closure
+
+Closed per governance P02.8.
+
+| Item | Record |
+|---|---|
+| Closure date | 2026-10-08 |
+| Approver | William Watson |
+| Critical and high findings | All resolved, verified on device (report-36b6ea95 §7) |
+| Remediation sets | 15 issue/change/prompt sets closed |
+| Follow-up audit | Remediation commits reviewed by scheduled audits audit-8264c76d and audit-005f1cf4 (2026-10-08); their findings are tracked under those audits |
+| Carried forward | Nine open issues raised for unrepaired medium/low defects (report-36b6ea95 §5): 04c18cda, 273ca048, 2b3a1547, 50bf25ad, 8a9022fc, ac11505d, ae65fa10, c9de5fb0, e215a184 |
+| Raw outputs | gtach-audit-checks and gtach-verify text outputs removed; git history retains them |
+
+[Return to Table of Contents](<#table of contents>)
+
+---
+
 ## Version History
 
 | Version | Date | Description |
@@ -1272,6 +1291,7 @@ Manual device housekeeping (outside the codebase): remove the unreferenced confi
 | 1.6 | 2026-10-07 | Phase 5 implemented |
 | 1.7 | 2026-10-07 | Phase 4 completed: SimTransport lifecycle test |
 | 1.8 | 2026-10-08 | Remediation closed: on-device verification complete, all 15 remediation issue/change pairs closed (see report-36b6ea95 §7) |
+| 1.9 | 2026-10-08 | Section 8 added: audit closure record; moved to audit/closed/ |
 
 ---
 

@@ -19,7 +19,7 @@ test_info:
   title: "Unit tests for RWLock notification symmetry, reader concurrency and writer exclusivity"
   date: "2026-07-30"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "critical"
   iteration: 1
@@ -113,10 +113,10 @@ test_cases:
     postconditions:
       - "_readers is 0 and _writers is 1 until B releases"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source; failed on 33c751d^ (discrimination confirmed). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "B acquires within the timeout"
     defects: []
 
@@ -144,10 +144,10 @@ test_cases:
     postconditions:
       - "Symmetry with _release_write, which already notifies both"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source; failed on 33c751d^ (discrimination confirmed). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "Both counts are 1"
     defects: []
 
@@ -177,10 +177,10 @@ test_cases:
     postconditions:
       - "No per-release cost is added for non-final readers"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source; failed on 33c751d^ (discrimination confirmed). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "Notification occurs exactly once, on the final release"
     defects: []
 
@@ -205,10 +205,10 @@ test_cases:
     postconditions:
       - "The fix does not turn the lock into a mutex"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source and on 33c751d^ (non-discriminating by design). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "Barrier completes within the timeout"
     defects: []
 
@@ -238,10 +238,10 @@ test_cases:
     postconditions:
       - "Writer exclusivity preserved"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source and on 33c751d^ (non-discriminating by design). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "B blocked during, acquires after"
     defects: []
 
@@ -271,10 +271,10 @@ test_cases:
     postconditions:
       - "The common path is unaffected by the change"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source and on 33c751d^ (non-discriminating by design). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "B blocked during, acquires after"
     defects: []
 
@@ -299,10 +299,10 @@ test_cases:
     postconditions:
       - "No leak in the common uncontended path"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source and on 33c751d^ (non-discriminating by design). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "Both complete and counters return to zero"
     defects: []
 
@@ -338,10 +338,10 @@ test_cases:
     postconditions:
       - "Exercises the interleaving stochastically as well as deterministically"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source and on 33c751d^ (non-discriminating by design). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "All threads complete; counter correct; lock drained"
     defects: []
 
@@ -370,10 +370,10 @@ test_cases:
     postconditions:
       - "Guards the second correction in the change, not only the first"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source; failed on 33c751d^ (discrimination confirmed). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "No nesting and two sibling condition blocks"
     defects: []
 
@@ -397,10 +397,10 @@ test_cases:
     postconditions:
       - "The change is confined to _release_read as specified"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source and on 33c751d^ (non-discriminating by design). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "Method set and _acquire_write structure intact"
     defects: []
 
@@ -429,10 +429,10 @@ test_cases:
     postconditions:
       - "Establishes that the defect was on a live path rather than in dead code, which is the premise of the issue's Critical severity"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-07-30"
+      executed_by: "William Watson"
+      actual_result: "Passed on the corrected source and on 33c751d^ (non-discriminating by design). tests/utils/test_rwlock.py; recorded from notes v1.1"
       pass_fail_criteria: "Both methods still acquire the lock"
     defects: []
 
@@ -477,11 +477,11 @@ coverage:
 
 test_execution_summary:
   total_cases: 11
-  passed: 0
+  passed: 11
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
+  pass_rate: "100%"
   execution_time: ""
   test_cycle: "Initial"
 
@@ -566,6 +566,14 @@ notes: >
   static assertion because the property is structural rather than
   observable at runtime.
 
+  Closure note (2026-10-08). The per-case execution fields were not
+  completed in July; they are now filled from the discrimination record
+  above, which shows all eleven cases passing on the corrected source on
+  2026-07-30. RWLock and tests/utils/test_rwlock.py were later removed
+  in commit f5ab73a (change-5fbff586), which retired the configuration
+  code the lock guarded. The test can no longer be executed and needs no
+  replacement: its target no longer exists. Closed on the July result.
+
 version_history:
   - version: "1.0"
     date: "2026-07-30"
@@ -577,6 +585,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Generated tests/utils/test_rwlock.py. TC-011 reimplemented as a structural assertion; the behavioural round trip is deferred to integration because ConfigManager construction calls ensure_directories() against OBDII_HOME. Recorded the discrimination result against 33c751d^: TC-001, TC-002, TC-003 and TC-009 fail pre-fix and pass post-fix; the other seven pass on both by design."
+  - version: "1.2"
+    date: "2026-10-08"
+    author: "William Watson"
+    changes:
+      - "Closed: per-case results recorded from the 2026-07-30 discrimination run; status passed. Closure note added: RWLock and its test were removed in f5ab73a (change-5fbff586)."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -594,6 +607,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-07-30 | Initial test document for change-1143427b, per ai/task.md §8.2. |
 | 1.1 | 2026-07-30 | Generated `tests/utils/test_rwlock.py`; TC-011 reimplemented structurally; discrimination against `33c751d^` recorded. |
+| 1.2 | 2026-10-08 | Closed: per-case results recorded from the 2026-07-30 run; status passed; closure note on the removal of RWLock in `f5ab73a`. |
 
 ---
 
