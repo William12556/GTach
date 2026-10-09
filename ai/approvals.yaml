@@ -22,3 +22,4 @@ approvals:
   - { uuid: "2b3a1547", stage: "prompt", date: "2026-10-09T05:05:57Z", blobs: { "prompt/prompt-2b3a1547-eager-package-import.md": "16a36b2fcff47df717909157bdfc444e6ad9be01" } }
   - { uuid: "8a9022fc", stage: "change", date: "2026-10-09T05:05:59Z", blobs: { "change/change-8a9022fc-slot-tests-reimplement-selection.md": "18e43c8ab1c12fd9caf57bc950460f2448c24178" } }
   - { uuid: "8a9022fc", stage: "prompt", date: "2026-10-09T05:06:01Z", blobs: { "prompt/prompt-8a9022fc-slot-tests-reimplement-selection.md": "3c303eb3aac4170020e05e0e7008299bc1fd7712" } }
+  - { uuid: "273ca048", stage: "change", date: "2026-10-09T05:06:03Z", blobs: { "change/change-273ca048-residual-dead-code.md": "dacc0e57ee205f48c41c04f7fbb94eefb3d93fd8" } }
