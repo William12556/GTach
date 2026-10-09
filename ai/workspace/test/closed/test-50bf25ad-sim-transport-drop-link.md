@@ -19,7 +19,7 @@ test_info:
   title: "Verify that SimTransport.drop_link is observed and the simulated link reconnects"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "high"
   iteration: 1
@@ -91,9 +91,9 @@ test_cases:
         validation: "is_set() is False"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_sim_transport.py::test_drop_link_with_cause_is_observed"
       pass_fail_criteria: "All three fields as expected"
     defects: []
@@ -113,9 +113,9 @@ test_cases:
         validation: "Equality"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_sim_transport.py::test_drop_link_without_cause_uses_default"
       pass_fail_criteria: "Default cause recorded"
     defects: []
@@ -135,9 +135,9 @@ test_cases:
         validation: "Equality"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_sim_transport.py::test_connect_after_drop_link_reconnects"
       pass_fail_criteria: "Link restored"
     defects: []
@@ -160,9 +160,9 @@ test_cases:
         validation: "Equality"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_sim_transport.py::test_drop_link_before_connect_is_harmless"
       pass_fail_criteria: "No exception; state unchanged"
     defects: []
@@ -187,9 +187,9 @@ test_cases:
         validation: "grep returns nothing"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_lifecycle_sim.py::TestLinkLoss::test_drop_is_observed_and_link_reconnects; ::test_samples_flow_after_drop_link"
       pass_fail_criteria: "Pass without xfail"
     defects: []
@@ -209,10 +209,10 @@ test_cases:
     postconditions:
       - "Do not use git diff 42d61fc for this check: commit 5ebd823 (change-ac11505d) later edited transport.py"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "git show --stat 3404125 lists sim_transport.py, the two test files and the T-Docs; src/gtach/comm/transport.py absent"
       pass_fail_criteria: "transport.py not in the commit"
     defects: []
 
@@ -233,10 +233,10 @@ test_cases:
         validation: "Log inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "skipped"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (guided by Claude)"
+      actual_result: "Not run. Superseded by the real-adapter reconnect observed on gtach.local (stage 7b, 10:22:29-10:23:59): link lost, a connect attempt every ~5.8 s, reconnected, Link restored, no operator action"
       pass_fail_criteria: "Sequence present in order"
     defects: []
 
@@ -253,12 +253,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 7
-  passed: 0
+  passed: 6
   failed: 0
   blocked: 0
-  skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  skipped: 1
+  pass_rate: "100% of executed (6/6)"
+  execution_time: "Full suite 42.6 s (561 passed); targeted run 26.8 s (137 passed)"
   test_cycle: "Initial"
 
 defect_summary:
@@ -270,10 +270,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "pytest 9.1.1, Python 3.11.14, macOS. Evidence under ~/Documents/gtach-testlogs/mac/ (pytest-full.txt, pytest-targeted.txt, static.txt)."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -297,6 +297,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-50bf25ad."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed; results recorded per case; TC-007 skipped (superseded by on-device reconnect); status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -313,6 +318,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-50bf25ad. |
+| 1.1 | 2026-10-09 | Executed; results recorded per case; TC-007 skipped; status passed. |
 
 ---
 

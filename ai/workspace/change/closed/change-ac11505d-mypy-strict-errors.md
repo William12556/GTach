@@ -19,7 +19,7 @@ change_info:
   title: "Bring mypy src/ to zero errors under the strict pyproject.toml settings without changing runtime behaviour"
   date: "2026-10-09"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -140,11 +140,11 @@ implementation:
   deployment_notes: "Human verification: normal use on the Pi; no step specific to this change."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-09"
+  implemented_by: "Claude Code (commits e5ceb62, dae7d83, 5ebd823, 954fb6d, 1a2ebee)"
+  verification_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-ac11505d passed (7/7); mypy --platform linux src/ clean; all modules import on Python 3.9.2 on gtach.local."
   issues_found: []
 
 traceability:
@@ -164,6 +164,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-ac11505d iteration 1."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Implemented, verified by test-ac11505d, closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -180,6 +185,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document resolving issue-ac11505d iteration 1. |
+| 1.1 | 2026-10-09 | Implemented, verified by test-ac11505d, closed. |
 
 ---
 

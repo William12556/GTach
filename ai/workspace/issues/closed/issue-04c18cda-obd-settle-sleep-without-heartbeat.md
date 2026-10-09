@@ -20,7 +20,7 @@ issue_info:
     when the adapter is pre-initialised
   date: '2026-10-07'
   reporter: Claude Code
-  status: open
+  status: closed
   severity: low
   type: defect
   iteration: 1
@@ -81,14 +81,14 @@ resolution:
   approach: Replace the sleep with shutdown_event.wait(1.5) (returning early when
     set) and heartbeat before it; remove the xfail marker.
   change_ref: change-04c18cda
-  resolved_date: ''
-  resolved_by: ''
+  resolved_date: '2026-10-09'
+  resolved_by: Claude Code (change-04c18cda, commit 1a36ed0)
   fix_description: ''
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-09'
+  verified_by: William Watson
+  test_results: test-04c18cda passed (6/6), including the first OBD connection after setup on gtach.local with no watchdog warning.
+  closure_notes: Closed after on-device verification. The sliced settle wait shares the Python 3.9 backward-clock-step defect raised as issue-4f671d09.
 prevention:
   preventive_measures: ''
   process_improvements: ''
@@ -122,6 +122,11 @@ version_history:
   author: William Watson
   changes:
   - Coupled to change-04c18cda (P03.7). The change supersedes resolution.approach (a single 1.5 s wait leaves a gap above the test's 1.0 s warning timeout).
+- version: '1.2'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Resolved by change-04c18cda; verified by test-04c18cda; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -138,6 +143,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
 | 1.1 | 2026-10-09 | Coupled to change-04c18cda; resolution approach superseded by the change. |
+| 1.2 | 2026-10-09 | Resolved by change-04c18cda; verified by test-04c18cda; closed. |
 
 ---
 

@@ -20,7 +20,7 @@ issue_info:
     instead of production code
   date: '2026-10-07'
   reporter: Claude Code
-  status: open
+  status: closed
   severity: low
   type: defect
   iteration: 1
@@ -75,14 +75,14 @@ resolution:
   approach: Drive the four tests through _render_device_list_screen (as the _Render
     helper in the same module does) and assert the devices drawn per slot.
   change_ref: change-8a9022fc
-  resolved_date: ''
-  resolved_by: ''
+  resolved_date: '2026-10-09'
+  resolved_by: Claude Code (change-8a9022fc, commit d4e11e3)
   fix_description: ''
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-09'
+  verified_by: William Watson
+  test_results: test-8a9022fc passed (4/4); mutation check gave 3 failed + 1 passed (reversed), 4 failed (all zero), 4 passed (restored).
+  closure_notes: Closed. Test-only change; no on-device verification required.
 prevention:
   preventive_measures: ''
   process_improvements: ''
@@ -114,6 +114,11 @@ version_history:
   author: William Watson
   changes:
   - Coupled to change-8a9022fc (P03.7).
+- version: '1.2'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Resolved by change-8a9022fc; verified by test-8a9022fc; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -130,6 +135,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
 | 1.1 | 2026-10-09 | Coupled to change-8a9022fc. |
+| 1.2 | 2026-10-09 | Resolved by change-8a9022fc; verified by test-8a9022fc; closed. |
 
 ---
 

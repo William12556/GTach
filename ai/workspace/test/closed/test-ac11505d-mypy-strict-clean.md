@@ -19,7 +19,7 @@ test_info:
   title: "Verify mypy strict reports zero errors with no relaxed settings and no runtime change"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "regression"
   priority: "high"
   iteration: 1
@@ -85,10 +85,10 @@ test_cases:
         validation: "Exact match on 'Success: no issues found'"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "mypy --platform linux src/: Success: no issues found in 59 source files. A plain mypy src/ on macOS reports 4 errors, all platform-only: socket.AF_BLUETOOTH and BTPROTO_RFCOMM missing on darwin (system_bluetooth.py:60, rfcomm.py:47) and app.py:280 unreachable after a Linux-only guard. mypy also warns python_version 3.9 is unsupported"
       pass_fail_criteria: "Zero errors"
     defects: []
 
@@ -111,10 +111,10 @@ test_cases:
         validation: "grep exit 1"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "pyproject diff adds types-PyYAML, types-pyserial, types-psutil only; ignore_errors absent"
       pass_fail_criteria: "No relaxation"
     defects: []
 
@@ -137,10 +137,10 @@ test_cases:
         validation: "grep exit 1"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "20 matches; none without the issue-ac11505d tag"
       pass_fail_criteria: "20, all conforming"
     defects: []
 
@@ -163,10 +163,10 @@ test_cases:
         validation: "pytest summary"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "git diff --stat 00c9129 1a2ebee -- tests: empty. pytest tests/: 561 passed"
       pass_fail_criteria: "No test change; all pass"
     defects: []
 
@@ -186,10 +186,10 @@ test_cases:
     postconditions:
       - "The report's 3.9.25 import check ran in a throwaway venv in the implementation session; this case repeats it on the authoritative interpreter"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "OK 58 modules under /opt/gtach/venv/bin/python3 (Python 3.9.2)"
       pass_fail_criteria: "No import error"
     defects: []
 
@@ -208,10 +208,10 @@ test_cases:
         validation: "Output inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "No ImportError, AttributeError or traceback; process alive at 8 s (see test-273ca048 TC-004 for the run conditions)"
       pass_fail_criteria: "Run reaches the timeout cleanly"
     defects: []
 
@@ -238,10 +238,10 @@ test_cases:
     postconditions:
       - "Drag AttributeError from TouchAction.DRAG (batch report §5.0 item 1) is pre-existing and expected"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "Service start, splash, gauge with live RPM, OPTIONS, taps, swipes and long press on real hyperpixel2r touch, DISCONNECTED screen with spinner and Reset (rebooted the Pi), setup and pairing all normal. No TypeError, AttributeError or AssertionError in error.log"
       pass_fail_criteria: "Normal use; no new errors"
     defects: []
 
@@ -260,12 +260,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 7
-  passed: 0
+  passed: 7
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "mypy under 1 min; full suite 42.6 s; on-device use 09:38-10:34"
   test_cycle: "Initial"
 
 defect_summary:
@@ -277,10 +277,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "TC-001 passes only with --platform linux, GTach's sole runtime platform. Adding platform = \"linux\" to [tool.mypy] is listed in ai/task.md so a plain mypy run gives the same result on the Mac. Evidence: ~/Documents/gtach-testlogs/mac/mypy.txt and mypy-linux.txt."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -304,6 +304,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-ac11505d."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed on Mac and gtach.local; TC-001 passes under --platform linux (4 macOS-only errors otherwise); status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -320,6 +325,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-ac11505d. |
+| 1.1 | 2026-10-09 | Executed on Mac and gtach.local; TC-001 passes under --platform linux; status passed. |
 
 ---
 

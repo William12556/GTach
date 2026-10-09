@@ -19,7 +19,7 @@ change_info:
   title: "Use time.monotonic() for durations, rates and cache ages in the five files named by issue-e215a184"
   date: "2026-10-09"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -143,11 +143,11 @@ implementation:
   deployment_notes: "Human verification: FPS and render figures in debug.log look plausible after boot on the Pi."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-09"
+  implemented_by: "Claude Code (commit 00c9129)"
+  verification_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-e215a184 passed (6/6); FPS and frame time steady across forced clock steps on gtach.local. Out-of-scope defect raised as issue-4f671d09."
   issues_found: []
 
 traceability:
@@ -171,6 +171,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-e215a184 iteration 1."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Implemented, verified by test-e215a184, closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -187,6 +192,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document resolving issue-e215a184 iteration 1. |
+| 1.1 | 2026-10-09 | Implemented, verified by test-e215a184, closed. |
 
 ---
 

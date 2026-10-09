@@ -19,7 +19,7 @@ test_info:
   title: "Verify ConfigStore.save preserves unknown keys read from the file at save time"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "high"
   iteration: 1
@@ -88,9 +88,9 @@ test_cases:
         validation: "yaml.safe_load"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_config_store.py::TestSave::test_save_without_load_keeps_unknown_key"
       pass_fail_criteria: "Key present"
     defects: []
@@ -110,9 +110,9 @@ test_cases:
         validation: "yaml.safe_load"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_config_store.py::TestSave::test_key_added_after_load_is_kept"
       pass_fail_criteria: "Key present"
     defects: []
@@ -132,9 +132,9 @@ test_cases:
         validation: "Set equality"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_config_store.py::TestSave::test_missing_file_writes_known_keys_only"
       pass_fail_criteria: "Set equality holds"
     defects: []
@@ -160,9 +160,9 @@ test_cases:
         validation: "yaml.safe_load"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_config_store.py::TestSave::test_invalid_yaml_warns_and_saves"
       pass_fail_criteria: "All three as expected"
     defects: []
@@ -182,9 +182,9 @@ test_cases:
         validation: "Set equality"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_config_store.py::TestSave::test_list_file_gives_no_unknown_keys"
       pass_fail_criteria: "No extra keys"
     defects: []
@@ -203,10 +203,10 @@ test_cases:
         validation: "pytest exit 0"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "TestSave::test_round_trip_keeps_unknown_key, ::test_only_unknown_keys_preserved and all TestLoad cases PASSED"
       pass_fail_criteria: "All pass"
     defects: []
 
@@ -230,10 +230,10 @@ test_cases:
     postconditions:
       - "Remove the test key afterwards"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "test_marker: 1 appended over SSH; palette toggled day -> night -> day by long press on the RADIAL gauge (the palette is not set from OPTIONS; step 2 wording corrected here); test_marker: 1 present after both saves, written first in the file; key removed afterwards"
       pass_fail_criteria: "Key retained"
     defects: []
 
@@ -254,12 +254,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 7
-  passed: 0
+  passed: 7
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Targeted pytest run 26.8 s (137 passed); on-device check 09:45-09:47"
   test_cycle: "Initial"
 
 defect_summary:
@@ -271,10 +271,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "Mac: pytest 9.1.1, Python 3.11.14. Pi: GTach 0.4.10. The untested areas listed under coverage remain untested."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -299,6 +299,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-ae65fa10."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed on Mac and gtach.local; results recorded per case; TC-007 step wording corrected in its result (palette is toggled by long press); status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -315,6 +320,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-ae65fa10. |
+| 1.1 | 2026-10-09 | Executed on Mac and gtach.local; results recorded per case; status passed. |
 
 ---
 

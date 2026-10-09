@@ -19,7 +19,7 @@ test_info:
   title: "Verify the slot-contents tests exercise the production selection rule, by mutation"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "regression"
   priority: "medium"
   iteration: 1
@@ -92,10 +92,10 @@ test_cases:
         validation: "pytest"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "All four PASSED in the targeted run and again after each restore"
       pass_fail_criteria: "All four pass"
     defects: []
 
@@ -119,10 +119,10 @@ test_cases:
     postconditions:
       - "The one-device case is symmetric under reversal; its pass here is expected"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "3 failed, 1 passed; test_one_device_leaves_both_neighbours_empty passed as expected"
       pass_fail_criteria: "Exactly the three asymmetric tests fail"
     defects: []
 
@@ -146,10 +146,10 @@ test_cases:
     postconditions:
       - "Re-run TC-001 to confirm the restore (clear __pycache__ first)"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "4 failed; restored (-1, 0, 1) gave 4 passed; git status clean afterwards"
       pass_fail_criteria: "All four fail"
     defects: []
 
@@ -173,10 +173,10 @@ test_cases:
     postconditions:
       - "grep '_slots' without 'def' also matches two unrelated test names; use the narrower pattern"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "def _slots: no match. git show --stat d4e11e3 lists no src/ file"
       pass_fail_criteria: "Helper absent; no src/ change"
     defects: []
 
@@ -193,12 +193,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 4
-  passed: 0
+  passed: 4
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Each mutation run under 0.3 s"
   test_cycle: "Initial"
 
 defect_summary:
@@ -210,10 +210,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "pytest 9.1.1, Python 3.11.14, macOS. Two earlier mutation attempts ran no tests (a -k filter, then -p no:cacheprovider with -W and -q) and were discarded; the recorded run names the four tests explicitly with --no-cov only. Evidence: ~/Documents/gtach-testlogs/mac/mutation.txt."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -240,6 +240,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-8a9022fc."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed on Mac including both mutation checks; results recorded per case; status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -256,6 +261,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-8a9022fc. |
+| 1.1 | 2026-10-09 | Executed on Mac including both mutation checks; status passed. |
 
 ---
 

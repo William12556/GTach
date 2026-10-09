@@ -19,7 +19,7 @@ change_info:
   title: "Override drop_link in SimTransport so a dropped link is observed and reconnected in simulation"
   date: "2026-10-09"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -132,11 +132,11 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-09"
+  implemented_by: "Claude Code (commit 3404125)"
+  verification_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-50bf25ad passed (6 passed, 1 skipped); pytest tests/ 561 passed; real-adapter reconnect observed on gtach.local."
   issues_found: []
 
 traceability:
@@ -160,6 +160,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-50bf25ad iteration 1."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Implemented, verified by test-50bf25ad, closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -176,6 +181,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document resolving issue-50bf25ad iteration 1. |
+| 1.1 | 2026-10-09 | Implemented, verified by test-50bf25ad, closed. |
 
 ---
 

@@ -20,7 +20,7 @@ issue_info:
     is not met
   date: '2026-10-07'
   reporter: Claude Code
-  status: open
+  status: closed
   severity: medium
   type: defect
   iteration: 1
@@ -76,14 +76,14 @@ resolution:
   approach: Address by module in small changes, starting with union-attr, arg-type
     and index errors, which are most likely to be real defects.
   change_ref: change-ac11505d
-  resolved_date: ''
-  resolved_by: ''
+  resolved_date: '2026-10-09'
+  resolved_by: Claude Code (change-ac11505d, commits e5ceb62, dae7d83, 5ebd823, 954fb6d, 1a2ebee)
   fix_description: ''
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-09'
+  verified_by: William Watson
+  test_results: test-ac11505d passed (7/7); mypy --platform linux src/ reports no issues; all 58 modules import on Python 3.9.2 on gtach.local.
+  closure_notes: Closed. A plain mypy run on macOS shows 4 platform-only errors; adding platform = linux to [tool.mypy] is listed in ai/task.md. The 20 TODO-tagged suppressions and the six candidate defects in report-batch-2026-10-09 section 5.0 remain for follow-up.
 prevention:
   preventive_measures: ''
   process_improvements: ''
@@ -115,6 +115,11 @@ version_history:
   author: William Watson
   changes:
   - Coupled to change-ac11505d (P03.7); scope chosen - full target in one behaviour-preserving change, suspected defects suppressed with TODO and reported.
+- version: '1.2'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Resolved by change-ac11505d; verified by test-ac11505d; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -131,6 +136,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
 | 1.1 | 2026-10-09 | Coupled to change-ac11505d; full behaviour-preserving scope chosen. |
+| 1.2 | 2026-10-09 | Resolved by change-ac11505d; verified by test-ac11505d; closed. |
 
 ---
 

@@ -19,7 +19,7 @@ change_info:
   title: "Add BluetoothDevice.from_discovered to comm/models.py and use it at both conversion sites"
   date: "2026-10-09"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -138,11 +138,11 @@ implementation:
   deployment_notes: "Human verification: pair a device in setup on the Pi; it is saved and reconnects after restart."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-09"
+  implemented_by: "Claude Code (commit 7c6574e)"
+  verification_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-c9de5fb0 passed (6/6); pairing saved and survived a service restart on gtach.local."
   issues_found: []
 
 traceability:
@@ -164,6 +164,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-c9de5fb0 iteration 1."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Implemented, verified by test-c9de5fb0, closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -180,6 +185,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document resolving issue-c9de5fb0 iteration 1. |
+| 1.1 | 2026-10-09 | Implemented, verified by test-c9de5fb0, closed. |
 
 ---
 

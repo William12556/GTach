@@ -19,7 +19,7 @@ test_info:
   title: "Verify removal of dead-code groups D1-D8 left no reference and no behaviour change"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "regression"
   priority: "medium"
   iteration: 1
@@ -81,10 +81,10 @@ test_cases:
     postconditions:
       - "normalize_coordinates also covers denormalize_coordinates"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "No source match. Matches only in stale compiled files under __pycache__ (Python 3.10/3.11 bytecode, including setup_original_backup), which are not source"
       pass_fail_criteria: "No match"
     defects: []
 
@@ -107,10 +107,10 @@ test_cases:
         validation: "pytest summary"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "bf03008 changed tests/conftest.py only (8 deletions). pytest tests/: 561 passed"
       pass_fail_criteria: "No test file other than conftest.py changed; suite passes"
     defects: []
 
@@ -131,10 +131,10 @@ test_cases:
     postconditions:
       - "Guards against a shifted auto() value"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "Current: WELCOME 1, DISCOVERY 2, DEVICE_LIST 3, PAIRING 4, COMPLETE 5, CURRENT_DEVICE 6. Parent commit lists the same six first, followed by DEVICE_MANAGEMENT and CONFIRMATION"
       pass_fail_criteria: "Names and values identical"
     defects: []
 
@@ -159,10 +159,10 @@ test_cases:
     postconditions:
       - "On macOS a framebuffer OSError traceback is environmental and is not a failure"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "No ImportError, AttributeError or traceback; only the expected /dev/fb0 messages on the Mac. Process alive at 8 s. macOS has no timeout(1); run backgrounded instead, where zsh suspended it on tty output, so SIGTERM shutdown was not measurable on the Mac (observed on the Pi instead: clean stop on restart, 4/4 threads in 0.45 s)"
       pass_fail_criteria: "Clean import; run reaches the timeout"
     defects: []
 
@@ -190,10 +190,10 @@ test_cases:
         validation: "Log inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "Boot splash, GTach splash and gauge normal; OPTIONS paging both ways; long-press palette toggle; DISCONNECTED screen with spinner, Setup and Reset; setup flow Current Device, New Setup, Welcome, Scanning, Select Device (one device, so no swipe or arrows to exercise), Pairing, gauge. error.log shows no AttributeError or ImportError"
       pass_fail_criteria: "Normal use; clean log"
     defects: []
 
@@ -210,12 +210,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 5
-  passed: 0
+  passed: 5
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Full suite 42.6 s; on-device use 09:38-10:34"
   test_cycle: "Initial"
 
 defect_summary:
@@ -227,10 +227,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "Mac: pytest 9.1.1, Python 3.11.14. Pi: GTach 0.4.10, Python 3.9.2."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -254,6 +254,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-273ca048."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed on Mac and gtach.local; results recorded per case; status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -270,6 +275,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-273ca048. |
+| 1.1 | 2026-10-09 | Executed on Mac and gtach.local; results recorded per case; status passed. |
 
 ---
 

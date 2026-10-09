@@ -19,7 +19,7 @@ test_info:
   title: "Verify durations and cache ages are immune to wall-clock steps"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "high"
   iteration: 1
@@ -94,9 +94,9 @@ test_cases:
         validation: "Call count"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_monotonic_durations.py::test_platform_cache_survives_a_forward_step"
       pass_fail_criteria: "Cache hit"
     defects: []
@@ -121,9 +121,9 @@ test_cases:
         validation: "Range check"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_monotonic_durations.py::test_monitor_uptime_survives_a_backward_step"
       pass_fail_criteria: "Within range"
     defects: []
@@ -142,10 +142,10 @@ test_cases:
         validation: "Inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "Three lines, all monitor.py: line 49 is a comment; lines 548 (dirty-region timestamp) and 567 (get_dirty_regions current_time) are the two justified sites"
       pass_fail_criteria: "Exactly the two justified sites"
     defects: []
 
@@ -163,10 +163,10 @@ test_cases:
         validation: "pytest; git diff 00c9129^ 00c9129 -- tests/test_performance_instrumentation.py shows fixture lines only"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "All tests PASSED. git diff 00c9129^ 00c9129 shows the clock fixture only: SimpleNamespace gains monotonic, plus one comment"
       pass_fail_criteria: "Pass; fixture-only diff"
     defects: []
 
@@ -191,10 +191,10 @@ test_cases:
         validation: "Log inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "Run with forced steps instead of a cold-boot NTP step (debug is off after boot, so a cold-boot step cannot be logged). NTP off; clock set back 1 h (real 10:05:04); forward 2 h (real 10:06:46); NTP restored (stepped back 1 h at ~10:08:30). Performance lines across all steps: 30.0 FPS, 14.5-15.9 ms frame; gauge smooth, no DISCONNECTED screen. Out-of-scope defect exposed: transport thread frozen for 102.9 s by the backward step, see issue-4f671d09"
       pass_fail_criteria: "No anomaly at the step"
     defects: []
 
@@ -213,10 +213,10 @@ test_cases:
         validation: "Log inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "Cache Age: 0.1s from python -m gtach.utils.platform"
       pass_fail_criteria: "Positive and plausible"
     defects: []
 
@@ -235,27 +235,30 @@ coverage:
 
 test_execution_summary:
   total_cases: 6
-  passed: 0
+  passed: 6
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Targeted pytest run 26.8 s; on-device clock-step test 10:04-10:09"
   test_cycle: "Initial"
 
 defect_summary:
-  total_defects: 0
+  total_defects: 1
   critical: 0
-  high: 0
+  high: 1
   medium: 0
   low: 0
-  issues: []
+  issues:
+    - issue_ref: "issue-4f671d09"
+      severity: "high"
+      status: "open"
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "Mac: pytest 9.1.1, Python 3.11.14. Pi: GTach 0.4.10, Python 3.9.2. The defect recorded above lies outside the five files of this change and does not fail any case here. Evidence under ~/Documents/gtach-testlogs/stage6/."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -282,6 +285,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-e215a184."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed on Mac and gtach.local; TC-005 run with forced clock steps; out-of-scope defect raised as issue-4f671d09; status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -298,6 +306,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-e215a184. |
+| 1.1 | 2026-10-09 | Executed on Mac and gtach.local; issue-4f671d09 raised for an out-of-scope defect; status passed. |
 
 ---
 

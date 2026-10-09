@@ -19,7 +19,7 @@ test_info:
   title: "Verify BluetoothDevice.from_discovered replaces both setup-to-comm conversions"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "medium"
   iteration: 1
@@ -86,9 +86,9 @@ test_cases:
         validation: "is None"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_bluetooth_device_conversion.py::test_from_setup_device"
       pass_fail_criteria: "Both fields as expected"
     defects: []
@@ -107,9 +107,9 @@ test_cases:
         validation: "Field equality"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_bluetooth_device_conversion.py::test_from_any_object_with_the_three_attributes"
       pass_fail_criteria: "Conversion succeeds"
     defects: []
@@ -128,9 +128,9 @@ test_cases:
         validation: "Equality; set by __post_init__"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_bluetooth_device_conversion.py::test_unknown_type_is_classified_from_name"
       pass_fail_criteria: "Classified OBD"
     defects: []
@@ -149,10 +149,10 @@ test_cases:
         validation: "grep exit 1"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "grep returned no match"
       pass_fail_criteria: "No match"
     defects: []
 
@@ -170,10 +170,10 @@ test_cases:
         validation: "grep exit 1"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "Only match is docstring line 22 ('this module need not import from the display package'); no import statement references display"
       pass_fail_criteria: "No display import"
     defects: []
 
@@ -199,10 +199,10 @@ test_cases:
         validation: "Observation and debug.log"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "Re-paired ELM327-Emulator 10:28 (stage 8): DeviceStore saved the primary device twice (first OBD verify failed with EBUSY, see issue-d26ca557; Retry passed); devices.yaml holds mac_address DC:A6:32:54:AD:77. systemctl restart gtach at 10:33:42: start.log 'Setup complete - starting normal mode', gauge returned with RPM, no setup screens, devices.yaml unchanged"
       pass_fail_criteria: "Saved and reconnected"
     defects: []
 
@@ -219,12 +219,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 6
-  passed: 0
+  passed: 6
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Targeted pytest run 26.8 s (137 passed); on-device 10:27-10:34"
   test_cycle: "Initial"
 
 defect_summary:
@@ -236,10 +236,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "Mac: pytest 9.1.1, Python 3.11.14. Pi: GTach 0.4.10, Python 3.9.2. TC-006 exercised the interface.py pairing-success call site on the real path. Evidence under ~/Documents/gtach-testlogs/ (stage8-pair/, stage8-restart/)."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -264,6 +264,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-c9de5fb0."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed on Mac and gtach.local; results recorded per case; status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -280,6 +285,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-c9de5fb0. |
+| 1.1 | 2026-10-09 | Executed on Mac and gtach.local; results recorded per case; status passed. |
 
 ---
 

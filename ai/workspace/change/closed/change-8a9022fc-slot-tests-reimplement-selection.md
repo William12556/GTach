@@ -19,7 +19,7 @@ change_info:
   title: "Drive TestSlotContents through _render_device_list_screen instead of a local copy of the slot rule"
   date: "2026-10-09"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -111,11 +111,11 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-09"
+  implemented_by: "Claude Code (commit d4e11e3)"
+  verification_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-8a9022fc passed (4/4) including both mutation checks."
   issues_found: []
 
 traceability:
@@ -135,6 +135,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-8a9022fc iteration 1."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Implemented, verified by test-8a9022fc, closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -151,6 +156,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document resolving issue-8a9022fc iteration 1. |
+| 1.1 | 2026-10-09 | Implemented, verified by test-8a9022fc, closed. |
 
 ---
 

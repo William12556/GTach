@@ -19,7 +19,7 @@ test_info:
   title: "Verify importing gtach or gtach.main no longer imports gtach.app or pygame"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "integration"
   priority: "medium"
   iteration: 1
@@ -85,9 +85,9 @@ test_cases:
         validation: "Subprocess output"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_package_import.py::test_import_main_does_not_import_app_or_pygame"
       pass_fail_criteria: "Both False"
     defects: []
@@ -106,9 +106,9 @@ test_cases:
         validation: "Subprocess output"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_package_import.py::test_version_is_available"
       pass_fail_criteria: "Non-empty value"
     defects: []
@@ -127,9 +127,9 @@ test_cases:
         validation: "Subprocess return code"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_package_import.py::test_module_entry_point_version"
       pass_fail_criteria: "Exit 0"
     defects: []
@@ -154,10 +154,10 @@ test_cases:
         validation: "Shell return code"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac and gtach.local, guided by Claude)"
+      actual_result: "pyproject.toml line 65: gtach = \"gtach.main:main\". gtach --version printed 'GTach 0.4.9' on the Mac before the bump. On the Pi, after deploy, /opt/gtach/venv/bin/gtach --version printed 'GTach 0.4.10' with no pygame banner (before the deploy the banner was printed)"
       pass_fail_criteria: "Target unchanged; exit 0"
     defects: []
 
@@ -177,10 +177,10 @@ test_cases:
         validation: "grep exit 1"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "Both greps returned no source match; only stale compiled files under __pycache__ matched, which are not source"
       pass_fail_criteria: "No match"
     defects: []
 
@@ -204,10 +204,10 @@ test_cases:
         validation: "echo $?"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "systemctl is-active gtach: active; display started (two-line splash, animated splash with version, gauge). gtach --validate-config: 'Config valid: /opt/gtach/config.yaml', exit 0"
       pass_fail_criteria: "Running and exit 0"
     defects: []
 
@@ -224,12 +224,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 6
-  passed: 0
+  passed: 6
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Targeted pytest run 26.8 s (137 passed); on-device checks 09:40-09:45"
   test_cycle: "Initial"
 
 defect_summary:
@@ -241,10 +241,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "Mac: pytest 9.1.1, Python 3.11.14. Pi: GTach 0.4.10, Python 3.9.2. Note: --validate-config runs the logging setup, so on a running Pi it truncates start.log and rotates debug.log (listed in ai/task.md)."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -268,6 +268,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-2b3a1547."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed on Mac and gtach.local; results recorded per case; status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -284,6 +289,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-2b3a1547. |
+| 1.1 | 2026-10-09 | Executed on Mac and gtach.local; results recorded per case; status passed. |
 
 ---
 

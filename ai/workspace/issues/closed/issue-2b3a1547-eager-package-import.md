@@ -20,7 +20,7 @@ issue_info:
     stack
   date: '2026-10-07'
   reporter: Claude Code
-  status: open
+  status: closed
   severity: low
   type: defect
   iteration: 1
@@ -78,14 +78,14 @@ resolution:
   approach: Make the re-exports lazy (module __getattr__) or drop them; the console
     script already targets gtach.main:main.
   change_ref: change-2b3a1547
-  resolved_date: ''
-  resolved_by: ''
+  resolved_date: '2026-10-09'
+  resolved_by: Claude Code (change-2b3a1547, commit 7a91a42)
   fix_description: ''
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-09'
+  verified_by: William Watson
+  test_results: test-2b3a1547 passed (6/6); gtach --version on gtach.local no longer prints the pygame banner.
+  closure_notes: Closed after on-device verification of the nine-change batch.
 prevention:
   preventive_measures: ''
   process_improvements: ''
@@ -117,6 +117,11 @@ version_history:
   author: William Watson
   changes:
   - Coupled to change-2b3a1547 (P03.7); approach chosen - drop the re-exports.
+- version: '1.2'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Resolved by change-2b3a1547; verified by test-2b3a1547; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -133,6 +138,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
 | 1.1 | 2026-10-09 | Coupled to change-2b3a1547; re-exports to be dropped. |
+| 1.2 | 2026-10-09 | Resolved by change-2b3a1547; verified by test-2b3a1547; closed. |
 
 ---
 

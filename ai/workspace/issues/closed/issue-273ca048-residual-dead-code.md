@@ -20,7 +20,7 @@ issue_info:
     in its removal list
   date: '2026-10-07'
   reporter: Claude Code
-  status: open
+  status: closed
   severity: low
   type: defect
   iteration: 1
@@ -94,14 +94,14 @@ resolution:
   target_date: ''
   approach: Remove after a fresh reference check.
   change_ref: change-273ca048
-  resolved_date: ''
-  resolved_by: ''
+  resolved_date: '2026-10-09'
+  resolved_by: Claude Code (change-273ca048, commit bf03008)
   fix_description: ''
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-09'
+  verified_by: William Watson
+  test_results: test-273ca048 passed (5/5); no source reference to removed names; SetupScreen values unchanged; normal use on gtach.local.
+  closure_notes: Closed. Further dead code left in place by constraint is listed in report-273ca048 section 6.
 prevention:
   preventive_measures: ''
   process_improvements: ''
@@ -139,6 +139,11 @@ version_history:
   author: William Watson
   changes:
   - Coupled to change-273ca048 (P03.7).
+- version: '1.3'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Resolved by change-273ca048; verified by test-273ca048; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -156,6 +161,7 @@ metadata:
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
 | 1.1 | 2026-10-09 | Folded in report-b64d2b77 findings B and C. |
 | 1.2 | 2026-10-09 | Coupled to change-273ca048. |
+| 1.3 | 2026-10-09 | Resolved by change-273ca048; verified by test-273ca048; closed. |
 
 ---
 

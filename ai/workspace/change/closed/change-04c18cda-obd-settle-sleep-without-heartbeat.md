@@ -19,7 +19,7 @@ change_info:
   title: "Bound the pre-initialised settle in OBDProtocol._initialize_protocol with heartbeats and an early exit on stop"
   date: "2026-10-09"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -129,11 +129,11 @@ implementation:
   deployment_notes: "Human verification: first connection after setup on the Pi still initialises (settle unchanged at 1.5 s)."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-09"
+  implemented_by: "Claude Code (commit 1a36ed0)"
+  verification_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-04c18cda passed (6/6); first OBD connection after setup on gtach.local initialised with no watchdog warning."
   issues_found: []
 
 traceability:
@@ -155,6 +155,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-04c18cda iteration 1."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Implemented, verified by test-04c18cda, closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -171,6 +176,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document resolving issue-04c18cda iteration 1. |
+| 1.1 | 2026-10-09 | Implemented, verified by test-04c18cda, closed. |
 
 ---
 

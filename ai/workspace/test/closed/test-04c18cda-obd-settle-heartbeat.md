@@ -19,7 +19,7 @@ test_info:
   title: "Verify the pre-initialised OBD settle waits in interruptible slices with a heartbeat after each"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "passed"
   type: "unit"
   priority: "high"
   iteration: 1
@@ -85,9 +85,9 @@ test_cases:
         validation: "Monotonic clock difference"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_obd_settle.py::test_settle_keeps_heartbeat_gap_bounded"
       pass_fail_criteria: "Both bounds met"
     defects: []
@@ -116,9 +116,9 @@ test_cases:
         validation: "Fake transport record"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_obd_settle.py::test_stop_during_settle_returns_false_without_commands"
       pass_fail_criteria: "All three as expected"
     defects: []
@@ -141,9 +141,9 @@ test_cases:
         validation: "Fake transport record empty"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
       actual_result: "tests/test_obd_settle.py::test_stop_already_set_returns_immediately"
       pass_fail_criteria: "False and no command"
     defects: []
@@ -165,10 +165,10 @@ test_cases:
         validation: "pytest exit 0"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "TestWatchdogQuiet::test_no_shutdown, ::test_no_obd_unresponsive_warning and TestHeartbeatBound::test_largest_obd_gap_below_two_seconds PASSED; no xfail marker in the file"
       pass_fail_criteria: "All pass"
     defects: []
 
@@ -186,10 +186,10 @@ test_cases:
         validation: "grep exit 1"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "grep returned no match"
       pass_fail_criteria: "No match"
     defects: []
 
@@ -214,10 +214,10 @@ test_cases:
         validation: "Log inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local, guided by Claude)"
+      actual_result: "Re-pair at 10:28 (stage 8): OBDProtocol init adapter_pre_initialised=True 10:28:37.661, connected 10:28:37.711, Link restored 10:28:42.530; RPM shown; no watchdog unresponsive warning in debug.log or error.log"
       pass_fail_criteria: "RPM shown and no warning"
     defects: []
 
@@ -234,12 +234,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 6
-  passed: 0
+  passed: 6
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Targeted pytest run 26.8 s (137 passed); on-device re-pair 10:27-10:29"
   test_cycle: "Initial"
 
 defect_summary:
@@ -251,10 +251,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "Mac: pytest 9.1.1, Python 3.11.14. Pi: GTach 0.4.10, Python 3.9.2, emulator adapter DC:A6:32:54:AD:77. Evidence under ~/Documents/gtach-testlogs/ (mac/, stage8-pair/)."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -278,6 +278,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-04c18cda."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Executed on Mac and gtach.local; results recorded per case; status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -294,6 +299,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-04c18cda. |
+| 1.1 | 2026-10-09 | Executed on Mac and gtach.local; results recorded per case; status passed. |
 
 ---
 

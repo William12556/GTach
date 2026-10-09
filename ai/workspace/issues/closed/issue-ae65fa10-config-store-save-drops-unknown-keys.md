@@ -20,7 +20,7 @@ issue_info:
     without its unknown keys
   date: '2026-10-07'
   reporter: Claude Code
-  status: open
+  status: closed
   severity: low
   type: defect
   iteration: 1
@@ -76,14 +76,14 @@ resolution:
   approach: In save(), read the current file's unknown keys (or load if never loaded)
     before merging.
   change_ref: change-ae65fa10
-  resolved_date: ''
-  resolved_by: ''
+  resolved_date: '2026-10-09'
+  resolved_by: Claude Code (change-ae65fa10, commit 3c6472a)
   fix_description: ''
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-09'
+  verified_by: William Watson
+  test_results: test-ae65fa10 passed (7/7); an unknown key survived two palette saves on gtach.local.
+  closure_notes: Closed after on-device verification of the nine-change batch.
 prevention:
   preventive_measures: ''
   process_improvements: ''
@@ -115,6 +115,11 @@ version_history:
   author: William Watson
   changes:
   - Coupled to change-ae65fa10 (P03.7).
+- version: '1.2'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Resolved by change-ae65fa10; verified by test-ae65fa10; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -131,6 +136,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
 | 1.1 | 2026-10-09 | Coupled to change-ae65fa10. |
+| 1.2 | 2026-10-09 | Resolved by change-ae65fa10; verified by test-ae65fa10; closed. |
 
 ---
 

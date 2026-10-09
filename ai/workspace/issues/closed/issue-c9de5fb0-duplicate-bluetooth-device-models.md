@@ -20,7 +20,7 @@ issue_info:
     at two call sites
   date: '2026-10-07'
   reporter: Claude Code
-  status: open
+  status: closed
   severity: low
   type: defect
   iteration: 1
@@ -83,14 +83,14 @@ resolution:
   approach: Add a single conversion (for example a classmethod on the comm model)
     used by both sites, or merge the models.
   change_ref: change-c9de5fb0
-  resolved_date: ''
-  resolved_by: ''
+  resolved_date: '2026-10-09'
+  resolved_by: Claude Code (change-c9de5fb0, commit 7c6574e)
   fix_description: ''
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-09'
+  verified_by: William Watson
+  test_results: test-c9de5fb0 passed (6/6); pairing saved with an upper-case MAC and survived a service restart on gtach.local.
+  closure_notes: Closed after on-device verification. A pre-existing EBUSY failure of the post-pairing probe was raised as issue-d26ca557.
 prevention:
   preventive_measures: ''
   process_improvements: ''
@@ -122,6 +122,11 @@ version_history:
   author: William Watson
   changes:
   - Coupled to change-c9de5fb0 (P03.7); approach chosen - one shared conversion, both models kept.
+- version: '1.2'
+  date: '2026-10-09'
+  author: William Watson
+  changes:
+  - Resolved by change-c9de5fb0; verified by test-c9de5fb0; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -138,6 +143,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-07 | Initial issue document. Raised at the close of audit-36b6ea95 remediation. |
 | 1.1 | 2026-10-09 | Coupled to change-c9de5fb0; shared conversion chosen. |
+| 1.2 | 2026-10-09 | Resolved by change-c9de5fb0; verified by test-c9de5fb0; closed. |
 
 ---
 
