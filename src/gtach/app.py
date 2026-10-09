@@ -18,7 +18,8 @@ import os
 import signal
 import threading
 from pathlib import Path
-from typing import Optional
+from types import FrameType
+from typing import Any, Callable, Optional, cast
 
 from .comm import OBDProtocol, select_transport
 from .comm.device_store import get_device_store
@@ -39,8 +40,11 @@ class GTachApplication:
     _EXIT_BACKSTOP_SEC: float = 20.0
 
     def __init__(
-        self, config_path: Optional[str] = None, debug: bool = False, args=None
-    ):
+        self,
+        config_path: Optional[str] = None,
+        debug: bool = False,
+        args: Optional[argparse.Namespace] = None,
+    ) -> None:
         """Initialize application components"""
         # The single configuration store, injected into DisplayManager
         # (issue-5fbff586).
@@ -304,7 +308,7 @@ class GTachApplication:
         except Exception as e:
             self.logger.debug(f"Could not toggle debug logging: {e}")
 
-    def _disconnected_cause(self):
+    def _disconnected_cause(self) -> Optional[str]:
         """Resolve the string the DISCONNECTED screen's cause line shows.
 
         Called on the display thread on every frame the DISCONNECTED
@@ -315,7 +319,7 @@ class GTachApplication:
         """
         transport = getattr(self, "_transport", None)
 
-        return getattr(transport, "last_failure_cause", None)
+        return cast(Optional[str], getattr(transport, "last_failure_cause", None))
 
     def _on_reset_pi(self) -> None:
         """Dispatch an operator-requested reboot of the host.
@@ -367,7 +371,9 @@ class GTachApplication:
         self.logger.info("Restart requested — stopping for relaunch")
         self._stop_event.set()
 
-    def _start_setup_mode(self, pairing_factory=None) -> None:
+    def _start_setup_mode(
+        self, pairing_factory: Optional[Callable[[], Any]] = None
+    ) -> None:
         """Start application in setup mode with splash screen"""
         # Guard: watchdog may already be running on re-entry
         if not self._watchdog._thread.is_alive():
@@ -375,7 +381,7 @@ class GTachApplication:
 
         # Reuse existing DisplayManager on re-entry; only create on first call
         if not hasattr(self, "_display") or self._display is None:
-            self._display = DisplayManager(
+            self._display: DisplayManager = DisplayManager(
                 self._thread_manager,
                 self._terminal_restorer,
                 config_store=self._config_store,
@@ -425,7 +431,8 @@ class GTachApplication:
             except Exception as e:
                 self.logger.error(f"Stopping setup manager failed: {e}", exc_info=True)
         self._setup_manager = SetupDisplayManager(
-            self._display.rendering_engine.main_surface,
+            # TODO: issue-ac11505d candidate defect - main_surface may be None here
+            self._display.rendering_engine.main_surface,  # type: ignore[arg-type]  # TODO: issue-ac11505d  # noqa: E501
             self._thread_manager,
             self._display.touch_handler,
             pairing_factory=pairing_factory,
@@ -634,7 +641,7 @@ class GTachApplication:
         except Exception as e:
             self.logger.error(f"Shutdown error: {e}", exc_info=True)
 
-    def _signal_handler(self, signum: int, frame) -> None:
+    def _signal_handler(self, signum: int, frame: Optional[FrameType]) -> None:
         """Handle system signals"""
         self.logger.info(f"Received signal {signum}")
         self._stop_event.set()

@@ -15,7 +15,7 @@ import os
 import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TextIO
 
 # Module-level handler references for runtime manipulation.
 _start_handler: Optional[logging.Handler] = None
@@ -23,7 +23,7 @@ _debug_handler: Optional[logging.Handler] = None
 _error_handler: Optional[logging.Handler] = None
 # Kept referenced so faulthandler's fd stays open for the process
 # lifetime; faulthandler writes to the file descriptor directly.
-_stacks_file = None
+_stacks_file: Optional[TextIO] = None
 # Rotation is once per PROCESS, not once per arm. Arming occurs on
 # every OPTIONS toggle-on, and rotating each time would push a
 # just-captured reproduction off the end of the backup chain — the
