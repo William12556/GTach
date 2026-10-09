@@ -83,10 +83,30 @@ def _state(device_count):
     )
 
 
+class _RecordingRenderer:
+    """A real DeviceSurfaceRenderer that records what each slot received.
+
+    create_slot_surface records (slot label, device name or None), then
+    delegates; every other attribute is the wrapped renderer's.
+    """
+
+    def __init__(self):
+        self._renderer = DeviceSurfaceRenderer()
+        self.slots = []
+
+    def create_slot_surface(self, device, layout_item, *args, **kwargs):
+        name = device.name if device is not None else None
+        self.slots.append((layout_item["slot"], name))
+        return self._renderer.create_slot_surface(device, layout_item, *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._renderer, name)
+
+
 class _Render:
     """Drives _render_device_list_screen against real components."""
 
-    def __init__(self, device_count, focused_index=0):
+    def __init__(self, device_count, focused_index=0, renderer=None):
         self.state = _state(device_count)
 
         self.coordinator = SetupStateCoordinator(initial_state=self.state)
@@ -107,7 +127,9 @@ class _Render:
         }
         host.state_coordinator = self.coordinator
         host.positioning_engine = CircularPositioningEngine()
-        host.device_renderer = DeviceSurfaceRenderer()
+        host.device_renderer = (
+            renderer if renderer is not None else DeviceSurfaceRenderer()
+        )
         host._update_touch_regions_safe = self.regions.extend
         host._draw_focus_arrows = lambda surface, focus_info: self.arrows.append(
             focus_info
@@ -211,29 +233,52 @@ class TestTouchRegions:
 class TestSlotContents:
     """Neighbours fill the outer slots; absent neighbours are empty frames."""
 
-    def _slots(self, count, focused_index):
-        """The device-or-None each slot resolves to, top to bottom."""
-        devices = [_device(i) for i in range(count)]
-        return [
-            (
-                devices[focused_index + offset]
-                if 0 <= focused_index + offset < count
-                else None
-            )
-            for offset in (-1, 0, 1)
-        ]
+    # Rendered through _render_device_list_screen, so a change to the
+    # production slot rule fails these tests (issue-8a9022fc).
 
     def test_one_device_leaves_both_neighbours_empty(self):
-        assert self._slots(1, 0) == [None, _device(0), None]
+        """The single device sits in the middle; both neighbours are empty."""
+        recorder = _RecordingRenderer()
+        _Render(1, 0, renderer=recorder)
+
+        assert recorder.slots == [
+            ("top", None),
+            ("middle", "Device 0"),
+            ("bottom", None),
+        ]
 
     def test_two_devices_focus_zero_fills_the_bottom_slot(self):
-        assert self._slots(2, 0) == [None, _device(0), _device(1)]
+        """Focus on the first of two: the second is below it."""
+        recorder = _RecordingRenderer()
+        _Render(2, 0, renderer=recorder)
+
+        assert recorder.slots == [
+            ("top", None),
+            ("middle", "Device 0"),
+            ("bottom", "Device 1"),
+        ]
 
     def test_two_devices_focus_one_fills_the_top_slot(self):
-        assert self._slots(2, 1) == [_device(0), _device(1), None]
+        """Focus on the second of two: the first is above it."""
+        recorder = _RecordingRenderer()
+        _Render(2, 1, renderer=recorder)
+
+        assert recorder.slots == [
+            ("top", "Device 0"),
+            ("middle", "Device 1"),
+            ("bottom", None),
+        ]
 
     def test_five_devices_mid_list_fills_all_three(self):
-        assert self._slots(5, 2) == [_device(1), _device(2), _device(3)]
+        """Mid-list focus: both neighbours are shown."""
+        recorder = _RecordingRenderer()
+        _Render(5, 2, renderer=recorder)
+
+        assert recorder.slots == [
+            ("top", "Device 1"),
+            ("middle", "Device 2"),
+            ("bottom", "Device 3"),
+        ]
 
     def test_empty_slot_surface_matches_the_populated_footprint(self):
         renderer = DeviceSurfaceRenderer()
