@@ -739,7 +739,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
             bool: True if write successful
         """
         with self._lock:
-            start_time = time.time()
+            start_time = time.monotonic()  # monotonic: duration only (issue-e215a184)
 
             try:
                 if not self.back_surface:
@@ -887,7 +887,7 @@ class DisplayRenderingEngine(RenderingEngineInterface):
 
                 # Update statistics
                 self._stats.buffer_writes += 1
-                write_time = time.time() - start_time
+                write_time = time.monotonic() - start_time
                 self._stats.total_render_time += write_time
                 self._stats.last_render_time = write_time
 

@@ -134,6 +134,7 @@ notes: "Human verification on the Pi: FPS and render-time figures in debug.log a
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-e215a184 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-09 | Implemented; closed |
 
 ---
 

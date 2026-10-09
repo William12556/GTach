@@ -63,7 +63,7 @@ class CircularPositioningEngine:
         self, rect_coords: Tuple[int, int, int, int]
     ) -> Dict[str, Any]:
         """Validate if a rectangle fits within the circular display boundary"""
-        start_time = time.time()
+        start_time = time.monotonic()  # monotonic: duration only (issue-e215a184)
 
         try:
             x, y, width, height = rect_coords
@@ -101,7 +101,7 @@ class CircularPositioningEngine:
 
             if self._performance_monitoring["enabled"]:
                 self._performance_monitoring["stats"]["total_validation_calls"] += 1
-                duration = time.time() - start_time
+                duration = time.monotonic() - start_time
                 self._performance_monitoring["stats"][
                     "total_validation_time"
                 ] += duration
@@ -284,7 +284,7 @@ class CircularPositioningEngine:
             invalid_elements = []
             performance_stats = {}
 
-            start_time = time.time()
+            start_time = time.monotonic()  # monotonic: duration only (issue-e215a184)
 
             for item in layout_data:
                 rect_coords = (item["x"], item["y"], item["width"], item["height"])
@@ -306,7 +306,7 @@ class CircularPositioningEngine:
                         }
                     )
 
-            total_time = time.time() - start_time
+            total_time = time.monotonic() - start_time
             performance_stats = {
                 "validation_time_ms": total_time * 1000,
                 "elements_per_second": (

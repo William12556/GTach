@@ -43,8 +43,11 @@ def monitor():
 def clock(monkeypatch):
     """Replace the monitor module's time source with a settable clock."""
     now = [1000.0]
+    # Both clocks: durations read time.monotonic() (issue-e215a184).
     monkeypatch.setattr(
-        monitor_module, "time", types.SimpleNamespace(time=lambda: now[0])
+        monitor_module,
+        "time",
+        types.SimpleNamespace(time=lambda: now[0], monotonic=lambda: now[0]),
     )
     return now
 

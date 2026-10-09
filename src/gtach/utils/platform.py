@@ -98,6 +98,7 @@ class PlatformDetector:
         self._platform_type: Optional[PlatformType] = None
         self._capabilities: Optional[PlatformCapabilities] = None
         self._detection_results: List[DetectionResult] = []
+        # time.monotonic(): only ever a cache age (issue-e215a184)
         self._last_detection_time: float = 0
         self._cache_duration: float = 300.0  # 5 minutes
 
@@ -121,7 +122,7 @@ class PlatformDetector:
             PlatformType: Detected platform with highest confidence
         """
         with self._lock:
-            current_time = time.time()
+            current_time = time.monotonic()
 
             # Check cache validity
             if (
@@ -497,7 +498,7 @@ class PlatformDetector:
             PlatformCapabilities: Detailed capability information
         """
         with self._lock:
-            current_time = time.time()
+            current_time = time.monotonic()
 
             # Check cache validity
             if (
@@ -732,7 +733,7 @@ class PlatformDetector:
             "cache_info": {
                 "last_detection_time": self._last_detection_time,
                 "cache_age_seconds": (
-                    time.time() - self._last_detection_time
+                    time.monotonic() - self._last_detection_time
                     if self._last_detection_time
                     else 0
                 ),

@@ -44,6 +44,9 @@ class PerformanceMonitor(PerformanceMonitorInterface):
 
         # Monitoring state
         self._monitoring = False
+        # Durations, ages and history timestamps below use time.monotonic()
+        # so a wall-clock step cannot distort them (issue-e215a184). The
+        # dirty-region 'timestamp' stays time.time().
         self._start_time = 0.0
 
         # Frame tracking
@@ -55,7 +58,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         # Instrumentation cost reduction (change-0b00759c)
         self._frame_id_counter = 0  # monotonic frame ID source
         self._memory_cache_mb = 0.0  # cached psutil RSS reading
-        self._memory_cache_ts = 0.0  # time.time() of that reading
+        self._memory_cache_ts = 0.0  # time.monotonic() of that reading
         self._memory_sample_interval = 1.0  # seconds between psutil reads
         self._log_interval_frames = 600  # periodic log cadence
 
@@ -98,7 +101,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                     return True
 
                 self._monitoring = True
-                self._start_time = time.time()
+                self._start_time = time.monotonic()
                 self._frame_count = 0
                 self._dropped_frames = 0
 
@@ -130,7 +133,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 if not self._monitoring:
                     return
 
-                duration = time.time() - self._start_time
+                duration = time.monotonic() - self._start_time
                 avg_fps = self._frame_count / duration if duration > 0 else 0
 
                 self.logger.info(
@@ -162,7 +165,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             try:
                 self._frame_id_counter += 1
                 frame_id = self._frame_id_counter
-                current_time = time.time()
+                current_time = time.monotonic()
 
                 self._active_frames[frame_id] = current_time
 
@@ -200,7 +203,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
 
         with self._lock:
             try:
-                current_time = time.time()
+                current_time = time.monotonic()
 
                 if frame_id not in self._active_frames:
                     self.logger.warning(f"Frame {frame_id} not found in active frames")
@@ -304,7 +307,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             return
 
         with self._lock:
-            current_time = time.time()
+            current_time = time.monotonic()
             self._memory_samples.append(
                 {"timestamp": current_time, "usage_mb": usage_mb}
             )
@@ -313,7 +316,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         """Get current performance metrics"""
         with self._lock:
             try:
-                current_time = time.time()
+                current_time = time.monotonic()
 
                 # Calculate FPS from recent frames
                 fps = self._calculate_current_fps()
@@ -354,7 +357,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         """Get historical metrics for specified time period"""
         with self._lock:
             try:
-                current_time = time.time()
+                current_time = time.monotonic()
                 cutoff_time = current_time - seconds
 
                 return [
@@ -440,7 +443,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             if not self._frame_history:
                 return 0.0
 
-            current_time = time.time()
+            current_time = time.monotonic()
             recent_frames = [
                 f for f in self._frame_history if current_time - f["timestamp"] <= 1.0
             ]
@@ -483,7 +486,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
         """Get current memory usage in MB"""
         try:
             if self._process:
-                now = time.time()
+                now = time.monotonic()
                 if (
                     self._memory_cache_ts
                     and now - self._memory_cache_ts < self._memory_sample_interval
@@ -587,7 +590,7 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                     "thresholds": dict(self.thresholds),
                     "performance_acceptable": self.is_performance_acceptable(),
                     "monitoring_duration": (
-                        time.time() - self._start_time if self._monitoring else 0
+                        time.monotonic() - self._start_time if self._monitoring else 0
                     ),
                     "cache_details": dict(self._cache_stats),
                     "operation_counts": dict(self._operation_counts),

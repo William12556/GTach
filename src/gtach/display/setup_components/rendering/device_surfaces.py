@@ -165,7 +165,7 @@ class DeviceSurfaceRenderer:
         if not self.display_available:
             return None, pygame.Rect(0, 0, layout_item["width"], layout_item["height"])
 
-        start_time = time.time()
+        start_time = time.monotonic()  # monotonic: duration only (issue-e215a184)
         self._render_stats["total_renders"] += 1
 
         try:
@@ -341,7 +341,7 @@ class DeviceSurfaceRenderer:
             )
 
             # Track slow renders
-            render_time = time.time() - start_time
+            render_time = time.monotonic() - start_time
             if render_time > 0.015:  # > 15ms (higher threshold for curved rendering)
                 self._render_stats["slow_renders"] += 1
                 self.logger.warning(
