@@ -19,7 +19,7 @@ test_info:
   title: "Verify the post-pairing OBD verify retries a link-busy connect and setup completes without Retry"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "in_progress"
   type: "regression"
   priority: "medium"
   iteration: 1
@@ -81,10 +81,10 @@ test_cases:
         validation: "pytest"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "Run together with tests/test_monotonic_waits.py: 16 passed (12 + 4), 1 warning, 1.88 s. Full suite: see test-4f671d09 TC-002 (577 passed)"
       pass_fail_criteria: "4 passed, 0 failed"
     defects: []
 
@@ -177,6 +177,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-d26ca557."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "TC-001 executed on the Mac after the merge; passed. Status in_progress."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -193,6 +198,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-d26ca557. |
+| 1.1 | 2026-10-09 | TC-001 executed on the Mac; passed. Status in_progress. |
 
 ---
 

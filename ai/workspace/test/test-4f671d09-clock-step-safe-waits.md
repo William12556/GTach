@@ -19,7 +19,7 @@ test_info:
   title: "Verify timed waits in the supervision loops and one-shot waits are not extended by a backward wall-clock step"
   date: "2026-10-09"
   author: "William Watson"
-  status: "planned"
+  status: "in_progress"
   type: "regression"
   priority: "high"
   iteration: 1
@@ -85,10 +85,10 @@ test_cases:
         validation: "pytest"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "Run together with tests/test_obd_verify_busy_retry.py: 16 passed (12 + 4), 1 warning, 1.88 s"
       pass_fail_criteria: "12 passed, 0 failed"
     defects: []
 
@@ -107,10 +107,10 @@ test_cases:
         validation: "pytest summary line"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (Mac, guided by Claude)"
+      actual_result: "577 passed, 1 warning, 45.75 s; coverage 49% overall"
       pass_fail_criteria: "0 failed"
     defects: []
 
@@ -128,10 +128,10 @@ test_cases:
         validation: "Inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "Claude (mcp-ripgrep on the merged working tree)"
+      actual_result: "One match: splash.py:274 'return self._completion_event.wait()' (untimed branch). wait_for_event calls present: transport.py 721, 734, 740; watchdog.py 162; obd.py 110, 170; interface.py 183; splash.py 275 (eight)"
       pass_fail_criteria: "Only the untimed splash wait"
     defects: []
 
@@ -285,6 +285,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial test document for change-4f671d09."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "TC-001 to TC-003 executed on the Mac after the merge; passed. Status in_progress."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -301,6 +306,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-4f671d09. |
+| 1.1 | 2026-10-09 | TC-001 to TC-003 executed on the Mac; passed. Status in_progress. |
 
 ---
 
