@@ -150,6 +150,7 @@ notes: "Human verification on the Pi: after setup completes, the first OBD conne
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-04c18cda iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-09 | Implemented; closed |
 
 ---
 

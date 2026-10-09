@@ -47,6 +47,11 @@ class OBDProtocol:
     # warning threshold (issue-dc52c4e4).
     _INIT_0100_TIMEOUT_S: float = 5.0
 
+    # Settle after connecting to a pre-initialised adapter, waited in
+    # slices with a heartbeat after each (issue-04c18cda).
+    _PRE_INIT_SETTLE_S: float = 1.5
+    _SETTLE_SLICE_S: float = 0.5
+
     def __init__(
         self,
         transport: OBDTransport,
@@ -150,11 +155,21 @@ class OBDProtocol:
             else:
                 # Adapter already reset by setup probe — skip ATZ only.
                 # Settle briefly to allow emulator to accept new RFCOMM connection.
+                # Sliced so a stop interrupts it and the heartbeat gap stays
+                # within one slice (issue-04c18cda).
                 self.logger.debug(
-                    "Skipping ATZ — adapter pre-initialised; settling 1.5s"
+                    "Skipping ATZ — adapter pre-initialised; "
+                    f"settling {self._PRE_INIT_SETTLE_S}s"
                 )
-                time.sleep(1.5)
-                self.thread_manager.update_heartbeat("obd_protocol")
+                deadline = time.monotonic() + self._PRE_INIT_SETTLE_S
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    if self.shutdown_event.wait(min(self._SETTLE_SLICE_S, remaining)):
+                        self.logger.debug("Settle interrupted by stop")
+                        return False
+                    self.thread_manager.update_heartbeat("obd_protocol")
 
             # Config commands are fast and do not reset the adapter. They must
             # always run — ATE0 (echo off) is required for correct response parsing.

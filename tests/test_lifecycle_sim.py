@@ -203,14 +203,6 @@ class TestWatchdogQuiet:
         calls, _ = watchdog_run
         assert calls == []
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "OBDProtocol._initialize_protocol sleeps 1.5 s with "
-            "time.sleep and no heartbeat when adapter_pre_initialised "
-            "(obd.py:148), a heartbeat gap above the 1.0 s warning timeout"
-        ),
-    )
     def test_no_obd_unresponsive_warning(self, watchdog_run):
         _, obd_warnings = watchdog_run
         assert obd_warnings == []
