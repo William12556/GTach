@@ -1015,9 +1015,10 @@ ai/workspace/report/report-<uuid>-<name>.md.
     - Test location: tests/ directory at project root (not src/tests/)
     - Planner: Automatic precursor to test execution
     - Planner: Generates executable test scripts from T04 test documentation in tests/
-    - Planner: Creates unit tests for components in subdirectories (tests/\<component\>/)
+    - Planner: May organise tests by component in subdirectories (tests/\<component\>/); a flat tests/ is equally valid
     - Planner: Uses pytest or unittest framework per pyproject.toml configuration
-    - Planner: Names test files with test_*.py convention
+    - Planner: Names test files with test_*.py convention, after the behaviour under test, not after a document UUID
+    - Planner: Records the issue and change UUIDs a test module covers in its module docstring
     - Planner: Links test scripts to test documentation via T04 references
     - Workflow: T04 test doc creation → pytest file generation → test execution
   - P15.4 Test Planning
@@ -1033,10 +1034,9 @@ ai/workspace/report/report-<uuid>-<name>.md.
     - Planner: Captures: pass/fail status, defects found, coverage achieved
     - Planner: Links failed tests to issue documents
   - P15.7 Test Organization
-    - Planner: Maintains hierarchical test structure in tests/
-    - Planner: Separates permanent unit tests from ephemeral validation scripts
-    - Planner: Organizes unit tests by component in subdirectories
-    - Planner: Places fix validation scripts at tests/ root level
+    - Planner: Maintains tests/ as the permanent regression suite; every file under tests/ is permanent
+    - Planner: Does not place ephemeral validation or diagnostic scripts in tests/; one-off diagnostics run outside the repository (for example a temporary directory on the target platform) and are not committed
+    - Planner: May organise tests by component in subdirectories (P15.3)
   - P15.8 Test Isolation
     - Planner: Uses temporary environments (tempfile, shutil) for test execution
     - Planner: Ensures tests create/destroy controlled test environments
@@ -1048,15 +1048,13 @@ ai/workspace/report/report-<uuid>-<name>.md.
     - Planner: Verifies interface contracts without external dependencies
     - Planner: Documents mocking strategy in test documentation
   - P15.10 Regression Testing
-    - Planner: Creates targeted validation scripts for specific fixes
+    - Planner: Validates a specific fix with the permanent test written for it, run alone by node id or -k
     - Planner: Implements progressive validation: minimal → integration → full suite
-    - Planner: Documents validation scripts with fix references
-    - Planner: Removes validation scripts after fix verification
+    - Planner: References the fix's issue and change UUIDs in the test module docstring (P15.3)
   - P15.11 Test Lifecycle Management
-    - Planner: Distinguishes permanent regression suite from temporary validation
-    - Planner: Maintains permanent tests in tests/\<component\>/ subdirectories
-    - Planner: Archives or removes ephemeral validation scripts post-verification
-    - Planner: Updates test documentation to reflect lifecycle status
+    - Test files under tests/ are permanent; they are never moved to a closed/ folder, and git history preserves prior versions
+    - Planner: Closes a T04 test document only after the full suite passes; its notes field records the pytest path(s) and the commit that holds them
+    - After its T04 closes, a test file is changed or removed only under a new P03 issue and P04 change; the closed T04 is not edited
   - P15.12 Test-Prompt Coupling
     - Test references source prompt UUID in coupled_docs.prompt_ref field
     - Test iteration number matches source prompt iteration number
@@ -1091,9 +1089,9 @@ pip install dist/*.whl
     - Targeted validation: Execute minimal test to verify specific fix
     - Integration validation: Execute tests for dependent components
     - Regression validation: Execute full test suite before closure
-    - Ephemeral scripts: Create temporary validation at tests/ root
-    - Permanent tests: Maintain regression suite in component subdirectories
-    - Script lifecycle: Archive or remove validation scripts post-verification
+    - Targeted tests: Written as permanent tests under tests/ and run alone by node id or -k
+    - Permanent tests: The whole of tests/ forms the regression suite
+    - Diagnostic scripts: Run outside the repository and are not committed
     - Validation sequence mandatory before document closure
     - **Validation Hooks (Worker and reviewer, claude_code/claude_omlx profiles — mandatory):**
       - PreToolUse hook: Validates design constraints before code generation
@@ -1145,7 +1143,8 @@ pip install dist/*.whl
     | Document closure | Requires Stage 3 regression pass |
     | Coupling mismatch | Blocks workflow — resolve before proceeding |
     | External dependencies in unit tests | Always mocked |
-    | Ephemeral scripts | Removed at document closure |
+    | Test files under tests/ | Permanent; never archived; changed only under P03/P04 after T04 closure |
+    | Diagnostic scripts | Outside the repository; never committed |
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -1272,6 +1271,7 @@ See [workflow.md](workflow.md).
 | 12.0 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 | 12.1 | 2026-10-01 | P00.4–P00.7 two-domain wording replaced; P10/P13.3 context file wording; P00.11 and P13.3 approvals recorded with approve.py and re-approval after edits; P13.1 worker/reviewer compound (audit-14e05e35 M-03, L-05, L-15; change-82dbf16a) |
 | 12.2 | 2026-10-01 | P00.11 state files: review-result.txt not read; P13.3 task file must be the approved prompt in ai/workspace/prompt/ (change-82dbf16a iteration 2, audit-14e05e35 follow-up) |
+| 12.3 | 2026-10-09 | P15.3, P15.7, P15.10, P15.11, P15.15, P15.18: every file under tests/ is permanent and is never archived; ephemeral validation scripts retired; diagnostics run outside the repository; component subdirectories optional; test files named by behaviour with covered UUIDs in the module docstring; T04 closes after a full-suite pass with pytest path and commit in notes; closed tests change only under P03/P04 (sourced from GTach). Non-breaking. |
 
 ---
 [Return to Table of Contents](<#table of contents>)
