@@ -24,8 +24,8 @@ issue_info:
   type: "defect"
   iteration: 1
   coupled_docs:
-    change_ref: ""
-    change_iteration: null
+    change_ref: "change-4f671d09"
+    change_iteration: 1
 
 source:
   origin: "test_result"
@@ -113,8 +113,8 @@ analysis:
 resolution:
   assigned_to: ""
   target_date: ""
-  approach: ""
-  change_ref: ""
+  approach: "Sleep-polled wait helper at the six affected waits; see change-4f671d09."
+  change_ref: "change-4f671d09"
   resolved_date: ""
   resolved_by: ""
   fix_description: ""
@@ -138,7 +138,7 @@ traceability:
   design_refs:
     - ""
   change_refs:
-    - ""
+    - "change-4f671d09"
   test_refs:
     - "test-e215a184 TC-005"
     - "~/Documents/gtach-testlogs/stage6/ and stage7/ (not in the repository)"
@@ -157,6 +157,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue document, raised during on-device verification of the nine-change batch."
+  - version: "1.1"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "Coupled to change-4f671d09."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -173,6 +178,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial issue document, raised during on-device verification of the nine-change batch. |
+| 1.1 | 2026-10-09 | Coupled to change-4f671d09. |
 
 ---
 
