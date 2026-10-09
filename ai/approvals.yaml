@@ -16,3 +16,4 @@ approvals:
   - { uuid: "04c18cda", stage: "prompt", date: "2026-10-09T05:05:46Z", blobs: { "prompt/prompt-04c18cda-obd-settle-sleep-without-heartbeat.md": "3abed18a73f5caebb38a2ba30f959401d19389b8" } }
   - { uuid: "ae65fa10", stage: "change", date: "2026-10-09T05:05:48Z", blobs: { "change/change-ae65fa10-config-store-save-drops-unknown-keys.md": "9ceaedb6a9f2638c8d7982cf2c48f5f3f7e427c4" } }
   - { uuid: "ae65fa10", stage: "prompt", date: "2026-10-09T05:05:50Z", blobs: { "prompt/prompt-ae65fa10-config-store-save-drops-unknown-keys.md": "41eba77ef8ff3e46d055269b6c09cd1a00b35fbe" } }
+  - { uuid: "c9de5fb0", stage: "change", date: "2026-10-09T05:05:52Z", blobs: { "change/change-c9de5fb0-duplicate-bluetooth-device-models.md": "347b5cb6a6cf907316c37f6e0fd0c4d973f80e52" } }
