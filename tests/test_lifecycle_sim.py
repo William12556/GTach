@@ -122,15 +122,6 @@ class TestStart:
 
 class TestLinkLoss:
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "SimTransport inherits drop_link (transport.py:450-453), which "
-            "resets _state but not _connected; SimTransport.is_connected "
-            "(sim_transport.py:69) reads _connected, so the drop is never "
-            "observed and nothing reconnects"
-        ),
-    )
     def test_drop_is_observed_and_link_reconnects(self, harness):
         assert harness.wait_for_samples(5) >= 5
 

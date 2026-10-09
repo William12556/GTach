@@ -58,6 +58,22 @@ class SimTransport(OBDTransport):
             self._state = TransportState.DISCONNECTED
             self.logger.info("SimTransport disconnected")
 
+    def drop_link(self, cause: Optional[str] = None) -> None:
+        """Close the simulated link while leaving reconnection possible.
+
+        The base implementation resets ``_state`` but not ``_connected``,
+        which :meth:`is_connected` reads, so the drop was never observed
+        and nothing reconnected (issue-50bf25ad). Unlike :meth:`disconnect`,
+        this does not set ``_shutdown``: the supervising loop must still be
+        able to re-establish the link.
+
+        Args:
+            cause: Why the link was dropped. None uses the base default.
+        """
+        with self._lock:
+            self._connected = False
+        super().drop_link(cause)
+
     def is_connected(self) -> bool:
         """Check if the simulated transport is connected.
 
