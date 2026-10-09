@@ -20,6 +20,7 @@ from enum import Enum, auto
 from typing import Any, Callable, Optional
 
 from ..utils.platform import PlatformType
+from ..utils.waits import wait_for_event
 from .device_store import get_device_store
 
 # The transport name set and its classifications, defined
@@ -674,9 +675,10 @@ class OBDTransport(ABC):
         re-enter it: a mid-session link loss was unrecoverable for the
         life of the process (issue-9c2f41d8).
 
-        Every wait is on ``_shutdown`` rather than ``time.sleep``, so a
-        shutdown while connected or mid-retry is observed immediately
-        rather than after the remaining delay.
+        Every wait uses ``wait_for_event`` on ``_shutdown``, which a
+        backward wall-clock step cannot extend (issue-4f671d09), so a
+        shutdown while connected or mid-retry is observed within one
+        poll slice rather than after the remaining delay.
 
         Args:
             retry_delay: Delay in seconds between retry attempts.
@@ -711,7 +713,7 @@ class OBDTransport(ABC):
                 # for as long as the link stayed healthy.
                 while self.is_connected() and not self._shutdown.is_set():
                     _beat()
-                    self._shutdown.wait(1.0)
+                    wait_for_event(self._shutdown, 1.0)
                 if self._shutdown.is_set():
                     return
                 # The link dropped. Fall through to the next outer
@@ -724,13 +726,13 @@ class OBDTransport(ABC):
                     "Link lost - resuming reconnection attempts " "in %.1f seconds",
                     retry_delay,
                 )
-                self._shutdown.wait(retry_delay)
+                wait_for_event(self._shutdown, retry_delay)
                 continue
             _beat()
             logger.warning(
                 "Failed to connect, retrying in %.1f seconds...", retry_delay
             )
-            self._shutdown.wait(retry_delay)
+            wait_for_event(self._shutdown, retry_delay)
 
 
 def select_transport(

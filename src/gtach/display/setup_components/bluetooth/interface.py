@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 from ....comm.device_store import get_device_store
 from ....comm.models import BluetoothDevice as CommBluetoothDevice
 from ....comm.pairing import BluetoothPairing
+from ....utils.waits import wait_for_event
 from ...async_operations import (
     AsyncOperation,
     OperationStatus,
@@ -171,7 +172,7 @@ class BluetoothSetupInterface:
     def ensure_pairing_initialized(self) -> bool:
         """Ensure Bluetooth pairing is initialized, waiting if necessary"""
         try:
-            if not self._pairing_ready.wait(timeout=10.0):
+            if not wait_for_event(self._pairing_ready, 10.0):
                 self.logger.error(
                     "Timeout waiting for Bluetooth pairing initialization"
                 )

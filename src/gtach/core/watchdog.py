@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Any, Callable, Dict, Optional
 
+from ..utils.waits import wait_for_event
 from .thread import ThreadManager, ThreadStatus
 
 
@@ -158,7 +159,7 @@ class WatchdogMonitor:
         """Main monitoring loop"""
         while not self._stop_event.is_set():
             self._check_thread_health()
-            self._stop_event.wait(self.check_interval)
+            wait_for_event(self._stop_event, self.check_interval)
 
     def _check_thread_health(self) -> None:
         """Check thread health and dispatch recovery outside the state lock.

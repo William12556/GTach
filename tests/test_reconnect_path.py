@@ -20,6 +20,7 @@ import types
 
 import pytest
 
+import gtach.comm.obd as obd_module
 import gtach.comm.transport as transport_module
 from gtach.comm.obd import OBDProtocol
 from gtach.comm.rfcomm import RFCOMMTransport
@@ -90,7 +91,6 @@ class TestInitBackOff:
         obd = _protocol(_ScriptedLink(None))
         results = iter([False, False])
         waits = []
-        real_wait = obd.shutdown_event.wait
 
         def init():
             try:
@@ -99,12 +99,15 @@ class TestInitBackOff:
                 obd.shutdown_event.set()
                 return False
 
-        def wait(timeout=None):
+        # The back-off waits via wait_for_event, not Event.wait
+        # (issue-4f671d09).
+        def wait(event, timeout):
+            assert event is obd.shutdown_event
             waits.append(timeout)
-            return real_wait(0)
+            return event.is_set()
 
         monkeypatch.setattr(obd, "_initialize_protocol", init)
-        monkeypatch.setattr(obd.shutdown_event, "wait", wait)
+        monkeypatch.setattr(obd_module, "wait_for_event", wait)
 
         obd._protocol_loop()
 

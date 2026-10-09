@@ -17,6 +17,8 @@ import time
 from collections import deque
 from typing import Deque, Dict, Optional, Tuple
 
+from ..utils.waits import wait_for_event
+
 # Import configuration classes
 try:
     from ..utils.config import SplashConfig
@@ -268,7 +270,9 @@ class SplashScreen:
             remaining = max(0, self.duration - elapsed)
             effective_timeout = min(timeout, remaining)
 
-        return self._completion_event.wait(effective_timeout)
+        if effective_timeout is None:
+            return self._completion_event.wait()
+        return wait_for_event(self._completion_event, effective_timeout)
 
     def _get_cached_font(
         self, font_type: str, fallback_size: int

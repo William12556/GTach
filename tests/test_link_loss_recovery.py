@@ -338,8 +338,10 @@ class TestSupervisingLoop:
         code = "\n".join(_executable_lines(OBDTransport.reconnect_indefinitely))
 
         assert "time.sleep" not in code
-        # Supervising poll, post-drop delay, failed-connect delay.
-        assert code.count("self._shutdown.wait(") == 3
+        # Supervising poll, post-drop delay, failed-connect delay. All
+        # via wait_for_event, never a timed Event.wait (issue-4f671d09).
+        assert code.count("wait_for_event(self._shutdown,") == 3
+        assert ".wait(" not in code
 
     def test_signature_is_unchanged(self):
         import inspect

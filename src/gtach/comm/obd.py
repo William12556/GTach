@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from ..core import ThreadManager
+from ..utils.waits import wait_for_event
 from .transport import OBDTransport
 
 
@@ -106,7 +107,7 @@ class OBDProtocol:
                 if not self._initialize_protocol():
                     # Back off rather than retry at once (issue-907de6de).
                     self.thread_manager.update_heartbeat("obd_protocol")
-                    self.shutdown_event.wait(self._INIT_RETRY_DELAY_S)
+                    wait_for_event(self.shutdown_event, self._INIT_RETRY_DELAY_S)
                     continue
 
                 while (
@@ -166,7 +167,9 @@ class OBDProtocol:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         break
-                    if self.shutdown_event.wait(min(self._SETTLE_SLICE_S, remaining)):
+                    if wait_for_event(
+                        self.shutdown_event, min(self._SETTLE_SLICE_S, remaining)
+                    ):
                         self.logger.debug("Settle interrupted by stop")
                         return False
                     self.thread_manager.update_heartbeat("obd_protocol")

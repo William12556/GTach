@@ -190,6 +190,7 @@ notes: "Human verification on gtach.local: repeat the issue reproduction steps (
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-4f671d09 iteration 1. Target profile claude_code. |
 | 1.1 | 2026-10-09 | Aligned with change-4f671d09 v1.1: two one-shot waits added (interface.py, splash.py timed branch). |
+| 1.2 | 2026-10-09 | Implemented; closed |
 
 ---
 
