@@ -13,7 +13,19 @@ Contains dataclasses and enums used across communication modules.
 
 import datetime
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Protocol
+
+
+class DiscoveredDevice(Protocol):
+    """A discovered device, such as the setup model's BluetoothDevice.
+
+    Structural, so this module need not import from the display package
+    (issue-c9de5fb0).
+    """
+
+    name: str
+    mac_address: str
+    device_type: str
 
 
 @dataclass
@@ -59,6 +71,25 @@ class BluetoothDevice:
             result["last_connected"] = self.last_connected.isoformat()
 
         return result
+
+    @classmethod
+    def from_discovered(cls, device: DiscoveredDevice) -> "BluetoothDevice":
+        """Create the persisted model from a discovered device.
+
+        The single setup → comm conversion (issue-c9de5fb0). Only name,
+        mac_address and device_type are carried; last_connected is unset.
+
+        Args:
+            device: A discovered device (setup model).
+
+        Returns:
+            The persisted comm model.
+        """
+        return cls(
+            name=device.name,
+            mac_address=device.mac_address,
+            device_type=device.device_type,
+        )
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BluetoothDevice":

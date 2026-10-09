@@ -142,6 +142,7 @@ notes: "Human verification on the Pi: pair a device in setup; it is saved and re
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-c9de5fb0 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-09 | Implemented; closed |
 
 ---
 

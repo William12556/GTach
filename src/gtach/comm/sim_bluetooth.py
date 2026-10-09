@@ -216,11 +216,7 @@ class SimBluetoothPairing:
                     from ..comm.device_store import get_device_store
                     from ..comm.models import BluetoothDevice as CommBluetoothDevice
 
-                    comm_device = CommBluetoothDevice(
-                        name=device.name,
-                        mac_address=device.mac_address,
-                        device_type=device.device_type,
-                    )
+                    comm_device = CommBluetoothDevice.from_discovered(device)
                     get_device_store().save_device(comm_device, is_primary=True)
                 except Exception as e:
                     self.logger.warning(

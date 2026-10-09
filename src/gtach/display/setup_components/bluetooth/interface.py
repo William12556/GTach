@@ -426,11 +426,7 @@ class BluetoothSetupInterface:
                         # Persist device to store before OBD verify
                         # Convert setup BluetoothDevice -> comm BluetoothDevice
                         # (DeviceStore requires the comm model's last_connected field)
-                        comm_device = CommBluetoothDevice(
-                            name=device.name,
-                            mac_address=device.mac_address,
-                            device_type=device.device_type,
-                        )
+                        comm_device = CommBluetoothDevice.from_discovered(device)
                         self.device_store.save_device(comm_device, is_primary=True)
 
                         # Verify OBD connection automatically after pairing success
