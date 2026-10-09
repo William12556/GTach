@@ -12,3 +12,4 @@ approvals:
   - { uuid: "ba672e81", stage: "accept", date: "2026-10-02T08:48:39Z", blobs: {  } }
   - { uuid: "50bf25ad", stage: "change", date: "2026-10-09T05:05:40Z", blobs: { "change/change-50bf25ad-sim-transport-drop-link-not-observed.md": "913113b893f39642e8c8c0929f78fad757f901e9" } }
   - { uuid: "50bf25ad", stage: "prompt", date: "2026-10-09T05:05:42Z", blobs: { "prompt/prompt-50bf25ad-sim-transport-drop-link-not-observed.md": "2e3a46d67fd902d858cf67aad92ff2245a521932" } }
+  - { uuid: "04c18cda", stage: "change", date: "2026-10-09T05:05:44Z", blobs: { "change/change-04c18cda-obd-settle-sleep-without-heartbeat.md": "d17ddcefe7fc1e541bb0611846f0fa6c919e1be4" } }
