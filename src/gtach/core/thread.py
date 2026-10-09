@@ -22,7 +22,11 @@ import weakref
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Callable, Dict, Optional
+from types import TracebackType
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Type
+
+if TYPE_CHECKING:
+    from ..comm.obd import OBDResponse
 
 
 class ThreadStatus(Enum):
@@ -62,7 +66,7 @@ class ThreadInfo:
     stop_func: Optional[Callable] = None
     creation_time: float = field(default_factory=time.time)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Make ThreadInfo hashable based on thread identity"""
         return hash((id(self.thread), self.creation_time))
 
@@ -95,11 +99,11 @@ class ThreadManager:
         )
 
         # Resource tracking for cleanup verification
-        self._resource_tracker = weakref.WeakSet()
+        self._resource_tracker: "weakref.WeakSet[ThreadInfo]" = weakref.WeakSet()
 
         # Message queue for thread communication — bounded to prevent stale data
         # accumulation
-        self.message_queue = queue.Queue(maxsize=5)
+        self.message_queue: "queue.Queue[OBDResponse]" = queue.Queue(maxsize=5)
         self.data_available = threading.Event()
 
         # Backward compatibility for watchdog
@@ -108,7 +112,10 @@ class ThreadManager:
         self.logger.debug(f"ThreadManager initialized with {num_workers} workers")
 
     def register_thread(
-        self, name: str, thread: threading.Thread, stop_func=None
+        self,
+        name: str,
+        thread: threading.Thread,
+        stop_func: Optional[Callable[[], None]] = None,
     ) -> None:
         """Register a new thread for management with atomic state transition"""
         if self._shutdown_event.is_set():
@@ -280,15 +287,20 @@ class ThreadManager:
         with self._state_lock:
             self.threads.clear()
 
-    def __enter__(self):
+    def __enter__(self) -> "ThreadManager":
         """Context manager entry"""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         """Context manager exit with automatic cleanup"""
         self.shutdown()
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Ensure cleanup on garbage collection"""
         try:
             if not self._shutdown_event.is_set():
