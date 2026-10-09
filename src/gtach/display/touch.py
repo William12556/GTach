@@ -341,28 +341,3 @@ class TouchHandler:
                 self.logger.debug("No touch interface to stop")
         except Exception as e:
             self.logger.error(f"Error stopping touch interface: {e}", exc_info=True)
-
-    def get_touch_interface_info(self) -> dict:
-        """Get information about the current touch interface for debugging"""
-        try:
-            info = {
-                "touch_interface_available": TOUCH_INTERFACE_AVAILABLE,
-                "interface_type": (
-                    type(self.touch_interface).__name__
-                    if self.touch_interface
-                    else "None"
-                ),
-            }
-
-            if self.touch_interface is not None:
-                try:
-                    interface_info = self.touch_interface.get_info()
-                    info["interface_info"] = interface_info
-                except AttributeError:
-                    info["interface_info"] = "get_info() not available"
-
-            return info
-
-        except Exception as e:
-            self.logger.error(f"Error getting touch interface info: {e}", exc_info=True)
-            return {"error": str(e)}

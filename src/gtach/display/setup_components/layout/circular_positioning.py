@@ -38,7 +38,6 @@ class CircularPositioningEngine:
         self.display_size = display_size
 
         # Performance optimization caches
-        self._circular_layout_cache = {}
         self._cache_lock = threading.Lock()
 
         # Performance monitoring
@@ -59,28 +58,6 @@ class CircularPositioningEngine:
             f"Initialized CircularPositioningEngine with center={display_center}, "
             f"safe_radius={safe_radius}, max_radius={max_radius}"
         )
-
-    def get_circular_safe_area(self) -> Dict[str, Any]:
-        """Get circular display geometry constants for safe UI positioning"""
-        try:
-            geometry = {
-                "center": self.display_center,
-                "safe_radius": self.display_safe_radius,
-                "max_radius": self.display_max_radius,
-                "size": self.display_size,
-            }
-
-            self.logger.debug(f"Circular display geometry: {geometry}")
-            return geometry
-
-        except Exception as e:
-            self.logger.error(f"Error getting circular safe area: {e}", exc_info=True)
-            return {
-                "center": (240, 240),
-                "safe_radius": 200,
-                "max_radius": 220,
-                "size": (480, 480),
-            }
 
     def validate_circular_bounds(
         self, rect_coords: Tuple[int, int, int, int]
@@ -380,16 +357,3 @@ class CircularPositioningEngine:
                 "performance_stats": {},
                 "recommendations": ["Validation failed due to error"],
             }
-
-    def clear_layout_cache(self) -> None:
-        """Clear the circular layout cache to free memory"""
-        try:
-            with self._cache_lock:
-                cache_size = len(self._circular_layout_cache)
-                self._circular_layout_cache.clear()
-                self.logger.info(
-                    f"Cleared circular layout cache ({cache_size} entries)"
-                )
-
-        except Exception as e:
-            self.logger.error(f"Error clearing layout cache: {e}", exc_info=True)

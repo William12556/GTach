@@ -46,25 +46,6 @@ class FontCategory(Enum):
     MINIMAL = "minimal"  # Status indicators, hints
 
 
-class ButtonSize(Enum):
-    """Standard button size categories."""
-
-    LARGE = "large"  # Primary actions (280x100)
-    MEDIUM = "medium"  # Secondary actions (140x60)
-    SMALL = "small"  # Tertiary actions (110x50)
-    ICON = "icon"  # Icon-only buttons (40x40)
-    FLOATING = "floating"  # Floating action buttons (44x44)
-
-
-class ButtonState(Enum):
-    """Button visual states."""
-
-    NORMAL = "normal"  # Default state
-    HOVER = "hover"  # Mouse hover (if supported)
-    PRESSED = "pressed"  # Currently being pressed
-    DISABLED = "disabled"  # Not interactive
-
-
 class TypographyConstants:
     """
     Centralized typography constants for minimalist design.

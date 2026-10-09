@@ -26,8 +26,6 @@ class SetupScreen(Enum):
     PAIRING = auto()
     COMPLETE = auto()
     CURRENT_DEVICE = auto()
-    DEVICE_MANAGEMENT = auto()
-    CONFIRMATION = auto()
 
 
 class PairingStatus(Enum):

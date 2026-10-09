@@ -321,7 +321,6 @@ class SetupDisplayManager:
                 SetupScreen.WELCOME,
                 SetupScreen.COMPLETE,
                 SetupScreen.CURRENT_DEVICE,
-                SetupScreen.CONFIRMATION,
             ]
 
             if should_cache:

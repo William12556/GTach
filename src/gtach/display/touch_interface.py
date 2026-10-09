@@ -216,29 +216,6 @@ class MockHyperPixelTouch:
         self._running = False
         self.logger.info("Mock HyperPixel touch interface stopped")
 
-    def simulate_touch(self, x: int, y: int, state: bool, touch_id: int = 0):
-        """
-        Simulate a touch event for development/testing.
-
-        Args:
-            x: X coordinate in pixels (0-480)
-            y: Y coordinate in pixels (0-480)
-            state: True for touch down, False for touch up
-            touch_id: Touch identifier
-        """
-        if self._callback and self._running:
-            self.logger.debug(
-                f"Simulating touch: id={touch_id}, pos=({x},{y}), state={state}"
-            )
-            try:
-                self._callback(touch_id, x, y, state)
-            except Exception as e:
-                self.logger.error(f"Error in mock touch callback: {e}", exc_info=True)
-        else:
-            self.logger.warning(
-                "Cannot simulate touch - callback not registered or device not running"
-            )
-
 
 class HyperPixelTouchInterface(TouchInterface):
     """
@@ -412,9 +389,6 @@ class HyperPixelTouchInterface(TouchInterface):
 
             self._running = True
             self.logger.info("✅ Mock HyperPixel touch interface started successfully")
-            self.logger.info(
-                "💡 Use simulate_touch_event() method for testing touch interactions"
-            )
 
         except Exception as e:
             self.logger.error(f"Mock implementation startup failed: {e}", exc_info=True)
@@ -444,52 +418,6 @@ class HyperPixelTouchInterface(TouchInterface):
             self.logger.error(
                 f"Error stopping HyperPixel touch interface: {e}", exc_info=True
             )
-
-    def simulate_touch_event(
-        self, x: float, y: float, state: bool, touch_id: int = 0
-    ) -> None:
-        """
-        Simulate a touch event for development/testing.
-
-        Only works when using mock implementation.
-
-        Args:
-            x: Normalized X coordinate (0.0 to 1.0)
-            y: Normalized Y coordinate (0.0 to 1.0)
-            state: True for touch down, False for touch up
-            touch_id: Touch identifier
-        """
-        if not self._running:
-            self.logger.warning("Cannot simulate touch - interface not running")
-            return
-
-        if not self._using_mock:
-            self.logger.warning(
-                "Touch simulation only available in mock mode (development platforms)"
-            )
-            return
-
-        if not hasattr(self._touch_device, "simulate_touch"):
-            self.logger.error("Mock device does not support touch simulation")
-            return
-
-        try:
-            # Convert normalized coordinates to pixel coordinates
-            pixel_x = int(x * 480)
-            pixel_y = int(y * 480)
-
-            # Clamp to valid range
-            pixel_x = max(0, min(480, pixel_x))
-            pixel_y = max(0, min(480, pixel_y))
-
-            self.logger.debug(
-                f"Simulating touch: ({x:.3f}, {y:.3f}) -> pixel ({pixel_x}, "
-                f"{pixel_y}), state={state}"
-            )
-            self._touch_device.simulate_touch(pixel_x, pixel_y, state, touch_id)
-
-        except Exception as e:
-            self.logger.error(f"Error simulating touch event: {e}", exc_info=True)
 
     def get_info(self) -> dict:
         """Get HyperPixel-specific interface information"""
@@ -735,42 +663,3 @@ class TouchInterfaceNotAvailableError(TouchInterfaceError):
     """Exception raised when requested touch interface is not available"""
 
     pass
-
-
-# Module-level convenience functions
-def normalize_coordinates(x: int, y: int, width: int = 480, height: int = 480) -> tuple:
-    """
-    Normalize pixel coordinates to 0.0-1.0 range.
-
-    Args:
-        x: X coordinate in pixels
-        y: Y coordinate in pixels
-        width: Display width in pixels (default: 480 for HyperPixel)
-        height: Display height in pixels (default: 480 for HyperPixel)
-
-    Returns:
-        tuple: (normalized_x, normalized_y)
-    """
-    norm_x = max(0.0, min(1.0, x / width))
-    norm_y = max(0.0, min(1.0, y / height))
-    return norm_x, norm_y
-
-
-def denormalize_coordinates(
-    norm_x: float, norm_y: float, width: int = 480, height: int = 480
-) -> tuple:
-    """
-    Convert normalized coordinates back to pixel coordinates.
-
-    Args:
-        norm_x: Normalized X coordinate (0.0 to 1.0)
-        norm_y: Normalized Y coordinate (0.0 to 1.0)
-        width: Display width in pixels (default: 480 for HyperPixel)
-        height: Display height in pixels (default: 480 for HyperPixel)
-
-    Returns:
-        tuple: (x_pixels, y_pixels)
-    """
-    x = int(norm_x * width)
-    y = int(norm_y * height)
-    return x, y

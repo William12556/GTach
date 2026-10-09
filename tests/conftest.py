@@ -43,11 +43,3 @@ def _reset_device_store():
     from gtach.comm.device_store import reset_device_store
 
     reset_device_store()
-
-
-# Bound applied to every blocking acquisition assertion in the suite. A
-# lost-wakeup defect manifests as a thread that never returns, so an
-# unbounded wait would convert a regression into a hung run with no
-# diagnostic. Three orders of magnitude above the expected acquisition
-# time, so it discriminates without being tight.
-ACQUIRE_TIMEOUT = 2.0

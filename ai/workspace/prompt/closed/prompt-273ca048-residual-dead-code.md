@@ -121,6 +121,7 @@ notes: "The report lists, per group, items removed, items kept with the referenc
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial prompt implementing change-273ca048 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-09 | Implemented; closed |
 
 ---
 
