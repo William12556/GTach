@@ -632,6 +632,14 @@ class TestWedgeEscalation:
         assert stub.last_failure_cause == _WEDGED_LINK_CAUSE
         assert stub._consecutive_connect_failures == 8
 
+    def test_refused_connects_do_not_escalate(self, adapter_present):
+        """A refusing peer proves the controller works (test-4f671d09 TC-005)."""
+        stub = _StubTransport()
+
+        self._fail(stub, 8, code=errno.ECONNREFUSED)
+
+        assert stub.last_failure_cause == _CONNECT_FAULT_CAUSES[errno.ECONNREFUSED]
+
     def test_absent_adapter_is_not_masked(self, adapter_absent):
         """The more specific fact wins over the wedge diagnosis."""
         stub = _StubTransport()

@@ -19,7 +19,7 @@ test_info:
   title: "Verify timed waits in the supervision loops and one-shot waits are not extended by a backward wall-clock step"
   date: "2026-10-09"
   author: "William Watson"
-  status: "in_progress"
+  status: "passed"
   type: "regression"
   priority: "high"
   iteration: 1
@@ -160,10 +160,10 @@ test_cases:
     postconditions:
       - "timedatectl set-ntp true; confirm the clock is correct (timedatectl status)"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local v0.4.11, guided by Claude)"
+      actual_result: "NTP off; real 14:42:49 stepped to 13:42:49; after 120 s stepped +2 h to 15:44:49; checked 20 s later. error.log 'unresponsive' lines: only the pre-fix 2026-10-09 11:06:46 (102.9 s) entry; none in the test window. Before the fix the warning appeared at the forward step. NTP restored afterwards (a further ~1 h backward step)"
       pass_fail_criteria: "No unresponsive warning (before the fix: 102.9 s warning)"
     defects: []
 
@@ -195,10 +195,10 @@ test_cases:
     postconditions:
       - "timedatectl set-ntp true; confirm the clock is correct"
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local v0.4.11, guided by Claude)"
+      actual_result: "NTP off, clock stepped back 1 h; systemctl stop elm327-emulator.service; DISCONNECTED shown. error.log (Pi clock): link error 13:49:04; 'Failed to connect, retrying in 5.0 seconds' at 13:49:11, :17, :22, :28, :34, :40, :45, :51, :57, 13:50:03 (5.6-5.9 s apart); emulator started ~30 s after DISCONNECTED; gauge returned with RPM about 5 s later, no Reset; no further errors. NTP restored. Before the fix no reconnect attempt was made after a backward step"
       pass_fail_criteria: "Automatic reconnection within ~10 s of the emulator returning"
     defects: []
 
@@ -219,10 +219,10 @@ test_cases:
         validation: "Command timing; no 'did not stop cleanly' in logs"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local v0.4.11, guided by Claude)"
+      actual_result: "systemctl restart gtach at 14:41:37: real 0.612 s; active before and after; no 'did not stop' or join lines in error.log"
       pass_fail_criteria: "No join timeout warnings"
     defects: []
 
@@ -241,12 +241,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 6
-  passed: 0
+  passed: 6
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Mac pytest 45.75 s; on-device 14:41-14:51"
   test_cycle: "Initial"
 
 defect_summary:
@@ -258,10 +258,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  verification_notes: "Mac: venv, 577 passed. Pi: GTach 0.4.11, Python 3.9.2. Logs pulled to logs/ (bin/pull_logs.sh) after TC-005. Out-of-scope observation in notes."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -278,6 +278,12 @@ notes: >
   updated to the new mechanism with their intent preserved
   (report-4f671d09 §5). Run TC-004 before TC-005 and restore NTP after
   each. Implementation commits 07bb8e5 (code) and 7f2ecc2 (session report).
+  Out-of-scope observation (TC-005): with the emulator service stopped,
+  six consecutive ECONNREFUSED connects escalated the displayed cause
+  from 'connection refused by adapter' to 'bluetooth wedged - reset
+  required', although the controller was healthy. Wedge escalation
+  (change-5e7a03c4) does not distinguish a refusing peer from a wedged
+  controller. Not a failure of this change.
 
 version_history:
   - version: "1.0"
@@ -290,6 +296,11 @@ version_history:
     author: "William Watson"
     changes:
       - "TC-001 to TC-003 executed on the Mac after the merge; passed. Status in_progress."
+  - version: "1.2"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "TC-004 to TC-006 executed on gtach.local; passed. Out-of-scope wedge-cause observation noted. Status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -307,6 +318,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-4f671d09. |
 | 1.1 | 2026-10-09 | TC-001 to TC-003 executed on the Mac; passed. Status in_progress. |
+| 1.2 | 2026-10-09 | TC-004 to TC-006 executed on gtach.local; passed. Wedge-cause observation noted. Status passed. |
 
 ---
 

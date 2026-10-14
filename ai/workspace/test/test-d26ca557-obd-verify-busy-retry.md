@@ -92,16 +92,19 @@ test_cases:
     description: "On-device: re-pairing completes setup in one pass"
     category: "positive"
     preconditions:
-      - "GTach running on gtach.local; debug logging on; emulator in range"
+      - "GTach running on gtach.local with the gauge connected; emulator in range"
+      - "Debug on: OPTIONS, swipe left to page 1, tap 'Debug: Off' so it reads 'Debug: On'"
     test_steps:
       - step: "1"
-        action: "Enter setup, tap New Setup, Start Setup"
+        action: "Swipe down on the gauge to open OPTIONS (page 0); tap 'Clear settings'; on 'Clear settings?' tap 'Clear'"
       - step: "2"
-        action: "Select the adapter in the middle slot of Select Device; do not tap again"
+        action: "On 'Welcome' tap 'Start Setup'; wait through 'Scanning...'"
       - step: "3"
-        action: "Repeat steps 1-2 three times in total"
+        action: "On 'Select Device' bring ELM327-Emulator to the middle slot (vertical swipe if needed); tap the middle slot once; tap nothing else"
       - step: "4"
-        action: "Pull logs; per run, record 'OBD verify: link busy, retrying' lines and the 'OBD verify: pass' line"
+        action: "Observe 'Pairing Device', then 'Setup Complete!' and the gauge. A return to 'Select Device' with 'OBD check failed' is a failure"
+      - step: "5"
+        action: "Repeat steps 1-4 three times in total; then pull logs and record, per run, 'OBD verify: link busy, retrying' and 'OBD verify: pass' lines"
     inputs: []
     expected_outputs:
       - field: "display"
@@ -182,6 +185,11 @@ version_history:
     author: "William Watson"
     changes:
       - "TC-001 executed on the Mac after the merge; passed. Status in_progress."
+  - version: "1.2"
+    date: "2026-10-09"
+    author: "William Watson"
+    changes:
+      - "TC-002 steps corrected to the actual UI path (OPTIONS > Clear settings > Clear > Start Setup); debug-on precondition added."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -199,6 +207,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial test document for change-d26ca557. |
 | 1.1 | 2026-10-09 | TC-001 executed on the Mac; passed. Status in_progress. |
+| 1.2 | 2026-10-09 | TC-002 steps corrected to the actual UI path; debug-on precondition added. |
 
 ---
 

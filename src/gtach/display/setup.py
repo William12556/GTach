@@ -66,6 +66,11 @@ class SetupDisplayManager:
     # It was at y=440, under the Cancel button and outside the radius.
     _WELCOME_MESSAGE_Y = 235
 
+    # How long 'Setup Complete!' stays on screen before normal mode
+    # takes over. Without a hold it was replaced within one 0.05 s loop
+    # cycle and could not be read (observed 2026-10-09, test-d26ca557).
+    _COMPLETE_HOLD_S = 2.0
+
     # DEVICE_LIST focus arrows (change-479b2e51). The slot column runs
     # y=163..318 for the default 45px slots at 10px spacing, so the
     # arrows sit in the bands between the title and the top slot, and
@@ -254,6 +259,7 @@ class SetupDisplayManager:
 
     def _setup_loop(self) -> None:
         """Main setup processing loop"""
+        complete_since: Optional[float] = None
         while not self._shutdown_event.is_set():
             try:
                 self.thread_manager.update_heartbeat("setup")
@@ -264,6 +270,13 @@ class SetupDisplayManager:
                 # Handle auto-discovery if needed
                 state = self.state_coordinator.get_state()
                 if state.current_screen == SetupScreen.COMPLETE:
+                    # Hold the screen for _COMPLETE_HOLD_S; the loop keeps
+                    # cycling, so the heartbeat continues during the hold.
+                    if complete_since is None:
+                        complete_since = time.monotonic()
+                    if time.monotonic() - complete_since < self._COMPLETE_HOLD_S:
+                        time.sleep(0.05)
+                        continue
                     if self._on_complete:
                         self.logger.info(
                             "Setup complete — invoking on_complete callback"

@@ -417,10 +417,15 @@ class OBDTransport(ABC):
             # The counter is NOT reset here. Unlike the read-timeout
             # counter, this one latches: the condition persists until a
             # connect succeeds, and the cause should keep reporting it.
+            #
+            # A refused connect is excluded: the peer's stack answered, so
+            # the controller is working and only the service is absent
+            # (observed in test-4f671d09 TC-005 with the emulator stopped).
             if (
                 self._ADAPTER_CHECKS
                 and failures >= self._MAX_CONSECUTIVE_CONNECT_FAILURES
                 and cause != "no bluetooth controller"
+                and cause != _CONNECT_FAULT_CAUSES[_errno.ECONNREFUSED]
                 and _bluetooth_adapter_present()
             ):
                 cause = _WEDGED_LINK_CAUSE
