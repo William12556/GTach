@@ -19,7 +19,7 @@ change_info:
   title: "Use time.monotonic() for the SimTransport RPM sweep's elapsed time"
   date: "2026-10-14"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -129,6 +129,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document resolving issue-72f95f73 iteration 1."
+  - version: "1.1"
+    date: "2026-10-14"
+    author: "William Watson"
+    changes:
+      - "Approved by the operator."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -145,6 +150,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-14 | Initial change document resolving issue-72f95f73 iteration 1. |
+| 1.1 | 2026-10-14 | Approved by the operator. |
 
 ---
 
