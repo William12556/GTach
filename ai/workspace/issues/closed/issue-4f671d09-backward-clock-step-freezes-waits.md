@@ -19,7 +19,7 @@ issue_info:
   title: "A backward wall-clock step suspends threading.Event.wait for the size of the step on Python 3.9, stopping link reconnection"
   date: "2026-10-09"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -115,15 +115,15 @@ resolution:
   target_date: ""
   approach: "Sleep-polled wait helper at the six affected waits; see change-4f671d09."
   change_ref: "change-4f671d09"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-10-09"
+  resolved_by: "Claude Code (change-4f671d09, commit 07bb8e5)"
+  fix_description: "gtach.utils.waits.wait_for_event (sleep-polled, monotonic deadline) replaces eight timed Event.wait calls."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-4f671d09 passed (6/6). On gtach.local: no 'transport appears unresponsive' warning across forced -1 h / +2 h steps; link dropped after a -1 h step reconnected without Reset."
+  closure_notes: "Closed. Out-of-scope finding (refused connect shown as 'bluetooth wedged') fixed under trivial exemption, commit 0e3212f."
 
 prevention:
   preventive_measures: ""
@@ -132,7 +132,7 @@ prevention:
 verification_enhanced:
   verification_steps:
     - "Repeat the reproduction steps; no watchdog unresponsive warning; a link drop after a backward step is reconnected without operator action."
-  verification_results: ""
+  verification_results: "Reproduction steps repeated on v0.4.11; expected behaviour observed. See test-4f671d09 TC-004, TC-005."
 
 traceability:
   design_refs:
@@ -162,6 +162,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Coupled to change-4f671d09."
+  - version: "1.2"
+    date: "2026-10-14"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-4f671d09; verified by test-4f671d09; closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -179,6 +184,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial issue document, raised during on-device verification of the nine-change batch. |
 | 1.1 | 2026-10-09 | Coupled to change-4f671d09. |
+| 1.2 | 2026-10-14 | Resolved by change-4f671d09; verified by test-4f671d09; closed. |
 
 ---
 

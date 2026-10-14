@@ -19,7 +19,7 @@ test_info:
   title: "Verify the post-pairing OBD verify retries a link-busy connect and setup completes without Retry"
   date: "2026-10-09"
   author: "William Watson"
-  status: "in_progress"
+  status: "passed"
   type: "regression"
   priority: "medium"
   iteration: 1
@@ -115,10 +115,10 @@ test_cases:
         validation: "Log inspection"
     postconditions: []
     execution:
-      status: "not_run"
-      executed_date: ""
-      executed_by: ""
-      actual_result: ""
+      status: "passed"
+      executed_date: "2026-10-09"
+      executed_by: "William Watson (gtach.local v0.4.11, guided by Claude)"
+      actual_result: "3 of 3 runs returned to the gauge without operator action (debug on). Run 1: paired 15:02:57.447, 'OBD verify: pass' 15:02:58.038. Run 2: paired 15:06:16.662; EBUSY at 15:06:16.682 (20 ms after pairing); 'link busy, retrying (attempt 2/3)' 15:06:16.694; 'OBD verify: pass' 15:06:18.322. Run 3: paired 15:06:53.110, pass 15:06:53.699. The retry path was exercised once and recovered on the second attempt. Observation: 'Setup Complete!' was replaced too quickly to read; addressed separately by a 2.0 s hold (commit 0e3212f, trivial exemption)"
       pass_fail_criteria: "3 of 3 runs complete without Retry"
     defects: []
 
@@ -137,12 +137,12 @@ coverage:
 
 test_execution_summary:
   total_cases: 2
-  passed: 0
+  passed: 2
   failed: 0
   blocked: 0
   skipped: 0
-  pass_rate: ""
-  execution_time: ""
+  pass_rate: "100%"
+  execution_time: "Mac pytest 1.88 s; on-device 15:02-15:07"
   test_cycle: "Initial"
 
 defect_summary:
@@ -154,10 +154,10 @@ defect_summary:
   issues: []
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  verification_notes: ""
-  sign_off: ""
+  verified_date: "2026-10-14"
+  verified_by: "William Watson"
+  verification_notes: "Mac: venv, 577 passed. Pi: GTach 0.4.11, Python 3.9.2. Logs pulled 2026-10-14 (logs/debug.log.1). The intermittent EBUSY occurred in 1 of 3 runs and was recovered by the retry."
+  sign_off: "Approved"
 
 traceability:
   requirements:
@@ -190,6 +190,11 @@ version_history:
     author: "William Watson"
     changes:
       - "TC-002 steps corrected to the actual UI path (OPTIONS > Clear settings > Clear > Start Setup); debug-on precondition added."
+  - version: "1.3"
+    date: "2026-10-14"
+    author: "William Watson"
+    changes:
+      - "TC-002 executed on gtach.local; passed (retry path exercised in run 2). Status passed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -208,6 +213,7 @@ metadata:
 | 1.0 | 2026-10-09 | Initial test document for change-d26ca557. |
 | 1.1 | 2026-10-09 | TC-001 executed on the Mac; passed. Status in_progress. |
 | 1.2 | 2026-10-09 | TC-002 steps corrected to the actual UI path; debug-on precondition added. |
+| 1.3 | 2026-10-14 | TC-002 executed on gtach.local; passed (retry path exercised in run 2). Status passed. |
 
 ---
 

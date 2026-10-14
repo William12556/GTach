@@ -19,7 +19,7 @@ issue_info:
   title: "verify_obd_connection opens RFCOMM about 2 ms after pairing completes and fails with EBUSY; the operator must press Retry"
   date: "2026-10-09"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -93,15 +93,15 @@ resolution:
   target_date: ""
   approach: "Bounded link-busy-only retry in verify_obd_connection; see change-d26ca557."
   change_ref: "change-d26ca557"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-10-09"
+  resolved_by: "Claude Code (change-d26ca557, commit a1e5e44)"
+  fix_description: "verify_obd_connection retries a link-busy (EBUSY) connect up to 3 attempts, 1.0 s apart."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-d26ca557 passed (2/2). Three re-pairs on gtach.local completed without Retry; EBUSY occurred in run 2, 20 ms after pairing, and the second attempt passed 1.6 s later."
+  closure_notes: "Closed. Root cause remains inferred (ACL link still held after pairing); not confirmed with btmon."
 
 prevention:
   preventive_measures: ""
@@ -110,7 +110,7 @@ prevention:
 verification_enhanced:
   verification_steps:
     - "Re-pair on gtach.local several times; setup completes without Retry each time."
-  verification_results: ""
+  verification_results: "Setup completed without Retry in 3 of 3 runs. See test-d26ca557 TC-002."
 
 traceability:
   design_refs:
@@ -140,6 +140,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Coupled to change-d26ca557."
+  - version: "1.2"
+    date: "2026-10-14"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-d26ca557; verified by test-d26ca557; closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -157,6 +162,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial issue document, raised during on-device verification of the nine-change batch. |
 | 1.1 | 2026-10-09 | Coupled to change-d26ca557. |
+| 1.2 | 2026-10-14 | Resolved by change-d26ca557; verified by test-d26ca557; closed. |
 
 ---
 

@@ -19,7 +19,7 @@ change_info:
   title: "verify_obd_connection retries the RFCOMM connect, a bounded number of times, only when it fails with the link-busy cause"
   date: "2026-10-09"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -167,11 +167,11 @@ implementation:
   deployment_notes: "Normal wheel deploy."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-09"
+  implemented_by: "Claude Code (commit a1e5e44)"
+  verification_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-d26ca557 passed (2/2); retry path exercised once on gtach.local and recovered on attempt 2. Constants left at 3 attempts / 1.0 s."
   issues_found:
     - issue_ref: ""
 
@@ -203,6 +203,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Dependency note: interface.py is also modified by change-4f671d09."
+  - version: "1.2"
+    date: "2026-10-14"
+    author: "William Watson"
+    changes:
+      - "Implemented, verified by test-d26ca557, closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -220,6 +225,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document from issue-d26ca557 iteration 1. |
 | 1.1 | 2026-10-09 | Dependency note: interface.py is also modified by change-4f671d09. |
+| 1.2 | 2026-10-14 | Implemented, verified by test-d26ca557, closed. |
 
 ---
 

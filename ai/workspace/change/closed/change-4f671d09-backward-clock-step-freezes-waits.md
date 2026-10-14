@@ -19,7 +19,7 @@ change_info:
   title: "Replace timed threading.Event.wait in the transport, watchdog and OBD loops and two one-shot waits with a sleep-polled wait that a backward wall-clock step cannot extend"
   date: "2026-10-09"
   author: "William Watson"
-  status: "proposed"
+  status: "closed"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -231,11 +231,11 @@ implementation:
   deployment_notes: "Normal wheel deploy; no configuration change."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-09"
+  implemented_by: "Claude Code (commit 07bb8e5)"
+  verification_date: "2026-10-09"
+  verified_by: "William Watson"
+  test_results: "test-4f671d09 passed (6/6) on the Mac and gtach.local v0.4.11. Out-of-scope wedge-cause finding fixed under trivial exemption, commit 0e3212f."
   issues_found:
     - issue_ref: ""
 
@@ -269,6 +269,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Scope extended to the one-shot waits in ensure_pairing_initialized and SplashScreen.wait_for_completion (timed branch); async_operations queue and joins remain out of scope."
+  - version: "1.2"
+    date: "2026-10-14"
+    author: "William Watson"
+    changes:
+      - "Implemented, verified by test-4f671d09, closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -286,6 +291,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-09 | Initial change document from issue-4f671d09 iteration 1. |
 | 1.1 | 2026-10-09 | Scope extended to two one-shot waits (interface.py, splash.py); queue and joins remain out of scope. |
+| 1.2 | 2026-10-14 | Implemented, verified by test-4f671d09, closed. |
 
 ---
 
