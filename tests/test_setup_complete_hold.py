@@ -19,7 +19,9 @@ import threading
 import types
 from typing import List
 
-from gtach.display import setup as setup_module
+# Not aliased as 'setup_module': pytest treats a module-level name
+# 'setup_module' as its xunit setup hook and tries to call it.
+from gtach.display import setup as setup_mod
 from gtach.display.setup import SetupDisplayManager
 from gtach.display.setup_models import SetupScreen
 
@@ -52,8 +54,8 @@ def _fake_clock(monkeypatch, on_sleep=None):
         if on_sleep is not None:
             on_sleep()
 
-    monkeypatch.setattr(setup_module.time, "monotonic", lambda: now[0])
-    monkeypatch.setattr(setup_module.time, "sleep", _sleep)
+    monkeypatch.setattr(setup_mod.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(setup_mod.time, "sleep", _sleep)
     return now
 
 
