@@ -5,6 +5,22 @@ omlx:
   default_model: "mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-8Bit"
   reviewer_model: "Magistral-Small-2509-MLX-8bit"
 
+# Role-to-model binding (change-53c6f252). With roles: present, the omlx: block
+# above is not used for role binding. Key from the macOS Keychain (change-7d953510).
+providers:
+  mistral:
+    kind: openai_compatible
+    base_url: "https://api.mistral.ai/v1"
+    api_key_keychain: ai-go-mistral
+
+roles:
+  worker:   { provider: mistral, model: "mistral-medium-2604" }
+  reviewer: { provider: mistral, model: "mistral-medium-2604" }
+
+# Gate interpreter: the project venv, which has GTach's dependencies.
+gates:
+  python: "venv/bin/python"
+
 # MCP server definitions
 mcp_servers:
   filesystem:
@@ -44,4 +60,6 @@ context:
   context_window: null      # tokens; null = read from model config.json
   budget_warn_pct: 0.80     # print warning at this fraction of context window
   budget_abort_pct: 0.95    # abort phase at this fraction
+  model_context_windows:
+    mistral-medium-2604: 262144   # no live context query exists for API models
 
