@@ -15,10 +15,6 @@ functionality extracted from the monolithic display manager.
 from .interfaces import MetricType, PerformanceMetrics, PerformanceMonitorInterface
 from .monitor import PerformanceMonitor
 
-# Legacy compatibility functions
-_global_performance_manager = None
-
-
 __all__ = [
     "PerformanceMonitor",
     "PerformanceMonitorInterface",
