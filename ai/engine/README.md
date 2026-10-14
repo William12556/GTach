@@ -21,7 +21,7 @@ Created: 2026 March 11
 
 ## 1.0 Overview
 
-The engine orchestrator is a standalone Python tool loop implementing the loop pattern. It connects directly to MCP servers, sends tool definitions to an oMLX inference endpoint, parses model tool calls in both OpenAI and Mistral plain-text formats, dispatches tools, injects results into message history, and iterates until the model produces a response containing no tool calls.
+The engine orchestrator is a standalone Python tool loop implementing the loop pattern. It connects directly to MCP servers, sends tool definitions to the inference endpoint bound to each role (oMLX, an OpenAI-compatible API such as the Mistral API, or the Anthropic API; `src/providers.py`), parses model tool calls in both OpenAI and Mistral plain-text formats, dispatches tools, injects results into message history, and iterates until the model produces a response containing no tool calls.
 
 This component replaces Goose as the engine for the oMLX/Devstral stack. It addresses the tool dispatch failure present in oMLX and other inference servers by owning the full tool loop externally.
 
@@ -37,11 +37,11 @@ Three worker/reviewer profiles are available. Engine is the primary profile; the
 |---|---|---|---|
 | Execution | Automated loop | Manual, human-directed | Manual, human-directed |
 | Worker/Reviewer | Automated cycle | Single pass; human reviews | Single pass; human reviews |
-| Inference | oMLX → Devstral (local) | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
+| Inference | Per role: oMLX (local), Mistral API or Anthropic API | Anthropic API → Claude Sonnet | oMLX → Devstral via Claude Code CLI |
 | Loop control | `orchestrator.py` | Human operator | Human operator |
 | Context file | `config.yaml` | `CLAUDE.md` | `CLAUDE.md` |
 | State directory | `ai/state/` | `.claude/` | `.claude/` |
-| Profile | `mlx_devstral_small_2_2512_6bit.md` | `claude-code.md` | `claude-omlx.md` |
+| Profile | `mlx_*.md`, `mistral_api.md` | `claude-code.md` | `claude-omlx.md` |
 
 See `ai/profiles/` for profile documents.
 
@@ -83,9 +83,10 @@ engine/
 ## 4.0 Requirements
 
 - Python 3.11+
-- oMLX running on `http://127.0.0.1:8000`
+- oMLX running on `http://127.0.0.1:8000` for roles bound to oMLX
+- An API key for roles bound to the Mistral API or the Anthropic API, read from the environment (`api_key_env`) or, on macOS, the login Keychain (`api_key_keychain`); see `doc/guide-engine-operations.md` §3.0
 - MCP servers configured in `config.yaml`
-- Model: Devstral Small 2 (6bit or 8bit) — purpose-built for agentic coding and multi-file editing; the engine parser (`parser.py`) is tuned to Mistral's tool-call format, which Devstral uses natively. An optional distinct reviewer model (e.g. Magistral, same Mistral tool-call format) may be configured via `omlx.reviewer_model`
+- Local model: Devstral Small 2 (6bit or 8bit) — purpose-built for agentic coding and multi-file editing; the engine parser (`parser.py`) is tuned to Mistral's tool-call format, which Devstral uses natively. An optional distinct reviewer model (e.g. Magistral, same Mistral tool-call format) may be configured via `omlx.reviewer_model`
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -242,6 +243,7 @@ The tests use stub model and MCP clients; no oMLX endpoint is required.
 | 2.10 | 2026-10-01 | §3.0: engine-mcp work_status (change-793992ae) |
 | 2.11 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 | 2.12 | 2026-10-01 | §2.0 heading: Worker/Reviewer Profiles (audit-14e05e35 M-03, change-82dbf16a) |
+| 2.13 | 2026-10-14 | §1.0, §2.0, §4.0: per-role providers (oMLX, Mistral API, Anthropic API) replace the oMLX-only wording; API key sources (change-53c6f252, change-7d953510) |
 
 ---
 

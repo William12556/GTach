@@ -68,33 +68,42 @@ Any frontier model with sufficient reasoning capability may substitute. The plan
 - Network access to `https://api.mistral.ai`
 - Engine dependencies installed: `pip install -r ai/engine/requirements.txt`
 
-**API key:** the engine reads the key from the environment variable named in `api_key_env`. A literal `api_key` is rejected for non-local endpoints. The engine has no native Keychain support; on macOS, store the key in the login Keychain and inject it per invocation.
+**API key:** on macOS the engine reads the key from the Keychain service named in `api_key_keychain`, searched in the user's Keychain search list (normally the login Keychain), through `/usr/bin/security` (change-7d953510). Elsewhere, or as an override, it reads the environment variable named in `api_key_env`; when both are configured, a set variable wins and the Keychain is the fallback. A literal `api_key` is rejected for non-local endpoints. The run log records the source (`key source keychain:<service>` or `key source env:<VAR>`), never the key.
 
-1. Store the key (once). With no value after `-w`, `security` prompts for it, so the key is not written to shell history. Add `-U` to replace an existing entry.
+1. Store the key (once). With no value after `-w`, `security` prompts for it, so the key is not written to shell history. Add `-U` to replace an existing entry. The service name must match `api_key_keychain`; this profile uses `ai-go-mistral`.
 
 ```bash
-security add-generic-password -a "$USER" -s MISTRAL_API_KEY -w
+security add-generic-password -a "$USER" -s ai-go-mistral -l "AI-G&O Mistral API key" -w
 ```
 
-2. Invoke the engine with the key scoped to that process only:
+2. Invoke the engine. No key variable is needed; runs started through `engine-mcp` (`start_engine`) read the Keychain the same way.
 
 ```bash
-MISTRAL_API_KEY="$(security find-generic-password -a "$USER" -s MISTRAL_API_KEY -w)" \
+python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
+```
+
+3. Optional override for one run, without exporting the variable to the shell (requires `api_key_env` in the provider block):
+
+```bash
+MISTRAL_API_KEY="$(security find-generic-password -a "$USER" -s ai-go-mistral -w)" \
   python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prompt-<uuid>-<n>.md
 ```
 
 Notes:
-- The command-prefix assignment does not export the variable to the shell. A global `MISTRAL_API_KEY` overrides Mistral Vibe's own key (`ai/engine/config.template.yaml`).
-- On first read, macOS prompts for Keychain access. "Always Allow" grants `/usr/bin/security` unprompted access, which any process running as the same user can then use to read the key.
+- Never export `MISTRAL_API_KEY` globally; a global value overrides Mistral Vibe's own key (`ai/engine/config.template.yaml`).
+- On first read, macOS may ask whether `/usr/bin/security` may read the item. Answer it from an interactive CLI run before relying on `start_engine`; an unanswered dialog stops the run after 10 s. "Always Allow" grants `/usr/bin/security` unprompted access, which any process running as the same user can then use to read the key.
 - In SSH or other non-GUI sessions the login Keychain may be locked; run `security unlock-keychain` first.
-- Engine runs started through `engine-mcp` (`start_engine`) inherit the environment of the `engine-mcp` server process, not of the invoking shell; the step-2 prefix does not apply to that path.
 
 **Model id verification:** for kind `openai_compatible`, the engine readiness check requires the configured model id to be listed by the endpoint. Confirm the id before the first run:
 
 ```bash
-curl -s -H "Authorization: Bearer $MISTRAL_API_KEY" \
-  https://api.mistral.ai/v1/models | grep -o '"id":"mistral-medium[^"]*"'
+security find-generic-password -a "$USER" -s ai-go-mistral -w \
+  | sed 's/^/Authorization: Bearer /' \
+  | curl -s -H @- https://api.mistral.ai/v1/models \
+  | grep -o '"id":"mistral-medium[^"]*"'
 ```
+
+The header is passed to `curl` on standard input (`-H @-`), so the key does not appear in any process argument list.
 
 **Engine config** (`ai/config.yaml`):
 
@@ -103,7 +112,8 @@ providers:
   mistral:
     kind: openai_compatible
     base_url: "https://api.mistral.ai/v1"
-    api_key_env: MISTRAL_API_KEY
+    api_key_keychain: ai-go-mistral   # macOS Keychain service
+    # api_key_env: MISTRAL_API_KEY    # optional per-run override; required off macOS
 
 roles:
   worker:   { provider: mistral, model: "mistral-medium-2604" }
@@ -126,7 +136,7 @@ Reference template: `ai/engine/config.template.yaml`. Operations guide: `ai/engi
 
 The Mistral API returns native structured `tool_calls` on the chat completions endpoint. The `openai_compatible` provider (`ai/engine/src/providers.py`) consumes these directly; the Mistral-format text parser (`ai/engine/src/parser.py`) remains as a fallback when no structured calls are returned. The orchestrator owns the tool dispatch loop and dispatches via the Python MCP SDK.
 
-Reviewer verdict parsing (leading `SHIP` / `REVISE` token) and reviewer tool-calling are unverified for Mistral Medium 3.5 and should be confirmed on the first real review phase.
+Reviewer verdict parsing (leading `SHIP` / `REVISE` token) and tool calling in both roles were verified live for `mistral-medium-2604` on 2026-10-01: 16 tool calls without error, reviewer SHIP after one cycle (`dev/reports/report-14e05e35-live-verification.md` §5.0).
 
 Name tools explicitly in recipe prompts; use imperative phrasing.
 
@@ -141,7 +151,7 @@ Name tools explicitly in recipe prompts; use imperative phrasing.
 State directory: `ai/state/` (ephemeral, per-task)
 
 **Prerequisites:**
-- `MISTRAL_API_KEY` set in the engine process environment
+- Key available: Keychain item named in `api_key_keychain` (macOS), or `MISTRAL_API_KEY` in the engine process environment (§4.0)
 - `ai/config.yaml` configured with the `providers:` and `roles:` blocks in §4.0
 - `context.model_context_windows` entry for the model (no live context query exists for API models)
 
@@ -206,6 +216,8 @@ The API key is not stored in `ai/config.yaml` or any tracked file.
 |---|---|---|
 | 1.0 | 2026-10-02 | Initial document; Mistral API profile with Mistral Medium 3.5 as worker and reviewer via engine `openai_compatible` provider |
 | 1.1 | 2026-10-02 | §4.0: macOS Keychain storage and per-invocation key injection |
+| 1.2 | 2026-10-14 | §4.0: engine reads the key from the Keychain (`api_key_keychain`, change-7d953510); service name corrected to `ai-go-mistral`; per-run override kept. §5.0: reviewer verdict and tool calling verified (report-14e05e35 §5.0). §6.0: key prerequisite |
+| 1.3 | 2026-10-14 | §4.0: Keychain search list wording (audit-7d953510 L-02); model id check passes the header on stdin, not in argv (L-07) |
 
 ---
 

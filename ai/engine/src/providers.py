@@ -24,6 +24,8 @@ import os
 import re
 import secrets
 import string
+import subprocess
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -39,6 +41,8 @@ ROLES = ("worker", "reviewer")
 _ID_ALPHABET = string.ascii_letters + string.digits
 _ID_LENGTH = 9  # FR-04-09: the format Mistral issues; a compatibility convention
 _ANTHROPIC_DEFAULT_MAX_TOKENS = 8192
+_SECURITY = "/usr/bin/security"  # macOS Keychain CLI (change-7d953510)
+_KEYCHAIN_TIMEOUT = 10  # seconds; a locked Keychain or unanswered dialog blocks
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 _COHERE_THINK_RE = re.compile(r"<\|START_THINKING\|>.*?<\|END_THINKING\|>", re.DOTALL)
@@ -396,13 +400,68 @@ def _is_local(base_url: str | None) -> bool:
     return host in _LOCAL_HOSTS
 
 
+def _keychain_secret(name: str, service: str) -> str:
+    """
+    Read one generic-password secret from the user's Keychain search list
+    (normally the login Keychain) (change-7d953510).
+
+    Runs '/usr/bin/security find-generic-password -s <service> -w'. Every failure
+    raises ConfigError naming the provider, the service and, for a non-zero exit,
+    the exit code. Neither the secret nor the command's output enters a message,
+    and wrapped exceptions are not chained, so the key cannot leak (NFR-05).
+    """
+    key = f"providers.{name}.api_key_keychain"
+    if sys.platform != "darwin":
+        raise ConfigError(f"{key}: supported on macOS only; use api_key_env")
+    error = None
+    try:
+        result = subprocess.run([_SECURITY, "find-generic-password", "-s", service, "-w"],
+                                capture_output=True, text=True, timeout=_KEYCHAIN_TIMEOUT,
+                                check=False)
+    except subprocess.TimeoutExpired:
+        # TimeoutExpired carries captured output; do not chain it
+        error = (f"{key}: lookup for service {service} timed out after "
+                 f"{_KEYCHAIN_TIMEOUT} s (Keychain locked or access dialog unanswered)")
+    except OSError:
+        error = f"{key}: {_SECURITY} is not available"
+    except UnicodeDecodeError:
+        # The error's object attribute holds the raw output; do not chain it
+        error = f"{key}: Keychain item for service {service} is not valid text"
+    if error:
+        raise ConfigError(error) from None
+    if result.returncode != 0:
+        raise ConfigError(f"{key}: no readable Keychain item for service {service} "
+                          f"(security exit {result.returncode})")
+    value = (result.stdout or "").rstrip("\n")
+    if not value:
+        raise ConfigError(f"{key}: Keychain item for service {service} is empty")
+    return value
+
+
 def _api_key(name: str, pcfg: dict, kind: str) -> str:
+    """
+    Resolve a provider's API key (FR-04-07; change-7d953510).
+
+    Order: api_key_env when configured and set; then api_key_keychain when
+    configured; then the unset api_key_env error; then the literal api_key and
+    kind omlx rules. The source of a key from the environment or the Keychain
+    is logged; the key never is.
+    """
+    service = pcfg.get("api_key_keychain")
+    if "api_key_keychain" in pcfg and not (isinstance(service, str) and service):
+        raise ConfigError(f"providers.{name}.api_key_keychain: must be a non-empty string")
     env = pcfg.get("api_key_env")
     if env:
         value = os.environ.get(env)
-        if not value:
-            raise ConfigError(f"providers.{name}: environment variable {env} is not set")
+        if value:
+            log.info("providers.%s: key source %s", name, f"env:{env}")
+            return value
+    if service:
+        value = _keychain_secret(name, service)
+        log.info("providers.%s: key source %s", name, f"keychain:{service}")
         return value
+    if env:
+        raise ConfigError(f"providers.{name}: environment variable {env} is not set")
     if "api_key" in pcfg:
         if kind != "omlx" and not _is_local(pcfg.get("base_url")):
             raise ConfigError(f"providers.{name}: api_key is accepted only for kind omlx or a "
@@ -410,7 +469,8 @@ def _api_key(name: str, pcfg: dict, kind: str) -> str:
         return str(pcfg["api_key"])
     if kind == "omlx":
         return "local"
-    raise ConfigError(f"providers.{name}: api_key_env is required for kind {kind}")
+    raise ConfigError(f"providers.{name}: api_key_env or api_key_keychain is required "
+                      f"for kind {kind}")
 
 
 def make_provider(name: str, pcfg: dict) -> Any:
