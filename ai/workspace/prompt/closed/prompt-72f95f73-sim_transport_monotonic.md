@@ -152,6 +152,7 @@ notes: "Engine loop on the Mistral API (both roles mistral-medium-2604). Also th
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-14 | Initial prompt implementing change-72f95f73 iteration 1. Target profile engine. |
+| 1.1 | 2026-10-14 | Implemented by engine run 1e00fd66 (SHIP after one cycle); closed |
 
 ---
 

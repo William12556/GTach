@@ -19,7 +19,7 @@ issue_info:
   title: SimTransport computes the RPM sweep's elapsed time from time.time()
   date: '2026-10-14'
   reporter: William Watson
-  status: open
+  status: closed
   severity: low
   type: defect
   iteration: 1
@@ -80,21 +80,23 @@ resolution:
   target_date: ''
   approach: Switch both sites to time.monotonic(); add a clock-step regression test.
   change_ref: change-72f95f73
-  resolved_date: ''
-  resolved_by: ''
+  resolved_date: '2026-10-14'
+  resolved_by: engine loop, Mistral API (change-72f95f73, commit ae1ea9f)
   fix_description: ''
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-14'
+  verified_by: William Watson
+  test_results: Engine run 1e00fd66 SHIP after one cycle (syntax PASS, pytest
+    PASS); full suite 583 passed; operator acceptance 163aaf8.
+  closure_notes: Closed. The worker left three helper files in tests/ (removed
+    before acceptance); recorded for the framework backlog.
 prevention:
   preventive_measures: ''
   process_improvements: ''
 verification_enhanced:
   verification_steps:
   - grep shows no time.time() in sim_transport.py; pytest passes.
-  verification_results: ''
+  verification_results: No time.time() in sim_transport.py; 583 passed.
 traceability:
   design_refs:
   - ''
@@ -116,6 +118,11 @@ version_history:
   author: William Watson
   changes:
   - Initial issue document, raised from ai/task.md.
+- version: '1.1'
+  date: '2026-10-14'
+  author: William Watson
+  changes:
+  - Resolved by change-72f95f73 (ae1ea9f); verified; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -131,6 +138,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-14 | Initial issue document, raised from ai/task.md. |
+| 1.1 | 2026-10-14 | Resolved by change-72f95f73; verified; closed. |
 
 ---
 

@@ -19,7 +19,7 @@ change_info:
   title: "Use time.monotonic() for the SimTransport RPM sweep's elapsed time"
   date: "2026-10-14"
   author: "William Watson"
-  status: "approved"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -103,11 +103,11 @@ implementation:
   deployment_notes: "None. The engine run also validates framework change-7d953510 live (api_key_keychain through engine-mcp)."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-10-14"
+  implemented_by: "Engine loop run 1e00fd66, worker and reviewer mistral-medium-2604 (commit ae1ea9f)"
+  verification_date: "2026-10-14"
+  verified_by: "William Watson (acceptance 163aaf8)"
+  test_results: "Syntax and pytest gates PASS; reviewer SHIP after one cycle; full suite 583 passed after removing three worker helper files from tests/ (__init__.py, run_test_sim.py, test_changes.py)"
   issues_found: []
 
 traceability:
@@ -134,6 +134,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Approved by the operator."
+  - version: "1.2"
+    date: "2026-10-14"
+    author: "William Watson"
+    changes:
+      - "Implemented by the engine (ae1ea9f), accepted (163aaf8), verified; closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -151,6 +156,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-10-14 | Initial change document resolving issue-72f95f73 iteration 1. |
 | 1.1 | 2026-10-14 | Approved by the operator. |
+| 1.2 | 2026-10-14 | Implemented by the engine, accepted, verified; closed. |
 
 ---
 

@@ -24,7 +24,6 @@ record the outcome.
 | —          | Log files are written to fixed `/opt/gtach/` paths regardless of `GTACH_HOME`, so development runs on the Mac record nothing | Open, not yet raised as a T03 | `src/gtach/main.py` (`_START_LOG`, `_DEBUG_LOG`, `_ERROR_LOG`, `_STACKS_LOG`) |
 | —          | `load_engine_profile` logs an `importlib.resources` failure at DEBUG on every start, then falls back successfully | Open, not yet raised as a T03 | `utils/config.py` |
 | —          | pygame 2.6.1 imports the deprecated `pkg_resources`; setuptools 81 or newer may break the import | Open — monitor; pin `setuptools<81` or upgrade pygame if it breaks | `pyproject.toml` |
-| —          | `sim_transport.py` computes elapsed time with `time.time()` (lines 38, 142 at ba661d4); excluded from issue-e215a184 scope on 2026-10-09 | Open — raised as issue-72f95f73 (2026-10-14) | `comm/sim_transport.py`; `issue-72f95f73`, `change-72f95f73` |
 
 ---
 
