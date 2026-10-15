@@ -886,6 +886,44 @@ def archive_prior_logs(state_dir: str, archive_dir: str | None) -> int:
     return copied
 
 
+class _RecordBuffer(logging.Handler):
+    """change-7d953510 iteration 4 (FR-I): hold log records in memory until the run log exists."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+
+
+def _resolve_bindings_capturing(config: dict, args: argparse.Namespace) -> tuple[dict, list[logging.LogRecord]]:
+    """
+    change-7d953510 iteration 4 (FR-I): resolve role bindings and capture their log records.
+
+    Bindings are resolved before setup_logging, so that a configuration error
+    leaves no state (FR-08-05). Records the providers emit during resolution
+    (the 'key source' INFO line) would otherwise be lost: the 'engine' logger
+    has no handler and no level yet. They are buffered here and replayed into
+    the run log by main_async once setup_logging has run.
+
+    The buffer is removed and the logger's level restored whether resolution
+    succeeds or raises; setup_logging adds its FileHandler only when the
+    logger has no handlers.
+    """
+    logger = logging.getLogger("engine")
+    saved_level = logger.level
+    buffer = _RecordBuffer()
+    buffer.setLevel(logging.DEBUG)
+    logger.addHandler(buffer)
+    logger.setLevel(logging.DEBUG)
+    try:
+        return build_role_bindings(config, args), buffer.records
+    finally:
+        logger.removeHandler(buffer)
+        logger.setLevel(saved_level)
+
+
 def setup_logging(state_dir: str) -> logging.Logger:
     os.makedirs(state_dir, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -2390,7 +2428,7 @@ async def main_async(args: argparse.Namespace) -> int:
     # change-53c6f252: role-to-model binding (FR-04-01, FR-04-08). Resolved
     # before any state change so a configuration error stops the run cleanly.
     try:
-        bindings = build_role_bindings(config, args)
+        bindings, _binding_records = _resolve_bindings_capturing(config, args)
     except ConfigError as e:
         console.print(f"[red][engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
         return 1
@@ -2464,6 +2502,9 @@ async def main_async(args: argparse.Namespace) -> int:
     archive_prior_logs(state_dir, _log_archive_dir)
 
     log = setup_logging(state_dir)
+    # change-7d953510 iteration 4 (FR-I): records from binding resolution
+    for _record in _binding_records:
+        log.handle(_record)
     log.info("engine start mode=%s worker=%s:%s reviewer=%s:%s state_dir=%s", args.mode,
              worker_b.provider_name, worker_b.model, reviewer_b.provider_name, reviewer_b.model,
              state_dir)
