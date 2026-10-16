@@ -36,6 +36,24 @@ class DeviceSurfaceRenderer:
     SELECTED_BORDER_WIDTH = 3
     EMPTY_SLOT_BORDER_WIDTH = 2
 
+    # DEVICE_LIST slot interior, in slot-surface pixels (change-d38362aa).
+    # Fixed offsets for the 60 px slot and the measured font heights:
+    # name on the first line, type label on the second, four signal bars
+    # on the right. NAME_RIGHT_RESERVE keeps the name clear of the bars.
+    TEXT_LEFT = 24
+    NAME_Y = 0
+    TYPE_Y = 27
+    TYPE_DOT_X = 14
+    TYPE_DOT_RADIUS = 6
+    NAME_RIGHT_RESERVE = 79
+    BAR_COUNT = 4
+    BAR_WIDTH = 5
+    BAR_GAP = 3
+    BAR_BASE_HEIGHT = 8
+    BAR_STEP = 6
+    BAR_RIGHT_INSET = 14
+    BAR_BOTTOM_BELOW_CENTRE = 13
+
     def __init__(self) -> None:
         self.logger = logging.getLogger("DeviceSurfaceRenderer")
 
@@ -66,6 +84,10 @@ class DeviceSurfaceRenderer:
             "selected_surface": (70, 70, 95),
             "selected_border": (100, 150, 250),
             "empty_slot_border": (110, 110, 125),
+            # DEVICE_LIST signal bars (change-d38362aa): lit bars in the
+            # text white, unlit bars in a grey visible on every slot tint.
+            "signal_lit": (220, 220, 220),
+            "signal_unlit": (110, 110, 125),
         }
 
         # Device surface cache with thread safety
@@ -170,7 +192,8 @@ class DeviceSurfaceRenderer:
         self._render_stats["total_renders"] += 1
 
         try:
-            # Extract layout parameters
+            # Extract layout parameters; scale and opacity only key the
+            # cache (both are 1.0 for DEVICE_LIST, change-d38362aa).
             item_width = int(layout_item["width"])
             item_height = int(layout_item["height"])
             scale_factor = layout_item["scale"]
@@ -197,29 +220,23 @@ class DeviceSurfaceRenderer:
 
             self._render_stats["cache_misses"] += 1
 
-            # Create scaled surface
-            scaled_width = int(item_width * scale_factor)
-            scaled_height = int(item_height * scale_factor)
-            item_surface = pygame.Surface(
-                (scaled_width, scaled_height), pygame.SRCALPHA
-            )
+            # DEVICE_LIST slots are drawn at full scale and opacity
+            # (change-d38362aa), so the surface matches the slot size.
+            item_surface = pygame.Surface((item_width, item_height), pygame.SRCALPHA)
 
-            # Apply opacity to background
-            base_alpha = int(255 * opacity_factor)
-
-            # Alternating background with opacity
             if selected:
-                bg_color = (*self.colors["selected_surface"], base_alpha)
+                bg_color = self.colors["selected_surface"]
             elif use_alternating_bg and item_index % 2 == 1:
-                bg_color = (25, 25, 35, base_alpha)
+                bg_color = (25, 25, 35)
             else:
-                bg_color = (*self.colors["surface"][:3], base_alpha)
+                bg_color = self.colors["surface"]
 
             # Draw background with rounded corners
-            bg_rect = pygame.Rect(0, 0, scaled_width, scaled_height - 2)
-            corner_radius = int(8 * scale_factor)
+            bg_height = item_height - 2
+            bg_rect = pygame.Rect(0, 0, item_width, bg_height)
+            corner_radius = 8
             pygame.draw.rect(
-                item_surface, bg_color[:3], bg_rect, border_radius=corner_radius
+                item_surface, bg_color, bg_rect, border_radius=corner_radius
             )
 
             # Focused-slot border, drawn before the content so no glyph
@@ -233,97 +250,39 @@ class DeviceSurfaceRenderer:
                     border_radius=corner_radius,
                 )
 
-            # Device type indicator - scaled circle
-            indicator_color = self.get_device_type_color(device)
-            indicator_radius = int(6 * scale_factor)
-            indicator_center = (int(12 * scale_factor), scaled_height // 2)
+            # Device type indicator
             pygame.draw.circle(
-                item_surface, indicator_color, indicator_center, indicator_radius
+                item_surface,
+                self.get_device_type_color(device),
+                (self.TYPE_DOT_X, bg_height // 2),
+                self.TYPE_DOT_RADIUS,
             )
 
-            # Scale font sizes
-            body_font_size = int(TypographyConstants.FONT_BODY * scale_factor)
-            small_text_font_size = int(
-                TypographyConstants.FONT_SMALL_TEXT * scale_factor
+            # Device name, truncated clear of the signal bars
+            name_font = get_font_manager().get_font(TypographyConstants.FONT_BODY)
+            device_name = self._truncate_text(
+                device.name, name_font, item_width - self.NAME_RIGHT_RESERVE
             )
-
-            # Device name with scaled font
-            name_font = get_font_manager().get_font(body_font_size)
-
-            # Truncate and render device name
-            device_name = device.name
-            max_name_width = int((item_width - 120) * scale_factor)
-            device_name = self._truncate_text(device_name, name_font, max_name_width)
-
             name_surface = name_font.render(device_name, True, self.colors["text"])
-            name_surface_alpha = pygame.Surface(
-                name_surface.get_size(), pygame.SRCALPHA
-            )
-            name_surface_alpha.blit(name_surface, (0, 0))
-            name_surface_alpha.set_alpha(base_alpha)
+            item_surface.blit(name_surface, (self.TEXT_LEFT, self.NAME_Y))
 
-            item_surface.blit(
-                name_surface_alpha, (int(24 * scale_factor), int(8 * scale_factor))
-            )
-
-            # Device type text with scaled font
-            type_font = get_font_manager().get_font(small_text_font_size)
-
-            device_type_text = self.get_device_type_text(device)
+            # Device type label
+            type_font = get_font_manager().get_font(TypographyConstants.FONT_SMALL_TEXT)
             type_surface = type_font.render(
-                device_type_text, True, self.colors["text_dim"]
+                self.get_device_type_text(device), True, self.colors["text_dim"]
             )
-            type_surface_alpha = pygame.Surface(
-                type_surface.get_size(), pygame.SRCALPHA
-            )
-            type_surface_alpha.blit(type_surface, (0, 0))
-            type_surface_alpha.set_alpha(int(base_alpha * 0.8))
+            item_surface.blit(type_surface, (self.TEXT_LEFT, self.TYPE_Y))
 
-            item_surface.blit(
-                type_surface_alpha, (int(24 * scale_factor), int(26 * scale_factor))
-            )
-
-            # Signal strength indicator (scaled)
+            # Signal strength bars, bottom-aligned, rising left to right
             if (
                 hasattr(device, "signal_strength")
                 and device.signal_strength is not None
             ):
-                signal_bars = self.get_signal_bars(device.signal_strength)
-                signal_x = int((item_width - 35) * scale_factor)
-                signal_y = int((item_height // 2 - 8) * scale_factor)
-
-                for i in range(4):
-                    bar_height = int((4 + i * 3) * scale_factor)
-                    bar_color = (
-                        self.colors["primary"]
-                        if i < signal_bars
-                        else self.colors["border"]
-                    )
-                    bar_rect = pygame.Rect(
-                        signal_x + int(i * 4 * scale_factor),
-                        signal_y + int((16 - (4 + i * 3)) * scale_factor),
-                        int(3 * scale_factor),
-                        bar_height,
-                    )
-                    pygame.draw.rect(item_surface, bar_color, bar_rect)
-
-                # Signal strength text (scaled)
-                signal_font = get_font_manager().get_font(small_text_font_size)
-
-                rssi_text = f"{device.signal_strength}dBm"
-                rssi_surface = signal_font.render(
-                    rssi_text, True, self.colors["text_dim"]
-                )
-                rssi_surface_alpha = pygame.Surface(
-                    rssi_surface.get_size(), pygame.SRCALPHA
-                )
-                rssi_surface_alpha.blit(rssi_surface, (0, 0))
-                rssi_surface_alpha.set_alpha(int(base_alpha * 0.7))
-
-                rssi_rect = rssi_surface_alpha.get_rect()
-                rssi_x = signal_x + int(16 * scale_factor) - rssi_rect.width // 2
-                item_surface.blit(
-                    rssi_surface_alpha, (rssi_x, signal_y + int(18 * scale_factor))
+                self._draw_signal_bars(
+                    item_surface,
+                    self.get_signal_bars(device.signal_strength),
+                    item_width,
+                    bg_height,
                 )
 
             # Cache the rendered surface
@@ -369,6 +328,42 @@ class DeviceSurfaceRenderer:
                 layout_item["height"],
             )
             return fallback_surface, touch_rect
+
+    def _draw_signal_bars(
+        self,
+        surface: pygame.Surface,
+        lit_bars: int,
+        item_width: int,
+        bg_height: int,
+    ) -> None:
+        """Draw the four DEVICE_LIST signal bars at the slot's right edge.
+
+        Args:
+            surface: Slot surface to draw on.
+            lit_bars: Number of bars to draw in the lit colour (0-4).
+            item_width: Slot surface width in pixels.
+            bg_height: Height of the slot background in pixels.
+        """
+        block_width = self.BAR_COUNT * self.BAR_WIDTH + (self.BAR_COUNT - 1) * (
+            self.BAR_GAP
+        )
+        left_x = item_width - self.BAR_RIGHT_INSET - block_width
+        bottom_y = bg_height // 2 + self.BAR_BOTTOM_BELOW_CENTRE
+
+        for i in range(self.BAR_COUNT):
+            bar_height = self.BAR_BASE_HEIGHT + self.BAR_STEP * i
+            bar_color = (
+                self.colors["signal_lit"]
+                if i < lit_bars
+                else self.colors["signal_unlit"]
+            )
+            bar_rect = pygame.Rect(
+                left_x + i * (self.BAR_WIDTH + self.BAR_GAP),
+                bottom_y - bar_height,
+                self.BAR_WIDTH,
+                bar_height,
+            )
+            pygame.draw.rect(surface, bar_color, bar_rect)
 
     def create_empty_slot_surface(
         self, layout_item: Dict[str, Any], selected: bool = False

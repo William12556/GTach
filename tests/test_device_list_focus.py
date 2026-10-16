@@ -11,10 +11,14 @@
 Covers change-479b2e51. The DEVICE_LIST screen rendered every
 discovered device in one unbounded column, each row independently
 selectable, which could overflow the circular safe area and collide
-with the Back/Retry buttons. It now renders exactly three slots centred
-on the display: the focused device in the middle, its neighbours above
-and below, and an outlined empty frame wherever a neighbour does not
-exist.
+with the Back/Retry buttons. It now renders exactly three slots: the
+focused device in the middle, its neighbours above and below, and an
+outlined empty frame wherever a neighbour does not exist.
+
+change-d38362aa moved the column up into the band below the title and
+enlarged it to 60 px slots, so the middle slot is centred at y=218, not
+on the display centre. It also redesigned the slot interior; the
+legibility tests below cover the signal bars and the type label.
 
 The load-bearing properties under test are that exactly one touch
 region is selectable — the middle slot — and that focus moves by
@@ -48,6 +52,7 @@ from gtach.display.setup_models import (
     SetupState,
 )
 from gtach.display.touch import TouchHandler
+from gtach.display.typography import TypographyConstants, get_font_manager
 
 SWIPE_THRESHOLD = 100
 
@@ -63,11 +68,11 @@ def _pygame_ready():
     pygame.init()
 
 
-def _device(index):
+def _device(index, signal_strength=-60):
     return BluetoothDevice(
         name=f"Device {index}",
         mac_address=f"00:11:22:33:44:{index:02X}",
-        signal_strength=-60,
+        signal_strength=signal_strength,
         device_type="ELM327",
         last_seen=datetime.datetime(2026, 8, 19),
     )
@@ -158,12 +163,20 @@ class TestSlotCount:
         assert len(layout) == 3
         assert [item["slot"] for item in layout] == ["top", "middle", "bottom"]
 
-    def test_middle_slot_is_centred_on_the_display(self):
-        engine = CircularPositioningEngine()
+    def test_middle_slot_is_centred_on_the_column_centre(self):
+        """The column sits above the display centre (change-d38362aa)."""
+        middle = CircularPositioningEngine().calculate_focused_slot_layout()[1]
 
-        middle = engine.calculate_focused_slot_layout()[1]
+        assert middle["y"] + middle["height"] // 2 == 218
 
-        assert middle["y"] + middle["height"] // 2 == engine.display_center[1]
+    def test_slot_geometry_matches_the_target(self):
+        """Slots y=118/188/258, 60 px high, unscaled (change-d38362aa)."""
+        layout = CircularPositioningEngine().calculate_focused_slot_layout()
+
+        assert [item["y"] for item in layout] == [118, 188, 258]
+        assert all(item["height"] == 60 for item in layout)
+        assert all(item["scale"] == 1.0 for item in layout)
+        assert all(item["opacity"] == 1.0 for item in layout)
 
     def test_slots_are_evenly_pitched(self):
         layout = CircularPositioningEngine().calculate_focused_slot_layout()
@@ -222,7 +235,7 @@ class TestTouchRegions:
         _action, rect, _device = render.device_regions[0]
 
         assert rect.top == middle["y"]
-        assert rect.centery == pytest.approx(240, abs=middle["height"] // 2)
+        assert rect.centery == pytest.approx(218, abs=middle["height"] // 2)
 
     def test_back_and_retry_are_still_registered(self):
         render = _Render(3, focused_index=1)
@@ -322,6 +335,74 @@ class TestSlotContents:
         )
 
 
+class TestSlotLegibility:
+    """Signal bars and both text lines fit and read (change-d38362aa)."""
+
+    def _bar_block_pixels(self, signal_strength):
+        renderer = DeviceSurfaceRenderer()
+        layout = CircularPositioningEngine().calculate_focused_slot_layout()[1]
+        surface, _rect = renderer.create_slot_surface(
+            _device(0, signal_strength=signal_strength), layout, selected=True
+        )
+
+        width = surface.get_width()
+        bg_height = surface.get_height() - 2
+        block_width = renderer.BAR_COUNT * renderer.BAR_WIDTH + (
+            renderer.BAR_COUNT - 1
+        ) * (renderer.BAR_GAP)
+        left = width - renderer.BAR_RIGHT_INSET - block_width
+        bottom = bg_height // 2 + renderer.BAR_BOTTOM_BELOW_CENTRE
+        top = bottom - (
+            renderer.BAR_BASE_HEIGHT + renderer.BAR_STEP * (renderer.BAR_COUNT - 1)
+        )
+
+        pixels = {
+            tuple(surface.get_at((x, y))[:3])
+            for x in range(left, left + block_width)
+            for y in range(top, bottom)
+        }
+        return renderer, pixels
+
+    def test_strong_signal_draws_lit_bars(self):
+        renderer, pixels = self._bar_block_pixels(-35)
+
+        assert renderer.colors["signal_lit"] in pixels
+
+    def test_weak_signal_draws_only_unlit_bars(self):
+        renderer, pixels = self._bar_block_pixels(-90)
+
+        assert renderer.colors["signal_unlit"] in pixels
+        assert renderer.colors["signal_lit"] not in pixels
+
+    def test_no_signal_strength_renders_without_bars(self):
+        renderer = DeviceSurfaceRenderer()
+        layout = CircularPositioningEngine().calculate_focused_slot_layout()[1]
+
+        surface, _rect = renderer.create_slot_surface(
+            _device(0, signal_strength=None), layout, selected=True
+        )
+
+        width, height = surface.get_size()
+        colours = {
+            tuple(surface.get_at((x, y))[:3])
+            for x in range(width - 43, width - 14)
+            for y in range(height - 2)
+        }
+        assert renderer.colors["signal_unlit"] not in colours
+        assert renderer.colors["signal_lit"] not in colours
+
+    def test_type_label_fits_inside_the_slot(self):
+        """Font height comes from the font manager, not a Pi measurement."""
+        renderer = DeviceSurfaceRenderer()
+        layout = CircularPositioningEngine().calculate_focused_slot_layout()[1]
+
+        surface, _rect = renderer.create_slot_surface(_device(0), layout)
+        type_font = get_font_manager().get_font(TypographyConstants.FONT_SMALL_TEXT)
+
+        assert surface.get_height() == 60
+        assert renderer.TYPE_Y + type_font.get_height() <= surface.get_height()
+
+
 class TestArrows:
     """Arrows follow device presence, not a count threshold."""
 
@@ -358,7 +439,7 @@ class TestArrows:
 class TestArrowGlyphs:
     """The arrows are actually drawn, in the bands either side of the slots."""
 
-    UP_POINT = (240, 148)
+    UP_POINT = (240, 108)
     DOWN_POINT = (240, 328)
 
     def _draw(self, has_previous, has_next):

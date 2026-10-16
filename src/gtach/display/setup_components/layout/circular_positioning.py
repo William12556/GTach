@@ -201,21 +201,28 @@ class CircularPositioningEngine:
         }
 
     def calculate_focused_slot_layout(
-        self, item_height: int = 45, item_spacing: int = 10
+        self,
+        item_height: int = 60,
+        item_spacing: int = 10,
+        column_centre_y: int = 218,
     ) -> List[Dict[str, Any]]:
         """Calculate the three fixed DEVICE_LIST slot positions.
 
         Exactly three slots are always returned — top, middle and
-        bottom — independent of how many devices were discovered. The
-        middle slot's vertical centre is the display centre, so the
-        focused device sits on the display's horizontal axis
-        (change-479b2e51). Each slot is narrowed and inset by the same
-        curved rule the unbounded list uses, so all three stay inside
-        the circular safe area.
+        bottom — independent of how many devices were discovered
+        (change-479b2e51). The middle slot's vertical centre is
+        column_centre_y, not the display centre: the column is moved up
+        into the band below the title so that 60 px slots fit above
+        Back/Retry (change-d38362aa). Each slot is narrowed and inset by
+        the same curved rule the unbounded list uses, so all three stay
+        inside the circular safe area; scale and opacity are fixed at
+        1.0 because the three slots have no depth cue to convey.
 
         Args:
             item_height: Slot height in pixels.
             item_spacing: Vertical gap between adjacent slots.
+            column_centre_y: Vertical centre of the middle slot in
+                display coordinates.
 
         Returns:
             Three layout entries in top-to-bottom order, each carrying
@@ -223,18 +230,19 @@ class CircularPositioningEngine:
             same geometry keys as calculate_curved_list_layout.
         """
         try:
-            center_y = self.display_center[1]
             pitch = item_height + item_spacing
 
-            # Middle slot centred on the display axis; the other two
-            # one pitch either side of it.
-            middle_y = center_y - item_height // 2
+            # Middle slot centred on column_centre_y (change-d38362aa);
+            # the other two one pitch either side of it.
+            middle_y = column_centre_y - item_height // 2
             slot_names = ("top", "middle", "bottom")
 
             layout_data = []
             for index, (name, offset) in enumerate(zip(slot_names, (-pitch, 0, pitch))):
                 y_pos = middle_y + offset
                 layout_item = self._calculate_curved_geometry(y_pos, item_height)
+                layout_item["scale"] = 1.0
+                layout_item["opacity"] = 1.0
                 layout_item["index"] = index
                 layout_item["slot"] = name
                 layout_item["y"] = y_pos
@@ -253,9 +261,8 @@ class CircularPositioningEngine:
             self.logger.error(
                 f"Error calculating focused slot layout: {e}", exc_info=True
             )
-            center_y = self.display_center[1]
             pitch = item_height + item_spacing
-            middle_y = center_y - item_height // 2
+            middle_y = column_centre_y - item_height // 2
             return [
                 {
                     "index": index,
