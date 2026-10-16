@@ -250,6 +250,10 @@ class TestPersistentErrors:
             device_renderer=DeviceSurfaceRenderer(),
             _update_touch_regions_safe=lambda regions: None,
             _draw_focus_arrows=lambda surface, info: None,
+            # The error line is fitted to 220 px (change-d38362aa).
+            _fit_text=lambda font, text, max_width=400: (
+                SetupDisplayManager._fit_text(None, font, text, max_width)
+            ),
         )
 
         SetupDisplayManager._render_device_list_screen(

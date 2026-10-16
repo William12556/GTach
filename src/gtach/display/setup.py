@@ -72,12 +72,13 @@ class SetupDisplayManager:
     _COMPLETE_HOLD_S = 2.0
 
     # DEVICE_LIST focus arrows (change-479b2e51). The slot column runs
-    # y=163..318 for the default 45px slots at 10px spacing, so the
-    # arrows sit in the bands between the title and the top slot, and
-    # between the bottom slot and the Back/Retry buttons at y=340.
+    # y=118..318 for the default 60px slots at 10px spacing
+    # (change-d38362aa), so the arrows sit in the bands between the
+    # error line (centre y=84) and the top slot, and between the bottom
+    # slot and the Back/Retry buttons at y=340.
     _ARROW_HALF_WIDTH = 11
     _ARROW_HEIGHT = 12
-    _ARROW_UP_BASE_Y = 154
+    _ARROW_UP_BASE_Y = 114
     _ARROW_DOWN_BASE_Y = 322
 
     def __init__(
@@ -591,15 +592,19 @@ class SetupDisplayManager:
                 surface.blit(no_devices, no_devices_rect)
 
         # Error message rendering (e.g., from failed OBD verification).
-        # Above the slot column: y=310 sat inside the bottom slot once
-        # the three-slot layout landed (change-479b2e51).
+        # Between the title and the up arrow: the slot column moved up
+        # to y=118 (change-d38362aa). Fitted to 220 px so the line stays
+        # inside the visible edge at y=84.
         if state.error_message:
             font_minimal = get_label_small_font()
             if font_minimal:
-                error_text = font_minimal.render(
-                    state.error_message, True, self.colors["danger"]
+                error_message = self._fit_text(
+                    font_minimal, state.error_message, max_width=220
                 )
-                error_rect = error_text.get_rect(center=(240, 118))
+                error_text = font_minimal.render(
+                    error_message, True, self.colors["danger"]
+                )
+                error_rect = error_text.get_rect(center=(240, 84))
                 surface.blit(error_text, error_rect)
 
         # Back and Retry buttons — 130x60 each, bottom at y=400
