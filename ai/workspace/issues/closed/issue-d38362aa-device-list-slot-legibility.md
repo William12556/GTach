@@ -20,7 +20,7 @@ issue_info:
     space above the slot column is unused
   date: '2026-10-16'
   reporter: William Watson
-  status: open
+  status: closed
   severity: low
   type: defect
   iteration: 1
@@ -108,14 +108,22 @@ resolution:
     middle centre y=218); slot scale and opacity 1.0; redesigned slot
     interior with larger signal bars and no dBm text.
   change_ref: change-d38362aa
-  resolved_date: ''
-  resolved_by: ''
-  fix_description: ''
+  resolved_date: '2026-10-16'
+  resolved_by: Claude Code (change-d38362aa, commit e6db4e0)
+  fix_description: >
+    Slot column moved up (middle centre y=218) and enlarged to 60 px slots
+    with 10 px gaps; scale and opacity 1.0; fixed-offset slot interior with
+    four 5 px signal bars; dBm text removed; up arrow y=102-114; error line
+    centred at y=84, fitted to 220 px.
 verification:
-  verified_date: ''
-  verified_by: ''
-  test_results: ''
-  closure_notes: ''
+  verified_date: '2026-10-16'
+  verified_by: William Watson
+  test_results: >
+    pytest tests/: 588 passed, 0 failed (baseline 583). On the Pi: layout
+    correct, no clipping. Error-line position verified by the prototype
+    render and unit geometry; not triggered on the device.
+  closure_notes: Closed. Also resolves the ai/task.md signal-bar and 45 px
+    clipping items.
 prevention:
   preventive_measures: ''
   process_improvements: ''
@@ -124,7 +132,7 @@ verification_enhanced:
   - On the Pi, name and type text are fully visible in all three slots.
   - On the Pi, lit and unlit signal bars are distinguishable in selected
     and unselected slots.
-  verification_results: ''
+  verification_results: Both verified on the Pi, 2026-10-16.
 traceability:
   design_refs:
   - design-a3b4c5d6-component_display_setup_manager
@@ -144,6 +152,11 @@ version_history:
   author: Claude
   changes:
   - Initial issue document.
+- version: '1.1'
+  date: '2026-10-16'
+  author: William Watson
+  changes:
+  - Resolved by change-d38362aa (commit e6db4e0); verified on the Pi; closed.
 metadata:
   copyright: Copyright (c) 2026 William Watson. MIT License.
   template_version: '1.0'
@@ -159,6 +172,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-16 | Initial issue document. |
+| 1.1 | 2026-10-16 | Resolved by change-d38362aa (commit e6db4e0); verified on the Pi; closed. |
 
 ---
 

@@ -20,7 +20,7 @@ change_info:
   title: "Shift and enlarge the DEVICE_LIST slot column; redesign the slot interior for legible text and signal bars"
   date: "2026-10-16"
   author: "William Watson"
-  status: "open"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -175,12 +175,13 @@ implementation:
   deployment_notes: "Deploy with bin/deploy.sh; no configuration change."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-10-16"
+  implemented_by: "Claude Code (commit e6db4e0)"
+  verification_date: "2026-10-16"
+  verified_by: "William Watson"
+  test_results: "pytest tests/: 588 passed, 0 failed. On the Pi: layout correct, no clipping. Error-line position verified by prototype render and unit geometry; not triggered on the device."
+  issues_found:
+    - "Accepted deviations (report-d38362aa §7): _fit_text host entry in tests/test_setup_and_gauge.py; named constant BAR_BOTTOM_BELOW_CENTRE; private helper _draw_signal_bars."
 
 traceability:
   design_updates:
@@ -201,6 +202,11 @@ version_history:
     author: "Claude"
     changes:
       - "Initial change document resolving issue-d38362aa iteration 1."
+  - version: "1.1"
+    date: "2026-10-16"
+    author: "William Watson"
+    changes:
+      - "Implemented (commit e6db4e0), verified on the Pi, closed; design-a3b4c5d6 §5.3 updated."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -248,6 +254,7 @@ Slot interior (coordinates relative to the slot surface; `bg` height = 58):
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-16 | Initial change document resolving issue-d38362aa iteration 1. |
+| 1.1 | 2026-10-16 | Implemented (commit e6db4e0), verified on the Pi, closed; design-a3b4c5d6 §5.3 updated. |
 
 ---
 

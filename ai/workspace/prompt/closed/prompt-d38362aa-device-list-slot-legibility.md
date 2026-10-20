@@ -174,6 +174,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-16 | Initial prompt implementing change-d38362aa iteration 1. Target profile claude_code. |
+| 1.1 | 2026-10-16 | Implemented (commit e6db4e0; 588 passed); verified on the Pi; closed |
 
 ---
 

@@ -26,8 +26,8 @@ document_info:
   component: "SetupDisplayManager"
   parent: "design-2c6b8e4d-domain_display.md"
   source_file: "src/gtach/display/setup_manager.py"
-  version: "1.1"
-  date: "2026-10-02"
+  version: "1.2"
+  date: "2026-10-16"
   author: "William Watson"
 ```
 
@@ -248,13 +248,15 @@ CONNECTING -> FAILURE -> SCANNING (retry)
 
 ### 5.3 DEVICE_LIST Screen Behaviour
 
-Defined by change-479b2e51.
+Defined by change-479b2e51; geometry and slot interior revised by change-d38362aa.
 
-- Exactly three slots (top, middle, bottom) are drawn, centred vertically on the display, whatever the discovered-device count.
+- Exactly three slots (top, middle, bottom) are drawn, whatever the discovered-device count. Slots are 60 px high with 10 px gaps; the column spans y=118–318 with the middle slot centred at y=218, in the band below the title and above Back/Retry. Slots are drawn at full scale and opacity.
+- Each populated slot shows a type dot, the device name (FONT_BODY, truncated) and the type label (FONT_SMALL_TEXT) on the left, and four signal bars on the right (lit and unlit in contrasting greys). No RSSI text is shown.
 - The middle slot shows the focused device (`focused_index`) with an accent border and background tint. It is the only touch region.
 - The top and bottom slots show the previous and next device, or an outlined empty frame where none exists.
 - A vertical swipe shifts `focused_index` by one, clamped to the discovered-device range. Arrows are indicators only, not touch targets.
-- An up arrow is drawn when a previous device exists; a down arrow when a next device exists.
+- An up arrow (y=102–114) is drawn when a previous device exists; a down arrow (y=322–334) when a next device exists.
+- An error message, when present, is centred at y=84 between the title and the up arrow, fitted to 220 px.
 - With zero devices, "No devices found" is shown and no slots or arrows are drawn.
 
 [Return to Table of Contents](<#table of contents>)
@@ -329,6 +331,7 @@ stateDiagram-v2
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
 | 1.1 | 2026-10-02 | Claude | Added 5.3 DEVICE_LIST Screen Behaviour; updated 4.7 and 5.2 DEVICE_LIST interaction (change-479b2e51) |
+| 1.2 | 2026-10-16 | Claude | 5.3: slot column geometry, slot interior, arrow and error-line positions (change-d38362aa) |
 
 ---
 
