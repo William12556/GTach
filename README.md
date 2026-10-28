@@ -47,6 +47,12 @@ The Pi Zero 2W requires Debian GNU/Linux 11 (Bullseye), 64-bit — the only manu
 
 See [docs/pi-setup.md](docs/pi-setup.md) for full hardware setup detail and reference material.
 
+### 2.1 Case and Mount
+
+Draft case and dashboard mount (FreeCAD documents `3d-case/GTach_C_*.FCStd`). The holder fits the original TomTom port; the hemispherical rear case sits in a spherical cup that provides yaw and 0–45° tilt adjustment. The design is a prototype under test.
+
+![GTach case and mount assembly](docs/images/gtach_c_assembly.png)
+
 [Return to Table of Contents](<#table of contents>)
 
 ---
@@ -232,6 +238,7 @@ docs/         Technical documentation
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.5 | 2026-10-28 | §2.1: added Case and Mount subsection with assembly image |
 | 2.4 | 2026-08-20 | §2.0: boot configuration and HyperPixel driver now applied automatically, not manually; §3.1: documented pi-install.sh's boot-config/driver/reboot-prompt behaviour; §4.3: added previously-missing service-file and vendored driver-file transfers, and required post-install reboot; §7.0: added bin/vendor/ |
 | 2.3 | 2026-06-19 | Added §2.0 Hardware Setup; renumbered §3.0–§7.0 |
 | 2.2 | 2026-06-18 | §2.1: pi-install.sh always installs latest release; removed version-pinning example |
