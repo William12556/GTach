@@ -56,4 +56,6 @@ project_information.md
 **/*.pwscene
 *.pm5s
 **/*.pm5s
+*.stl
+**/*.stl
 
