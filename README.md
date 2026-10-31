@@ -6,6 +6,8 @@ Created: 2025 08 08
 
 GTach is an experimental embedded application for Raspberry Pi with a Pimoroni HyperPixel Round 480×480 display. It implements real-time tachometer functionality via an ELM327 OBD-II Bluetooth adapter.
 
+GTach is developed using the [AI Governance and Orchestration](https://github.com/William12556/AI-Governance-and-Orchestration) framework (AI-G&O) and serves as an example of the framework applied to software engineering. Framework files are in `ai/` (§7.0).
+
 **Notice**: This software is experimental. Fitness for purpose is not guaranteed.
 
 ---
@@ -238,6 +240,7 @@ docs/         Technical documentation
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.6 | 2026-10-31 | Overview: added note on development under the AI-G&O framework |
 | 2.5 | 2026-10-28 | §2.1: added Case and Mount subsection with assembly image |
 | 2.4 | 2026-08-20 | §2.0: boot configuration and HyperPixel driver now applied automatically, not manually; §3.1: documented pi-install.sh's boot-config/driver/reboot-prompt behaviour; §4.3: added previously-missing service-file and vendored driver-file transfers, and required post-install reboot; §7.0: added bin/vendor/ |
 | 2.3 | 2026-06-19 | Added §2.0 Hardware Setup; renumbered §3.0–§7.0 |
