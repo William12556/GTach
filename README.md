@@ -14,14 +14,14 @@ GTach is developed using the [AI Governance and Orchestration](https://github.co
 
 ## Table of Contents
 
-[1.0 Requirements](<#1.0 requirements>)
-[2.0 Hardware Setup](<#2.0 hardware setup>)
-[3.0 Installation](<#3.0 installation>)
-[4.0 Build and Deploy](<#4.0 build and deploy>)
-[5.0 Service Management](<#5.0 service management>)
-[6.0 CLI Reference](<#6.0 cli reference>)
-[7.0 Project Structure](<#7.0 project structure>)
-[Version History](<#version history>)
+- [1.0 Requirements](#10-requirements)
+- [2.0 Hardware Setup](#20-hardware-setup)
+- [3.0 Installation](#30-installation)
+- [4.0 Build and Deploy](#40-build-and-deploy)
+- [5.0 Service Management](#50-service-management)
+- [6.0 CLI Reference](#60-cli-reference)
+- [7.0 Project Structure](#70-project-structure)
+- [Version History](#version-history)
 
 ---
 
@@ -39,7 +39,7 @@ GTach is developed using the [AI Governance and Orchestration](https://github.co
 - git
 - curl
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -55,7 +55,7 @@ Draft case and dashboard mount (FreeCAD documents `3d-case/GTach_C_*.FCStd`). Th
 
 ![GTach case and mount assembly](docs/images/gtach_c_assembly.png)
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -84,7 +84,7 @@ systemctl restart gtach
 
 For first-time Pi setup and active development, use the full developer workflow in §4.0.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -149,7 +149,7 @@ A reboot is required afterward for boot configuration and driver changes to take
 scp root@gtach.local:/opt/gtach/debug.log ~/Documents/GitHub/GTach/
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -179,7 +179,7 @@ tail -f /opt/gtach/start.log
 tail -f /opt/gtach/debug.log
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -217,7 +217,7 @@ gtach --transport tcp --obd-host ELM327-Emulator.local --obd-port 35000
 gtach --validate-dependencies
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -232,7 +232,7 @@ tests/        Test suite
 docs/         Technical documentation
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -240,6 +240,7 @@ docs/         Technical documentation
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.7 | 2026-11-03 | Table of Contents: converted to a bulleted list; all internal links changed from Obsidian syntax to GitHub heading slugs |
 | 2.6 | 2026-10-31 | Overview: added note on development under the AI-G&O framework |
 | 2.5 | 2026-10-28 | §2.1: added Case and Mount subsection with assembly image |
 | 2.4 | 2026-08-20 | §2.0: boot configuration and HyperPixel driver now applied automatically, not manually; §3.1: documented pi-install.sh's boot-config/driver/reboot-prompt behaviour; §4.3: added previously-missing service-file and vendored driver-file transfers, and required post-install reboot; §7.0: added bin/vendor/ |
