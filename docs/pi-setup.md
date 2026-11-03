@@ -6,20 +6,20 @@ Created: 2026 June 19
 
 ## Table of Contents
 
-[1.0 Hardware](<#1.0 hardware>)
-[2.0 Operating System](<#2.0 operating system>)
-[3.0 Boot Configuration](<#3.0 boot configuration>)
-[3.1 config.txt](<#3.1 config.txt>)
-[3.2 cmdline.txt](<#3.2 cmdline.txt>)
-[3.3 HyperPixel Driver](<#3.3 hyperpixel driver>)
-[3.4 USB OTG](<#3.4 usb otg>)
-[4.0 GTach Installation](<#4.0 gtach installation>)
-[5.0 Development Access](<#5.0 development access>)
-[5.1 Hardware](<#5.1 hardware>)
-[5.2 Laptop Connection](<#5.2 laptop connection>)
-[5.3 Verification](<#5.3 verification>)
-[6.0 References](<#6.0 references>)
-[Version History](<#version history>)
+- [1.0 Hardware](#10-hardware)
+- [2.0 Operating System](#20-operating-system)
+- [3.0 Boot Configuration](#30-boot-configuration)
+- [3.1 config.txt](#31-configtxt)
+- [3.2 cmdline.txt](#32-cmdlinetxt)
+- [3.3 HyperPixel Driver](#33-hyperpixel-driver)
+- [3.4 USB OTG](#34-usb-otg)
+- [4.0 GTach Installation](#40-gtach-installation)
+- [5.0 Development Access](#50-development-access)
+- [5.1 Hardware](#51-hardware)
+- [5.2 Laptop Connection](#52-laptop-connection)
+- [5.3 Verification](#53-verification)
+- [6.0 References](#60-references)
+- [Version History](#version-history)
 
 ---
 
@@ -37,7 +37,7 @@ Created: 2026 June 19
 
 **Backlight note:** The display backlight does not turn off automatically when the Pi shuts down. For longevity, cut power at the source (e.g. ignition-switched supply) rather than relying on a software shutdown to blank the panel (Pimoroni Ltd., 2026).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -69,7 +69,7 @@ systemctl restart ssh
 
 OS provisioning is the only manual step. Everything in §3.0 below is applied automatically by the installer described in §4.0 — the reference material is retained here for troubleshooting, not as instructions to follow by hand.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -117,7 +117,7 @@ dtoverlay=dwc2
 - `dtoverlay=dwc2` enables USB OTG (§3.4).
 - Do not add `dtoverlay=vc4-kms-dpi-hyperpixel2r`. This is Pimoroni's current recommended overlay for Bullseye and later (Pimoroni Ltd., 2026), built into the OS kernel rather than requiring the driver in §3.3. GTach deliberately uses the legacy overlay above instead, since that is the configuration verified working on GTach hardware. Do not mix settings from the two approaches.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -141,7 +141,7 @@ In addition, `getty@tty1` is masked, removing the local console login prompt tha
 
 **Note:** Plymouth animated boot splash is not compatible with the HyperPixel DPI interface and must not be installed. The display shows a blank screen from power-on until GTach initialises.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -158,7 +158,7 @@ The HyperPixel 2.1 Round requires Pimoroni's `hyperpixel2r` kernel driver — th
 
 **Known fragility:** Pimoroni's own issue tracker documents unreliable HyperPixel 2r behaviour specifically on Raspberry Pi Zero 2 with Bullseye — the display can flash the boot logo and then go blank (Pimoroni, 2021). GTach's configuration is verified working, but this combination is not guaranteed reliable by the upstream driver. Confirm the display is producing output after the first reboot following installation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -176,7 +176,7 @@ g_ether
 
 `i2c-dev` and `dwc2` are also declared in `config.txt` (§3.1); the `/etc/modules` entries ensure they load at boot without depending on overlay auto-loading behaviour.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -194,7 +194,7 @@ Applies §3.0 boot configuration, installs the HyperPixel driver, installs the G
 
 **Developer install** — from a cloned repository on Mac, via `./bin/deploy.sh` (see project `README.md` §4.0). `deploy.sh` transfers the wheel, service files, and vendored driver files to the Pi and runs `bin/install.sh`, which applies the same boot configuration and driver installation as `pi-install.sh`. `deploy.sh` reboots the Pi automatically after installation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -204,7 +204,7 @@ Applies §3.0 boot configuration, installs the HyperPixel driver, installs the G
 
 The Pi Zero 2W USB OTG port provides a virtual Ethernet connection to a development laptop. This is the recommended method for SSH access when testing in the car, where no network infrastructure is available.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -217,7 +217,7 @@ The Pi Zero 2W USB OTG port provides a virtual Ethernet connection to a developm
 
 Both ports may be used simultaneously. The `PWR IN` port is power only. The `USB` port carries data and may also supply power from the laptop.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -235,7 +235,7 @@ ssh root@gtach.local
 
 **Internet access:** The laptop's WiFi connection is unaffected. macOS routes internet traffic over WiFi and Pi traffic over the USB interface independently.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -249,7 +249,7 @@ ip addr show usb0
 ssh root@gtach.local
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -263,7 +263,7 @@ Pimoroni (2026b) *hyperpixel2r-python* [GitHub repository]. Available at: https:
 
 Pimoroni (2021) *Compatibility with Raspberry Pi Zero 2*, Issue #1, pimoroni/hyperpixel2r [GitHub]. Available at: https://github.com/pimoroni/hyperpixel2r/issues/1 (Accessed: 20 August 2026).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -277,6 +277,7 @@ Pimoroni (2021) *Compatibility with Raspberry Pi Zero 2*, Issue #1, pimoroni/hyp
 | 0.4 | 2026-06-19 | Added §5.0 Development Access — USB OTG configuration for in-car SSH |
 | 0.5 | 2026-06-19 | §5.2: removed dhcpcd.conf static IP step — unnecessary; §5.3, §5.4: gtach.local is the SSH target |
 | 0.6 | 2026-08-20 | Reframed §3.0 as automated (applied by pi-install.sh/install.sh) rather than manual instructions; added §3.3 HyperPixel Driver (vendored, previously undocumented) and §3.4 USB OTG (moved from §5.0, now default rather than dev-only); §1.0 added backlight longevity note; §4.0 rewritten for both install entry points and idempotency; §5.0 narrowed to physical connection/use, removed now-redundant manual OTG configuration steps; added §6.0 References; removed a stray unresolved merge-conflict marker from the former §5.3 |
+| 0.7 | 2026-11-03 | Table of Contents: converted to a bulleted list; all internal links changed from Obsidian syntax to GitHub heading slugs |
 
 ---
 
