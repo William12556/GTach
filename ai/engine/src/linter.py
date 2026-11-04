@@ -6,7 +6,7 @@ Checks:
   2. Markdown structure       (Version History, Created timestamp, copyright)
   3. YAML field validity      (schema_type, id pattern, enum values, iteration)
   4. UUID coupling integrity  (P04.2, P03.7, P15.12, P13.2)
-  5. Obsidian link targets    (P12.9)
+  5. Internal link targets    (P12.9; GitHub heading anchors)
 
 Usage:
     python linter.py <workspace_dir>
@@ -21,6 +21,7 @@ import argparse
 import os
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass
 from typing import Optional
 
@@ -147,9 +148,33 @@ def _extract_yaml(content: str) -> Optional[dict]:
         return None
 
 
+def _github_slug(text: str) -> str:
+    """Return the GitHub heading anchor for a heading text.
+
+    Lowercase; inline links reduced to their text; backslashes, asterisks
+    and backticks removed; every character that is not a letter, digit,
+    space, hyphen or underscore removed; each space becomes a hyphen.
+    """
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"[\\*`]", "", text).strip().lower()
+    text = "".join(c for c in text
+                   if c in "-_ " or unicodedata.category(c)[0] in "LN")
+    return text.replace(" ", "-")
+
+
 def _headings(content: str) -> frozenset:
-    """Return lowercase heading texts found in markdown content."""
-    return frozenset(m.group(1).strip().lower() for m in HEADING_RE.finditer(content))
+    """Return the GitHub heading anchors of the headings in markdown content.
+
+    Repeated headings receive the suffixes -1, -2, ... as on GitHub.
+    """
+    anchors: set[str] = set()
+    seen: dict[str, int] = {}
+    for m in HEADING_RE.finditer(content):
+        slug = _github_slug(m.group(1).strip().rstrip("#").strip())
+        n = seen.get(slug, 0)
+        seen[slug] = n + 1
+        anchors.add(slug if n == 0 else f"{slug}-{n}")
+    return frozenset(anchors)
 
 
 def _is_governance_doc(fname: str) -> bool:
@@ -303,7 +328,7 @@ def check_coupling(
     return findings
 
 
-# ── Check 5: Obsidian link targets (P12.9) ───────────────────────────────
+# ── Check 5: internal link targets (P12.9) ───────────────────────────────
 
 def check_links(path: str, content: str, workspace_dir: str) -> list[Finding]:
     """

@@ -6,12 +6,12 @@ Created: 2026 July 17
 
 ## Table of Contents
 
-[1.0 Purpose](<#1.0 purpose>)
-[2.0 Installation](<#2.0 installation>)
-[3.0 Hook Configuration](<#3.0 hook configuration>)
-[4.0 Hook Script](<#4.0 hook script>)
-[5.0 Scope and Limitations](<#5.0 scope and limitations>)
-[Version History](<#version history>)
+[1.0 Purpose](#10-purpose)
+[2.0 Installation](#20-installation)
+[3.0 Hook Configuration](#30-hook-configuration)
+[4.0 Hook Script](#40-hook-script)
+[5.0 Scope and Limitations](#50-scope-and-limitations)
+[Version History](#version-history)
 
 ---
 
@@ -21,7 +21,7 @@ Canonical source for the PostToolUse validation hook specified in governance P15
 
 Mandatory for `claude_code` and `claude_omlx` target profiles. Not applicable to the `engine` profile — the engine has no Claude Code hook runtime; test execution for engine-generated code remains a planner review step.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -32,7 +32,7 @@ Mandatory for `claude_code` and `claude_omlx` target profiles. Not applicable to
 - Merge this document's §3.0 JSON block into `<project-root>/.claude/settings.json` under the top-level `hooks` key (create the file if absent)
 - `.claude/settings.json` is git-tracked (team-shared); do not place this hook in `.claude/settings.local.json`
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -60,7 +60,7 @@ Add under `.claude/settings.json` → `hooks` → `PostToolUse`:
 
 If `.claude/settings.json` already has a `hooks` key, add `PostToolUse` as a sibling of existing event keys rather than replacing the object.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -101,7 +101,7 @@ fi
 exit 0
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -113,7 +113,7 @@ exit 0
 - Test-to-component mapping assumes `tests/<component>/` layout per governance P15.3/P15.7. Projects with a different layout must adapt §4.0 before provisioning.
 - The other P00.18 example skills (`.claude/governance/validate-design.md`, `.claude/testing/generate-pytest.md`, `.claude/validation/coupling-check.md`, `.claude/audit/protocol-compliance.md`) remain illustrative only; not addressed by this template.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

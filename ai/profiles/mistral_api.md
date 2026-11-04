@@ -6,16 +6,16 @@ Created: 2026 October 02
 
 ## Table of Contents
 
-- [1.0 Overview](<#1.0 overview>)
-- [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
-- [3.0 Planner](<#3.0 planner>)
-- [4.0 Worker and Reviewer](<#4.0 worker and reviewer>)
-- [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Engine](<#6.0 engine>)
-- [7.0 Model Selection](<#7.0 model selection>)
-- [8.0 Project Setup](<#8.0 project setup>)
-- [References](<#references>)
-- [Version History](<#version history>)
+- [1.0 Overview](#10-overview)
+- [2.0 Placeholder Mappings](#20-placeholder-mappings)
+- [3.0 Planner](#30-planner)
+- [4.0 Worker and Reviewer](#40-worker-and-reviewer)
+- [5.0 Tool-Calling Behaviour](#50-tool-calling-behaviour)
+- [6.0 Engine](#60-engine)
+- [7.0 Model Selection](#70-model-selection)
+- [8.0 Project Setup](#80-project-setup)
+- [References](#references)
+- [Version History](#version-history)
 
 ---
 
@@ -32,7 +32,7 @@ This profile maps governance abstract placeholders to the hosted Mistral API. Mi
 
 Worker and reviewer use the same model; roles differ by prompt engineering only. Source content read by the engine is transmitted to the Mistral API.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -44,7 +44,7 @@ Worker and reviewer use the same model; roles differ by prompt engineering only.
 
 `<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/` and `ai/governance/<model>/recipes/`, mapped by the model's `manifest.yaml`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -54,7 +54,7 @@ Worker and reviewer use the same model; roles differ by prompt engineering only.
 
 Any frontier model with sufficient reasoning capability may substitute. The planner role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -128,7 +128,7 @@ With `roles:` present, the legacy `omlx:` block is not used for role binding. Pe
 
 Reference template: `ai/engine/config.template.yaml`. Operations guide: `ai/engine/doc/guide-engine-operations.md` §3.0.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -140,7 +140,7 @@ Reviewer verdict parsing (leading `SHIP` / `REVISE` token) and tool calling in b
 
 Name tools explicitly in recipe prompts; use imperative phrasing.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -163,7 +163,7 @@ python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prom
 
 The worker and reviewer models are resolved from config; no per-run model flags are required. Variables named by `api_key_env` are scrubbed from the environment of engine-launched subprocesses.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -179,7 +179,7 @@ Selection notes:
 - Mistral documentation lists the endpoint as `mistral-medium-3-5-26-04`; third-party catalogues list `mistral-medium-2604` [3]. The id must match the `/v1/models` listing exactly (§4.0).
 - Pricing at time of writing: USD 1.5 per million input tokens, USD 7.5 per million output tokens [3]. Loop runs bill every iteration of both roles.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -194,7 +194,7 @@ ai/state/
 
 The API key is not stored in `ai/config.yaml` or any tracked file.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -206,7 +206,7 @@ The API key is not stored in `ai/config.yaml` or any tracked file.
 
 [3] MISTRAL AI, 2026. *Mistral Medium 3.5* [online]. Available from: https://docs.mistral.ai/models/mistral-medium-3-5-26-04 [Accessed 2 October 2026].
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -218,6 +218,7 @@ The API key is not stored in `ai/config.yaml` or any tracked file.
 | 1.1 | 2026-10-02 | §4.0: macOS Keychain storage and per-invocation key injection |
 | 1.2 | 2026-10-14 | §4.0: engine reads the key from the Keychain (`api_key_keychain`, change-7d953510); service name corrected to `ai-go-mistral`; per-run override kept. §5.0: reviewer verdict and tool calling verified (report-14e05e35 §5.0). §6.0: key prerequisite |
 | 1.3 | 2026-10-14 | §4.0: Keychain search list wording (audit-7d953510 L-02); model id check passes the header on stdin, not in argv (L-07) |
+| 1.4 | 2026-11-03 | Internal links changed from Obsidian anchor syntax to GitHub heading anchors; Table of Contents formatted as a bulleted list |
 
 ---
 

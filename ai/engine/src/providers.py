@@ -20,6 +20,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import secrets
@@ -38,10 +39,17 @@ log = logging.getLogger("engine")
 
 KINDS = ("omlx", "openai_compatible", "anthropic")
 ROLES = ("worker", "reviewer")
+
+# change-5e8aea4f (audit-711a57d5 F-05; NFR-05): replaces a provider's secret
+# key in error text before it is echoed, logged or raised.
+REDACTED = "API-KEY-REDACTED"
 _ID_ALPHABET = string.ascii_letters + string.digits
 _ID_LENGTH = 9  # FR-04-09: the format Mistral issues; a compatibility convention
 _ANTHROPIC_DEFAULT_MAX_TOKENS = 8192
 _SECURITY = "/usr/bin/security"  # macOS Keychain CLI (change-7d953510)
+# change-711a57d5 (audit-caab2052 M-06): per-call model request bound, seconds;
+# providers.<name>.request_timeout_seconds overrides it.
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 300.0
 _KEYCHAIN_TIMEOUT = 10  # seconds; a locked Keychain or unanswered dialog blocks
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
@@ -116,13 +124,32 @@ class OpenAICompatProvider:
     """Provider for OpenAI-compatible chat completion endpoints."""
 
     def __init__(self, kind: str = "omlx", base_url: str = "", api_key: str = "",
-                 client: Any = None):
+                 client: Any = None,
+                 timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+                 secret: str = "") -> None:
+        """
+        timeout: per-request bound in seconds for a client built here; the SDK's
+        own retries are off, so the engine's bounded retry is the only retry
+        loop (change-711a57d5, audit-caab2052 M-06). An injected client is used
+        unchanged.
+        secret: the key from api_key_env or api_key_keychain, replaced in error
+        text by redact(); empty for a literal or default key (change-5e8aea4f,
+        audit-711a57d5 F-05). Never logged, printed or included in repr.
+        """
         self.kind = kind
         self.base_url = base_url
+        self._secret = secret
         if client is None:
             from openai import AsyncOpenAI
-            client = AsyncOpenAI(base_url=base_url, api_key=api_key)
+            client = AsyncOpenAI(base_url=base_url, api_key=api_key,
+                                 timeout=timeout, max_retries=0)
         self.client = client
+
+    def redact(self, text: str) -> str:
+        """Replace this provider's secret key in text (change-5e8aea4f, audit-711a57d5 F-05)."""
+        if self._secret:
+            return text.replace(self._secret, REDACTED)
+        return text
 
     async def complete(self, model: str, messages: list[dict], tools: list[dict] | None,
                        max_tokens: int | None = None) -> Completion:
@@ -183,11 +210,12 @@ class OpenAICompatProvider:
                 models = await self.client.models.list()
                 ids = [m.id for m in models.data]
             except Exception as e:
+                err = self.redact(str(e))  # change-5e8aea4f (audit-711a57d5 F-05)
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise TimeoutError(
-                        f"inference endpoint not reachable after {timeout}s: {e}") from e
-                echo(f"waiting for endpoint (attempt {attempt}, {remaining:.0f}s remaining): {e}")
+                        f"inference endpoint not reachable after {timeout}s: {err}") from e
+                echo(f"waiting for endpoint (attempt {attempt}, {remaining:.0f}s remaining): {err}")
                 await asyncio.sleep(interval)
                 continue
             if model in ids:
@@ -306,22 +334,37 @@ class AnthropicProvider:
     kind = "anthropic"
 
     def __init__(self, api_key: str = "", max_tokens: int = _ANTHROPIC_DEFAULT_MAX_TOKENS,
-                 strict_tools: bool = True, base_url: str | None = None, client: Any = None):
+                 strict_tools: bool = True, base_url: str | None = None, client: Any = None,
+                 timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+                 secret: str = "") -> None:
         """
         base_url: optional Anthropic-compatible endpoint other than the Anthropic
         API, for example a local oMLX server (change-43091424). Omitted, the SDK
         default (the Anthropic API) applies.
+        timeout: per-request bound in seconds for a client built here, with SDK
+        retries off (change-711a57d5, audit-caab2052 M-06).
+        secret: the key from api_key_env or api_key_keychain, replaced in error
+        text by redact(); empty for a literal or default key (change-5e8aea4f,
+        audit-711a57d5 F-05). Never logged, printed or included in repr.
         """
         self.base_url = base_url or None
+        self._secret = secret
         if client is None:
             from anthropic import AsyncAnthropic  # optional dependency, needed only here
-            kwargs: dict[str, Any] = {"api_key": api_key}
+            kwargs: dict[str, Any] = {"api_key": api_key, "timeout": timeout,
+                                      "max_retries": 0}
             if self.base_url:
                 kwargs["base_url"] = self.base_url
             client = AsyncAnthropic(**kwargs)
         self.client = client
         self.max_tokens = max_tokens
         self.strict_tools = strict_tools
+
+    def redact(self, text: str) -> str:
+        """Replace this provider's secret key in text (change-5e8aea4f, audit-711a57d5 F-05)."""
+        if self._secret:
+            return text.replace(self._secret, REDACTED)
+        return text
 
     async def complete(self, model: str, messages: list[dict], tools: list[dict] | None,
                        max_tokens: int | None = None) -> Completion:
@@ -351,10 +394,11 @@ class AnthropicProvider:
                     page = await self.client.models.list()
                     ids = [getattr(m, "id", None) for m in getattr(page, "data", None) or []]
                 except Exception as e:
+                    err = self.redact(str(e))  # change-5e8aea4f (audit-711a57d5 F-05)
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
-                        raise TimeoutError(f"endpoint {self.base_url} not reachable after {timeout}s: {e}") from e
-                    echo(f"waiting for {self.base_url} (attempt {attempt}, {remaining:.0f}s remaining): {e}")
+                        raise TimeoutError(f"endpoint {self.base_url} not reachable after {timeout}s: {err}") from e
+                    echo(f"waiting for {self.base_url} (attempt {attempt}, {remaining:.0f}s remaining): {err}")
                     await asyncio.sleep(interval)
                     continue
                 echo(f"model ready: {model}" if model in ids
@@ -367,10 +411,11 @@ class AnthropicProvider:
             except Exception as e:
                 if getattr(e, "status_code", None) == 404:
                     raise ProviderError(f"model '{model}' is not available on the Anthropic API") from e
+                err = self.redact(str(e))  # change-5e8aea4f (audit-711a57d5 F-05)
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
-                    raise TimeoutError(f"Anthropic API not reachable after {timeout}s: {e}") from e
-                echo(f"waiting for Anthropic API (attempt {attempt}, {remaining:.0f}s remaining): {e}")
+                    raise TimeoutError(f"Anthropic API not reachable after {timeout}s: {err}") from e
+                echo(f"waiting for Anthropic API (attempt {attempt}, {remaining:.0f}s remaining): {err}")
                 await asyncio.sleep(interval)
 
     def live_context_window(self, model: str) -> int | None:
@@ -438,14 +483,14 @@ def _keychain_secret(name: str, service: str) -> str:
     return value
 
 
-def _api_key(name: str, pcfg: dict, kind: str) -> str:
+def _resolve_api_key(name: str, pcfg: dict, kind: str) -> tuple[str, bool]:
     """
-    Resolve a provider's API key (FR-04-07; change-7d953510).
+    Resolve a provider's API key and whether it is a secret (change-5e8aea4f,
+    audit-711a57d5 F-05).
 
-    Order: api_key_env when configured and set; then api_key_keychain when
-    configured; then the unset api_key_env error; then the literal api_key and
-    kind omlx rules. The source of a key from the environment or the Keychain
-    is logged; the key never is.
+    Returns (key, True) for a key from api_key_env or api_key_keychain and
+    (key, False) for a literal api_key or the kind omlx default 'local'. Order,
+    errors and the 'key source' log lines are those of _api_key.
     """
     service = pcfg.get("api_key_keychain")
     if "api_key_keychain" in pcfg and not (isinstance(service, str) and service):
@@ -455,22 +500,34 @@ def _api_key(name: str, pcfg: dict, kind: str) -> str:
         value = os.environ.get(env)
         if value:
             log.info("providers.%s: key source %s", name, f"env:{env}")
-            return value
+            return value, True
     if service:
         value = _keychain_secret(name, service)
         log.info("providers.%s: key source %s", name, f"keychain:{service}")
-        return value
+        return value, True
     if env:
         raise ConfigError(f"providers.{name}: environment variable {env} is not set")
     if "api_key" in pcfg:
         if kind != "omlx" and not _is_local(pcfg.get("base_url")):
             raise ConfigError(f"providers.{name}: api_key is accepted only for kind omlx or a "
                               f"local base_url; use api_key_env")
-        return str(pcfg["api_key"])
+        return str(pcfg["api_key"]), False
     if kind == "omlx":
-        return "local"
+        return "local", False
     raise ConfigError(f"providers.{name}: api_key_env or api_key_keychain is required "
                       f"for kind {kind}")
+
+
+def _api_key(name: str, pcfg: dict, kind: str) -> str:
+    """
+    Resolve a provider's API key (FR-04-07; change-7d953510).
+
+    Order: api_key_env when configured and set; then api_key_keychain when
+    configured; then the unset api_key_env error; then the literal api_key and
+    kind omlx rules. The source of a key from the environment or the Keychain
+    is logged; the key never is.
+    """
+    return _resolve_api_key(name, pcfg, kind)[0]
 
 
 def make_provider(name: str, pcfg: dict) -> Any:
@@ -480,16 +537,30 @@ def make_provider(name: str, pcfg: dict) -> Any:
     kind = pcfg.get("kind")
     if kind not in KINDS:
         raise ConfigError(f"providers.{name}.kind: '{kind}' is not one of {', '.join(KINDS)}")
-    key = _api_key(name, pcfg, kind)
+    # change-711a57d5 (audit-caab2052 M-06): validated before the key lookup so
+    # the message appears whatever the key source.
+    timeout = pcfg.get("request_timeout_seconds")
+    if timeout is None:
+        timeout = DEFAULT_REQUEST_TIMEOUT_SECONDS
+    elif (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
+          or not math.isfinite(timeout) or timeout <= 0):
+        # change-5e8aea4f (audit-711a57d5 F-03): nan and inf rejected
+        raise ConfigError(f"providers.{name}.request_timeout_seconds: must be a positive number")
+    # change-5e8aea4f (audit-711a57d5 F-05): a key from env or Keychain is passed
+    # as the provider's secret so its error text can be redacted.
+    key, is_secret = _resolve_api_key(name, pcfg, kind)
+    secret = key if is_secret else ""
     if kind == "anthropic":
-        return AnthropicProvider(api_key=key,
+        return AnthropicProvider(api_key=key, secret=secret,
                                  max_tokens=int(pcfg.get("max_tokens") or _ANTHROPIC_DEFAULT_MAX_TOKENS),
                                  strict_tools=bool(pcfg.get("strict_tools", True)),
-                                 base_url=pcfg.get("base_url"))
+                                 base_url=pcfg.get("base_url"),
+                                 timeout=timeout)
     base_url = pcfg.get("base_url")
     if not base_url:
         raise ConfigError(f"providers.{name}.base_url: required for kind {kind}")
-    return OpenAICompatProvider(kind=kind, base_url=base_url, api_key=key)
+    return OpenAICompatProvider(kind=kind, base_url=base_url, api_key=key, timeout=timeout,
+                                secret=secret)
 
 
 def build_role_bindings(config: dict, args: Any = None,
@@ -513,6 +584,9 @@ def build_role_bindings(config: dict, args: Any = None,
     if "omlx" not in providers_cfg and isinstance(omlx_cfg, dict):
         providers_cfg["omlx"] = {"kind": "omlx", "base_url": omlx_cfg.get("base_url"),
                                  "api_key": omlx_cfg.get("api_key", "local")}
+        # change-711a57d5 (audit-caab2052 M-06): legacy block carries the timeout.
+        if "request_timeout_seconds" in omlx_cfg:
+            providers_cfg["omlx"]["request_timeout_seconds"] = omlx_cfg["request_timeout_seconds"]
 
     roles_cfg = config.get("roles")
     instances: dict[str, Any] = {}

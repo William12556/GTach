@@ -6,15 +6,15 @@ Created: 2026 June 02
 
 ## Table of Contents
 
-[1.0 Purpose](<#1.0 purpose>)
-[2.0 State Files](<#2.0 state files>)
-[3.0 config.yaml Reference](<#3.0 config.yaml reference>)
-[4.0 CLI Reference](<#4.0 cli reference>)
-[5.0 Termination Conditions](<#5.0 termination conditions>)
-[6.0 Context Budget Management](<#6.0 context budget management>)
-[7.0 Recipes](<#7.0 recipes>)
-[8.0 Common Failure Modes](<#8.0 common failure modes>)
-[Version History](<#version history>)
+- [1.0 Purpose](#10-purpose)
+- [2.0 State Files](#20-state-files)
+- [3.0 config.yaml Reference](#30-configyaml-reference)
+- [4.0 CLI Reference](#40-cli-reference)
+- [5.0 Termination Conditions](#50-termination-conditions)
+- [6.0 Context Budget Management](#60-context-budget-management)
+- [7.0 Recipes](#70-recipes)
+- [8.0 Common Failure Modes](#80-common-failure-modes)
+- [Version History](#version-history)
 
 ---
 
@@ -24,7 +24,7 @@ This document is an operational reference for the planner when working with the 
 
 Authoritative governance reference: `ai/governance/software-engineering/governance.md` P00.11 and P13.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -61,7 +61,7 @@ The worker may write `work-summary.txt`, `work-complete.txt` and `BLOCKED.md` on
 
 `--mode reset` removes all standard state files except `engine_*.LOG` and `context-budget.md`. Audit files (`audit-index.md`, `audit-report.md`, `audit-uml.md`) are also preserved — archive them to `ai/workspace/audit/` before resetting.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -76,6 +76,7 @@ omlx:
   api_key: "local"                        # oMLX bearer token
   default_model: "<worker-model-id>"     # worker/base model ID as reported by /v1/models
   reviewer_model: "<reviewer-model-id>"  # optional; reviewer-phase model (falls back to default_model)
+  request_timeout_seconds: 300           # optional; bound on one model request (default 300)
 
 # MCP server definitions
 mcp_servers:
@@ -100,6 +101,7 @@ loop:
   max_iterations: 5         # outer loop cycles (work+review pairs)
   phase_max_iterations: 20  # inner tool-call iterations per phase
   mcp_error_threshold: 3    # consecutive MCP errors before BLOCKED
+  mcp_timeout_seconds: 120  # optional; bound on one MCP request (default 120)
   max_tool_calls_per_iteration: 10  # tool call cap per inner iteration
   preflight_check: false    # evaluate success criteria before first worker pass
   state_dir: "ai/state"   # state directory path (relative to project root)
@@ -126,9 +128,13 @@ context:
 
 For audit runs, set `max_iterations` to at least the number of items in `audit-index.md`.
 
+**Timeouts (change-711a57d5):** `request_timeout_seconds` (in the `omlx:` block or in a `providers.<name>` block) bounds one model request; the engine makes up to 3 attempts per request, and the SDK does not retry on its own. HTTP 400, 401 and 403 are not retried. `loop.mcp_timeout_seconds` bounds one MCP request; a timeout reaches the worker as a tool error. If long local prefills on oMLX end in timeouts, raise `request_timeout_seconds` for that provider. Both timeouts must be positive finite numbers; `.nan` and `.inf` are refused (change-5e8aea4f).
+
+**Keys in error text (change-5e8aea4f):** in error text from a model request or the readiness check, a key from `api_key_env` or `api_key_keychain` appears as `API-KEY-REDACTED` in the run log, the console and `BLOCKED.md`, even when an endpoint echoes it back. Literal keys for `omlx` or a local `base_url` are not secrets and are shown unchanged.
+
 **Role-to-model binding (change-53c6f252):** without a `roles:` block, both roles use the `omlx:` block above. With `roles:`, each role names a provider from `providers:` and a model. Provider kinds are `omlx`, `openai_compatible` (for example the Mistral API) and `anthropic`. Remote providers read their key from the variable named in `api_key_env`, set for the engine process only, or on macOS from the Keychain service named in `api_key_keychain`, searched in the user's Keychain search list, normally the login Keychain (change-7d953510). With both, a set variable wins and the Keychain is the fallback. The run log records the source (`key source env:<VAR>` or `key source keychain:<service>`), never the key. A Keychain key never enters the environment, so runs started through engine-mcp `start_engine` need no key variable in the engine-mcp environment. This is not isolation from gate code: tests run by the pytest gate run with your permissions and can read the Keychain item through `/usr/bin/security`, whichever source the engine uses (design-14e05e35 DI-06; audit-7d953510 M-01). Treat a SHIP as unreviewed when the cycle changed test infrastructure. On first use macOS may ask whether `/usr/bin/security` may read the item; answer it from an interactive CLI run first, since an unanswered dialog or a locked Keychain (SSH session: `security unlock-keychain`) stops the run after 10 s. Context windows are resolved per role; API models need an entry under `context.model_context_windows`. `ai/engine/config.template.yaml` holds a commented example. CLI precedence with `roles:`: `--worker-model` / `--reviewer-model`, then `--model`, then `roles.<role>.model`. Without `roles:` (legacy `omlx:` block): `--worker-model` / `--reviewer-model`, then `omlx.worker_model` / `omlx.reviewer_model`, then `--model`, then `omlx.default_model`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -168,7 +174,7 @@ Reset after human acceptance:
 python ai/engine/src/orchestrator.py --mode reset
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -194,7 +200,7 @@ python ai/engine/src/approve.py <uuid> <stage>   # e.g. approve.py 1a2b3c4d prom
 
 The command appends the entry and commits `ai/approvals.yaml` alone. Uncommitted edits to the file are ignored. The entry records the git blob hash of each document of the approved stage, keyed by its path under `ai/workspace/` (change-82dbf16a). When a document of an approved stage is edited, or another document with the same UUID is added, the pre-run check reports that the approval no longer matches; review the documents and run `approve.py` again. Record an approval after the document is final, including its status field. The task passed to the engine must be the approved prompt itself: one of the work item's active documents in `ai/workspace/prompt/` as `stages.py` lists them, named by its own file name (no symlink under another work item's name). The engine reads the task file once, before the check, and runs exactly those bytes; they must equal the approved content, so an edit made during start-up cannot reach the run. A tracked task that cannot be read is refused (exit 3). Any other file for a tracked work item is refused (exit 3; engine-mcp refuses it before starting). Free-text tasks and prompt files outside `ai/workspace/` are not tracked.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -233,7 +239,7 @@ Remediation: reduce brief size, run `--mode reset`, retry.
 
 Devstral Small 2 (2512) reports `max_context_window: 393216` via oMLX, but that figure is an unvalidated RoPE-scaling ceiling; the vendor-validated value is 262144. The orchestrator resolves the window through the four-tier chain (live oMLX query, then the per-model `context.model_context_windows` override) — `models_dir` and on-disk `config.json` reading were retired (change-d42e64a9). This project forces 262144 for the Devstral worker and 131072 for the Magistral reviewer via `model_context_windows`. Magistral does not expose a live `max_context_window`, so its override is required. For audit runs with per-iteration bounded context, this window is rarely a practical constraint.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -252,7 +258,7 @@ The governance model's `manifest.yaml` maps each run type (`loop`, `audit`) to a
 
 Gates: the loop stage's gates come from the manifest (SE: `syntax`, `pytest`, `reviewer`). Each result is logged as `gate=<name> type=<type> result=<result>`. A failing command gate overrides SHIP. A command gate that cannot run (`UNCHECKED`, for example a wrong `gates.python`) ends the run BLOCKED and `BLOCKED.md` names the gate. A gate with nothing to check is not applicable and is listed in `awaiting-approval.md` (change-82dbf16a). Override a command gate or the interpreter for `{python}` under `gates:` in `ai/config.yaml` (see the template). After SHIP the engine writes `awaiting-approval.md`; for a T03 prompt task that ends BLOCKED, `BLOCKED.md` names the stage to return to (change-e58fd295).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -262,7 +268,7 @@ Gates: the loop stage's gates come from the manifest (SE: `syntax`, `pytest`, `r
 
 **Symptom:** `BLOCKED.md` written; message references MCP validation errors.
 
-**Cause:** The worker issued malformed tool calls (wrong argument names or types) three consecutive times.
+**Cause:** The worker issued malformed tool calls (wrong argument names or types, or arguments that are not a JSON object) three consecutive times.
 
 **Remediation:** Read `BLOCKED.md` for the failing tool call. Verify tool parameter names against the live MCP schema. If the brief is ambiguous about file paths, clarify. Create T06 issue if the block recurs.
 
@@ -321,7 +327,7 @@ curl -s http://localhost:8000/v1/models -H "Authorization: Bearer local"
 
 Related refusals (change-82dbf16a): `write refused: … is or contains an engine signal file` (the worker targeted an engine-owned state file, or a directory holding one; compared case-insensitively); `write refused: tool '…' was called without a recognised path argument`; `tool refused tool=… reason=…` in the log (a tool not offered to the phase, or any write tool in the review phase). Paths are compared after symlink resolution.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -348,6 +354,10 @@ Related refusals (change-82dbf16a): `write refused: … is or contains an engine
 | 1.16 | 2026-10-14 | §3.0: `api_key_keychain` key source, precedence, source log line, first-use dialog (change-7d953510) |
 | 1.17 | 2026-10-14 | §3.0: Keychain search list wording (audit-7d953510 L-02) |
 | 1.18 | 2026-10-14 | §3.0: gate code can read a Keychain key (audit-7d953510 M-01, accepted) |
+| 1.19 | 2026-10-29 | §3.0: `request_timeout_seconds`, `loop.mcp_timeout_seconds` and timeout behaviour; §8.1: non-object arguments (change-711a57d5) |
+| 1.20 | 2026-11-03 | Internal links changed from Obsidian anchor syntax to GitHub heading anchors; Table of Contents formatted as a bulleted list |
+| 1.21 | 2026-11-04 | §3.0: retry wording corrected to 3 attempts (audit-711a57d5 F-06) |
+| 1.22 | 2026-11-04 | §3.0: finite timeouts; API key redaction in error text (change-5e8aea4f) |
 
 ---
 

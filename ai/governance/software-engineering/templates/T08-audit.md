@@ -8,7 +8,7 @@ Created: 2026 June 28
 
 - [Template](#template)
 - [Schema](#schema)
-- [Version History](<#version history>)
+- [Version History](#version-history)
 
 ---
 

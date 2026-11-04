@@ -6,8 +6,8 @@ Created: 2026 March 29
 
 ## Table of Contents
 
-[1.0 Execution Flowchart](<#1.0 execution flowchart>)
-[Version History](<#version history>)
+[1.0 Execution Flowchart](#10-execution-flowchart)
+[Version History](#version-history)
 
 ---
 
@@ -101,7 +101,7 @@ flowchart TD
     AEL_Reset --> Complete([Complete])
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

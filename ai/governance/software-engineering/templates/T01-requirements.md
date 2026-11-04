@@ -8,7 +8,7 @@ Created: 2025-12-13
 
 - [Template](#template)
 - [Schema](#schema)
-- [Version History](<#version history>)
+- [Version History](#version-history)
 
 ---
 

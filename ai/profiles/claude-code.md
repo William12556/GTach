@@ -6,14 +6,14 @@ Created: 2026 March 31
 
 ## Table of Contents
 
-- [1.0 Overview](<#1.0 overview>)
-- [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
-- [3.0 Planner](<#3.0 planner>)
-- [4.0 Worker and Reviewer](<#4.0 worker and reviewer>)
-- [5.0 Claude Code Task invocation](<#5.0 claude code task invocation>)
-- [6.0 Project Setup](<#6.0 project setup>)
-- [References](<#references>)
-- [Version History](<#version history>)
+- [1.0 Overview](#10-overview)
+- [2.0 Placeholder Mappings](#20-placeholder-mappings)
+- [3.0 Planner](#30-planner)
+- [4.0 Worker and Reviewer](#40-worker-and-reviewer)
+- [5.0 Claude Code Task invocation](#50-claude-code-task-invocation)
+- [6.0 Project Setup](#60-project-setup)
+- [References](#references)
+- [Version History](#version-history)
 
 ---
 
@@ -29,7 +29,7 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 | Worker and reviewer | Claude Code |
 | Execution | Manual — human invokes Claude Code per task; no engine loop |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -42,7 +42,7 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 
 `.claude/` is the native Claude Code configuration directory; it is not a framework placeholder.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -52,7 +52,7 @@ Claude Code fulfils both the worker and reviewer roles in a single manual pass. 
 
 Any frontier model with sufficient reasoning capability may substitute. The planner role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -71,7 +71,7 @@ Local context file: `CLAUDE.local.md` at project root (`.gitignore`'d).
 - An account with Claude Code access: Claude Pro, Max, Team or Enterprise subscription (browser login on first run), or a Console account / `ANTHROPIC_API_KEY` [1]
 - Mandatory validation skill provisioned (§6.0; governance P00.18)
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -98,7 +98,7 @@ ai/workspace/report/report-<uuid>-<name>.md.
 
 Reference: `ai/governance/software-engineering/governance.md` P13.3 Option C.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -130,7 +130,7 @@ CLAUDE.local.md
 
 **Mandatory skill (P00.18):** follow `ai/governance/software-engineering/skills/validation/run-tests.md` §2.0 to install `.claude/hooks/run-tests.sh` and merge its PostToolUse block into `.claude/settings.json`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -138,7 +138,7 @@ CLAUDE.local.md
 
 [1] ANTHROPIC, 2026. *Claude Code: Advanced setup* [online]. Available from: https://code.claude.com/docs/en/setup [Accessed 29 September 2026].
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

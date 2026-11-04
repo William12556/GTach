@@ -24,6 +24,8 @@ import traceback
 PYTEST_GATE = "pytest"
 DEFAULT_PYTEST_COMMAND = "{python} -m pytest -q {targets}"
 DEFAULT_TIMEOUT_SECONDS = 300
+# change-711a57d5 (audit-caab2052 L-03): bound on one py_compile subprocess.
+SYNTAX_TIMEOUT_SECONDS = 30
 _OUTPUT_TAIL = 1000
 
 
@@ -65,13 +67,20 @@ def syntax_check(state_dir: str, log: logging.Logger) -> tuple[str, int]:
     for py_path in unique_py_files:
         try:
             proc = subprocess.run([sys.executable, "-m", "py_compile", py_path],
-                                  capture_output=True, text=True)
+                                  capture_output=True, text=True,
+                                  timeout=SYNTAX_TIMEOUT_SECONDS)
             if proc.returncode == 0:
                 results.append(f"  ✓ {py_path}: OK")
             else:
                 all_passed = False
                 err = proc.stderr.strip()[:200]
                 results.append(f"  ✗ {py_path}: SYNTAX ERROR\n    {err}")
+        except subprocess.TimeoutExpired:
+            # change-711a57d5 (audit-caab2052 L-03): a hung compile is a failure.
+            all_passed = False
+            results.append(
+                f"  ✗ {py_path}: syntax check timed out after {SYNTAX_TIMEOUT_SECONDS} s"
+            )
         except Exception as exc:
             all_passed = False
             results.append(f"  ? {py_path}: check failed ({exc})")

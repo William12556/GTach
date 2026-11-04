@@ -6,18 +6,18 @@ Created: 2026 June 02
 
 ## Table of Contents
 
-[1.0 Purpose](<#1.0 purpose>)
-[2.0 Pre-Audit Steps](<#2.0 pre-audit steps>)
-[2.1 Generate the UML Map](<#2.1 generate the uml map>)
-[2.2 Generate audit-index.md](<#2.2 generate audit-index.md>)
-[2.3 Configure config.yaml](<#2.3 configure config.yaml>)
-[3.0 Author the T03 Brief](<#3.0 author the t03 brief>)
-[4.0 Launch](<#4.0 launch>)
-[5.0 Monitoring](<#5.0 monitoring>)
-[6.0 Interpreting audit-report.md](<#6.0 interpreting audit-report.md>)
-[7.0 Post-Run Workflow](<#7.0 post-run workflow>)
-[8.0 Termination Reference](<#8.0 termination reference>)
-[Version History](<#version history>)
+[1.0 Purpose](#10-purpose)
+[2.0 Pre-Audit Steps](#20-pre-audit-steps)
+[2.1 Generate the UML Map](#21-generate-the-uml-map)
+[2.2 Generate audit-index.md](#22-generate-audit-indexmd)
+[2.3 Configure config.yaml](#23-configure-configyaml)
+[3.0 Author the T03 Brief](#30-author-the-t03-brief)
+[4.0 Launch](#40-launch)
+[5.0 Monitoring](#50-monitoring)
+[6.0 Interpreting audit-report.md](#60-interpreting-audit-reportmd)
+[7.0 Post-Run Workflow](#70-post-run-workflow)
+[8.0 Termination Reference](#80-termination-reference)
+[Version History](#version-history)
 
 ---
 
@@ -25,7 +25,7 @@ Created: 2026 June 02
 
 This guide is an operational reference for the planner when running a codebase quality audit against a downstream project. The audit loop uses `audit-work.yaml` and `audit-review.yaml` recipes. The orchestrator selects these recipes automatically when `audit-index.md` is present in the state directory; no source edit is required. No source file in the target codebase is written. Findings are accumulated in `ai/state/audit-report.md`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -99,7 +99,7 @@ loop:
   phase_max_iterations: 20
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -126,7 +126,7 @@ tactical_brief: |
 
 Verify `tactical_brief` is non-empty and in a `yaml` fenced block before issuing the engine command (P13.2).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -147,7 +147,7 @@ python ai/engine/src/orchestrator.py --mode loop \
 
 The `--duration` value is in hours. The loop exits cleanly at the limit; partial results in `audit-report.md` are valid and usable.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -165,7 +165,7 @@ The planner may monitor progress at any time by reading state files directly:
 
 The engine TUI displays iteration progress, context budget, and tool calls in the terminal during the run.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -200,7 +200,7 @@ Items with no findings are recorded as:
 
 A missing entry for an item means the worker did not reach it — check `audit-index.md` for remaining `[ ]` items.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -236,7 +236,7 @@ When remediation of all critical and high-severity findings is complete, close t
 mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -250,7 +250,7 @@ mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 | Worker writes BLOCKED.md | `BLOCKED.md` | Review blocker; address manually |
 | Context budget abort | None | Reduce `tactical_brief` size and restart |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

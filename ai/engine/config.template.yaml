@@ -29,6 +29,7 @@ omlx:
 #     base_url: "https://api.mistral.ai/v1"
 #     api_key_env: MISTRAL_API_KEY     # optional when api_key_keychain is set
 #     api_key_keychain: ai-go-mistral  # macOS Keychain service name
+#     request_timeout_seconds: 300   # bound on one model request; any provider or the omlx: block (change-711a57d5)
 #   anthropic:
 #     kind: anthropic
 #     api_key_env: ANTHROPIC_API_KEY
@@ -84,6 +85,7 @@ loop:
   max_iterations: 5         # Loop outer iterations (work+review cycles)
   phase_max_iterations: 20  # Inner tool-call iterations per phase
   mcp_error_threshold: 3    # Write BLOCKED.md after this many consecutive MCP errors per phase
+  mcp_timeout_seconds: 120  # Bound on one MCP request (initialize, list_tools, call_tool) (change-711a57d5)
   max_tool_calls_per_iteration: 10  # Truncate tool calls per iteration beyond this count
   preflight_check: false             # Evaluate success criteria before first worker iteration
   phase_duration_minutes: 30         # F28: soft cap on a single phase's wall-clock cost during audit-run refinement

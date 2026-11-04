@@ -6,16 +6,16 @@ Created: 2026 March 11
 
 ## Table of Contents
 
-- [1.0 Overview](<#1.0 overview>)
-- [2.0 Worker/Reviewer Profiles](<#2.0 worker/reviewer profiles>)
-- [3.0 Structure](<#3.0 structure>)
-- [4.0 Requirements](<#4.0 requirements>)
-- [5.0 Installation](<#5.0 installation>)
-- [6.0 Configuration](<#6.0 configuration>)
-- [7.0 Usage](<#7.0 usage>)
-- [8.0 Recipes](<#8.0 recipes>)
-- [9.0 Testing](<#9.0 testing>)
-- [Version History](<#version history>)
+- [1.0 Overview](#10-overview)
+- [2.0 Worker/Reviewer Profiles](#20-workerreviewer-profiles)
+- [3.0 Structure](#30-structure)
+- [4.0 Requirements](#40-requirements)
+- [5.0 Installation](#50-installation)
+- [6.0 Configuration](#60-configuration)
+- [7.0 Usage](#70-usage)
+- [8.0 Recipes](#80-recipes)
+- [9.0 Testing](#90-testing)
+- [Version History](#version-history)
 
 ---
 
@@ -25,7 +25,7 @@ The engine orchestrator is a standalone Python tool loop implementing the loop p
 
 This component replaces Goose as the engine for the oMLX/Devstral stack. It addresses the tool dispatch failure present in oMLX and other inference servers by owning the full tool loop externally.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -45,7 +45,7 @@ Three worker/reviewer profiles are available. Engine is the primary profile; the
 
 See `ai/profiles/` for profile documents.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -72,11 +72,11 @@ engine/
     ├── approve.py          # Operator command: record and commit an approval
     ├── mcp_client.py       # MCP stdio connection and tool dispatch
     ├── parser.py           # Mistral [TOOL_CALLS] plain-text parser
-    ├── linter.py            # Layer 1 governance linter: static validation of workspace documents (naming, structure, YAML fields, UUID coupling, Obsidian links)
+    ├── linter.py            # Layer 1 governance linter: static validation of workspace documents (naming, structure, YAML fields, UUID coupling, internal links)
     └── protocol_checker.py  # Layer 2 protocol checker: multi-document workflow invariant validation (UUID chain integrity, bidirectional coupling, one-to-one constraints, status consistency, lifecycle placement, prompt self-containment)
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -88,7 +88,7 @@ engine/
 - MCP servers configured in `config.yaml`
 - Local model: Devstral Small 2 (6bit or 8bit) — purpose-built for agentic coding and multi-file editing; the engine parser (`parser.py`) is tuned to Mistral's tool-call format, which Devstral uses natively. An optional distinct reviewer model (e.g. Magistral, same Mistral tool-call format) may be configured via `omlx.reviewer_model`
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -100,7 +100,7 @@ Install dependencies into the project virtual environment:
 pip install -r ai/engine/requirements.txt
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -145,7 +145,7 @@ context:
 
 `orchestrator.py` is the sole context-window resolver: an explicit `context.context_window` override, else a live oMLX admin-API query, else the per-model `context.model_context_windows` entry, else unresolved. If a model's live query returns null (as some models do), set its entry in `model_context_windows` explicitly.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -179,7 +179,7 @@ python ai/engine/src/orchestrator.py --mode reset
 
 **`context-budget.md`** is written automatically by `orchestrator.py` at every startup (before the first phase); no separate invocation is required. It reports context window, thresholds, and recommended `tactical_brief` sizing. The planner reads `ai/state/context-budget.md` before authoring any engine-targeted T03 prompt.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -198,7 +198,7 @@ The audit recipes belong to the software-engineering governance model (`ai/gover
 
 State files are written to `ai/state/` in the project root during loop execution. This directory is ephemeral and excluded from git.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -212,7 +212,7 @@ python3 -m pytest tests/engine -v
 
 The tests use stub model and MCP clients; no oMLX endpoint is required.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

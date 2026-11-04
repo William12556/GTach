@@ -2,9 +2,11 @@ Created: 2026 August 21
 
 # Task List
 
-Open work only. Completed and deferred items are removed once their
-governance documents (`ai/workspace/{issues,change,prompt}/closed/`)
-record the outcome.
+All open work: open triples, items not yet raised as a triple, and
+deferred or parked items (governance P00.20). A row is removed once its
+outcome is recorded (a closed triple, or an explicit drop).
+
+Status keywords: `Active`, `Planned`, `Open — not raised`, `Deferred`, `Parked`.
 
 | ID | Item | Status | References |
 | --- | --- | --- | --- |

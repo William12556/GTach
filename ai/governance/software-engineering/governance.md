@@ -8,20 +8,20 @@ Created: 2025 October 30
 
 **Cross-cutting**
 
-- [P00 Governance (start here)](<#p00 governance (start here)>)
-- [P01 Trace](<#p01 trace>)
-- [P02 Audit](<#p02 audit>)
-- [P03 Issue](<#p03 issue>)
-- [P04 Change](<#p04 change>)
+- [P00 Governance (start here)](#p00-governance-start-here)
+- [P01 Trace](#p01-trace)
+- [P02 Audit](#p02-audit)
+- [P03 Issue](#p03-issue)
+- [P04 Change](#p04-change)
 
 **Lifecycle**
 
-- [P10 Project Initialization (Execute once)](<#p10 project initialization (execute once)>)
-- [P11 Requirements](<#p11 requirements>)
-- [P12 Design](<#p12 design>)
-- [P13 Prompt](<#p13 prompt>)
-- [P14 Quality](<#p14 quality>)
-- [P15 Test](<#p15 test>)
+- [P10 Project Initialization (Execute once)](#p10-project-initialization-execute-once)
+- [P11 Requirements](#p11-requirements)
+- [P12 Design](#p12-design)
+- [P13 Prompt](#p13-prompt)
+- [P14 Quality](#p14-quality)
+- [P15 Test](#p15-test)
 
 **Templates**
 
@@ -34,9 +34,9 @@ Created: 2025 October 30
 - [T07: Change](templates/T07-change.md)
 - [T08: Audit](templates/T08-audit.md)
 
-[Workflow](<#workflow>)
-[Version History](<#version history>)
-[Appendix A — Identifier Aliases](<#appendix a — identifier aliases>)
+- [Workflow](#workflow)
+- [Version History](#version-history)
+- [Appendix A — Identifier Aliases](#appendix-a--identifier-aliases)
 
 ---
 ###### Governance Prime Directive: Follow workflow [flowchart](workflow.md)
@@ -113,7 +113,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Planner: Generates 8-character UUID (first 8 hex digits of UUID v4)
       - Examples: change-a3f5b2c1-fix-parser.md, issue-d7e9f1a4-network-timeout.md
     - Planner: Design documents follow tier naming convention: master_, domain_, component_ prefixes
-    - Planner: Insures related documents are Obsidian cross linked
+    - Planner: Ensures related documents are cross-linked (link syntax: P12.9)
     - Document classes that require a master document are: design, audit, trace and test
     - Design class includes a dedicated name registry master: design-\<project\>-name_registry-master.md
     - All document classes (issue, change, prompt, test, result) contain internal iteration field starting at 1
@@ -268,14 +268,14 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Auto-generation: Planner creates initial context file during project initialization or when absent
     - Implementation: Context file name and update mechanism defined in implementation profile (ai/profiles/)
   - P00.20 Task Register
-    - Location: `ai/task.md` (project root, git-tracked)
-    - Purpose: single-file index of open work items, cross-referencing document-class UUIDs (issue, change, prompt)
+    - Location: `ai/task.md` (git-tracked)
+    - Purpose: single register of all open work: open triples, items not yet raised as a triple, and deferred or parked items; cross-references document-class UUIDs (issue, change, prompt)
+    - Format: one table with the columns ID, Item, Status and References; Status starts with one keyword (`Active`, `Planned`, `Open — not raised`, `Deferred`, `Parked`), followed by free text
     - Exempt from P00.10 naming convention and P00.14 lifecycle management: no UUID, no master suffix, no closed/ archival
-    - Row removed in place once the referenced document triple's closed/ records the outcome; git history preserves prior state
-    - Planner: adds a row when a T06/T07/T03 triple opens; removes the row when the triple closes
+    - Planner: adds a row when work is identified; updates Status as it changes; removes the row once the outcome is recorded (a closed triple, or an explicit drop); git history preserves prior state
     - Framework ships a skeleton `ai/task.md`; `bin/propagate.sh` excludes it from overwrite and seeds it only when absent in the target, per `context.md` treatment
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P01 Trace
 
@@ -301,7 +301,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Bidirectional Navigation: Forward (Req→Design→Code→Test) and Backward (Test→Code→Design→Req)
     - Planner: Updates matrix when requirements, designs, code, or tests change
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P02 Audit
 
@@ -398,7 +398,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Procedure: ai/governance/software-engineering/doc/guide-audit-loop.md
     - Both modes terminate at audit-<uuid>-<name>.md (T08) and feed remediation via P02.6 (P03)
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P03 Issue
 
@@ -432,7 +432,7 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Planner: Validates iteration match before proceeding
     - Note: One-to-one coupling does not prevent modification of paired issue/change documents during debugging iterations
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P04 Change
 
@@ -502,7 +502,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - (5) Human approval obtained before implementation
     - If any criterion fails, standard T06 → T07 → T03 → engine workflow applies.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P10 Project Initialization (Execute once)
 
@@ -580,10 +580,8 @@ test.txt
   - P10.5 Traceability Matrix
      - Create skeleton trace-traceability-matrix-master.md in ai/workspace/trace/
   - P10.6 Project folder structure
-    - Note: This structure applies to projects using the framework, not to the AI-Governance-and-Orchestration repository itself
-    - The governance framework repository contains only ai/, doc/, and templates/ directories
     - ai/ holds framework files plus only the project files declared in the layout below (config.yaml, context.md, task.md, approvals.yaml, state/, logs/, dashboard-alerts.md, workspace/)
-    - Framework-owned folders: ai/engine/, ai/governance/<model>/, ai/profiles/, ai/src/; propagation replaces their contents. All other ai/ content is project-owned (proposal-5bcd46ad)
+    - Framework-owned folders: ai/engine/, ai/core/, ai/webui/, ai/governance/<model>/, ai/profiles/; propagation replaces their contents. All other ai/ content is project-owned (proposal-5bcd46ad)
     - A project in the pre-5bcd46ad layout (ai/ael/, ai/governance.md) is migrated once with bin/migrate-layout.sh before propagation
     - Any other project file belongs outside ai/; bin/propagate.sh relocates such files, and retired framework files, to ai-local/ and logs them in ai-local/RELOCATED.md
     - bin/propagate.sh never deletes a file; a locally edited framework file is copied to ai-local/ before it is overwritten; the human deletes relocated files after review
@@ -595,7 +593,8 @@ test.txt
         │   ├── governance/
         │   │   └── software-engineering/  # Framework-owned: governance model (this document, templates)
         │   ├── profiles/             # Framework-owned: model profiles
-        │   ├── src/                  # Framework-owned: overwatch
+        │   ├── core/                 # Framework-owned: shared code (reserved)
+        │   ├── webui/                # Framework-owned: central UI component (current module: overwatch)
         │   ├── config.yaml           # Engine configuration (project-owned, git-tracked)
         │   ├── context.md            # engine profile only — worker/reviewer context (team shared)
         │   ├── task.md                # open-work register (git-tracked)
@@ -743,7 +742,7 @@ exclude_lines = [
 ]
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P11 Requirements
 
@@ -777,12 +776,9 @@ exclude_lines = [
     - Planner: Performs impact analysis across design/code/test
     - Planner: Updates traceability matrix
     - Human: Approves changes
-  - P11.7 Framework Development Requirements
-    - Scope: requirements for extending AI-G&O itself, held in dev/requirements/
-    - Format: prose with FR/NFR/CON tables; the T01 YAML template is not used
-    - T01 applies to downstream project requirements, where a local model consumes them
+  - P11.7 Reserved for future use
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 ## P12 Design
 
   - P12.1 Tier 1: System Architecture
@@ -837,7 +833,9 @@ exclude_lines = [
     - Planner: Master lists all Tier 2 domain document references
     - Planner: Each domain lists: master parent reference, all Tier 3 component children references
     - Planner: Each component lists: domain parent reference, generated code file paths
-    - Planner: Uses Obsidian internal link syntax for all cross-references
+    - Planner: Uses Markdown links with GitHub heading anchors for all cross-references: `[Text](file.md#heading-anchor)`, or `[Text](#heading-anchor)` within a document
+      - Anchor: heading text in lowercase; punctuation removed; each space replaced by a hyphen; a repeated heading takes the suffix -1, -2, ...
+      - Angle brackets are used only around a path that contains spaces
   - P12.10 Context Window Constraints
     - Planner: Ensures design documents at each tier do not exceed worker/reviewer context window
     - Planner: T03 prompts embed only Tier 3 component designs relevant to code generation task
@@ -882,7 +880,7 @@ exclude_lines = [
     - Planner: Updates registry when design changes affect named elements
     - Planner: Cross-links registry document to all design documents that define its elements
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P13 Prompt
 
@@ -973,7 +971,7 @@ ai/workspace/report/report-<uuid>-<name>.md.
     - Planner: Documents revision rationale in prompt version_history section
     - GitHub commits provide complete change tracking and rollback capability
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P14 Quality
 
@@ -1003,7 +1001,7 @@ ai/workspace/report/report-<uuid>-<name>.md.
     - Audit scope: File-level modifications, iteration-level decisions, session-level metrics
     - Integration: Audit events linked to git commits via timestamp correlation
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## P15 Test
 
@@ -1146,13 +1144,13 @@ pip install dist/*.whl
     | Test files under tests/ | Permanent; never archived; changed only under P03/P04 after T04 closure |
     | Diagnostic scripts | Outside the repository; never committed |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ## Workflow
 
 See [workflow.md](workflow.md).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -1272,9 +1270,13 @@ See [workflow.md](workflow.md).
 | 12.1 | 2026-10-01 | P00.4–P00.7 two-domain wording replaced; P10/P13.3 context file wording; P00.11 and P13.3 approvals recorded with approve.py and re-approval after edits; P13.1 worker/reviewer compound (audit-14e05e35 M-03, L-05, L-15; change-82dbf16a) |
 | 12.2 | 2026-10-01 | P00.11 state files: review-result.txt not read; P13.3 task file must be the approved prompt in ai/workspace/prompt/ (change-82dbf16a iteration 2, audit-14e05e35 follow-up) |
 | 12.3 | 2026-10-09 | P15.3, P15.7, P15.10, P15.11, P15.15, P15.18: every file under tests/ is permanent and is never archived; ephemeral validation scripts retired; diagnostics run outside the repository; component subdirectories optional; test files named by behaviour with covered UUIDs in the module docstring; T04 closes after a full-suite pass with pytest path and commit in notes; closed tests change only under P03/P04 (sourced from GTach). Non-breaking. |
+| 12.4 | 2026-10-23 | P00.20: task register holds all open work (open triples, items not yet raised, deferred and parked items) in a four-column table with a leading Status keyword (sourced from GTach). P11.7 (framework-development requirements) and the P10.6 framework-repository notes removed; they apply only to the framework repository and are kept there. P11.7 reserved. Non-breaking. |
+| 12.5 | 2026-10-23 | P10.6: framework source organised by component; ai/src/ replaced by ai/webui/ (Overwatch) and ai/core/ (reserved) (change-14cf601f). Non-breaking. |
+| 12.6 | 2026-11-03 | Internal links changed from Obsidian anchor syntax to GitHub heading anchors; Table of Contents formatted as a bulleted list. Non-breaking. |
+| 12.7 | 2026-11-04 | P00.10 cross-linking and P12.9: GitHub heading anchors replace Obsidian internal link syntax for all documents; anchor rule stated. Non-breaking. |
 
 ---
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

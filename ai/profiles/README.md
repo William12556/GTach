@@ -6,11 +6,11 @@ Created: 2026 February 18
 
 ## Table of Contents
 
-- [1.0 Purpose](<#1.0 purpose>)
-- [2.0 Abstract Placeholders](<#2.0 abstract placeholders>)
-- [3.0 Profile Selection](<#3.0 profile selection>)
-- [4.0 Available Profiles](<#4.0 available profiles>)
-- [Version History](<#version history>)
+- [1.0 Purpose](#10-purpose)
+- [2.0 Abstract Placeholders](#20-abstract-placeholders)
+- [3.0 Profile Selection](#30-profile-selection)
+- [4.0 Available Profiles](#40-available-profiles)
+- [Version History](#version-history)
 
 ---
 
@@ -18,7 +18,7 @@ Created: 2026 February 18
 
 Implementation profiles map abstract governance placeholders to concrete tooling for a specific execution environment. The governance framework (`ai/governance/software-engineering/governance.md`) is model-agnostic. Profiles resolve the implementation details without modifying governance rules.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -32,7 +32,7 @@ Implementation profiles map abstract governance placeholders to concrete tooling
 | `<skills_dir>/` | Skills and workflow recipes directory | Claude Code profiles only |
 | `<tactical_context>` | Worker and reviewer project context file | All profiles |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -40,7 +40,7 @@ Implementation profiles map abstract governance placeholders to concrete tooling
 
 Select one profile per project. Copy the profile-specific `.gitignore` additions into the project `.gitignore`. Apply all placeholder mappings consistently across the project.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -57,7 +57,7 @@ Select one profile per project. Copy the profile-specific `.gitignore` additions
 
 Planner is not prescribed. Any frontier model with sufficient reasoning capability is suitable. Claude Desktop is the preferred planner implementation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

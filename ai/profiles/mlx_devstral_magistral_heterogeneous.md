@@ -6,21 +6,21 @@ Created: 2026 July 16
 
 ## Table of Contents
 
-- [1.0 Overview](<#1.0 overview>)
-- [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
-- [3.0 Planner](<#3.0 planner>)
-- [4.0 Worker and Reviewer](<#4.0 worker and reviewer>)
-- [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Engine](<#6.0 engine>)
-- [7.0 Model Selection](<#7.0 model selection>)
-- [8.0 Project Setup](<#8.0 project setup>)
-- [Version History](<#version history>)
+- [1.0 Overview](#10-overview)
+- [2.0 Placeholder Mappings](#20-placeholder-mappings)
+- [3.0 Planner](#30-planner)
+- [4.0 Worker and Reviewer](#40-worker-and-reviewer)
+- [5.0 Tool-Calling Behaviour](#50-tool-calling-behaviour)
+- [6.0 Engine](#60-engine)
+- [7.0 Model Selection](#70-model-selection)
+- [8.0 Project Setup](#80-project-setup)
+- [Version History](#version-history)
 
 ---
 
 ## 1.0 Overview
 
-This profile maps governance abstract placeholders to a heterogeneous Apple Silicon MLX setup: a Devstral worker and a Magistral reviewer, both served locally by oMLX and driven by the engine orchestrator. It requires Apple M-series hardware with sufficient unified memory to hold both models (see [7.0 Model Selection](<#7.0 model selection>)).
+This profile maps governance abstract placeholders to a heterogeneous Apple Silicon MLX setup: a Devstral worker and a Magistral reviewer, both served locally by oMLX and driven by the engine orchestrator. It requires Apple M-series hardware with sufficient unified memory to hold both models (see [7.0 Model Selection](#70-model-selection)).
 
 | Concern | Implementation |
 |---|---|
@@ -31,7 +31,7 @@ This profile maps governance abstract placeholders to a heterogeneous Apple Sili
 
 Rationale: the worker performs synthesis (code generation, multi-file editing); the reviewer performs verification. Using a distinct reasoning model for review provides heterogeneity without changing the worker. Both models are Mistral-family (`mistral3`), so the engine parser applies to both.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -43,7 +43,7 @@ Rationale: the worker performs synthesis (code generation, multi-file editing); 
 
 `<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/` and `ai/governance/<model>/recipes/`, mapped by the model's `manifest.yaml`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -53,7 +53,7 @@ Rationale: the worker performs synthesis (code generation, multi-file editing); 
 
 Any frontier model with sufficient reasoning capability may substitute. The planner role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -109,7 +109,7 @@ The worker uses `default_model`; the reviewer uses `reviewer_model`. Per-role re
 
 Setup guides: [Devstral](../../docs/setup-apple-silicon-mlx.md) (worker) and [Magistral](../../docs/setup-apple-silicon-mlx-magistral.md) (reviewer).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -121,7 +121,7 @@ Reviewer verdict parsing was verified for Magistral (clean `SHIP` / `REVISE` lea
 
 Name tools explicitly in recipe prompts; use imperative phrasing.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -144,7 +144,7 @@ python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prom
 
 The worker and reviewer models are resolved from config; no per-run model flags are required. Worker and reviewer roles differ by model here, not only by prompt engineering.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -158,7 +158,7 @@ The worker and reviewer models are resolved from config; no per-run model flags 
 
 Context windows (forced via `model_context_windows`): Devstral 262144 (vendor-validated; overrides the unvalidated 393216 live RoPE ceiling); Magistral 131072 (model `config.json`).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -175,7 +175,7 @@ ai/state/
 - [Apple Silicon + MLX Setup Guide (Devstral)](../../docs/setup-apple-silicon-mlx.md)
 - [Apple Silicon + MLX Setup Guide (Magistral)](../../docs/setup-apple-silicon-mlx-magistral.md)
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

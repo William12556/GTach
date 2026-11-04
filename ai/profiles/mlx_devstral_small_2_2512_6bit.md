@@ -6,15 +6,15 @@ Created: 2026 March 12
 
 ## Table of Contents
 
-- [1.0 Overview](<#1.0 overview>)
-- [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
-- [3.0 Planner](<#3.0 planner>)
-- [4.0 Worker and Reviewer](<#4.0 worker and reviewer>)
-- [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Engine](<#6.0 engine>)
-- [7.0 Model Selection](<#7.0 model selection>)
-- [8.0 Project Setup](<#8.0 project setup>)
-- [Version History](<#version history>)
+- [1.0 Overview](#10-overview)
+- [2.0 Placeholder Mappings](#20-placeholder-mappings)
+- [3.0 Planner](#30-planner)
+- [4.0 Worker and Reviewer](#40-worker-and-reviewer)
+- [5.0 Tool-Calling Behaviour](#50-tool-calling-behaviour)
+- [6.0 Engine](#60-engine)
+- [7.0 Model Selection](#70-model-selection)
+- [8.0 Project Setup](#80-project-setup)
+- [Version History](#version-history)
 
 ---
 
@@ -28,7 +28,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 | Worker and reviewer | Devstral Small 2 2512 6bit via oMLX + engine |
 | Engine mechanism | Engine orchestrator / loop |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -40,7 +40,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 
 `<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/` and `ai/governance/<model>/recipes/`, mapped by the model's `manifest.yaml`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -50,7 +50,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 
 Any frontier model with sufficient reasoning capability may substitute. The planner role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -91,7 +91,7 @@ omlx:
 
 The model ID must match the id reported by oMLX `/v1/models` exactly, including the `mistralai_` prefix and `-MLX-6Bit` suffix.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -108,7 +108,7 @@ Devstral Small 2 2512 6bit via oMLX supports tool calling. The engine orchestrat
 
 Name tools explicitly in recipe prompts.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -131,7 +131,7 @@ python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prom
 
 Worker and reviewer roles are differentiated by prompt engineering within the same model, not by separate model binaries.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -142,7 +142,7 @@ Worker and reviewer roles are differentiated by prompt engineering within the sa
 | Worker | Devstral Small 2 2512 | 6bit | ~18 GB |
 | Reviewer | Devstral Small 2 2512 | 6bit | ~18 GB |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -157,7 +157,7 @@ ai/state/
 
 **Setup guide:** [Apple Silicon + MLX Setup Guide](../../docs/setup-apple-silicon-mlx.md).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 

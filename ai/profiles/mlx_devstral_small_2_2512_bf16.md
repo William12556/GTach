@@ -6,22 +6,22 @@ Created: 2026 October 02
 
 ## Table of Contents
 
-- [1.0 Overview](<#1.0 overview>)
-- [2.0 Placeholder Mappings](<#2.0 placeholder mappings>)
-- [3.0 Planner](<#3.0 planner>)
-- [4.0 Worker and Reviewer](<#4.0 worker and reviewer>)
-- [5.0 Tool-Calling Behaviour](<#5.0 tool-calling behaviour>)
-- [6.0 Engine](<#6.0 engine>)
-- [7.0 Model Selection](<#7.0 model selection>)
-- [8.0 Project Setup](<#8.0 project setup>)
-- [9.0 Verification Status](<#9.0 verification status>)
-- [Version History](<#version history>)
+- [1.0 Overview](#10-overview)
+- [2.0 Placeholder Mappings](#20-placeholder-mappings)
+- [3.0 Planner](#30-planner)
+- [4.0 Worker and Reviewer](#40-worker-and-reviewer)
+- [5.0 Tool-Calling Behaviour](#50-tool-calling-behaviour)
+- [6.0 Engine](#60-engine)
+- [7.0 Model Selection](#70-model-selection)
+- [8.0 Project Setup](#80-project-setup)
+- [9.0 Verification Status](#90-verification-status)
+- [Version History](#version-history)
 
 ---
 
 ## 1.0 Overview
 
-This profile maps governance abstract placeholders to Apple Silicon MLX-based local model tooling using Devstral Small 2 (December 2025 release) at full BF16 precision. It is the unquantised counterpart of [mlx_devstral_small_2_2512_6bit.md](mlx_devstral_small_2_2512_6bit.md). It requires Apple M-series hardware. This profile is provisional; see [9.0 Verification Status](<#9.0 verification status>).
+This profile maps governance abstract placeholders to Apple Silicon MLX-based local model tooling using Devstral Small 2 (December 2025 release) at full BF16 precision. It is the unquantised counterpart of [mlx_devstral_small_2_2512_6bit.md](mlx_devstral_small_2_2512_6bit.md). It requires Apple M-series hardware. This profile is provisional; see [9.0 Verification Status](#90-verification-status).
 
 | Concern | Implementation |
 |---|---|
@@ -29,7 +29,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 | Worker and reviewer | Devstral Small 2 2512 BF16 via oMLX + engine |
 | Engine mechanism | Engine orchestrator / loop |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -41,7 +41,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 
 `<tactical_config>/` and `<skills_dir>/` do not apply to this profile. Engine configuration is in `ai/config.yaml`; recipes are in `ai/engine/recipes/` and `ai/governance/<model>/recipes/`, mapped by the model's `manifest.yaml`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -51,7 +51,7 @@ This profile maps governance abstract placeholders to Apple Silicon MLX-based lo
 
 Any frontier model with sufficient reasoning capability may substitute. The planner role requires: planning, governance interpretation, design creation, prompt authoring, and validation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -96,7 +96,7 @@ omlx:
 
 The model ID must match the id reported by oMLX `/v1/models` exactly. The verified served id is `mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-BF16` (uppercase `BF16`).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -115,7 +115,7 @@ Thinking is disabled in oMLX per-model settings (`enable_thinking: false`). Devs
 
 Name tools explicitly in recipe prompts.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -138,7 +138,7 @@ python ai/engine/src/orchestrator.py --mode loop --task ai/workspace/prompt/prom
 
 T03 prompts use `prompt_info.target_profile: engine`. Worker and reviewer roles are differentiated by prompt engineering within the same model, not by separate model binaries.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -162,7 +162,7 @@ T03 prompts use `prompt_info.target_profile: engine`. Worker and reviewer roles 
 
 The oMLX cap of 40,960 tokens governs the effective context and is lower than the 6bit model's served `max_model_len` (393,216). KV-cache memory grows with context and is additional to the resident weights.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -177,7 +177,7 @@ ai/state/
 
 **Setup guide:** [Apple Silicon + MLX Setup Guide](../../docs/setup-apple-silicon-mlx.md).
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -195,7 +195,7 @@ This profile is provisional pending evaluation. Open items:
 | Throughput acceptable for engine loop at BF16 | Unverified |
 | Measurable quality gain over 6bit profile | Unverified |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
