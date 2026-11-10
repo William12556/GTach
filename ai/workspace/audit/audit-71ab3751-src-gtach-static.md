@@ -8,8 +8,9 @@ Created: 2026 November 10
 - [2.0 Scope and Method](#20-scope-and-method)
 - [3.0 Findings](#30-findings)
 - [4.0 Observations](#40-observations)
-- [5.0 Verification of Suspected Findings](#50-verification-of-suspected-findings)
-- [6.0 Recommendations](#60-recommendations)
+- [5.0 Scheduled Audit Dispositions](#50-scheduled-audit-dispositions)
+- [6.0 Verification of Suspected Findings](#60-verification-of-suspected-findings)
+- [7.0 Recommendations](#70-recommendations)
 - [Version History](#version-history)
 
 ---
@@ -20,23 +21,24 @@ Created: 2026 November 10
 
 **Audited commit:** `94ce959b953718a1899fc58b2e21df2ad1c866e9` (branch `main`). The working tree under `src/` was clean at the time of reading.
 
-**Result:** 31 findings. No critical or high finding was identified.
+**Result:** 43 findings. No critical or high finding was identified. Version 1.1 integrates the valid findings of the four open scheduled daily audits ([5.0](#50-scheduled-audit-dispositions)); 13 findings were added (1 medium, 12 low), 3 existing findings were extended and one (B05) was withdrawn.
 
 | Severity | Count |
 |---|---|
 | Critical | 0 |
 | High | 0 |
-| Medium | 3 |
-| Low | 28 |
-| **Total** | **31** |
+| Medium | 4 |
+| Low | 39 |
+| **Total** | **43** |
 
 **Medium findings:**
 
 1. **A01 — A connect that completes after `disconnect()` leaves an open RFCOMM link (consequence suspected).** `OBDTransport.connect` stores the handle without testing `_shutdown`. If the operator taps Setup on the DISCONNECTED screen while a connect is in flight and that connect then succeeds, the socket is never closed. Later connects to the same adapter from the setup probe or pairing are expected to fail with EBUSY until the process restarts.
 2. **D01 — Discovery outcomes are not presented.** A scan that finds nothing sets a message that the DISCOVERY screen does not draw, and the setup loop starts the next scan at once. A failed scan leaves the spinner running with no message. The "No devices found" state of the DEVICE_LIST screen, which the designs specify, is not reachable.
 3. **A02 — Serial transport does not recover from a removed device (suspected).** A raw `OSError` from `in_waiting` is outside `SerialTransport._IO_ERRORS`, so the link is never dropped and every poll logs a traceback.
+4. **C08 — The stored-device probe acts after the operator has left the screen (from audit-005f1cf4 §4.0).** If New Setup is tapped while the probe runs and the probe then succeeds, setup completes although the stored device was deleted.
 
-**Classification:** each finding is marked *confirmed* (follows from the source alone) or *suspected* (the consequence depends on runtime or library behaviour; see [5.0](#50-verification-of-suspected-findings)).
+**Classification:** each finding is marked *confirmed* (follows from the source alone) or *suspected* (the consequence depends on runtime or library behaviour; see [6.0](#60-verification-of-suspected-findings)).
 
 **Reviewed without finding:** `core/thread.py`, `core/watchdog.py`, `display/rendering/engine.py`, `comm/rfcomm.py`, `comm/tcp_transport.py`, `comm/models.py`, `comm/device_store.py` (locking), `utils/ack_state.py`, `utils/home.py`, `utils/waits.py`, `utils/updater.py`, `utils/stack_dump.py`, `utils/platform.py`, `display/models.py`, `display/typography.py`, `display/performance/monitor.py`, `display/setup_components/layout/circular_positioning.py`, `display/setup_components/rendering/device_surfaces.py`, `display/graphics/splash_graphics.py`.
 
@@ -52,6 +54,7 @@ Created: 2026 November 10
 
 - Every file under `src/gtach/`: 60 Python files (19,998 lines), `assets/engine_profiles.yaml` and `utils/default-config.txt`.
 - Excluded: `tests/`, `bin/`, `ai/`, `docs/`, the font binary.
+- Version 1.1 exception: the `bin/` and `tests/` locations cited by the open scheduled audits were read to validate those findings (`bin/gtach-preflight.sh`, `bin/gtach-verify-36b6ea95.sh`, `tests/test_lifecycle_sim.py`, `tests/test_callbacks_outside_locks.py`, `tests/test_sim_transport.py`). These files were not otherwise audited.
 
 ### 2.2 Method
 
@@ -80,7 +83,7 @@ Created: 2026 November 10
 
 ## 3.0 Findings
 
-Finding IDs: A = comm, B = core and top level, C = display top level, D = display subfolders, E = utils, X = cross-cutting.
+Finding IDs: A = comm, B = core and top level, C = display top level, D = display subfolders, E = utils, F = tests, G = bin, X = cross-cutting. Findings taken from a scheduled audit name their source.
 
 ```yaml
 # T08 Audit Template v1.0 - YAML Format
@@ -102,8 +105,8 @@ scope:
     - "dead_code"
     - "configuration_consistency"
   exclusions:
-    - "tests/"
-    - "bin/"
+    - "tests/ (except locations cited by the open scheduled audits)"
+    - "bin/ (except locations cited by the open scheduled audits)"
     - "ai/"
     - "docs/"
     - "src/gtach/assets/fonts/"
@@ -157,6 +160,16 @@ findings:
         which returns None without changing state and without counting a
         timeout. The link is never dropped, no reconnect starts, and each
         poll (20 Hz) writes a traceback to error.log.
+    - location: "display/setup.py:973-995, 997-1006; display/setup_components/state/coordinator.py complete_setup"
+      description: >-
+        [C08] (confirmed, timing-dependent; from audit-005f1cf4 section 4.0,
+        still present) _on_probe_result does not check that the screen is
+        still CURRENT_DEVICE. The probe can take up to 10 s, and 'new_setup'
+        stays available meanwhile. If the operator taps New Setup and the
+        probe then succeeds, complete_setup() sets COMPLETE although the
+        stored device has been removed; _start_obd then raises 'No paired
+        device found' and B03 applies. If the probe fails, the callback
+        forces WELCOME with 'Device not available' whatever screen is shown.
   low:
     - location: "comm/transport.py:404-431"
       description: >-
@@ -180,7 +193,9 @@ findings:
         cycle also repeats ATZ. An expected operating state fills error.log.
     - location: "comm/pairing.py:156-185; comm/system_bluetooth.py:152-157"
       description: >-
-        [A06] (suspected) Each discovery chunk waits 9 s (chunk_duration + 5)
+        [A06] (mismatch confirmed, effect suspected; also audit-005f1cf4
+        section 6.0, which adds that total discovery time is therefore not
+        bounded by the requested timeout) Each discovery chunk waits 9 s (chunk_duration + 5)
         for 'hcitool scan --length 4'. Inference: the length unit is 1.28 s,
         so the inquiry takes about 5.1 s and remote-name resolution follows.
         When the wait expires the chunk's results are discarded although
@@ -196,7 +211,10 @@ findings:
         tool used.
     - location: "comm/device_store.py:303-329; display/setup_components/bluetooth/interface.py:475; display/manager.py:2139-2155"
       description: >-
-        [A09] (confirmed) Persistence results are not used.
+        [A09] (confirmed; includes audit-005f1cf4 section 9.0)
+        _save_device_locked changes the in-memory store before saving, so
+        after a failed write memory and disk differ until restart.
+        Persistence results are not used.
         _remove_device_locked returns True without checking _save_config().
         on_pairing_complete ignores save_device()'s result, contrary to the
         note in _save_device_locked's docstring, so 'Setup Complete!' is
@@ -249,14 +267,21 @@ findings:
         process. (3) With a scan in progress the sequential join budgets
         (async workers 2 x 5 s, display 5 s, OBD 5 s, thread manager) can
         exceed the backstop.
-    - location: "app.py:594; core/thread.py:206; display/manager.py:640; display/async_operations.py:264; comm/obd.py:94"
+    - location: "app.py:479-481; core/thread.py:188-207; comm/obd.py:89-96"
       description: >-
-        [B05] (confirmed against utils/waits.py's own rationale) The main
-        loop uses Event.wait(timeout=0.5), and several joins and a
-        queue.get use timed waits. On Python 3.9 these use CLOCK_REALTIME,
-        so a backward wall-clock step extends them by the step size
-        (issue-4f671d09). wait_for_event exists for this purpose and is not
-        used at these sites.
+        [B06] (confirmed; from audit-005f1cf4 section 8.0 and audit-8264c76d
+        observation) stop_thread calls stop_func before its own bounded
+        join. For obd_protocol the stop function is OBDProtocol.stop, which
+        joins for up to 5 s, so the 2.0 s passed by _re_enter_setup is not
+        the bound: the callback can block for about 9 s (transport 2 s, OBD
+        5 s + 2 s). The comment at app.py:477-478 does not hold. The total
+        stays below the 15 s watchdog warning.
+    - location: "core/watchdog.py:283-296"
+      description: >-
+        [B07] (confirmed; from audit-005f1cf4 observation)
+        _handle_critical_timeout logs 'initiating emergency procedures' at
+        ERROR on every 5 s check for a stalled non-critical thread, and
+        takes no action for it.
     - location: "display/setup.py:794-807, 947-949; display/setup_components/state/coordinator.py:264-286"
       description: >-
         [C01] (confirmed) The PAIRING screen's Continue button maps to
@@ -291,6 +316,13 @@ findings:
         it twice without a local copy. A frame or touch in that window
         raises AttributeError, logs an error and draws the 'SETUP MODE'
         fallback for one frame.
+    - location: "display/manager.py:1090-1105, 1297-1298; display/models.py RPMBands; assets/engine_profiles.yaml:18"
+      description: >-
+        [C09] (confirmed; from audit-005f1cf4 section 15.0) _gauge_max_rpm
+        caps full scale at 9000 while its docstring states the configured
+        redline is always on the dial, and RPMBands accepts a redline up to
+        15000. A redline above 9000 is off the dial and its boundary mark is
+        skipped. The packaged profiles (6500 to 7500) are unaffected.
     - location: "display/touch.py:160-167"
       description: >-
         [C06] (confirmed) A long press is decided by duration alone. A swipe
@@ -326,10 +358,29 @@ findings:
     - location: "utils/config.py:207-219; display/models.py:208-209; utils/default-config.txt"
       description: >-
         [E01] (confirmed) rpm_warning and rpm_danger are validated, loaded
-        and saved but read by no rendering or logic path.
+        and saved but read by no rendering or logic path. The eleven
+        DisplayConfig.gesture_* fields have no reader, and the comment at
+        comm/pairing.py:132-135 cites discover_all_devices, which
+        BluetoothPairing does not define (both from audit-005f1cf4
+        observations).
         utils/default-config.txt describes the retired nested schema
         (mode DIGITAL, fps_limit 60, bluetooth section) and is referenced
         by no source file.
+    - location: "utils/config.py:373-386"
+      description: >-
+        [E05] (confirmed in isolation by audit-005f1cf4 section 10.0; impact
+        suspected) ConfigStore.save holds the lock only while copying the
+        unknown keys. Concurrent saves in one process share the temp path
+        '.config.yaml.<pid>.tmp' and can fail with FileNotFoundError. The
+        palette toggle is the only caller, so overlap is unlikely.
+    - location: "utils/config.py:316-326"
+      description: >-
+        [E06] (confirmed; from audit-005f1cf4 section 11.0) load() coerces
+        with kind(value), so it accepts values validate() rejects: a null
+        palette becomes 'None', 'touch_long_press: true' becomes 1.0 and
+        'fps_limit: 30.9' becomes 30, the last two without a warning. The
+        display falls back for an unknown palette or mode, so the effect is
+        a silent difference between --validate-config and runtime.
     - location: "utils/pi_reset.py:11-14"
       description: >-
         [E02] (confirmed) The module docstring states that subprocess is
@@ -348,6 +399,56 @@ findings:
         [E04] (confirmed) TerminalRestorer calls sys.stdin.fileno() without
         a guard. A closed or absent stdin raises in the constructor and
         prevents application start.
+    - location: "comm/transport.py:535, 566-580; comm/obd.py:231"
+      description: >-
+        [A12] (suspected; from audit-005f1cf4 section 12.0) _discard_input
+        removes only bytes buffered before the write. A late reply that
+        arrives after the discard is returned as the reply to the new
+        command. The PID check rejects a late reply for another PID; a late
+        010C reply is accepted once as a current RPM sample.
+    - location: "tests/test_lifecycle_sim.py:257"
+      description: >-
+        [F01] (confirmed; residual of audit-005f1cf4 section 13.0)
+        'assert proc.wait(timeout=10.0) is not None' is true for any exit
+        status, so the SIGTERM test does not check how the process ended.
+        The rest of section 13.0 is resolved: drop_link is now observed and
+        the xfail markers are gone.
+    - location: "tests/test_callbacks_outside_locks.py:223-240"
+      description: >-
+        [F02] (confirmed; from audit-8264c76d F2) The callback in
+        test_callback_may_register_regions re-enters the coordinator on the
+        dispatching thread. The coordinator lock is an RLock
+        (touch_coordinator.py:36), so the test also passes if callbacks run
+        under the lock. It gives no regression protection.
+    - location: "tests/test_sim_transport.py:70-93"
+      description: >-
+        [F03] (confirmed; from audit-fccd5931 F2) 
+        test_rpm_sweep_ignores_wall_clock_steps asserts '41 0C 39 08' at
+        t = 30 s. The sweep gives 3650 RPM at both t = 0 and t = 30 s, so
+        the assertion also passes if elapsed time is ignored.
+    - location: "bin/gtach-verify-36b6ea95.sh:4, 199, 210, 273-277; main.py:357"
+      description: >-
+        [G01] (confirmed; from audit-005f1cf4 section 5.0, rated medium
+        there) The script's header states it is read-only, but each
+        'gtach --validate-config' it runs truncates /opt/gtach/start.log
+        and can rotate debug.log, because main() sets up logging first.
+        Check C7c then reads start.log, which holds only the validation
+        run. Rated low here: the script verifies a closed audit, and the
+        main.py cause is already in ai/task.md.
+    - location: "bin/gtach-preflight.sh:21-31, 47-52, 66-74"
+      description: >-
+        [G02] (first case confirmed, second suspected; from audit-005f1cf4
+        section 7.0 and audit-8264c76d F3) install_and_check installs before
+        'pip check'. (1) If the check fails and no previous.whl exists, the
+        rejected wheel stays installed and the probation marker is removed.
+        (2) With an unrelated conflict already in the venv, a rollback
+        installs the previous wheel but leaves installed.whl naming the
+        rejected one, which the next update copies to previous.whl.
+    - location: "bin/gtach-verify-36b6ea95.sh:41"
+      description: >-
+        [G03] (confirmed; from audit-005f1cf4 section 14.0 and
+        audit-8264c76d F1) With '--since' as the last argument, 'shift 2'
+        fails without shifting and the argument loop does not terminate.
     - location: "display/async_operations.py:192-207; display/setup.py:963-965; comm/pairing.py:360-437, 498-501"
       description: >-
         [X01] (confirmed) Cancellation has no effect on running work.
@@ -360,16 +461,16 @@ findings:
         about 30 s after Cancel.
 
 metrics:
-  items_audited: 62
-  findings_total: 31
+  items_audited: 67
+  findings_total: 43
   findings_by_severity:
     critical: 0
     high: 0
-    medium: 3
-    low: 28
+    medium: 4
+    low: 39
 
 recommendations:
-  - "See section 6.0."
+  - "See section 7.0."
 
 traceability:
   design_refs:
@@ -380,15 +481,26 @@ traceability:
     - audit_ref: "audit-36b6ea95"
       relationship: "follow_up"
     - audit_ref: "audit-fccd5931"
-      relationship: "related"
+      relationship: "supersedes"
+    - audit_ref: "audit-005f1cf4"
+      relationship: "supersedes"
+    - audit_ref: "audit-8264c76d"
+      relationship: "supersedes"
+    - audit_ref: "audit-008e2929"
+      relationship: "supersedes"
 
-notes: "Static review only. Suspected findings require on-device verification (section 5.0)."
+notes: "Static review only. Suspected findings require on-device verification (section 6.0)."
 
 version_history:
   - version: "1.0"
     date: "2026-11-10"
     changes:
       - "Initial audit"
+  - version: "1.1"
+    date: "2026-11-10"
+    changes:
+      - "Integrated valid findings of the four open scheduled daily audits (13 added, 3 extended)"
+      - "Withdrew B05"
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -423,34 +535,106 @@ These are efficiency opportunities and notes. They are not counted as findings.
 
 ---
 
-## 5.0 Verification of Suspected Findings
+## 5.0 Scheduled Audit Dispositions
+
+Each finding and observation of the four open scheduled daily audits was re-checked against the audited commit.
+
+### 5.1 audit-005f1cf4 (2026-10-08)
+
+| Item | Disposition | ID here |
+|---|---|---|
+| §4.0 Continue probe acts after the user leaves the screen | Valid, still present | C08 (medium) |
+| §5.0 Verification script overwrites service logs | Valid; rated low here | G01 |
+| §6.0 Discovery chunk timeout | Valid; same as A06 | A06 (merged) |
+| §7.0 Preflight restore path | Valid, script unchanged | G02 |
+| §8.0 Stop timeout not honoured | Valid | B06 |
+| §9.0 DeviceStore memory and disk diverge | Valid | A09 (merged) |
+| §10.0 ConfigStore shared temp path | Valid; impact suspected | E05 |
+| §11.0 ConfigStore load accepts values validate rejects | Valid | E06 |
+| §12.0 Late OBD reply accepted once | Plausible; not verifiable statically | A12 (suspected) |
+| §13.0 Link-loss tests | Resolved by change-50bf25ad, except the unchecked exit status | F01 |
+| §14.0 Verification script loops on `--since` | Valid | G03 |
+| §15.0 Gauge range cap | Valid | C09 |
+| Observation: watchdog logs every cycle | Valid | B07 |
+| Observation: `gesture_*` fields, `pairing.py` comment | Valid | E01 (merged) |
+| Observation: unused coordinator paths call back under the lock | Valid but in dead code already tracked in `ai/task.md` | Not counted |
+| Observation: `threading.enumerate()` in the SIGUSR1 handler | Not validated; depends on the interpreter version on the device | Not integrated |
+
+### 5.2 audit-8264c76d (2026-10-08)
+
+| Item | Disposition | ID here |
+|---|---|---|
+| F1 Verify script hangs on bare `--since` | Valid; duplicate of 005f1cf4 §14.0 | G03 |
+| F2 Region-registration test cannot fail | Valid | F02 |
+| F3 Preflight rollback state | Plausible; requires an inconsistent venv | G02 (merged) |
+| Observation: `_probe_in_flight` | Agreed: not reachable, because the probe cannot be cancelled | Not counted |
+| Observation: setup re-entry stop timeout | Valid | B06 |
+| Observation: unreferenced `default-config.txt` | Valid | E01 |
+| Observation: formatting commit also reworded docstrings | Historical; no code effect | Not integrated |
+
+### 5.3 audit-008e2929 (2026-10-10)
+
+| Item | Disposition | ID here |
+|---|---|---|
+| F1 Orphaned `_global_performance_manager` | Resolved (removed in `a039165`) | — |
+| Observation: `type: ignore` candidate defects | Tracked in `ai/task.md` | Not counted |
+| Observation: timed waits left by change-4f671d09 | Deliberate and documented; see B05 below | — |
+| Observation: `wait_for_event` polls at 0.1 s | Cost not measurable statically | Not integrated |
+| Observation: `verify_obd_connection` sleep ignores shutdown | Valid; at most 2 s (`interface.py:242`) | Not counted |
+
+### 5.4 audit-fccd5931 (2026-10-15)
+
+| Item | Disposition | ID here |
+|---|---|---|
+| F1 Refused connects count toward the wedge threshold | Valid, still present | A03 |
+| F2 Wall-clock step test cannot detect a frozen sweep | Valid, test unchanged | F03 |
+| Observation: stale `sim_transport.py` comments | Valid | A11 |
+
+### 5.5 Withdrawn Finding
+
+- **B05 (timed waits on the wall clock) is withdrawn.** Version 1.0 reported `app.py:594` and several joins as defects. change-4f671d09 excluded these sites deliberately, and its reasoning for `app.py:594` is correct: `Event.set()` wakes the waiter at once whatever the clock does, so a backward step only delays a re-check that has nothing to observe. The remaining sites affect only timeout expiry during shutdown, which the exit backstop bounds.
+
+### 5.6 Result
+
+- All valid content of the four scheduled audits is now carried in this report. They can be closed as superseded; closure is an owner decision and no file was moved.
+
+[Return to Table of Contents](#table-of-contents)
+
+---
+
+## 6.0 Verification of Suspected Findings
 
 | ID | Verification | Expected if the finding holds |
 |---|---|---|
 | A01 | With the emulator stopped, wait for the DISCONNECTED screen. Start `elm327-emulator.service` and tap Setup while a connect attempt is in flight. Then list the process's sockets (`ls -l /proc/$(pidof -s python3)/fd`) and tap Continue on the Current Device screen. | An RFCOMM socket remains open after "Disconnected from RFCOMM device" is logged; the probe reports "Device not available" with EBUSY in `error.log`. |
 | A02 | Run `gtach --transport serial` against a USB ELM327 and unplug it. | `error.log` repeats "Unexpected error during command send" at the poll rate; no "Link ... dropped" record; no reconnect after re-plugging. |
 | A06 | Run discovery with debug on where several Bluetooth devices are in range. | `debug.log` shows "Bluetooth discovery chunk N timed out" and chunks that return no devices. |
+| A12 | Not practical to provoke on demand. Review `debug.log` for a "Discarded N stale bytes" record shortly after a command timeout, and for an RPM sample that repeats the previous value. | A reply logged for one command that matches the preceding 010C exchange. |
 | C07 | Not practical to provoke on demand. Review `debug.log` for a "Touch end" record whose duration spans two physical touches. | A duration far longer than the physical touch. |
 
-Confidence: A01 race high, consequence medium; A02 medium; A06 medium; C07 low.
+Confidence: A01 race high, consequence medium; A02 medium; A06 medium; A12 low; C07 low.
 
 [Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 6.0 Recommendations
+## 7.0 Recommendations
 
 Each `src/` change requires an issue, change and prompt set, unless it qualifies for the trivial exemption (P04.12).
 
 1. **A01:** In `OBDTransport.connect`, after `_open()` returns, test `_shutdown` under `_lock`; if set, close the handle, leave the state DISCONNECTED and return False. Add a regression test in which `disconnect()` runs during a blocking `_open()`.
 2. **D01:** On a completed scan with no devices, and on a failed scan, transition to DEVICE_LIST, which already draws "No devices found", the error line and Back/Retry. Decide this together with the open discovery-fallback item, because both change what follows an empty filtered scan.
-3. **A02:** Add `OSError` to `SerialTransport._IO_ERRORS`, or catch it in `_discard_input`.
-4. **X01, A06, A07:** Make cancellation effective (call `cancel_operations` from the Cancel action; ignore completions of operations no longer registered), log hcitool's return code, and size the chunk wait to hcitool's own limit.
-5. **A05:** Log the missing 0100 reply at WARNING without a traceback, and rate-limit it.
-6. **B01, B02, B03:** Keep the pairing factory for setup re-entry; pass `adapter_pre_initialised` only when the session sent ATZ; set `_obd_started` after `_start_obd` succeeds or clear it on failure.
-7. **Trivial-exemption candidates:** A04, A11 (comments), C03, E02, E03, E04.
-8. **Efficiency:** O1 and O2 are small, contained changes; O1 has the larger effect.
-9. The remaining low findings can be grouped by file when those files are next changed.
+3. **C08:** In `_on_probe_result`, act only while the screen is still CURRENT_DEVICE, and disable New Setup while a probe is in flight.
+4. **A02:** Add `OSError` to `SerialTransport._IO_ERRORS`, or catch it in `_discard_input`.
+5. **X01, A06, A07:** Make cancellation effective (call `cancel_operations` from the Cancel action; ignore completions of operations no longer registered), log hcitool's return code, and size the chunk wait to hcitool's own limit.
+6. **A05:** Log the missing 0100 reply at WARNING without a traceback, and rate-limit it.
+7. **B01, B02, B03:** Keep the pairing factory for setup re-entry; pass `adapter_pre_initialised` only when the session sent ATZ; set `_obd_started` after `_start_obd` succeeds or clear it on failure.
+8. **A09, E05, E06:** Apply DeviceStore changes in memory only after a successful save and return the result; hold the ConfigStore lock for the whole save or use a unique temp name; reject non-matching types in `load()`.
+9. **G02, G03, F01, F02, F03:** `bin/` and `tests/` corrections as given in the source audits. `bin/` changes are exempt from the issue/change/prompt workflow.
+10. **Trivial-exemption candidates:** A04, A11 (comments), B06 (comment, or pass the caller's timeout to `OBDProtocol.stop`), B07, C03, C09 (docstring), E02, E03, E04.
+11. **Efficiency:** O1 and O2 are small, contained changes; O1 has the larger effect.
+12. The remaining low findings can be grouped by file when those files are next changed.
+13. Close the four scheduled audits as superseded by this report (owner decision).
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -461,6 +645,7 @@ Each `src/` change requires an issue, change and prompt set, unless it qualifies
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-10 | Initial audit |
+| 1.1 | 2026-11-10 | §5.0 added: dispositions for the four open scheduled daily audits; findings C08 (medium), A12, B06, B07, C09, E05, E06, F01, F02, F03, G01, G02, G03 added; A06, A09, E01 extended; B05 withdrawn; totals and section numbers updated |
 
 ---
 
