@@ -17,7 +17,7 @@ issue_info:
   title: "A connect that completes after disconnect leaves the link open; serial unplug is not detected; discovery, pairing cancellation, device-store persistence, simulation and OBD start-up logging defects in comm/"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -133,9 +133,9 @@ resolution:
   target_date: ""
   approach: "See change-b4f9607a."
   change_ref: "change-b4f9607a"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-11"
+  resolved_by: "change-b4f9607a"
+  fix_description: "connect() closes a handle that arrives after disconnect(); OSError is a serial link loss; refused connects no longer count towards the wedge cause; send-time I/O errors record a cause; a missing 4100 reply is a rate-limited WARNING; OBDProtocol.stop(timeout) with a non-joining registered stop function; discovery chunk wait covers the back end's limit, hcitool return code logged, one shared manager; same-scan fallback to named UNKNOWN devices; pairing and discovery honour cancellation; DeviceStore save and remove return truthful results; set_device_store_path(); SimTransport keeps _shutdown; last_connected parsed in from_dict only; F03 test corrected (commit 963fd0fc82ccead532d1192ef99aee25e23f26aa; report-b4f9607a). A12 recorded as a known limit in a comment."
 
 verification:
   verified_date: ""
@@ -153,7 +153,7 @@ verification_enhanced:
     - "After the fix: unit tests per change-b4f9607a."
     - "After the fix: device session A — A01 procedure of audit-71ab3751 section 6.0 leaves no RFCOMM socket open; link loss and reconnect work; EBUSY re-test."
     - "After the fix, if hardware is available: A02 unplug test."
-  verification_results: ""
+  verification_results: "pytest 619 passed and mypy clean (worker's results). Device session A outstanding: A01 procedure, link loss and reconnect, EBUSY re-test, discovery duration; A02 unplug test if hardware is available."
 
 traceability:
   design_refs:
@@ -178,6 +178,12 @@ version_history:
     changes:
       - "Initial issue document."
 
+  - version: "1.1"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-b4f9607a (963fd0fc82ccead532d1192ef99aee25e23f26aa); awaiting device session A."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -193,6 +199,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial issue document. A01-A07, A09-A12, F03, X01, B06, discovery fallback, last_connected. |
+| 1.1 | 2026-11-11 | Resolved by change-b4f9607a (963fd0f); awaiting device session A. |
 
 ---
 

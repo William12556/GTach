@@ -17,7 +17,7 @@ change_info:
   title: "Close a link that connects after disconnect; treat OSError as serial link loss; discovery fallback and wait sizing; effective pairing cancellation; truthful device-store results; separate simulation store path; quieter OBD start-up; non-joining OBD stop function"
   date: "2026-11-11"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -280,16 +280,20 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-11-11"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
-  test_results: ""
-  issues_found: []
+  test_results: "Commit 963fd0fc82ccead532d1192ef99aee25e23f26aa: pytest 619 passed (30 new in tests/test_comm_layer_defects.py); mypy src/ no issues (worker's results, report-b4f9607a section 4)."
+  issues_found:
+    - "EDIT G: pair_device still clears _cancel_pairing on entry and makes the initial CONNECTING status call before the first check; a cancel issued before pair_device starts has no effect. Accepted: run 4 ignores completions of cancelled operations. See report-b4f9607a section 6."
+    - "EDIT E: a chunk may now wait up to 14 s before it is abandoned (previously 9 s), so a scan whose hcitool calls hang can take longer in total. To be measured in device session A."
+    - "reset_device_store() does not reset the path set by set_device_store_path(); relevant to test isolation only."
 
 traceability:
   design_updates:
-    - "design-a6b7c8d9 (device store): return contract and set_device_store_path. Planner, after the run."
+    - "design-a6b7c8d9 (device store): return contract and set_device_store_path. Planner, in the design refresh after run 5."
+    - "design-b1c2d3e4 (transport): shutdown test in connect(), refused-connect counter rule, send-time failure cause. Planner, in the design refresh after run 5."
   related_changes:
     - change_ref: "change-042dd7ff"
       relationship: "follows; calls set_device_store_path and relies on the non-joining OBD stop function"
@@ -316,6 +320,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Implemented in 963fd0fc82ccead532d1192ef99aee25e23f26aa; awaiting device session A."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -332,6 +342,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to J. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
+| 1.2 | 2026-11-11 | Implemented in 963fd0f; awaiting device session A. |
 
 ---
 
