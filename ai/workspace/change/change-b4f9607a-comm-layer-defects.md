@@ -17,7 +17,7 @@ change_info:
   title: "Close a link that connects after disconnect; treat OSError as serial link loss; discovery fallback and wait sizing; effective pairing cancellation; truthful device-store results; separate simulation store path; quieter OBD start-up; non-joining OBD stop function"
   date: "2026-11-11"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -310,6 +310,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-b4f9607a iteration 1."
 
+  - version: "1.1"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -325,6 +331,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to J. |
+| 1.1 | 2026-11-11 | Approved for implementation. |
 
 ---
 

@@ -17,7 +17,7 @@ change_info:
   title: "Delete code, configuration keys and one data file that have no caller or reader; no behaviour change"
   date: "2026-11-11"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -278,6 +278,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-cfa4e617 iteration 1."
 
+  - version: "1.1"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -293,6 +299,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. E01, W1, D2, D3, D4. |
+| 1.1 | 2026-11-11 | Approved for implementation. |
 
 ---
 

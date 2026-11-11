@@ -17,7 +17,7 @@ change_info:
   title: "Keep the pairing factory on setup re-entry; skip ATZ only after a reset in this session; truthful exit status; step-wise shutdown; root log level follows the debug switch; side-effect-free validation commands; log paths under GTACH_HOME; utility corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -322,6 +322,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-042dd7ff iteration 1."
 
+  - version: "1.1"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -337,6 +343,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to F. |
+| 1.1 | 2026-11-11 | Approved for implementation. |
 
 ---
 

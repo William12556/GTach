@@ -17,7 +17,7 @@ change_info:
   title: "Assign display attributes before fallible initialisation; local copies of the setup manager; long press requires a touch at rest; bounded touch-start age; one link evaluation per frame; documentation, font and default corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -250,6 +250,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-2550e4ee iteration 1."
 
+  - version: "1.1"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -265,6 +271,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to E. |
+| 1.1 | 2026-11-11 | Approved for implementation. |
 
 ---
 

@@ -17,7 +17,7 @@ change_info:
   title: "Completions act only for the registered operation; cancellation is effective; empty, failed and fallback scans reach DEVICE_LIST; one scan per entry to DISCOVERY; probe guard; screen and async-manager corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -314,6 +314,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-34781bfe iteration 1."
 
+  - version: "1.1"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -329,6 +335,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to G. |
+| 1.1 | 2026-11-11 | Approved for implementation. |
 
 ---
 
