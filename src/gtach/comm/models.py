@@ -39,16 +39,6 @@ class BluetoothDevice:
 
     def __post_init__(self) -> None:
         """Validate and normalize device data"""
-        # Convert string timestamp to datetime if needed
-        if isinstance(self.last_connected, str):
-            # TODO: issue-ac11505d candidate defect - annotation omits str input
-            try:  # type: ignore[unreachable]  # TODO: issue-ac11505d
-                self.last_connected = datetime.datetime.fromisoformat(
-                    self.last_connected
-                )
-            except (ValueError, TypeError):
-                self.last_connected = None
-
         # Ensure mac_address is normalized to uppercase PRESERVING colons
         self.mac_address = self.mac_address.upper()
 
@@ -94,7 +84,15 @@ class BluetoothDevice:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "BluetoothDevice":
-        """Create device instance from dictionary"""
+        """Create a device from its serialised form.
+
+        Args:
+            data: The mapping written by to_dict.
+
+        Returns:
+            The device; last_connected is None when absent or not an ISO
+            8601 string.
+        """
         # Extract known fields
         name = data.get("name", "Unknown Device")
         mac_address = data.get("mac_address", "")

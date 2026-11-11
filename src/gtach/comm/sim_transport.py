@@ -35,16 +35,19 @@ class SimTransport(OBDTransport):
         self.logger = logging.getLogger("SimTransport")
         self._connected = False
         self._state = TransportState.DISCONNECTED
-        self._start_time = time.monotonic()  # monotonic: elapsed time only (issue-72f95f73)
+        # Monotonic: elapsed time only (issue-72f95f73).
+        self._start_time = time.monotonic()
 
     def connect(self) -> bool:
         """Establish simulated connection (always succeeds immediately).
+
+        Leaves ``_shutdown`` as it is: after disconnect() the supervising
+        loop stays stopped (audit A11).
 
         Returns:
             bool: Always True.
         """
         with self._lock:
-            self._shutdown.clear()
             self._connected = True
             self._state = TransportState.CONNECTED
             self.logger.info("SimTransport connected")
@@ -61,11 +64,10 @@ class SimTransport(OBDTransport):
     def drop_link(self, cause: Optional[str] = None) -> None:
         """Close the simulated link while leaving reconnection possible.
 
-        The base implementation resets ``_state`` but not ``_connected``,
-        which :meth:`is_connected` reads, so the drop was never observed
-        and nothing reconnected (issue-50bf25ad). Unlike :meth:`disconnect`,
-        this does not set ``_shutdown``: the supervising loop must still be
-        able to re-establish the link.
+        Clears ``_connected``, which :meth:`is_connected` reads, so the
+        supervising loop observes the drop (issue-50bf25ad). Unlike
+        :meth:`disconnect`, this does not set ``_shutdown``: the loop can
+        still re-establish the link.
 
         Args:
             cause: Why the link was dropped. None uses the base default.
@@ -139,7 +141,7 @@ class SimTransport(OBDTransport):
             return "41 00 BE 3E B8 11"
 
         elif cmd == "010C":
-            # RPM query - return sine wave 800-6500 RPM, ~12s period
+            # RPM query - sine wave 800-6500 RPM, 60 s period
             return self._compute_rpm_response()
 
         else:
@@ -152,9 +154,9 @@ class SimTransport(OBDTransport):
         Returns:
             str: ELM327-formatted RPM response (e.g., '41 0C 1A 2B').
         """
-        # Sine wave: 800 + 2850 * (1 + sin(t * 2π / 60))
-        # Results in range 800-6500 RPM over ~60 second period
-        # Elapsed time from start ensures sweep begins near minimum at launch
+        # Sine wave: 800 + 2850 * (1 + sin(t * 2π / 60)), range 800-6500
+        # RPM, 60 s period. t is elapsed time since construction, so the
+        # sweep starts at its midpoint (3650 RPM) and rises.
         t = time.monotonic() - self._start_time
         rpm = 800 + 2850 * (1 + math.sin(t * 2 * math.pi / 60.0))
 

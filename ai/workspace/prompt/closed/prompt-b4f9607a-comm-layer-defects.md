@@ -147,6 +147,7 @@ notes: "Model: Claude Opus 5.5, effort medium, no ultracode. Human verification 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial prompt implementing change-b4f9607a iteration 1. Target profile claude_code. |
+| 1.1 | 2026-11-11 | Executed by Claude Code. EDITS A to J and the COMMENT RULE applied; deviations are listed in report-b4f9607a. pytest and mypy pass. Closed and moved to ai/workspace/prompt/closed/. |
 
 ---
 

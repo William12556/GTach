@@ -49,6 +49,13 @@ class BluetoothPairing:
     INITIALIZATION_TIMEOUT_S = 15
     OPERATION_TIMEOUT_S = 30
 
+    # Seconds per discovery chunk.
+    DISCOVERY_CHUNK_S = 4
+    # The wait for one chunk covers the system back end's own limit for a
+    # scan of duration d (d * 2 + 5 s) plus this margin, so a running scan
+    # is not abandoned (audit A06).
+    CHUNK_WAIT_MARGIN_S = 1
+
     def __init__(self) -> None:
         self.logger = logging.getLogger("BluetoothPairing")
         self._discovery_thread = None
@@ -127,7 +134,11 @@ class BluetoothPairing:
                 likely ELM327 devices
 
         Returns:
-            List of discovered ELM327 devices
+            The ELM327-like devices found. With show_all_devices False and
+            none found, the named devices classified DeviceType.UNKNOWN
+            instead, if any; every device in that fallback list is
+            classified UNKNOWN. After cancel_discovery(), the devices found
+            so far, with no further callback.
         """
         # The timeout is coerced to int; range() below requires one.
         if timeout is None:
@@ -142,7 +153,10 @@ class BluetoothPairing:
                 )
                 timeout = self.discovery_timeout
 
-        devices = []
+        devices: List[BluetoothDevice] = []
+        # Named UNKNOWN devices, returned only if no ELM327-like device is
+        # found (decision D1).
+        fallback: List[BluetoothDevice] = []
         self._discovery_active = True
         self._cancel_discovery.clear()
 
@@ -151,8 +165,11 @@ class BluetoothPairing:
             self.logger.info(f"Starting {mode_desc} discovery (timeout: {timeout}s)")
 
             # Start discovery in chunks to provide progress updates
-            chunk_duration = 4  # Discovery chunk duration
+            chunk_duration = self.DISCOVERY_CHUNK_S
             chunks = max(1, timeout // chunk_duration)
+            # The effective duration, not the default (issue-d140121d).
+            scan_duration = min(chunk_duration, max(1, timeout // chunks))
+            chunk_wait = scan_duration * 2 + 5 + self.CHUNK_WAIT_MARGIN_S
 
             for chunk in range(chunks):
                 if self._cancel_discovery.is_set():
@@ -168,18 +185,21 @@ class BluetoothPairing:
                     # Discover devices for this chunk with timeout protection
                     future = self._executor.submit(
                         bluetooth.discover_devices,
-                        # The effective timeout, not the default (issue-d140121d).
-                        duration=min(chunk_duration, max(1, timeout // chunks)),
+                        duration=scan_duration,
                         lookup_names=True,
                         flush_cache=True,
                     )
                     try:
-                        nearby_devices = future.result(timeout=chunk_duration + 5)
+                        nearby_devices = future.result(timeout=chunk_wait)
                     except concurrent.futures.TimeoutError:
                         self.logger.warning(
                             f"Bluetooth discovery chunk {chunk + 1} timed out"
                         )
                         nearby_devices = []
+
+                    if self._cancel_discovery.is_set():
+                        self.logger.info("Discovery cancelled")
+                        break
 
                     # Process all discovered devices
                     for addr, name in nearby_devices:
@@ -187,42 +207,30 @@ class BluetoothPairing:
                             # Classify device
                             device_classification = self._classify_device(name)
 
-                            # Apply filtering based on discovery mode
+                            # Without show_all_devices, a named UNKNOWN device
+                            # is held for the fallback.
                             if (
                                 not show_all_devices
                                 and device_classification == DeviceType.UNKNOWN
                             ):
+                                if name:
+                                    candidate = self._make_device(
+                                        addr, name, device_classification
+                                    )
+                                    if candidate not in fallback:
+                                        fallback.append(candidate)
                                 continue
 
-                            # Get signal strength (RSSI)
-                            signal_strength = self._get_signal_strength(addr)
-
-                            # Determine device type string for backward compatibility
-                            if device_classification == DeviceType.HIGHLY_LIKELY_ELM327:
-                                device_type = "ELM327"
-                            elif (
-                                device_classification == DeviceType.POSSIBLY_COMPATIBLE
-                            ):
-                                device_type = "Compatible"
-                            else:
-                                device_type = "Unknown"
-
-                            device = BluetoothDevice(
-                                name=name or f"Unknown Device ({addr})",
-                                mac_address=addr,
-                                signal_strength=signal_strength,
-                                device_type=device_type,
-                                last_seen=datetime.now(),
-                                is_paired=False,
-                                connection_verified=False,
-                                device_classification=device_classification,
+                            device = self._make_device(
+                                addr, name, device_classification
                             )
 
                             # Check if device already found
                             if device not in devices:
                                 devices.append(device)
                                 self.logger.info(
-                                    f"Found {device_type} device: {name} ({addr})"
+                                    f"Found {device.device_type} device: "
+                                    f"{name} ({addr})"
                                 )
 
                                 if device_found_callback:
@@ -249,6 +257,20 @@ class BluetoothPairing:
                     )
                     break
 
+            # After a cancel, no further callback (X01).
+            if self._cancel_discovery.is_set():
+                return devices
+
+            if not devices and fallback:
+                self.logger.info(
+                    f"No ELM327-like device found - offering {len(fallback)} "
+                    f"other named device(s)"
+                )
+                devices = fallback
+                if device_found_callback:
+                    for device in fallback:
+                        device_found_callback(device)
+
             # Final progress update
             if progress_callback:
                 progress_callback(1.0)
@@ -261,6 +283,37 @@ class BluetoothPairing:
             self._discovery_active = False
 
         return devices
+
+    def _make_device(
+        self, addr: str, name: str, classification: DeviceType
+    ) -> BluetoothDevice:
+        """Build the setup model for one discovered device.
+
+        Args:
+            addr: The MAC address.
+            name: The advertised name; may be empty.
+            classification: The result of _classify_device(name).
+
+        Returns:
+            The device, unpaired and unverified.
+        """
+        if classification == DeviceType.HIGHLY_LIKELY_ELM327:
+            device_type = "ELM327"
+        elif classification == DeviceType.POSSIBLY_COMPATIBLE:
+            device_type = "Compatible"
+        else:
+            device_type = "Unknown"
+
+        return BluetoothDevice(
+            name=name or f"Unknown Device ({addr})",
+            mac_address=addr,
+            signal_strength=self._get_signal_strength(addr),
+            device_type=device_type,
+            last_seen=datetime.now(),
+            is_paired=False,
+            connection_verified=False,
+            device_classification=classification,
+        )
 
     def _classify_device(self, device_name: str) -> DeviceType:
         """Classify device based on name to determine ELM327 compatibility"""
@@ -385,8 +438,18 @@ class BluetoothPairing:
             sock.settimeout(self.connection_timeout)
 
             try:
+                # Cancellation is honoured either side of the blocking
+                # connect, with no further status (X01).
+                if self._cancel_pairing.is_set():
+                    self.logger.info("Pairing cancelled")
+                    return False
+
                 # Attempt connection on RFCOMM channel 1 (standard for SPP)
                 sock.connect((device.mac_address, 1))
+
+                if self._cancel_pairing.is_set():
+                    self.logger.info("Pairing cancelled")
+                    return False
 
                 if status_callback:
                     status_callback(PairingStatus.CONNECTING, "Testing connection...")

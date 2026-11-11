@@ -155,6 +155,12 @@ class SystemBluetoothManager:
                 text=True,
                 timeout=duration * 2 + 5,
             )
+            if result.returncode != 0:
+                lines = (result.stderr or "").strip().splitlines()
+                self.logger.warning(
+                    f"hcitool scan returned {result.returncode}: "
+                    f"{lines[0] if lines else 'no stderr'}"
+                )
             # hcitool scan output lines: "\t<MAC>\t<Name>"
             for line in result.stdout.splitlines():
                 parts = line.strip().split("\t")
@@ -247,12 +253,38 @@ class SystemBluetoothManager:
             return None
 
 
+# The manager discover_devices reuses; built on first use (audit A07).
+_manager: Optional[SystemBluetoothManager] = None
+_manager_lock = threading.Lock()
+
+
+def _get_manager() -> SystemBluetoothManager:
+    """Return the shared manager, creating it on first use.
+
+    The manager runs a subprocess when built, so it is built outside the
+    lock; a concurrent first call may build one that is then discarded.
+
+    Returns:
+        The shared manager.
+    """
+    global _manager
+    with _manager_lock:
+        manager = _manager
+    if manager is not None:
+        return manager
+    created = SystemBluetoothManager()
+    with _manager_lock:
+        if _manager is None:
+            _manager = created
+        return _manager
+
+
 # Compatibility functions to match PyBluez API
 def discover_devices(
     duration: int = 8, lookup_names: bool = True, flush_cache: bool = False
 ) -> List[Tuple[str, str]]:
     """Discover Bluetooth devices - compatibility function"""
-    return SystemBluetoothManager().discover_devices(duration, lookup_names)
+    return _get_manager().discover_devices(duration, lookup_names)
 
 
 def lookup_name(mac_address: str, timeout: int = 10) -> Optional[str]:

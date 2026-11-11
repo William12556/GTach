@@ -11,6 +11,7 @@ Persistent device storage for OBDII display application.
 Manages paired device configuration and setup state.
 """
 
+import copy
 import logging
 import os
 import threading
@@ -78,14 +79,8 @@ class DeviceStore:
         empty file, a partially written file or a hand edit can
         produce a mapping with no 'paired_devices' key, a null
         value under that key, or a top level that is not a
-        mapping at all. save_device previously indexed into
-        self.config['paired_devices'] directly and raised
-        KeyError, which its own handler swallowed — so pairing
-        reported success and persisted nothing (core review
-        §3.4, recommendation #4).
-
-        The contract is enforced once here rather than at each
-        assignment site.
+        mapping at all. The structure is enforced once here rather
+        than at each assignment site.
         """
         if not isinstance(self.config, dict):
             self.logger.warning(
@@ -139,7 +134,8 @@ class DeviceStore:
                 the secondary mapping.
 
         Returns:
-            True when the device reached disk, False otherwise.
+            True when the device reached disk. False otherwise, with the
+            store unchanged.
         """
         with self._lock:
             return self._save_device_locked(device, is_primary)
@@ -155,7 +151,16 @@ class DeviceStore:
             return self._get_all_devices_locked()
 
     def remove_device(self, mac_address: str) -> bool:
-        """Remove a device from storage; True if one was removed."""
+        """Remove a device from storage.
+
+        Args:
+            mac_address: The device to remove.
+
+        Returns:
+            True when the device was removed and the change reached disk.
+            False when no such device is stored or the save failed; in
+            both cases the store is unchanged.
+        """
         with self._lock:
             return self._remove_device_locked(mac_address)
 
@@ -175,11 +180,11 @@ class DeviceStore:
                 the secondary mapping.
 
         Returns:
-            True when the device reached disk, False when it did not —
-            because the write failed, or because YAML is unavailable and
-            the store is in-memory only. Callers that report pairing
+            True when the device reached disk. False when it did not, with
+            self.config unchanged (audit A09). Callers that report pairing
             success to the operator should consult it.
         """
+        previous = copy.deepcopy(self.config)
         try:
             device_data = {
                 "name": device.name,
@@ -191,10 +196,7 @@ class DeviceStore:
             if device.last_connected:
                 device_data["last_connected"] = device.last_connected.isoformat()
 
-            # setdefault rather than direct indexing: a devices.yaml
-            # that exists but carries no paired_devices key raised
-            # KeyError here, on BOTH branches, and the except below
-            # swallowed it (core review §3.4, recommendation #4).
+            # setdefault: a devices.yaml may carry no paired_devices key.
             paired = self.config.setdefault("paired_devices", {})
 
             if is_primary:
@@ -209,10 +211,12 @@ class DeviceStore:
                     f"{device.name}"
                 )
             else:
+                self.config = previous
                 self.logger.error(f"Device {device.name} was not persisted")
             return saved
 
         except Exception as e:
+            self.config = previous
             self.logger.error(
                 f"Failed to save device {device.name}: {e}", exc_info=True
             )
@@ -273,28 +277,37 @@ class DeviceStore:
         return devices
 
     def _remove_device_locked(self, mac_address: str) -> bool:
-        """Remove a device from storage. Caller holds self._lock."""
+        """Remove a device from storage. Caller holds self._lock.
+
+        Args:
+            mac_address: The device to remove.
+
+        Returns:
+            True when the device was removed and the change reached disk.
+            False otherwise, with self.config unchanged (audit A09).
+        """
+        previous = copy.deepcopy(self.config)
         try:
-            # Check if it's the primary device
-            primary = self.config.get("paired_devices", {}).get("primary")
+            paired = self.config.get("paired_devices", {})
+            primary = paired.get("primary")
+            secondary_devices = paired.get("secondary", {})
             if primary and primary.get("mac_address") == mac_address:
-                del self.config["paired_devices"]["primary"]
-                self._save_config()
-                self.logger.info(f"Removed primary device: {mac_address}")
-                return True
-
-            # Check secondary devices
-            secondary_devices = self.config.get("paired_devices", {}).get(
-                "secondary", {}
-            )
-            if mac_address in secondary_devices:
+                del paired["primary"]
+                role = "primary"
+            elif mac_address in secondary_devices:
                 del secondary_devices[mac_address]
-                self._save_config()
-                self.logger.info(f"Removed secondary device: {mac_address}")
-                return True
+                role = "secondary"
+            else:
+                return False
 
-            return False
+            if not self._save_config():
+                self.config = previous
+                self.logger.error(f"Removal of {mac_address} was not persisted")
+                return False
+            self.logger.info(f"Removed {role} device: {mac_address}")
+            return True
         except Exception as e:
+            self.config = previous
             self.logger.error(
                 f"Failed to remove device {mac_address}: {e}", exc_info=True
             )
@@ -308,17 +321,36 @@ class DeviceStore:
         return None
 
 
-# The shared instance (issue-453f0a80). Independent instances each held
-# their own copy of the file, so one could overwrite another's changes.
+# The shared instance, so no two instances overwrite each other's
+# changes (issue-453f0a80).
 _shared: Optional[DeviceStore] = None
+# The path the shared instance is created with; None means the default.
+_shared_path: Optional[str] = None
 _shared_lock = threading.Lock()
+
+
+def set_device_store_path(path: Optional[str]) -> None:
+    """Set the file the shared DeviceStore uses (audit A10).
+
+    Discards the current shared instance; the next get_device_store()
+    creates one at the new path.
+
+    Args:
+        path: The devices file, or None for the default
+            gtach_home()/config/devices.yaml.
+    """
+    global _shared, _shared_path
+    with _shared_lock:
+        _shared_path = path
+        _shared = None
 
 
 def get_device_store() -> DeviceStore:
     """Return the process-wide DeviceStore, creating it on first use.
 
     Constructs through the module-level name DeviceStore, so a test that
-    patches the class gets its replacement.
+    patches the class gets its replacement. The store is created at the
+    path last given to set_device_store_path(), or the default.
 
     Returns:
         The shared store.
@@ -326,7 +358,10 @@ def get_device_store() -> DeviceStore:
     global _shared
     with _shared_lock:
         if _shared is None:
-            _shared = DeviceStore()
+            if _shared_path is None:
+                _shared = DeviceStore()
+            else:
+                _shared = DeviceStore(_shared_path)
         return _shared
 
 
