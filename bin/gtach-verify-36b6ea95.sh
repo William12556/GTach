@@ -38,7 +38,7 @@ STOP_TEST=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --since) SINCE="${2:-boot}"; shift 2 ;;
+        --since) SINCE="${2:-boot}"; shift; [ $# -gt 0 ] && shift ;;
         --stop-test) STOP_TEST=1; shift ;;
         -h|--help) sed -n 2,24p "$0"; exit 0 ;;
         *) echo "Unknown option: $1" >&2; exit 2 ;;

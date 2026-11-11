@@ -18,16 +18,31 @@ install_wheel() {
     "$VENV/bin/pip" install --force-reinstall --no-deps "$1" >/dev/null 2>&1
 }
 
-install_and_check() {
-    # Install, then verify the environment's dependencies are consistent
+check_env() {
+    # Verify the environment's dependencies are consistent
     # (issue-52653cd6). On a pip check failure its output is logged.
-    install_wheel "$1" || return 1
     local out
     if ! out="$("$VENV/bin/pip" check 2>&1)"; then
         log "ERROR: pip check failed after installing $(basename "$1"):"
         log "$out"
         return 1
     fi
+}
+
+install_and_check() {
+    install_wheel "$1" || return 1
+    check_env "$1"
+}
+
+restore_previous() {
+    # Reinstall the previous wheel. installed.whl follows what pip
+    # installed, whatever pip check then reports, so a later update
+    # cannot save a rejected wheel as previous.whl (audit-71ab3751 G02).
+    [ -f "$PREVIOUS" ] || return 1
+    install_wheel "$PREVIOUS" || return 1
+    cp -f "$PREVIOUS" "$INSTALLED"
+    check_env "$PREVIOUS" || log "WARNING: environment inconsistent after restoring previous wheel"
+    return 0
 }
 
 valid_wheel() {
@@ -44,8 +59,7 @@ if [ -f "$PROBATION" ]; then
     case "$count" in (''|*[!0-9]*) count=0;; esac
     if [ "$count" -ge "$THRESHOLD" ]; then
         log "probation exceeded ($count) — rolling back"
-        if [ -f "$PREVIOUS" ] && install_and_check "$PREVIOUS"; then
-            cp -f "$PREVIOUS" "$INSTALLED"
+        if restore_previous; then
             log "rolled back to previous wheel"
         else
             log "ERROR: rollback unavailable or failed"
@@ -70,7 +84,11 @@ if [ -f "$PENDING" ]; then
                 log "installed $wheel_name; probation started"
             else
                 log "ERROR: install failed — restoring previous"
-                [ -f "$PREVIOUS" ] && install_and_check "$PREVIOUS" && cp -f "$PREVIOUS" "$INSTALLED"
+                if ! restore_previous; then
+                    # Nothing to restore: the rejected wheel may still be
+                    # installed, and no rollback is possible (audit-71ab3751 G02).
+                    log "ERROR: no previous wheel restored — $wheel_name may remain installed without rollback protection"
+                fi
                 rm -f "$PROBATION"
             fi
         else
