@@ -17,15 +17,8 @@ import time
 from collections import deque
 from typing import Deque, Dict, Optional, Tuple
 
+from ..utils.config import SplashConfig
 from ..utils.waits import wait_for_event
-
-# Import configuration classes
-try:
-    from ..utils.config import SplashConfig
-except ImportError:
-    # Fallback for development/testing
-    # TODO: issue-ac11505d candidate defect - dead fallback; import cannot fail
-    SplashConfig = None  # type: ignore[misc, assignment]  # TODO: issue-ac11505d
 
 # Import typography system for consistent font sizing
 try:
@@ -42,15 +35,9 @@ except ImportError:
     # Fallback for development/testing without typography module
     TYPOGRAPHY_AVAILABLE = False
 
-# Conditional import of pygame with fallback handling
-try:
-    import pygame
+import pygame
 
-    PYGAME_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
-    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    PYGAME_AVAILABLE = False
+PYGAME_AVAILABLE = True
 
 
 class SplashScreen:

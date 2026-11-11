@@ -16,14 +16,7 @@ import threading
 import time
 from typing import Any, Dict, Optional, Tuple
 
-try:
-    import pygame
-
-    PYGAME_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
-    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    PYGAME_AVAILABLE = False
+import pygame
 
 from ...setup_models import BluetoothDevice, DeviceType
 from ...typography import TypographyConstants, get_font_manager
@@ -57,14 +50,7 @@ class DeviceSurfaceRenderer:
     def __init__(self) -> None:
         self.logger = logging.getLogger("DeviceSurfaceRenderer")
 
-        # Check pygame availability
-        if not PYGAME_AVAILABLE:
-            self.logger.warning(
-                "Pygame not available - device surface rendering disabled"
-            )
-            self.display_available = False
-        else:
-            self.display_available = True
+        self.display_available = True
 
         # Colors for device rendering
         self.colors = {

@@ -15,15 +15,9 @@ import logging
 import math
 from typing import Tuple
 
-# Conditional pygame import with fallback
-try:
-    import pygame
+import pygame
 
-    PYGAME_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
-    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    PYGAME_AVAILABLE = False
+PYGAME_AVAILABLE = True
 
 # Professional automotive color palette
 AUTOMOTIVE_COLORS = {

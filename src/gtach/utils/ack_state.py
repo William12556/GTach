@@ -21,14 +21,7 @@ import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-try:
-    import yaml
-
-    YAML_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, PyYAML required
-    yaml = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    YAML_AVAILABLE = False
+import yaml
 
 from .home import gtach_home
 
@@ -101,12 +94,6 @@ class AcknowledgementStateManager:
         Returns:
             True if acknowledged and hash matches, False otherwise
         """
-        if not YAML_AVAILABLE:
-            self.logger.warning(
-                "PyYAML not available - cannot check acknowledgement state"
-            )
-            return False
-
         if not self.state_file_path.exists():
             self.logger.debug("Acknowledgement state file not found - not acknowledged")
             return False
@@ -163,12 +150,6 @@ class AcknowledgementStateManager:
         Returns:
             True if successfully saved, False otherwise
         """
-        if not YAML_AVAILABLE:
-            self.logger.error(
-                "PyYAML not available - cannot save acknowledgement state"
-            )
-            return False
-
         try:
             # Ensure state directory exists
             self.state_file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -248,7 +229,7 @@ class AcknowledgementStateManager:
         Returns:
             Dictionary with state info, or None if state file doesn't exist
         """
-        if not YAML_AVAILABLE or not self.state_file_path.exists():
+        if not self.state_file_path.exists():
             return None
 
         try:

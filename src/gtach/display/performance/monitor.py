@@ -20,7 +20,6 @@ from collections import defaultdict, deque
 from typing import Any, DefaultDict, Deque, Dict, List
 
 import psutil
-import pygame
 
 from .interfaces import PerformanceMetrics, PerformanceMonitorInterface
 
@@ -33,20 +32,18 @@ class PerformanceMonitor(PerformanceMonitorInterface):
     detailed metrics for optimization and debugging.
     """
 
-    def __init__(self, target_fps: int = 60, history_duration: int = 300):
+    def __init__(self, target_fps: int = 60):
         self.logger = logging.getLogger("PerformanceMonitor")
         self._lock = threading.RLock()
 
         # Configuration
         self.target_fps = target_fps
-        self.history_duration = history_duration  # seconds
         self.frame_time_target = 1.0 / target_fps
 
         # Monitoring state
         self._monitoring = False
         # Durations, ages and history timestamps below use time.monotonic()
-        # so a wall-clock step cannot distort them (issue-e215a184). The
-        # dirty-region 'timestamp' stays time.time().
+        # so a wall-clock step cannot distort them (issue-e215a184).
         self._start_time = 0.0
 
         # Frame tracking
@@ -85,20 +82,6 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             "min_cache_hit_rate": 0.7,  # 70% cache hit rate
         }
 
-        # Metrics history
-        self._metrics_history: Deque[PerformanceMetrics] = deque(
-            maxlen=history_duration
-        )
-        self._last_metrics_update = 0.0
-
-        # Dirty regions tracking (for optimization)
-        self._dirty_regions: List[Dict[str, Any]] = []
-        self._total_dirty_area = 0
-
-        # Font cache integration
-        self._font_cache_enabled = False
-        self._font_cache: Dict[str, Any] = {}
-
     def start_monitoring(self) -> bool:
         """Start performance monitoring"""
         with self._lock:
@@ -113,7 +96,6 @@ class PerformanceMonitor(PerformanceMonitorInterface):
 
                 # Clear histories
                 self._frame_history.clear()
-                self._metrics_history.clear()
                 self._memory_samples.clear()
 
                 # Reset operation tracking
@@ -233,11 +215,6 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 if frame_time > self.frame_time_target * 1.5:
                     self._dropped_frames += 1
 
-                # Update metrics periodically
-                if current_time - self._last_metrics_update >= 1.0:
-                    self._update_metrics_history()
-                    self._last_metrics_update = current_time
-
                 return frame_time
 
             except Exception as e:
@@ -270,54 +247,6 @@ class PerformanceMonitor(PerformanceMonitorInterface):
             )
             return False
 
-    def record_render_operation(self, operation_type: str, duration: float) -> None:
-        """Record a render operation with timing"""
-        if not self._monitoring:
-            return
-
-        with self._lock:
-            try:
-                self._render_operations[operation_type].append(duration)
-                self._operation_counts[operation_type] += 1
-
-                # Limit history size per operation
-                if len(self._render_operations[operation_type]) > 100:
-                    self._render_operations[operation_type] = self._render_operations[
-                        operation_type
-                    ][-50:]
-
-            except Exception as e:
-                self.logger.error(
-                    f"Error recording render operation: {e}", exc_info=True
-                )
-
-    def record_cache_hit(self, cache_type: str) -> None:
-        """Record a cache hit"""
-        if not self._monitoring:
-            return
-
-        with self._lock:
-            self._cache_stats[cache_type]["hits"] += 1
-
-    def record_cache_miss(self, cache_type: str) -> None:
-        """Record a cache miss"""
-        if not self._monitoring:
-            return
-
-        with self._lock:
-            self._cache_stats[cache_type]["misses"] += 1
-
-    def update_memory_usage(self, usage_mb: float) -> None:
-        """Update current memory usage"""
-        if not self._monitoring:
-            return
-
-        with self._lock:
-            current_time = time.monotonic()
-            self._memory_samples.append(
-                {"timestamp": current_time, "usage_mb": usage_mb}
-            )
-
     def get_current_metrics(self) -> PerformanceMetrics:
         """Get current performance metrics"""
         with self._lock:
@@ -339,16 +268,12 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 # Calculate cache hit rate
                 cache_hit_rate = self._calculate_cache_hit_rate()
 
-                # Get dirty regions info
-                dirty_regions_count = len(self._dirty_regions)
-
                 return PerformanceMetrics(
                     fps=fps,
                     frame_time_ms=frame_time_ms,
                     render_time_ms=render_time_ms,
                     memory_usage_mb=memory_mb,
                     cache_hit_rate=cache_hit_rate,
-                    dirty_regions_count=dirty_regions_count,
                     buffer_writes=self._operation_counts.get("buffer_write", 0),
                     total_frames=self._frame_count,
                     dropped_frames=self._dropped_frames,
@@ -359,41 +284,19 @@ class PerformanceMonitor(PerformanceMonitorInterface):
                 self.logger.error(f"Error getting current metrics: {e}", exc_info=True)
                 return PerformanceMetrics()
 
-    def get_historical_metrics(self, seconds: int = 60) -> List[PerformanceMetrics]:
-        """Get historical metrics for specified time period"""
-        with self._lock:
-            try:
-                current_time = time.monotonic()
-                cutoff_time = current_time - seconds
-
-                return [
-                    metrics
-                    for metrics in self._metrics_history
-                    if metrics.last_update_time >= cutoff_time
-                ]
-
-            except Exception as e:
-                self.logger.error(
-                    f"Error getting historical metrics: {e}", exc_info=True
-                )
-                return []
-
     def reset_metrics(self) -> None:
         """Reset all performance metrics"""
         with self._lock:
             try:
                 self._frame_history.clear()
-                self._metrics_history.clear()
                 self._memory_samples.clear()
                 self._render_operations.clear()
                 self._operation_counts.clear()
                 self._cache_stats.clear()
                 self._active_frames.clear()
-                self._dirty_regions.clear()
 
                 self._frame_count = 0
                 self._dropped_frames = 0
-                self._total_dirty_area = 0
                 self._frame_id_counter = 0
                 self._memory_cache_mb = 0.0
                 self._memory_cache_ts = 0.0
@@ -402,16 +305,6 @@ class PerformanceMonitor(PerformanceMonitorInterface):
 
             except Exception as e:
                 self.logger.error(f"Error resetting metrics: {e}", exc_info=True)
-
-    def set_target_fps(self, fps: int) -> None:
-        """Set target FPS for performance monitoring"""
-        with self._lock:
-            self.target_fps = fps
-            self.frame_time_target = 1.0 / fps
-            self.thresholds["min_fps"] = fps * 0.8
-            self.thresholds["max_frame_time_ms"] = (1.0 / fps) * 1000 * 1.2
-
-            self.logger.debug(f"Target FPS updated to {fps}")
 
     def is_performance_acceptable(self) -> bool:
         """Check if current performance meets acceptable thresholds"""
@@ -525,65 +418,6 @@ class PerformanceMonitor(PerformanceMonitorInterface):
 
         except Exception:
             return 0.0
-
-    def _update_metrics_history(self) -> None:
-        """Update metrics history with current snapshot"""
-        try:
-            current_metrics = self.get_current_metrics()
-            self._metrics_history.append(current_metrics)
-
-        except Exception as e:
-            self.logger.error(f"Error updating metrics history: {e}", exc_info=True)
-
-    def add_dirty_region(self, rect: pygame.Rect) -> None:
-        """Add a dirty region for optimization tracking"""
-        if not self._monitoring:
-            return
-
-        with self._lock:
-            try:
-                self._dirty_regions.append(
-                    {
-                        "rect": rect,
-                        "timestamp": time.time(),
-                        "area": rect.width * rect.height,
-                    }
-                )
-
-                self._total_dirty_area += rect.width * rect.height
-
-                # Limit dirty region history
-                if len(self._dirty_regions) > 100:
-                    removed = self._dirty_regions.pop(0)
-                    self._total_dirty_area -= removed["area"]
-
-            except Exception as e:
-                self.logger.error(f"Error adding dirty region: {e}", exc_info=True)
-
-    def get_dirty_regions(self) -> List[pygame.Rect]:
-        """Get current dirty regions for partial updates"""
-        with self._lock:
-            try:
-                current_time = time.time()
-
-                # Return regions from the last frame
-                recent_regions = [
-                    r["rect"]
-                    for r in self._dirty_regions
-                    if current_time - r["timestamp"] <= 0.1
-                ]
-
-                return recent_regions
-
-            except Exception as e:
-                self.logger.error(f"Error getting dirty regions: {e}", exc_info=True)
-                return []
-
-    def clear_dirty_regions(self) -> None:
-        """Clear dirty regions after processing"""
-        with self._lock:
-            self._dirty_regions.clear()
-            self._total_dirty_area = 0
 
     def get_performance_summary(self) -> Dict[str, Any]:
         """Get comprehensive performance summary"""

@@ -23,15 +23,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
-# Conditional import of yaml
-try:
-    import yaml
-
-    YAML_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, PyYAML required
-    yaml = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    YAML_AVAILABLE = False
+import yaml
 
 from .home import gtach_home
 
@@ -93,10 +85,6 @@ def load_engine_profile(profile_name: str = "abarth_595_turismo") -> "RPMBands":
             return RPMBands()
 
         # Load YAML file
-        if not YAML_AVAILABLE:
-            logger.warning("YAML not available, using default RPM bands")
-            return RPMBands()
-
         with open(profile_path, "r") as f:
             data = yaml.safe_load(f)
 

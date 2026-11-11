@@ -119,6 +119,25 @@ class TestSave:
         assert ConfigStore(path).load() == config
         assert yaml.safe_load(path.read_text())["foo"] == 1
 
+    def test_retired_gesture_key_and_rpm_keys_survive(self, tmp_path, caplog):
+        # change-cfa4e617: gesture_* left DisplayConfig; a file that still
+        # carries one loads without warning and keeps it on save.
+        retired = dict(
+            DEVICE_FILE, rpm_warning=6000, rpm_danger=6800, gesture_swipe_threshold=80
+        )
+        path = _write(tmp_path / "config.yaml", retired)
+        store = ConfigStore(path)
+
+        with caplog.at_level(logging.WARNING):
+            config = store.load()
+            assert store.save(config) is True
+
+        assert not caplog.records
+        data = yaml.safe_load(path.read_text())
+        assert data["gesture_swipe_threshold"] == 80
+        assert data["rpm_warning"] == 6000
+        assert data["rpm_danger"] == 6800
+
     def test_only_unknown_keys_preserved(self, tmp_path):
         path = _write(tmp_path / "config.yaml", {"foo": 1, "bar": "x"})
         store = ConfigStore(path)

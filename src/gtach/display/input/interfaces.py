@@ -18,27 +18,12 @@ from typing import Any, Dict, List, Optional, Tuple
 import pygame
 
 
-class GestureType(Enum):
-    """Types of touch gestures"""
-
-    TAP = auto()
-    LONG_PRESS = auto()
-    SWIPE_LEFT = auto()
-    SWIPE_RIGHT = auto()
-    SWIPE_UP = auto()
-    SWIPE_DOWN = auto()
-    DRAG = auto()
-    PINCH = auto()
-
-
 class TouchAction(Enum):
     """Touch action results"""
 
     NONE = auto()
-    MODE_CHANGE = auto()
     SETTINGS_CHANGE = auto()
     NAVIGATION = auto()
-    SLIDER_INTERACTION = auto()
     BUTTON_PRESS = auto()
 
 
@@ -74,26 +59,6 @@ class TouchEventInterface(ABC):
     @abstractmethod
     def handle_touch_down(self, pos: Tuple[int, int]) -> Optional[TouchAction]:
         """Handle touch down event"""
-        pass
-
-    @abstractmethod
-    def handle_touch_move(self, pos: Tuple[int, int]) -> Optional[TouchAction]:
-        """Handle touch move/drag event"""
-        pass
-
-    @abstractmethod
-    def handle_touch_up(self, pos: Tuple[int, int]) -> Optional[TouchAction]:
-        """Handle touch up/release event"""
-        pass
-
-    @abstractmethod
-    def handle_gesture(
-        self,
-        gesture_type: GestureType,
-        start_pos: Tuple[int, int],
-        end_pos: Tuple[int, int],
-    ) -> Optional[TouchAction]:
-        """Handle recognized gesture"""
         pass
 
     @abstractmethod

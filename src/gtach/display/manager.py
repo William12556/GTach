@@ -30,21 +30,13 @@ from typing import (
     cast,
 )
 
-# Conditional imports for hardware dependencies
-try:
-    import pygame
-
-    PYGAME_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
-    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    PYGAME_AVAILABLE = False
+import pygame
 
 from ..core import ThreadManager
 from ..utils import TerminalRestorer
 from ..utils.ack_state import AcknowledgementStateManager
 from ..utils.config import AppConfig, ConfigStore
-from .input import GestureType, TouchAction, TouchEventCoordinator
+from .input import TouchAction, TouchEventCoordinator
 
 # Legacy imports for compatibility
 from .models import (
@@ -239,7 +231,6 @@ class DisplayManager:
 
             # Initialize touch coordinator
             self.touch_coordinator = TouchEventCoordinator((480, 480))
-            self._setup_touch_callbacks()
 
             # Initialize acknowledgement state manager
             self._ack_state_manager = AcknowledgementStateManager()
@@ -249,38 +240,6 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Component initialization failed: {e}", exc_info=True)
             self.display_available = False
-
-    def _setup_touch_callbacks(self) -> None:
-        """Setup touch gesture callbacks"""
-        try:
-            # Register gesture callbacks for navigation.
-            # The two horizontal swipes moved between DIGITAL and RADIAL
-            # and went with DIGITAL's retirement (change-378703da).
-            #
-            # OPTIONS is entered by a downward swipe and left by an
-            # upward one. The long press that did both was a toggle
-            # with no second route when one direction failed
-            # (change-3e8b1d72). The coordinator already recognises
-            # both gestures; only the callbacks were missing.
-            self.touch_coordinator.register_gesture_callback(
-                GestureType.SWIPE_DOWN, self._handle_swipe_down
-            )
-            self.touch_coordinator.register_gesture_callback(
-                GestureType.SWIPE_UP, self._handle_swipe_up
-            )
-
-            # The palette toggle is NOT registered here. Gesture
-            # callbacks registered with the coordinator are never
-            # invoked: handle_touch_up and handle_touch_move, which
-            # dispatch to them, are called by nothing
-            # (issue-2b6f4d91). The registrations above are inert for
-            # the same reason — the vertical swipes work because
-            # TouchHandler calls the handlers directly at
-            # touch.py:202-209, and the palette toggle is wired the
-            # same way in TouchHandler._handle_long_press.
-
-        except Exception as e:
-            self.logger.error(f"Touch callback setup failed: {e}", exc_info=True)
 
     def _toggle_palette(self) -> None:
         """Swap the active palette, notify, and persist the choice.
@@ -659,10 +618,6 @@ class DisplayManager:
 
     def _display_loop(self) -> None:
         """Main display loop using component architecture"""
-        if not PYGAME_AVAILABLE:
-            self.logger.warning("Pygame not available - display loop disabled")
-            return
-
         self.logger.info("Display loop started with component architecture")
 
         while not self._shutdown_event.is_set():

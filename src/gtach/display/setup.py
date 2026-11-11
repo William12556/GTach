@@ -17,15 +17,7 @@ import threading
 import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
-# Conditional import of pygame
-try:
-    import pygame
-
-    PYGAME_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
-    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    PYGAME_AVAILABLE = False
+import pygame
 
 # Import extracted components
 from .setup_components.bluetooth.interface import BluetoothSetupInterface
@@ -94,14 +86,7 @@ class SetupDisplayManager:
         self.thread_manager = thread_manager
         self.touch_handler = touch_handler
 
-        # Check pygame availability
-        if not PYGAME_AVAILABLE:
-            self.logger.warning(
-                "Pygame not available - setup display will use minimal functionality"
-            )
-            self.display_available = False
-        else:
-            self.display_available = True
+        self.display_available = True
 
         # Initialize extracted components
         self.state_coordinator = SetupStateCoordinator()
@@ -297,10 +282,7 @@ class SetupDisplayManager:
                         "device_discovery"
                     ):
                         # No active operation — start discovery
-                        self.bluetooth_interface.start_discovery(
-                            state,
-                            show_all_devices=self.state_coordinator.show_all_devices,
-                        )
+                        self.bluetooth_interface.start_discovery(state)
 
                 time.sleep(0.05)
 
@@ -378,11 +360,6 @@ class SetupDisplayManager:
             self._render_complete_screen(surface, state)
         elif state.current_screen == SetupScreen.CURRENT_DEVICE:
             self._render_current_device_screen(surface, state)
-        # TODO: issue-ac11505d candidate defect - screens exhausted; never reached
-        elif self.state_coordinator.manual_entry_mode:  # type: ignore[unreachable]  # TODO: issue-ac11505d  # noqa: E501
-            self._render_manual_entry_screen(surface)
-        else:
-            self._render_welcome_screen(surface)  # Fallback
 
     def _draw_circular_border(self, surface: "pygame.Surface") -> None:
         """Draw the circular border on the given surface.
@@ -889,24 +866,9 @@ class SetupDisplayManager:
         )
         self._update_touch_regions_safe(new_regions)
 
-    def _render_manual_entry_screen(self, surface: "pygame.Surface") -> None:
-        """Render the manual entry screen"""
-        new_regions: List[TouchRegion] = []
-
-        font_heading = get_heading_font()
-        if font_heading:
-            title = font_heading.render("Manual Entry", True, self.colors["text"])
-            title_rect = title.get_rect(center=(240, 120))
-            surface.blit(title, title_rect)
-
-        self._update_touch_regions_safe(new_regions)
-
     def handle_touch_event(self, pos: Tuple[int, int]) -> Optional[SetupAction]:
         """Handle touch events with state coordination"""
         try:
-            # Register interaction for control visibility
-            self.state_coordinator.register_interaction()
-
             # Find the hit under the lock; dispatch after releasing it
             # (issue-e9216e17).
             hit = None

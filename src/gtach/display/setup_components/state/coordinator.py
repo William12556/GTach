@@ -13,7 +13,6 @@ Handles setup workflow management and state transitions with thread safety.
 
 import logging
 import threading
-import time
 from dataclasses import replace
 from typing import Any, Callable, Dict, List, Optional
 
@@ -53,9 +52,6 @@ class SetupStateCoordinator:
         # render or touch path ever read (change-479b2e51).
         self.focused_index = 0
         self.animation_time = 0.0
-        self.show_all_devices = False
-        self.manual_entry_mode = False
-        self.manual_mac_input = ""
 
         # Threading and state management
         self._state_lock = threading.Lock()
@@ -63,14 +59,6 @@ class SetupStateCoordinator:
             Callable[[SetupScreen, SetupScreen], None]
         ] = []
         self._state_change_callbacks: List[Callable[[List[str]], None]] = []
-
-        # Control visibility state
-        self._controls_visible = True
-        self._last_interaction_time = time.monotonic()
-        self._control_auto_hide_delay = 3.0
-        self._control_fade_duration = 0.5
-        self._control_alpha = 255
-        self._control_visibility_lock = threading.Lock()
 
         self.logger.info("SetupStateCoordinator initialized")
 
@@ -328,108 +316,8 @@ class SetupStateCoordinator:
                 self.logger.error(f"Error in state change callback: {e}", exc_info=True)
 
     def update_animation(self, delta_time: float) -> None:
-        """Update animation time and control visibility"""
+        """Update animation time"""
         self.animation_time += delta_time
-        self._update_control_visibility()
-
-    def register_interaction(self) -> None:
-        """Register user interaction for control auto-hide"""
-        with self._control_visibility_lock:
-            self._last_interaction_time = time.monotonic()
-            if not self._controls_visible:
-                self._controls_visible = True
-                self.logger.debug("Controls made visible due to user interaction")
-
-    def _update_control_visibility(self, force_visible: bool = False) -> None:
-        """Update control visibility based on interaction timing"""
-        try:
-            with self._control_visibility_lock:
-                current_time = time.monotonic()
-                time_since_interaction = current_time - self._last_interaction_time
-
-                if force_visible:
-                    self._controls_visible = True
-                    self._control_alpha = 255
-                    return
-
-                # Auto-hide logic
-                if time_since_interaction > self._control_auto_hide_delay:
-                    # Fade out controls
-                    fade_progress = min(
-                        1.0,
-                        (time_since_interaction - self._control_auto_hide_delay)
-                        / self._control_fade_duration,
-                    )
-                    self._control_alpha = int(255 * (1.0 - fade_progress))
-
-                    if fade_progress >= 1.0:
-                        self._controls_visible = False
-                else:
-                    # Controls should be visible
-                    self._controls_visible = True
-                    self._control_alpha = 255
-
-        except Exception as e:
-            self.logger.error(f"Error updating control visibility: {e}", exc_info=True)
-
-    def get_control_alpha(self) -> int:
-        """Get current control alpha value for rendering"""
-        with self._control_visibility_lock:
-            return self._control_alpha
-
-    def are_controls_visible(self) -> bool:
-        """Check if controls are currently visible"""
-        with self._control_visibility_lock:
-            return self._controls_visible
-
-    def toggle_device_filter(self) -> None:
-        """Toggle between showing all devices and ELM327 only"""
-        with self._state_lock:
-            self.show_all_devices = not self.show_all_devices
-            self.logger.info(
-                f"Device filter toggled: show_all_devices = {self.show_all_devices}"
-            )
-
-    def enter_manual_entry_mode(self) -> None:
-        """Enter manual MAC address entry mode"""
-        with self._state_lock:
-            self.manual_entry_mode = True
-            self.manual_mac_input = ""
-            self.logger.info("Entered manual MAC entry mode")
-
-    def exit_manual_entry_mode(self) -> None:
-        """Exit manual MAC address entry mode"""
-        with self._state_lock:
-            self.manual_entry_mode = False
-            self.manual_mac_input = ""
-            self.logger.info("Exited manual MAC entry mode")
-
-    def update_manual_mac_input(self, mac_input: str) -> None:
-        """Update manual MAC address input"""
-        with self._state_lock:
-            self.manual_mac_input = mac_input
-            self.logger.debug(f"Manual MAC input updated: {mac_input}")
-
-    def is_valid_mac_address(self, mac: str) -> bool:
-        """Validate MAC address format"""
-        try:
-            # Remove separators and convert to uppercase
-            clean_mac = mac.replace(":", "").replace("-", "").replace(" ", "").upper()
-
-            # Check length and hex characters
-            if len(clean_mac) != 12:
-                return False
-
-            # Verify all characters are hex
-            for char in clean_mac:
-                if char not in "0123456789ABCDEF":
-                    return False
-
-            return True
-
-        except Exception as e:
-            self.logger.error(f"Error validating MAC address: {e}", exc_info=True)
-            return False
 
     def _clamp_focused_index_locked(self) -> int:
         """Clamp focused_index to the discovered-device range.
@@ -471,30 +359,7 @@ class SetupStateCoordinator:
                 "device_count": device_count,
                 "has_previous": focused_index > 0,
                 "has_next": focused_index < device_count - 1,
-                "show_all_devices": self.show_all_devices,
-                "manual_entry_mode": self.manual_entry_mode,
-                "manual_mac_input": self.manual_mac_input,
             }
-
-    def set_focused_index(self, index: int) -> bool:
-        """Set the focused device index, clamped to the device list.
-
-        Args:
-            index: Requested 0-based index into discovered_devices.
-
-        Returns:
-            True if the focused index changed, False otherwise.
-        """
-        with self._state_lock:
-            upper_bound = max(0, len(self.state.discovered_devices) - 1)
-            new_index = max(0, min(index, upper_bound))
-
-            if new_index == self.focused_index:
-                return False
-
-            self.focused_index = new_index
-            self.logger.debug(f"Focused device index set to {new_index}")
-            return True
 
     def shift_focused_index(self, delta: int) -> bool:
         """Shift the focused device index by a signed delta.

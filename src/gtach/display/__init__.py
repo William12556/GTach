@@ -13,31 +13,15 @@ from .manager import DisplayManager
 
 # Import core display components (always required)
 from .models import ConnectionStatus, DisplayConfig, DisplayMode
+from .touch import TouchHandler
 
-# Safe import of TouchHandler with fallback handling
-try:
-    from .touch import TouchHandler
+_logger = logging.getLogger("gtach.display")
+_logger.debug("TouchHandler imported successfully")
 
-    TOUCH_HANDLER_AVAILABLE = True
-    _logger = logging.getLogger("gtach.display")
-    _logger.debug("TouchHandler imported successfully")
-except ImportError as e:
-    # TODO: issue-ac11505d candidate defect - dead fallback; import cannot fail
-    TouchHandler = None  # type: ignore[misc, assignment]  # TODO: issue-ac11505d
-    TOUCH_HANDLER_AVAILABLE = False
-    _logger = logging.getLogger("gtach.display")
-    _logger.warning(f"TouchHandler import failed: {e}")
-    _logger.info("Touch functionality will not be available")
-
-# Conditionally build __all__ list based on successful imports
 __all__ = [
     "DisplayManager",
     "DisplayMode",
     "DisplayConfig",
     "ConnectionStatus",
-    "TOUCH_HANDLER_AVAILABLE",
+    "TouchHandler",
 ]
-
-# Add TouchHandler to exports only if successfully imported
-if TOUCH_HANDLER_AVAILABLE:
-    __all__.append("TouchHandler")

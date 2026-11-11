@@ -8,11 +8,11 @@
 """
 Display input handling components for OBDII display system.
 
-This module provides touch event coordination and gesture recognition
+This module provides touch event coordination
 functionality extracted from the monolithic display manager.
 """
 
-from .interfaces import GestureType, TouchAction, TouchEventInterface, TouchRegion
+from .interfaces import TouchAction, TouchEventInterface, TouchRegion
 from .touch_coordinator import TouchEventCoordinator
 
 __all__ = [
@@ -20,5 +20,4 @@ __all__ = [
     "TouchEventInterface",
     "TouchRegion",
     "TouchAction",
-    "GestureType",
 ]

@@ -27,15 +27,7 @@ import threading
 from enum import Enum
 from typing import Any, Dict, Optional, Tuple
 
-# Conditional imports for hardware dependencies
-try:
-    import pygame
-
-    PYGAME_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, pygame required
-    pygame = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    PYGAME_AVAILABLE = False
+import pygame
 
 
 class FontCategory(Enum):
@@ -156,9 +148,8 @@ class FontManager:
             self.logger.warning(f"Michroma font not found at {self._michroma_path}")
             self._michroma_path = None
 
-        # Initialize pygame font system if available
-        if PYGAME_AVAILABLE:
-            self._initialize_pygame_fonts()
+        # Initialize pygame font system
+        self._initialize_pygame_fonts()
 
     def _initialize_pygame_fonts(self) -> None:
         """Initialize pygame font system with error handling."""
@@ -203,10 +194,6 @@ class FontManager:
                 are unrecoverable environment failures, not conditions a
                 caller can paper over.
         """
-        if not PYGAME_AVAILABLE:
-            self.logger.error("Font requested but pygame is not available")
-            raise RuntimeError("Font system unavailable: pygame is not installed")
-
         if not self._initialized:
             # One re-initialisation attempt: pygame.font may have been
             # initialised by another component since construction.
@@ -273,10 +260,6 @@ class FontManager:
             RuntimeError: If the font system is unavailable or the font
                 cannot be created
         """
-        if not PYGAME_AVAILABLE:
-            self.logger.error("Plain font requested but pygame is not available")
-            raise RuntimeError("Font system unavailable: pygame is not installed")
-
         validated_size = self._validate_font_size(size)
 
         with self._cache_lock:

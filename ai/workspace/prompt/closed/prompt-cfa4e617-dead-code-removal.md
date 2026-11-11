@@ -137,6 +137,7 @@ notes: >
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial prompt implementing change-cfa4e617 iteration 1. Target profile claude_code. |
+| 1.1 | 2026-11-11 | Executed by Claude Code. EDITS A to H applied; candidates kept with their references are listed in report-cfa4e617. pytest and mypy pass. Closed and moved to ai/workspace/prompt/closed/. |
 
 ---
 

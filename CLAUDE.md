@@ -86,6 +86,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 7. **Naming / style**: PEP 8 — `snake_case` functions/variables, `PascalCase` classes,
    `UPPER_SNAKE_CASE` constants; f-strings for formatting.
 8. **Locks**: never call out while holding a lock — no callbacks, no calls into another component that may take a lock, no blocking I/O. Snapshot under the lock, act after releasing it (issue-e9216e17). A lock that exists to serialise access to one file may be held across that file's read or write (DeviceStore, change-453f0a80); it must still never be held across a callback or a call into another component.
+9. **Comments**: A comment states the current behaviour and at most one issue reference; history belongs in the change documents.
 
 [Return to Table of Contents](<#table of contents>)
 
@@ -203,6 +204,7 @@ ai/workspace/
 | 1.6 | 2026-10-07 | Rule 8: file-serialising lock may span that file's I/O (change-4005360c) |
 | 1.7 | 2026-10-07 | §7 line length: 88 for black, isort and flake8 (change-e4ee50fd) |
 | 1.8 | 2026-10-07 | Rule 5: hyperpixel2r replaces gpiozero (removed by change-52653cd6) |
+| 1.9 | 2026-11-11 | Rule 9: comments state current behaviour (change-cfa4e617) |
 
 ---
 

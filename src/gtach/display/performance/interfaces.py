@@ -13,7 +13,7 @@ Interfaces and data structures for performance monitoring.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 
 class MetricType(Enum):
@@ -99,43 +99,13 @@ class PerformanceMonitorInterface(ABC):
         pass
 
     @abstractmethod
-    def record_render_operation(self, operation_type: str, duration: float) -> None:
-        """Record a render operation with timing"""
-        pass
-
-    @abstractmethod
-    def record_cache_hit(self, cache_type: str) -> None:
-        """Record a cache hit"""
-        pass
-
-    @abstractmethod
-    def record_cache_miss(self, cache_type: str) -> None:
-        """Record a cache miss"""
-        pass
-
-    @abstractmethod
-    def update_memory_usage(self, usage_mb: float) -> None:
-        """Update current memory usage"""
-        pass
-
-    @abstractmethod
     def get_current_metrics(self) -> PerformanceMetrics:
         """Get current performance metrics"""
         pass
 
     @abstractmethod
-    def get_historical_metrics(self, seconds: int = 60) -> List[PerformanceMetrics]:
-        """Get historical metrics for specified time period"""
-        pass
-
-    @abstractmethod
     def reset_metrics(self) -> None:
         """Reset all performance metrics"""
-        pass
-
-    @abstractmethod
-    def set_target_fps(self, fps: int) -> None:
-        """Set target FPS for performance monitoring"""
         pass
 
     @abstractmethod

@@ -17,7 +17,6 @@ import logging
 import os
 import platform
 import subprocess
-import sys
 import threading
 import time
 from collections import defaultdict
@@ -819,101 +818,3 @@ def get_platform_info() -> Dict[str, Any]:
         logger = logging.getLogger("platform.get_platform_info")
         logger.debug(f"Exception in platform info: {e}")
         return {"error": str(e), "platform_type": "UNKNOWN"}
-
-
-def check_gpio_availability() -> PlatformCapabilities:
-    """Check detailed GPIO availability"""
-    try:
-        return get_detector().check_gpio_availability()
-    except Exception as e:
-        logger = logging.getLogger("platform.check_gpio_availability")
-        logger.debug(f"Exception in GPIO availability check: {e}")
-        return PlatformCapabilities()
-
-
-def clear_detection_cache() -> None:
-    """Clear platform detection cache"""
-    try:
-        get_detector().clear_cache()
-    except Exception as e:
-        logger = logging.getLogger("platform.clear_detection_cache")
-        logger.debug(f"Exception clearing cache: {e}")
-
-
-def log_platform_info(level: int = logging.INFO) -> None:
-    """Log comprehensive platform information"""
-    try:
-        logger = logging.getLogger("platform")
-        info = get_platform_info()
-
-        logger.log(level, "=== Unified Platform Detection ===")
-        logger.log(level, f"Platform: {info.get('platform_type', 'UNKNOWN')}")
-        logger.log(level, f"Pi Variant: {info.get('pi_variant', 'N/A')}")
-
-        caps = info.get("capabilities", {})
-        logger.log(level, f"GPIO Available: {caps.get('gpio_available', False)}")
-        logger.log(level, f"GPIO Accessible: {caps.get('gpio_accessible', False)}")
-        logger.log(level, f"GPIO Permissions: {caps.get('gpio_permissions', False)}")
-
-        cache_info = info.get("cache_info", {})
-        logger.log(level, f"Cache Age: {cache_info.get('cache_age_seconds', 0):.1f}s")
-
-    except Exception as e:
-        logger = logging.getLogger("platform.log_platform_info")
-        logger.error(f"Exception logging platform info: {e}", exc_info=True)
-
-
-# Legacy compatibility - simplified
-class PlatformError(Exception):
-    """Platform detection error"""
-
-    pass
-
-
-# For testing purposes
-def run_platform_test() -> None:
-    """Run platform detection test"""
-    print("=== Platform Detection Test ===")
-
-    try:
-        detector = get_detector()
-
-        # Force fresh detection
-        platform_type = detector.get_platform_type(force_refresh=True)
-        print(f"Platform Type: {platform_type.name}")
-
-        # Check capabilities
-        capabilities = detector.check_gpio_availability(force_refresh=True)
-        print(f"GPIO Available: {capabilities.gpio_available}")
-        print(f"GPIO Accessible: {capabilities.gpio_accessible}")
-        print(f"GPIO Permissions: {capabilities.gpio_permissions}")
-
-        # Show detection details
-        info = detector.get_platform_info()
-        print("\nDetection Methods:")
-        for method in info.get("detection_methods", []):
-            print(
-                f"  {method['method']}: {method['platform']} "
-                f"(conf: {method['confidence']:.2f})"
-            )
-
-        print("\nCapabilities:")
-        caps = info.get("capabilities", {})
-        for key, value in caps.items():
-            print(f"  {key}: {value}")
-
-    except Exception as e:
-        print(f"Test failed: {e}")
-
-
-if __name__ == "__main__":
-    # Configure logging for test
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
-
-    if "--test" in sys.argv:
-        run_platform_test()
-    else:
-        log_platform_info()

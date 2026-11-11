@@ -129,10 +129,7 @@ class BluetoothPairing:
         Returns:
             List of discovered ELM327 devices
         """
-        # Use configured or provided timeout. A caller may pass a
-        # float — discover_all_devices declares timeout: int = 30
-        # but nothing enforces it — and range() below requires an
-        # int (core review §3.5).
+        # The timeout is coerced to int; range() below requires one.
         if timeout is None:
             timeout = self.discovery_timeout
         else:

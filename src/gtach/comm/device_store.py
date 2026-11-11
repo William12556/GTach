@@ -15,17 +15,9 @@ import logging
 import os
 import threading
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import List, Optional
 
-# Conditional import of yaml with fallback
-try:
-    import yaml
-
-    YAML_AVAILABLE = True
-except ImportError:
-    # TODO: issue-ac11505d candidate defect - dead fallback, PyYAML required
-    yaml = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-    YAML_AVAILABLE = False
+import yaml
 
 from ..utils.home import gtach_home
 from .models import BluetoothDevice
@@ -54,17 +46,8 @@ class DeviceStore:
         self.config_path = config_path
         self._lock = threading.Lock()
 
-        # Check yaml availability and warn if not available
-        if not YAML_AVAILABLE:
-            self.logger.warning(
-                "YAML library not available - device storage will use in-memory "
-                "fallback"
-            )
-            # Parsed YAML: whatever the file holds (_normalise_config).
-            self.config: Any = {"paired_devices": {}}
-        else:
-            self._ensure_config_dir()
-            self._load_config()
+        self._ensure_config_dir()
+        self._load_config()
 
     def _ensure_config_dir(self) -> None:
         """Ensure config directory exists"""
@@ -74,11 +57,6 @@ class DeviceStore:
 
     def _load_config(self) -> None:
         """Load device configuration from file"""
-        if not YAML_AVAILABLE:
-            self.logger.debug("YAML not available - using default config")
-            self.config = {"paired_devices": {}}
-            return
-
         try:
             if os.path.exists(self.config_path):
                 with open(self.config_path, "r") as f:
@@ -137,14 +115,8 @@ class DeviceStore:
         """Save device configuration to file.
 
         Returns:
-            True when the store was written to disk, False otherwise —
-            including when YAML is unavailable, since nothing is
-            persisted in that state.
+            True when the store was written to disk, False otherwise.
         """
-        if not YAML_AVAILABLE:
-            self.logger.debug("YAML not available - config will not be persisted")
-            return False
-
         try:
             tmp_path = self.config_path + ".tmp"
             with open(tmp_path, "w") as f:
