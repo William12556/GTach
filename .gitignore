@@ -33,8 +33,7 @@ coverage.xml
 deprecated/
 ai/workspace/admin/
 ai/workspace/ai/
-ai/workspace/proposal/
-ai/workspace/proposal/closed/
+ai-local/
 
 # Tactical Domain
 CLAUDE.local.md
