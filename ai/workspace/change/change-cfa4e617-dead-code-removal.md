@@ -17,7 +17,7 @@ change_info:
   title: "Delete code, configuration keys and one data file that have no caller or reader; no behaviour change"
   date: "2026-11-11"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -250,16 +250,18 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-11-11"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
-  test_results: ""
-  issues_found: []
+  test_results: "Commit f89dc2f6216ff113e7aaf819cb46c21ce873b4ce (merged to main): pytest 589 passed; mypy src/ no issues (worker's results, report-cfa4e617 section 6)."
+  issues_found:
+    - "EDIT B partly not applied: rpm_warning and rpm_danger kept. ConfigStore.validate() reports keys outside CONFIG_KEYS as unknown, so removing them would make --validate-config fail on existing config files. Decision D3 rested on a premise that holds for load and save only. Accepted deviation; see report-cfa4e617 sections 4 and 9."
+    - "Pre-existing flaky test tests/test_pi_reset.py::TestDispatchIsOffThread::test_second_press_while_in_flight_is_ignored (fails about 1 in 8 full-suite runs on the unchanged tree). Not caused by this change."
 
 traceability:
   design_updates:
-    - "design-b4c5d6e7 (config): remove rpm_warning and rpm_danger from the key list. Planner, after the run."
+    - "design-b4c5d6e7 (config): none required; rpm_warning and rpm_danger stay in the schema (issues_found)."
   related_changes:
     - change_ref: "change-b4f9607a"
       relationship: "follows"
@@ -269,7 +271,7 @@ traceability:
     - issue_ref: "issue-cfa4e617"
       relationship: "resolves"
 
-notes: "This run edits files that runs 2, 4 and 5 own. It runs first and alone."
+notes: "This run edits files that runs 2, 4 and 5 own. It runs first and alone. The data_changes entry for rpm_warning and rpm_danger was not applied (issues_found)."
 
 version_history:
   - version: "1.0"
@@ -283,6 +285,12 @@ version_history:
     author: "William Watson"
     changes:
       - "Approved for implementation by William Watson."
+
+  - version: "1.2"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Implemented in f89dc2f6216ff113e7aaf819cb46c21ce873b4ce; EDIT B partly not applied (rpm_warning, rpm_danger kept); awaiting device session A."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -300,6 +308,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. E01, W1, D2, D3, D4. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
+| 1.2 | 2026-11-11 | Implemented in f89dc2f; rpm_warning and rpm_danger kept (D3 deviation); awaiting device session A. |
 
 ---
 

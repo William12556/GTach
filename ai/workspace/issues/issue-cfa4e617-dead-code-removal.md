@@ -17,7 +17,7 @@ issue_info:
   title: "Code, configuration keys and one data file under src/gtach have no caller or reader"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -134,9 +134,9 @@ resolution:
   target_date: ""
   approach: "See change-cfa4e617."
   change_ref: "change-cfa4e617"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-11"
+  resolved_by: "change-cfa4e617"
+  fix_description: "Unused code, the gesture_* configuration fields, utils/default-config.txt and the dead import fallbacks removed; rpm_warning and rpm_danger kept, because ConfigStore.validate() would reject existing files without them (commit f89dc2f6216ff113e7aaf819cb46c21ce873b4ce; report-cfa4e617)."
 
 verification:
   verified_date: ""
@@ -153,7 +153,7 @@ verification_enhanced:
     - "Confirm from source. [DONE for the list in test_data, textual search.]"
     - "After the change: pytest tests/ passes and mypy src/ reports no issues."
     - "After the change: device session A (proposal-71ab3751 section 7.0) shows gauge, touch and setup behaviour unchanged."
-  verification_results: ""
+  verification_results: "pytest 589 passed and mypy clean (worker's results). Device session A outstanding."
 
 traceability:
   design_refs: []
@@ -176,6 +176,12 @@ version_history:
     changes:
       - "Initial issue document."
 
+  - version: "1.1"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-cfa4e617 (f89dc2f6216ff113e7aaf819cb46c21ce873b4ce); rpm_warning and rpm_danger kept; awaiting device session A."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -191,6 +197,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial issue document. E01, W1, D2, D3, D4. |
+| 1.1 | 2026-11-11 | Resolved by change-cfa4e617 (f89dc2f); rpm_warning and rpm_danger kept; awaiting device session A. |
 
 ---
 

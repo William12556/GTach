@@ -198,7 +198,7 @@ Deviations from 4.2 to 4.6, recorded in the change documents:
 |---|---|---|---|
 | D1 | Behaviour after an empty filtered scan | One automatic unfiltered pass; if still empty, DEVICE_LIST with "No devices found" and Retry. No endless rescan. Refinement proposed in `design-a3b4c5d6` v2.0 §4.3, pending approval: list the unfiltered results of the same scan instead of running a second pass | Runs 2, 4; design `a3b4c5d6` |
 | D2 | Manual MAC entry and manual filter toggle (no caller today) | Remove both. D1 makes the toggle unnecessary | Run 1 |
-| D3 | `rpm_warning`, `rpm_danger`, `gesture_*` config keys | Remove from the schema. `ConfigStore` preserves unknown keys, so existing files stay valid | Run 1 |
+| D3 | `rpm_warning`, `rpm_danger`, `gesture_*` config keys | Remove from the schema. `ConfigStore` preserves unknown keys, so existing files stay valid. **Revised in run 1:** the `gesture_*` fields were removed; `rpm_warning` and `rpm_danger` were kept, because `ConfigStore.validate()` reports unknown keys and `--validate-config` would then fail on existing files. The premise holds for `load` and `save` only | Run 1 |
 | D4 | Extent of reduction in `utils/platform.py` | Remove only members without callers; keep detection | Run 1 |
 | D5 | Simulated pairing writes to the real device store (A10) | Simulation uses its own store file | Run 2 |
 | D6 | Long press and movement (C06) | A long press requires movement below the swipe threshold; otherwise the gesture is a swipe | Run 5 |
@@ -328,6 +328,7 @@ ANTHROPIC, 2026b. *Claude Opus 5.5* [online]. Claude Platform Docs. Available fr
 | 1.0 | 2026-11-11 | Initial proposal |
 | 1.1 | 2026-11-11 | D1 to D8 recorded as accepted; five runs confirmed; §2.2 context budget corrected to the 1,000,000-token window of Opus 5.5; §4.7 Execution Profile added (Claude Code cloud, medium effort, ultracode guidance, cloud preconditions); §8.0 and §9.0 updated; References added |
 | 1.2 | 2026-11-11 | §3.0 contracts corrected and extended (existing `show_all_devices` parameter, same-scan fallback, three further interfaces); §4.7 Document Sets added with the five UUIDs and the deviations; Execution Profile renumbered to §4.8; §5.0 G02 and G03 marked done; D1 refinement noted |
+| 1.3 | 2026-11-11 | §6.0 D3 revised after run 1 (`rpm_warning`, `rpm_danger` kept) |
 
 ---
 
