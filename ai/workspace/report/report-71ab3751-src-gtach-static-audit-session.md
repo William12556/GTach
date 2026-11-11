@@ -132,7 +132,7 @@ Weaknesses:
 |---|---|---|
 | Audit report v1.1 | `ai/workspace/audit/audit-71ab3751-src-gtach-static.md` | Tracked |
 | This report | `ai/workspace/report/report-71ab3751-src-gtach-static-audit-session.md` | Tracked |
-| Proposal | `ai/workspace/proposal/proposal-71ab3751-audit-remediation-and-simplification.md` | Ignored (`.gitignore` line 36) |
+| Proposal | `ai/workspace/proposal/proposal-71ab3751-audit-remediation-and-simplification.md` | Tracked since 2026-11-11 |
 
 ### 7.2 Open items
 
@@ -150,6 +150,7 @@ Weaknesses:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial report |
+| 1.1 | 2026-11-11 | §7.1: proposal is tracked in git since the `.gitignore` change of 2026-11-11 |
 
 ---
 

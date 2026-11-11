@@ -2,17 +2,16 @@
 
 Created: 2025-12-29
 
----
-
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 Class Design](<#3.0 class design>)
-- [4.0 Method Specifications](<#4.0 method specifications>)
-- [5.0 Setup Wizard Flow](<#5.0 setup wizard flow>)
-- [6.0 Visual Documentation](<#6.0 visual documentation>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Structure](#30-structure)
+- [4.0 Setup Flow](#40-setup-flow)
+- [5.0 Screen Behaviour](#50-screen-behaviour)
+- [6.0 Operations and Cancellation](#60-operations-and-cancellation)
+- [7.0 Visual Documentation](#70-visual-documentation)
+- [Version History](#version-history)
 
 ---
 
@@ -25,17 +24,25 @@ document_info:
   domain: "Display"
   component: "SetupDisplayManager"
   parent: "design-2c6b8e4d-domain_display.md"
-  source_file: "src/gtach/display/setup_manager.py"
-  version: "1.2"
-  date: "2026-10-16"
+  source_file: "src/gtach/display/setup.py"
+  related_source_files:
+    - "src/gtach/display/setup_models.py"
+    - "src/gtach/display/setup_components/state/coordinator.py"
+    - "src/gtach/display/setup_components/bluetooth/interface.py"
+    - "src/gtach/display/async_operations.py"
+  version: "2.0"
+  date: "2026-11-11"
   author: "William Watson"
+  status: "proposed - awaiting approval"
 ```
+
+Version 2.0 replaces the 2025 class model, which described a structure that was never built (`setup_manager.py`, `SetupStep`, `BluetoothManager`, `async` methods). Sections 2.0 to 3.0 describe the source at commit `94ce959b`. Sections 4.0 to 6.0 state the target behaviour for change-34781bfe; each difference from the current source is marked **(change)**.
 
 ### 1.1 Parent Reference
 
-- **Domain Design**: [design-2c6b8e4d-domain_display.md](<design-2c6b8e4d-domain_display.md>)
+- **Domain Design**: [design-2c6b8e4d-domain_display.md](design-2c6b8e4d-domain_display.md)
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -43,212 +50,93 @@ document_info:
 
 ### 2.1 Purpose
 
-SetupDisplayManager provides the user interface for the initial Bluetooth device pairing wizard, guiding users through device discovery, selection, and connection.
+SetupDisplayManager provides the Bluetooth setup screens: confirming a stored adapter, discovering adapters, selecting one, pairing and verifying it.
 
 ### 2.2 Responsibilities
 
-1. Display device scanning progress
-2. Show list of discovered devices
-3. Handle device selection input
-4. Display connection progress
-5. Show success/failure status
-6. Provide retry and back navigation
+1. Render the current setup screen onto the display surface.
+2. Map touch positions to setup actions.
+3. Run the setup thread, which starts discovery and pairing and calls the application's completion callback.
+4. Present the outcome of every operation, including empty and failed scans.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 3.0 Class Design
+## 3.0 Structure
 
-### 3.1 SetupDisplayManager Class
+| Element | Source | Role |
+|---|---|---|
+| `SetupDisplayManager` | `display/setup.py` | Rendering, touch regions, setup thread |
+| `SetupState`, `SetupScreen`, `PairingStatus`, `SetupAction`, `BluetoothDevice` | `display/setup_models.py` | State and enumerations |
+| `SetupStateCoordinator` | `setup_components/state/coordinator.py` | Sole owner of `SetupState`; readers get copies; transitions and change notifications |
+| `BluetoothSetupInterface` | `setup_components/bluetooth/interface.py` | Starts discovery, pairing, OBD verification and the stored-device probe as async operations |
+| `AsyncOperationManager` | `display/async_operations.py` | Two worker threads; operation status and completion callbacks |
+| `BluetoothPairing` / `SimBluetoothPairing` | `comm/pairing.py`, `comm/sim_bluetooth.py` | Bluetooth back end, supplied through `pairing_factory` |
 
-```python
-class SetupDisplayManager:
-    """Setup wizard UI controller."""
-```
+Rules that already hold and are kept:
 
-### 3.2 Constructor
+- State is written only through the coordinator (`update_state`, `add_discovered_device`, `transition_to_screen`).
+- Callbacks are invoked after locks are released (CLAUDE.md §4 rule 8).
+- The setup thread is registered with ThreadManager as `setup` and sends heartbeats.
 
-```python
-def __init__(self, 
-             rendering_engine: DisplayRenderingEngine,
-             touch_coordinator: TouchEventCoordinator,
-             bluetooth_manager: BluetoothManager) -> None:
-    """Initialize setup display manager.
-    
-    Args:
-        rendering_engine: For rendering operations
-        touch_coordinator: For input handling
-        bluetooth_manager: For device operations
-    """
-```
-
-### 3.3 Attributes
-
-| Attribute | Type | Purpose |
-|-----------|------|---------|
-| `rendering_engine` | `DisplayRenderingEngine` | Rendering |
-| `touch_coordinator` | `TouchEventCoordinator` | Input |
-| `bluetooth_manager` | `BluetoothManager` | BT operations |
-| `_current_step` | `SetupStep` | Current wizard step |
-| `_discovered_devices` | `List[BluetoothDevice]` | Found devices |
-| `_selected_index` | `int` | Selected device index |
-| `_status_message` | `str` | Current status |
-| `_is_scanning` | `bool` | Scanning in progress |
-| `_is_connecting` | `bool` | Connection in progress |
-
-### 3.4 SetupStep Enum
-
-```python
-class SetupStep(Enum):
-    """Setup wizard steps."""
-    WELCOME = auto()      # Welcome screen
-    SCANNING = auto()     # Device discovery
-    DEVICE_LIST = auto()  # Select device
-    CONNECTING = auto()   # Connection progress
-    SUCCESS = auto()      # Pairing complete
-    FAILURE = auto()      # Error occurred
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 4.0 Method Specifications
+## 4.0 Setup Flow
 
-### 4.1 start_setup
+### 4.1 Screens
 
-```python
-async def start_setup(self) -> None:
-    """Start the setup wizard.
-    
-    Sets initial step and displays welcome screen.
-    """
-```
+`SetupScreen`: `WELCOME`, `CURRENT_DEVICE`, `DISCOVERY`, `DEVICE_LIST`, `PAIRING`, `COMPLETE`.
 
-### 4.2 render
+Setup opens on `CURRENT_DEVICE` when a primary device is stored, otherwise on `WELCOME`.
 
-```python
-def render(self, surface: pygame.Surface) -> None:
-    """Render current setup step.
-    
-    Delegates to step-specific render method.
-    """
-```
+### 4.2 Transitions
 
-### 4.3 Step Render Methods
+| From | Event | To |
+|---|---|---|
+| `CURRENT_DEVICE` | Continue; probe succeeds | `COMPLETE` |
+| `CURRENT_DEVICE` | Continue; probe fails | `WELCOME` with "Device not available" |
+| `CURRENT_DEVICE` | New Setup | `WELCOME`; stored device removed |
+| `WELCOME` | Start Setup | `DISCOVERY` |
+| `WELCOME` | Cancel (shown only with a stored device) | Setup exits through the completion callback |
+| `DISCOVERY` | Scan ends with devices | `DEVICE_LIST` |
+| `DISCOVERY` | Scan ends with no device, or fails **(change)** | `DEVICE_LIST` showing "No devices found" or the failure text, with Back and Retry |
+| `DISCOVERY` | Cancel | `WELCOME`; the scan is cancelled **(change)** |
+| `DEVICE_LIST` | Tap focused device | `PAIRING` |
+| `DEVICE_LIST` | Retry | `DISCOVERY` |
+| `DEVICE_LIST` | Back | `WELCOME` |
+| `PAIRING` | Connect and OBD verification succeed | `COMPLETE` |
+| `PAIRING` | Connect fails | stays, with Retry and Back |
+| `PAIRING` | OBD verification fails | `DEVICE_LIST` with the error line |
+| `COMPLETE` | 2 s hold | completion callback; setup thread ends |
 
-```python
-def _render_welcome(self, surface: pygame.Surface) -> None:
-    """Render welcome screen with start button."""
+**(change)** A scan is started once per entry to `DISCOVERY`. The setup loop does not start another scan when one ends without devices.
 
-def _render_scanning(self, surface: pygame.Surface) -> None:
-    """Render scanning animation and progress."""
+### 4.3 Empty filtered scan (decision D1)
 
-def _render_device_list(self, surface: pygame.Surface) -> None:
-    """Render discovered devices list.
-    
-    Shows:
-        - Device names
-        - Signal strength bars
-        - Selection highlight
-        - Scroll if > 4 devices
-    """
+- Discovery lists devices whose name is classified as ELM327 or compatible.
+- **(change)** When a scan ends with no such device but other named devices were seen, those devices are listed instead. No second scan is run: the fallback uses the names the same scan already returned, so it adds no scan time.
+- **(change)** `DEVICE_LIST` then shows "No ELM327 found - showing all devices" on the error line (5.2).
+- The manual filter toggle and manual MAC entry are removed (decision D2).
 
-def _render_connecting(self, surface: pygame.Surface) -> None:
-    """Render connection progress spinner."""
+Note for approval: decision D1 was worded as "one automatic unfiltered pass". Using the first scan's results reaches the same outcome without the second pass. If a second scan is preferred, this subsection is the place to say so.
 
-def _render_success(self, surface: pygame.Surface) -> None:
-    """Render success confirmation."""
-
-def _render_failure(self, surface: pygame.Surface) -> None:
-    """Render error message with retry option."""
-```
-
-### 4.4 start_scan
-
-```python
-async def start_scan(self) -> None:
-    """Initiate device scanning.
-    
-    Algorithm:
-        1. Set step to SCANNING
-        2. Call bluetooth_manager.scan_for_devices()
-        3. Store results in _discovered_devices
-        4. Set step to DEVICE_LIST (or FAILURE if none)
-    """
-```
-
-### 4.5 select_device
-
-```python
-def select_device(self, index: int) -> None:
-    """Select device by index."""
-```
-
-### 4.6 connect_selected
-
-```python
-async def connect_selected(self) -> bool:
-    """Connect to selected device.
-    
-    Returns:
-        True if connection successful
-    
-    Algorithm:
-        1. Set step to CONNECTING
-        2. Get device at _selected_index
-        3. Call bluetooth_manager.connect()
-        4. Set step to SUCCESS or FAILURE
-    """
-```
-
-### 4.7 handle_touch
-
-```python
-def handle_touch(self, action: TouchAction) -> None:
-    """Handle touch input for setup screens.
-    
-    Actions vary by current step:
-        - WELCOME: Start scan on tap
-        - DEVICE_LIST: Select the focused (middle-slot) device on tap;
-          vertical swipe shifts focus by one device (see 5.3)
-        - FAILURE: Retry on tap
-    """
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 5.0 Setup Wizard Flow
+## 5.0 Screen Behaviour
 
-### 5.1 Step Sequence
+### 5.1 DISCOVERY
 
-```
-WELCOME -> SCANNING -> DEVICE_LIST -> CONNECTING -> SUCCESS
-                           │                          │
-                           │                          └──> Exit Setup
-                           │
-                           └─── (empty) ──> FAILURE ──> SCANNING (retry)
-                           
-CONNECTING -> FAILURE -> SCANNING (retry)
-```
+- Title, spinner, progress text and a Cancel button.
+- **(change)** Progress text comes from the operation's progress messages; today the generic text is always shown because the messages are not delivered (audit D02).
 
-### 5.2 User Interactions
+### 5.2 DEVICE_LIST
 
-| Step | Tap Action | Long Press | Swipe |
-|------|------------|------------|-------|
-| WELCOME | Start scan | - | - |
-| SCANNING | Cancel | - | - |
-| DEVICE_LIST | Select focused device (middle slot only) | Connect | Shift focus ±1 (vertical) |
-| CONNECTING | - | Cancel | - |
-| SUCCESS | Continue | - | - |
-| FAILURE | Retry | Exit | - |
-
-### 5.3 DEVICE_LIST Screen Behaviour
-
-Defined by change-479b2e51; geometry and slot interior revised by change-d38362aa.
+Defined by change-479b2e51; geometry and slot interior revised by change-d38362aa. Unchanged except where marked.
 
 - Exactly three slots (top, middle, bottom) are drawn, whatever the discovered-device count. Slots are 60 px high with 10 px gaps; the column spans y=118–318 with the middle slot centred at y=218, in the band below the title and above Back/Retry. Slots are drawn at full scale and opacity.
 - Each populated slot shows a type dot, the device name (FONT_BODY, truncated) and the type label (FONT_SMALL_TEXT) on the left, and four signal bars on the right (lit and unlit in contrasting greys). No RSSI text is shown.
@@ -256,72 +144,75 @@ Defined by change-479b2e51; geometry and slot interior revised by change-d38362a
 - The top and bottom slots show the previous and next device, or an outlined empty frame where none exists.
 - A vertical swipe shifts `focused_index` by one, clamped to the discovered-device range. Arrows are indicators only, not touch targets.
 - An up arrow (y=102–114) is drawn when a previous device exists; a down arrow (y=322–334) when a next device exists.
-- An error message, when present, is centred at y=84 between the title and the up arrow, fitted to 220 px.
-- With zero devices, "No devices found" is shown and no slots or arrows are drawn.
+- An error or notice line, when present, is centred at y=84 between the title and the up arrow, fitted to 220 px.
+- With zero devices, "No devices found" is shown and no slots or arrows are drawn. **(change)** This state is reachable (4.2).
 
-[Return to Table of Contents](<#table of contents>)
+### 5.3 PAIRING
+
+- `CONNECTING`: spinner and status text; no buttons.
+- `SUCCESS`: confirmation text while OBD verification runs. **(change)** No Continue button is shown; completion is automatic (audit C01).
+- `FAILED`: error text with Retry and Back.
+
+### 5.4 CURRENT_DEVICE
+
+- Shows the stored device with Continue and New Setup.
+- **(change)** While the probe runs, New Setup is not offered, and the probe result is applied only if the screen is still `CURRENT_DEVICE` (audit C08).
+
+### 5.5 Spinners
+
+- **(change)** The fade of the eight spinner dots is produced by blending each dot's colour toward the background, not by an alpha value, which the target surface ignores (audit C02).
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 6.0 Visual Documentation
+## 6.0 Operations and Cancellation
 
-### 6.1 Class Diagram
+**(change)** One rule replaces the present per-callback handling (audit X01, C08, D04):
 
-```mermaid
-classDiagram
-    class SetupDisplayManager {
-        -DisplayRenderingEngine rendering_engine
-        -TouchEventCoordinator touch_coordinator
-        -BluetoothManager bluetooth_manager
-        -SetupStep _current_step
-        -List _discovered_devices
-        -int _selected_index
-        -str _status_message
-        +start_setup()
-        +render(surface)
-        +start_scan()
-        +select_device(index)
-        +connect_selected() bool
-        +handle_touch(action)
-    }
-    
-    class SetupStep {
-        <<enumeration>>
-        WELCOME
-        SCANNING
-        DEVICE_LIST
-        CONNECTING
-        SUCCESS
-        FAILURE
-    }
-    
-    SetupDisplayManager --> SetupStep
-    SetupDisplayManager --> DisplayRenderingEngine
-    SetupDisplayManager --> BluetoothManager
-```
+1. `BluetoothSetupInterface` registers each started operation under its name (`device_discovery`, `device_pairing`, `device_probe`) with the operation id.
+2. A completion callback acts only if its operation id is still the registered one for that name. Otherwise it returns without writing state.
+3. Cancelling removes the registration first and then calls the back end's `cancel_discovery()` or `cancel_pairing()`. A running operation may finish later; rule 2 makes its completion harmless.
+4. The Cancel action on `DISCOVERY`, leaving `PAIRING` with Back, and `stop_setup()` all cancel through this path.
+5. `START_DISCOVERY`, `CANCEL` and `RETRY` reset the device list before the screen transition.
 
-### 6.2 Wizard Flow
+Supporting changes:
+
+- Completed operations are removed from `AsyncOperationManager` once their callback has run (audit D03).
+- Progress callbacks are passed to a task explicitly, not by inspecting its local variable names (audit D02).
+- `on_pairing_complete` uses the result of `save_device()`; a failed save is reported on the error line (audit A09).
+
+[Return to Table of Contents](#table-of-contents)
+
+---
+
+## 7.0 Visual Documentation
 
 ```mermaid
 stateDiagram-v2
-    [*] --> WELCOME
-    
-    WELCOME --> SCANNING: Tap Start
-    
-    SCANNING --> DEVICE_LIST: Devices found
-    SCANNING --> FAILURE: No devices
-    
-    DEVICE_LIST --> CONNECTING: Select & Connect
-    
-    CONNECTING --> SUCCESS: Connected
-    CONNECTING --> FAILURE: Failed
-    
-    FAILURE --> SCANNING: Retry
-    
-    SUCCESS --> [*]: Exit Setup
+    [*] --> CURRENT_DEVICE: stored device
+    [*] --> WELCOME: no stored device
+
+    CURRENT_DEVICE --> COMPLETE: Continue, probe ok
+    CURRENT_DEVICE --> WELCOME: probe failed / New Setup
+
+    WELCOME --> DISCOVERY: Start Setup
+    WELCOME --> [*]: Cancel (stored device)
+
+    DISCOVERY --> DEVICE_LIST: scan ended (devices, none, or failed)
+    DISCOVERY --> WELCOME: Cancel
+
+    DEVICE_LIST --> PAIRING: tap focused device
+    DEVICE_LIST --> DISCOVERY: Retry
+    DEVICE_LIST --> WELCOME: Back
+
+    PAIRING --> COMPLETE: connected and verified
+    PAIRING --> DEVICE_LIST: Back / verification failed
+
+    COMPLETE --> [*]: after 2 s hold
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -332,7 +223,8 @@ stateDiagram-v2
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
 | 1.1 | 2026-10-02 | Claude | Added 5.3 DEVICE_LIST Screen Behaviour; updated 4.7 and 5.2 DEVICE_LIST interaction (change-479b2e51) |
 | 1.2 | 2026-10-16 | Claude | 5.3: slot column geometry, slot interior, arrow and error-line positions (change-d38362aa) |
+| 2.0 | 2026-11-11 | Claude | Rewritten against the source at `94ce959b`: the unbuilt 2025 class model removed; structure, flow, screen behaviour and the operation rule stated. Target behaviour for change-34781bfe marked "(change)": empty and failed scans reach DEVICE_LIST, unfiltered fallback (D1), effective cancellation, probe guard, no Continue button, spinner fade. DEVICE_LIST text carried over as 5.2. Layout converted to GFM heading links |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

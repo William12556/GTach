@@ -1,6 +1,6 @@
 # Proposals
 
-Proposal documents (excluded from git).
+Proposal documents.
 
 ## Lifecycle
 

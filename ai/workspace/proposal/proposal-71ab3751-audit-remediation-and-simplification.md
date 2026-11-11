@@ -27,7 +27,7 @@ Created: 2026 November 11
 - **Order:** remove dead code first. This shrinks the files the later runs must read and removes several findings outright.
 - **Not bundled:** two `bin/` fixes (workflow-exempt), the design review (planner work), and four task rows that need evidence or a vehicle before they can be specified.
 - **Decisions:** all eight decisions in [6.0](#60-decisions-required) were accepted as recommended on 2026-11-11, and the five-run structure was confirmed.
-- **Execution:** Claude Code cloud sessions with Opus 5.5 at medium effort, invoked directly; no engine loop ([4.7](#47-execution-profile)).
+- **Execution:** Claude Code cloud sessions with Opus 5.5 at medium effort, invoked directly; no engine loop ([4.8](#48-execution-profile)).
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -56,9 +56,12 @@ Created: 2026 November 11
 
 1. **Subtract first.** Run 1 deletes unused code and nothing else. A purely subtractive change is simple to review: the tests, mypy and a caller search either still pass or they do not.
 2. **Partition by file.** Each remaining run owns a disjoint set of files. A finding that spans two partitions is split, and the interface between them is fixed in the change documents before any run starts.
-3. **Contract first.** The two cross-run interfaces are defined up front, so that all prompts can be written and approved in one sitting:
-   - `BluetoothPairing.discover_elm327_devices(..., include_unknown: bool = False)` and an effective `cancel_discovery()` / `cancel_pairing()` (run 2 provides, run 4 uses).
-   - `OBDProtocol.stop(timeout: float = 5.0)` (run 2 provides, run 3 uses).
+3. **Contract first.** The cross-run interfaces are defined up front, so that all prompts can be written and approved in one sitting. Each is backward compatible, so a run does not break before its counterpart lands:
+   - `BluetoothPairing.discover_elm327_devices` keeps its signature (the existing `show_all_devices` parameter). When no ELM327-like device was found, it returns the named devices of the same scan, all classified `UNKNOWN`; `cancel_discovery()` and `cancel_pairing()` are effective (run 2 provides, run 4 uses).
+   - `OBDProtocol.stop(timeout: float = 5.0)` and a non-joining registered stop function (run 2 provides; run 3 corrects the comment that relies on it).
+   - `gtach.comm.device_store.set_device_store_path(path)` (run 2 provides, run 3 calls it for `simbt` sessions; decision D5).
+   - `DeviceStore.save_device` / `remove_device` return whether the change reached disk (run 2 provides, runs 4 and 5 use).
+   - `SetupDisplayManager.adapter_reset_in_session` (run 4 provides, run 3 reads it with a default of `False`; finding B02).
 4. **Symbol-based prompts.** Prompts name functions and classes, not line numbers, so an earlier run does not invalidate a later prompt.
 5. **Comment rule.** Each run reduces history comments in the files it owns to the current behaviour plus the issue reference. One line is added to `CLAUDE.md` to keep it that way. This addresses W3 without a separate run.
 6. **Tests with the code.** Each fix carries its regression test. The three test findings (F01 to F03) go with the run that owns the code under test.
@@ -101,8 +104,8 @@ Each package is one issue, one change and one prompt sharing a new 8-hex UUID, a
 
 - **Medium:** A01 (test `_shutdown` after `_open()`; close the handle), A02 (`OSError` in the serial error set).
 - **Low:** A03, A04, A05 (WARNING, no traceback, rate-limited), A06 and A07 (chunk wait sized to the scan limit; return code logged; one manager per discovery), A09 (store changes memory only after a successful save; results returned), A10 (decision D5), A11, A12 (documented limit; no code change proposed), F03.
-- **Interfaces:** the two contracts of [3.0](#30-approach).
-- **Task rows:** `last_connected` accepts `str` (mypy candidate); discovery-fallback mechanism (`include_unknown`).
+- **Interfaces:** the contracts of [3.0](#30-approach).
+- **Task rows:** `last_connected` accepts `str` (mypy candidate); discovery-fallback mechanism (same-scan results, no second pass).
 
 ### 4.4 Run 3 — Application lifecycle, logging, utils
 
@@ -126,7 +129,25 @@ Each package is one issue, one change and one prompt sharing a new 8-hex UUID, a
 - **Task rows:** `get_font(18)` in `_render_disconnected`; `rpm_bands` default `None` (mypy candidate).
 - **Not included:** splitting `manager.py` (W4). See decision D8.
 
-### 4.7 Execution Profile
+### 4.7 Document Sets
+
+| Run | UUID | Documents (`issue-`, `change-`, `prompt-`) |
+|---|---|---|
+| 1 | `cfa4e617` | `…-cfa4e617-dead-code-removal.md` |
+| 2 | `b4f9607a` | `…-b4f9607a-comm-layer-defects.md` |
+| 3 | `042dd7ff` | `…-042dd7ff-lifecycle-logging-utils.md` |
+| 4 | `34781bfe` | `…-34781bfe-setup-flow.md` |
+| 5 | `2550e4ee` | `…-2550e4ee-gauge-display-touch.md` |
+
+Deviations from 4.2 to 4.6, recorded in the change documents:
+
+- A09 has a third part (`DisplayManager._on_clear_settings`), assigned to run 5.
+- B02 needs one attribute from the setup flow, so it is completed by run 4; between runs 3 and 4 ATZ is always sent.
+- Run 4 removes one `type: ignore` at a call in `app.py`, the only edit outside its own files.
+- C03 and C09 are resolved by correcting the documentation and adding a warning, not by changing behaviour.
+- `[tool.mypy] python_version` is left unchanged and recorded as an open point in `change-042dd7ff`.
+
+### 4.8 Execution Profile
 
 | Setting | Value |
 |---|---|
@@ -156,7 +177,7 @@ Each package is one issue, one change and one prompt sharing a new 8-hex UUID, a
 
 | Item | Handling | Reason |
 |---|---|---|
-| G02, G03 (`bin/gtach-preflight.sh`, `bin/gtach-verify-36b6ea95.sh`) | Direct edit by the planner after approval; one commit | `bin/` is exempt from the workflow |
+| G02, G03 (`bin/gtach-preflight.sh`, `bin/gtach-verify-36b6ea95.sh`) | Direct edit by the planner; done 2026-11-11 | `bin/` is exempt from the workflow |
 | G01 | Resolved by run 3 | The cause is in `main.py` |
 | Design review row (`ai/workspace/design/`) | Planner work, before run 4 | Run 4 needs a current setup design in any case; the review is done in the same sitting |
 | Stuck Bluetooth state (EBUSY) row | Re-test on the device after run 2, with the process's sockets listed during the fault; specify only then | A01 shows one in-process mechanism for a persistent EBUSY, but only on the setup path. Whether the 2026-10-08 event was in-process or in the controller cannot be decided statically |
@@ -175,7 +196,7 @@ Each package is one issue, one change and one prompt sharing a new 8-hex UUID, a
 
 | ID | Decision | Recommendation (accepted) | Affects |
 |---|---|---|---|
-| D1 | Behaviour after an empty filtered scan | One automatic unfiltered pass; if still empty, DEVICE_LIST with "No devices found" and Retry. No endless rescan | Runs 2, 4; design `a3b4c5d6` |
+| D1 | Behaviour after an empty filtered scan | One automatic unfiltered pass; if still empty, DEVICE_LIST with "No devices found" and Retry. No endless rescan. Refinement proposed in `design-a3b4c5d6` v2.0 §4.3, pending approval: list the unfiltered results of the same scan instead of running a second pass | Runs 2, 4; design `a3b4c5d6` |
 | D2 | Manual MAC entry and manual filter toggle (no caller today) | Remove both. D1 makes the toggle unnecessary | Run 1 |
 | D3 | `rpm_warning`, `rpm_danger`, `gesture_*` config keys | Remove from the schema. `ConfigStore` preserves unknown keys, so existing files stay valid | Run 1 |
 | D4 | Extent of reduction in `utils/platform.py` | Remove only members without callers; keep detection | Run 1 |
@@ -306,6 +327,7 @@ ANTHROPIC, 2026b. *Claude Opus 5.5* [online]. Claude Platform Docs. Available fr
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial proposal |
 | 1.1 | 2026-11-11 | D1 to D8 recorded as accepted; five runs confirmed; §2.2 context budget corrected to the 1,000,000-token window of Opus 5.5; §4.7 Execution Profile added (Claude Code cloud, medium effort, ultracode guidance, cloud preconditions); §8.0 and §9.0 updated; References added |
+| 1.2 | 2026-11-11 | §3.0 contracts corrected and extended (existing `show_all_devices` parameter, same-scan fallback, three further interfaces); §4.7 Document Sets added with the five UUIDs and the deviations; Execution Profile renumbered to §4.8; §5.0 G02 and G03 marked done; D1 refinement noted |
 
 ---
 
