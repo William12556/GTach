@@ -20,11 +20,11 @@ class SerialTransport(OBDTransport):
     """Serial transport implementation for direct UART communication.
 
     Supplies the four handle primitives plus its own port discovery;
-    OBDTransport holds the connect/disconnect/send_command skeleton
-    (change-6481f8ce).
+    OBDTransport holds the connect/disconnect/send_command skeleton.
     """
 
-    _IO_ERRORS = (serial.SerialException,)
+    # A raw OSError (EIO on unplug) is a link loss too (audit A02).
+    _IO_ERRORS = (serial.SerialException, OSError)
     # pyserial signals a timeout by returning b'' rather than raising.
     _TIMEOUT_ERRORS = ()
     # read_until returns b'' on timeout with the port still open, so an
@@ -92,6 +92,9 @@ class SerialTransport(OBDTransport):
 
     def _discard_input(self, handle: serial.Serial) -> int:
         """Discard waiting input with pyserial's own buffer reset.
+
+        An OSError from the port is not caught here: it reaches
+        send_command's _IO_ERRORS handler, which drops the link.
 
         Args:
             handle: The open port.

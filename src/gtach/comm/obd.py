@@ -53,6 +53,9 @@ class OBDProtocol:
     _PRE_INIT_SETTLE_S: float = 1.5
     _SETTLE_SLICE_S: float = 0.5
 
+    # Minimum interval between 'vehicle not answering' records (audit A05).
+    _NO_VEHICLE_LOG_INTERVAL_S: float = 60.0
+
     def __init__(
         self,
         transport: OBDTransport,
@@ -70,6 +73,10 @@ class OBDProtocol:
         self.timeout = 1.0
         self.poll_interval_s = poll_interval_s
         self._adapter_initialised = adapter_pre_initialised
+        # Rate limit for the missing-4100 WARNING; touched only by the
+        # protocol thread.
+        self._no_vehicle_logged_at: Optional[float] = None
+        self._vehicle_silent = False
         self.logger.info(
             f"OBDProtocol init — adapter_pre_initialised={adapter_pre_initialised}"
         )
@@ -77,8 +84,10 @@ class OBDProtocol:
         self.obd_thread = threading.Thread(
             target=self._protocol_loop, name="OBDProtocol"
         )
+        # The stop function signals without joining, so
+        # ThreadManager.stop_thread's own timeout bounds the stop (B06).
         self.thread_manager.register_thread(
-            "obd_protocol", self.obd_thread, stop_func=self.stop
+            "obd_protocol", self.obd_thread, stop_func=self._signal_stop
         )
 
     def start(self) -> None:
@@ -86,12 +95,21 @@ class OBDProtocol:
         self.obd_thread.start()
         self.logger.info("OBD protocol handler started")
 
-    def stop(self) -> None:
-        """Stop protocol handler"""
+    def _signal_stop(self) -> None:
+        """Ask the protocol loop to stop, without waiting for it."""
         self._adapter_initialised = False
         self.shutdown_event.set()
-        if self.obd_thread.is_alive():
-            self.obd_thread.join(timeout=5.0)
+
+    def stop(self, timeout: float = 5.0) -> None:
+        """Stop the protocol handler.
+
+        Args:
+            timeout: Seconds to wait for the protocol thread to end.
+                0 signals the thread and returns without waiting.
+        """
+        self._signal_stop()
+        if timeout > 0 and self.obd_thread.is_alive():
+            self.obd_thread.join(timeout=timeout)
         self.logger.info("OBD protocol handler stopped")
 
     def _protocol_loop(self) -> None:
@@ -120,12 +138,8 @@ class OBDProtocol:
                             self.thread_manager.message_queue.put_nowait(rpm_data)
                         except queue.Full:
                             # Queue full — discard oldest, insert newest.
-                            # Narrowed from a catch-all handler: a genuine
-                            # programming error here was being counted as
-                            # queue pressure and discarded, three times per
-                            # sample (core review §4.2). Anything other
-                            # than Full or Empty now reaches the loop's own
-                            # handler below and is logged with a traceback.
+                            # Only Full and Empty are caught here; anything
+                            # else reaches the loop's handler below.
                             try:
                                 self.thread_manager.message_queue.get_nowait()
                             except queue.Empty:
@@ -187,14 +201,35 @@ class OBDProtocol:
             # NO DATA, '?' and 7F replies do not (issue-907de6de).
             normalised = re.sub(r"\s", "", (response or "").upper())
             if "4100" not in normalised:
-                raise Exception(f"No valid 0100 response: {response!r}")
+                self._report_no_vehicle(response)
+                return False
 
+            if self._vehicle_silent:
+                self.logger.info("Vehicle answered 0100 - initialisation complete")
+            self._vehicle_silent = False
+            self._no_vehicle_logged_at = None
             self._adapter_initialised = True
             return True
 
         except Exception as e:
             self.logger.error(f"Initialization failed: {e}", exc_info=True)
             return False
+
+    def _report_no_vehicle(self, response: Optional[str]) -> None:
+        """Log a missing 4100 reply, at most once per interval (audit A05).
+
+        Args:
+            response: The 0100 reply, or None if none arrived.
+        """
+        self._vehicle_silent = True
+        now = time.monotonic()
+        last = self._no_vehicle_logged_at
+        if last is not None and now - last < self._NO_VEHICLE_LOG_INTERVAL_S:
+            return
+        self._no_vehicle_logged_at = now
+        self.logger.warning(
+            f"Vehicle not answering: no valid 0100 response ({response!r})"
+        )
 
     def _send_command(
         self, command: bytes, timeout: Optional[float] = None

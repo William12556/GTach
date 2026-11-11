@@ -77,7 +77,7 @@ def test_rpm_sweep_ignores_wall_clock_steps(monkeypatch):
         call_count[0] += 1
         if call_count[0] == 1:
             return 1000.0
-        return 1030.0
+        return 1015.0
 
     monkeypatch.setattr(
         sim_module,
@@ -90,4 +90,5 @@ def test_rpm_sweep_ignores_wall_clock_steps(monkeypatch):
 
     transport = SimTransport()
     result = transport.send_command("010C")
-    assert result == "41 0C 39 08"
+    # t = 15 s is the sweep maximum, 6500 RPM; t = 0 would give 39 08.
+    assert result == "41 0C 65 90"

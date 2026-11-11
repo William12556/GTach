@@ -23,36 +23,28 @@ from ..utils.platform import PlatformType
 from ..utils.waits import wait_for_event
 from .device_store import get_device_store
 
-# The transport name set and its classifications, defined
-# once. Previously maintained in four places — main.py's
-# argparse choices, app.py's forced test, app.py's fast-poll
-# test and select_transport below — with an omission in any
-# one of them changing behaviour silently rather than
-# raising (core review §5.8).
+# The transport name set and its classifications, defined once and read
+# by main.py, app.py and select_transport below.
 TRANSPORT_NAMES = ("tcp", "serial", "rfcomm", "simtcp", "simbt")
 
-# Forced transports skip setup mode. simtcp is forced while
-# simbt routes through setup: that asymmetry is deliberate
-# and serves the pairing-simulation design. Do not
-# 'correct' it.
+# Forced transports skip setup mode. simtcp is forced while simbt routes
+# through setup, which serves the pairing-simulation design.
 TRANSPORT_FORCED = ("tcp", "serial", "simtcp")
 
 # Fast transports poll at 0.02 s rather than 0.05 s.
 TRANSPORT_FAST = ("simbt", "simtcp", "tcp")
 
 
-# errno arrives at connect()'s first except handler and was discarded
-# there, so an adapter fault and a missing OBD dongle produced
-# identical logs and an identical DISCONNECTED screen. Establishing
-# which it was took a full session of manual hcitool work to recover
-# information errno already carried (issue-5e7a03c4).
+# Connect failure causes by errno, so an adapter fault and a missing OBD
+# dongle are told apart in the log and on the DISCONNECTED screen
+# (issue-5e7a03c4).
 #
 # Every value is 40 characters or fewer so it renders on the 480x480
 # display without truncation. A test asserts that bound over the whole
 # mapping; keep any addition within it.
 #
 # Public so callers can recognise a link-busy failure without
-# duplicating the literal (issue-d26ca557).
+# duplicating the literal.
 LINK_BUSY_CAUSE = "bluetooth link busy - may need reset"
 
 _CONNECT_FAULT_CAUSES = {
@@ -66,10 +58,8 @@ _CONNECT_FAULT_CAUSES = {
 }
 
 # Recorded when a link is torn down for sustained silence rather than
-# failing to open. Without it the DISCONNECTED screen had no
-# explanation in exactly the mid-session case change-9c2f41d8 exists to
-# handle, because only connect() ever set a cause (issue-5e7a03c4
-# iteration 2).
+# failing to open, so the DISCONNECTED screen explains a mid-session
+# loss (issue-5e7a03c4).
 _SILENT_LINK_CAUSE = "adapter stopped responding"
 
 # Recorded when the peer closes the link (EOF read) (issue-907de6de).
@@ -81,17 +71,15 @@ _PEER_CLOSED_CAUSE = "adapter closed the connection"
 # which is why this is an escalation rather than a mapping entry.
 _WEDGED_LINK_CAUSE = "bluetooth wedged - reset required"
 
-# Sysfs path listing Bluetooth controllers. PlatformDetector already
-# probes this same path (platform.py:706), so reading it here is a
-# precedented pattern rather than a new dependency.
+# Sysfs path listing Bluetooth controllers; PlatformDetector reads it too.
 _BLUETOOTH_SYSFS = "/sys/class/bluetooth"
 
 
 def _bluetooth_adapter_present() -> bool:
     """Report whether a Bluetooth controller is present.
 
-    Reads sysfs only. This change REPORTS and must never ACT on the
-    host: no adapter reset, rfkill cycle, hciuart restart or module
+    Reads sysfs only. The transport reports faults and never acts on
+    the host: no adapter reset, rfkill cycle, hciuart restart or module
     reload, and no shell invocation of any kind (issue-5e7a03c4).
 
     Returns:
@@ -152,18 +140,13 @@ class ProtocolError(TransportError):
 class OBDTransport(ABC):
     """Abstract base class for OBD transport implementations.
 
-    Holds the connection skeleton once. RFCOMM, TCP and serial had
-    three near-identical copies of connect, disconnect, send_command,
-    is_connected and state, differing only in how a handle is opened,
-    closed, written to and read from (core review §5.8). Those four
-    operations are the abstract surface; everything else is concrete
-    here.
+    Holds the connection skeleton for RFCOMM, TCP and serial. A
+    subclass supplies how a handle is opened, closed, written to and
+    read from; everything else is concrete here.
 
-    The capture-then-use discipline in send_command is the point of
-    change-6481f8ce: the handle is captured under the lock ONCE and
-    every subsequent operation uses that reference, so a concurrent
-    disconnect() produces the I/O error the handlers expect rather than
-    an AttributeError on None (core review §5.3).
+    send_command captures the handle under the lock once and uses that
+    reference throughout, so a concurrent disconnect() produces the I/O
+    error the handlers expect rather than an AttributeError on None.
     """
 
     # Errors a subclass's I/O raises when the handle or the peer fails.
@@ -191,8 +174,8 @@ class OBDTransport(ABC):
 
     # Slack beyond the command timeout for the whole read loop. A peer
     # that keeps sending without a '>' prompt (ELM327 'SEARCHING...')
-    # can no longer extend one command indefinitely, which bounds the
-    # OBD thread's heartbeat gap (change-860fd5f7).
+    # cannot extend one command indefinitely, which bounds the OBD
+    # thread's heartbeat gap.
     _READ_DEADLINE_MARGIN_S: float = 1.0
 
     # Consecutive CONNECT failures after which a controller that is
@@ -213,12 +196,10 @@ class OBDTransport(ABC):
     _ADAPTER_CHECKS: bool = False
 
     def __init__(self) -> None:
-        # OBDTransport is abstract. The four handle primitives below are
-        # deliberately NOT @abstractmethod: SimTransport overrides the
-        # whole skeleton and supplies none of them, and change-6481f8ce
-        # may not modify it. Declaring them abstract would make
-        # SimTransport uninstantiable and break simtcp and simbt. The
-        # guard keeps direct instantiation an error regardless.
+        # OBDTransport is abstract. The handle primitives below are not
+        # @abstractmethod because SimTransport overrides the whole
+        # skeleton and supplies none of them; this guard keeps direct
+        # instantiation an error.
         if type(self) is OBDTransport:
             raise TypeError("OBDTransport is abstract and cannot be instantiated")
         self._shutdown = threading.Event()
@@ -304,8 +285,8 @@ class OBDTransport(ABC):
 
         is_connected() reads the state under the lock and releases it,
         so a caller acting on its result is acting on a stale answer.
-        Capturing the reference means a closed handle fails the way the
-        code already handles (core review §5.3).
+        Capturing the reference means a closed handle fails as an I/O
+        error, which the callers handle.
 
         Returns:
             The handle, or None if not connected.
@@ -394,19 +375,39 @@ class OBDTransport(ABC):
                     self._state = TransportState.DISCONNECTED
                 return False
 
+            # A disconnect() during a blocking _open() found no handle to
+            # close; the handle is published only if none happened (A01).
             with self._lock:
-                self._handle = handle
-                self._state = TransportState.CONNECTED
-                self._last_failure_cause = None
-                self._consecutive_connect_failures = 0
+                rejected = self._shutdown.is_set()
+                if rejected:
+                    self._state = TransportState.DISCONNECTED
+                else:
+                    self._handle = handle
+                    self._state = TransportState.CONNECTED
+                    self._last_failure_cause = None
+                    self._consecutive_connect_failures = 0
+            if rejected:
+                # Never assigned to _handle, so closed here, outside the lock.
+                try:
+                    self._close(handle)
+                except self._IO_ERRORS:
+                    pass
+                logger.info(
+                    "Connect to %s completed after disconnect - link closed",
+                    self._describe(),
+                )
+                return False
             logger.info("Connected to %s", self._describe())
             return True
         except self._IO_ERRORS as e:
-            with self._lock:
-                self._consecutive_connect_failures += 1
-                failures = self._consecutive_connect_failures
-
             cause = self._classify_connect_error(e)
+            # A refused connect shows a working controller, so it does not
+            # count towards the wedge diagnosis (audit A03).
+            refused = cause == _CONNECT_FAULT_CAUSES[_errno.ECONNREFUSED]
+            with self._lock:
+                if not refused:
+                    self._consecutive_connect_failures += 1
+                failures = self._consecutive_connect_failures
 
             # Escalate to a wedge diagnosis once failure has persisted.
             # Guarded on the controller being present: if it is
@@ -419,8 +420,7 @@ class OBDTransport(ABC):
             # connect succeeds, and the cause should keep reporting it.
             #
             # A refused connect is excluded: the peer's stack answered, so
-            # the controller is working and only the service is absent
-            # (observed in test-4f671d09 TC-005 with the emulator stopped).
+            # the controller is working and only the service is absent.
             if (
                 self._ADAPTER_CHECKS
                 and failures >= self._MAX_CONSECUTIVE_CONNECT_FAILURES
@@ -431,8 +431,7 @@ class OBDTransport(ABC):
                 cause = _WEDGED_LINK_CAUSE
 
             # Append the cause only when it says something the
-            # exception text does not. An errno-less socket.timeout
-            # otherwise logged 'timed out (timed out)'.
+            # exception text does not (an errno-less socket.timeout).
             if cause != str(e):
                 logger.error(
                     "Failed to connect to %s: %s (%s)", self._describe(), e, cause
@@ -471,34 +470,20 @@ class OBDTransport(ABC):
         """Close the current link while leaving reconnection possible.
 
         Records why, so the DISCONNECTED screen has an explanation in
-        the mid-session case. Iteration 1 populated the cause only from
-        :meth:`connect`, which left a link that connected cleanly and
-        then died of silence showing no explanation at all — precisely
-        the failure mode change-9c2f41d8 exists to handle
-        (issue-5e7a03c4 iteration 2).
+        the mid-session case (issue-5e7a03c4).
 
-        The distinction from :meth:`disconnect` is the whole point of
-        this method and must not be collapsed. ``disconnect()`` ends the
-        transport's life: it sets ``_shutdown``, which is the event
-        :meth:`reconnect_indefinitely` loops on and waits on, and which
-        nothing ever clears. ``drop_link()`` closes only the CURRENT
+        ``disconnect()`` ends the transport's life: it sets
+        ``_shutdown``, which :meth:`reconnect_indefinitely` loops on and
+        which nothing clears. ``drop_link()`` closes only the current
         link, so the supervising loop observes ``is_connected()`` go
         False and re-establishes it.
-
-        Tearing a dead link down via ``disconnect()`` would permanently
-        disable reconnection for the life of the process, while still
-        satisfying any check that merely asserts the transport went
-        not-connected (issue-9c2f41d8).
 
         Safe to call when nothing is connected: ``_discard_handle_locked``
         tolerates a None handle.
 
         Args:
             cause: Why the link was dropped. Defaults to
-                ``_SILENT_LINK_CAUSE``. The parameter exists so a
-                future caller with better information can supply its
-                own without changing the existing call sites, both of
-                which pass nothing.
+                ``_SILENT_LINK_CAUSE``.
         """
         logger = logging.getLogger(self.__class__.__name__)
         with self._lock:
@@ -518,8 +503,7 @@ class OBDTransport(ABC):
             Optional[str]: The response from the device, or None if the command failed.
         """
         logger = logging.getLogger(self.__class__.__name__)
-        # Capture ONCE, before the receive loop. Re-capturing per
-        # iteration would reintroduce the window this closes.
+        # Captured once, before the receive loop, and used throughout.
         handle = self._acquire_handle()
         if handle is None:
             logger.warning("Cannot send command: transport is not connected")
@@ -531,13 +515,16 @@ class OBDTransport(ABC):
             logger.debug("TX: %r", encoded_cmd)
 
             # Discard any late reply to an earlier command, so this
-            # command reads only its own reply (issue-dc52c4e4).
+            # command reads only its own reply. Known limit: a reply that
+            # arrives after this discard is read as this command's reply;
+            # the caller's PID check rejects one for another PID
+            # (issue-dc52c4e4).
             stale = self._discard_input(handle)
             if stale:
                 logger.debug("Discarded %d stale bytes before %r", stale, command)
 
             # Set timeout for response, before the write so the write
-            # itself is bounded too (change-860fd5f7).
+            # itself is bounded too.
             self._set_timeout(handle, timeout)
             self._write(handle, encoded_cmd)
 
@@ -597,8 +584,10 @@ class OBDTransport(ABC):
             return None
         except self._IO_ERRORS as e:
             logger.error("Error communicating with device: %s", e)
+            cause = self._classify_connect_error(e)
             with self._lock:
                 self._state = TransportState.DISCONNECTED
+                self._last_failure_cause = cause
             self._discard_handle()
             return None
         except Exception as e:
@@ -678,12 +667,7 @@ class OBDTransport(ABC):
         whenever it drops. This method does NOT return on a successful
         connect; its only exit is ``_shutdown`` being set. Both call
         sites run it on a daemon thread registered with ThreadManager
-        as 'transport', so that thread simply never returns
-        (change-2ac1c602).
-
-        Previously it returned on first success, which left nothing to
-        re-enter it: a mid-session link loss was unrecoverable for the
-        life of the process (issue-9c2f41d8).
+        as 'transport' (issue-9c2f41d8).
 
         Every wait uses ``wait_for_event`` on ``_shutdown``, which a
         backward wall-clock step cannot extend (issue-4f671d09), so a
@@ -766,9 +750,7 @@ def select_transport(
     transport_arg = getattr(args, "transport", None)
 
     # Simulation transports for hardware-free testing. SimTransport
-    # serves both simtcp and simbt; they are classified differently for
-    # forcing, which is the pairing-simulation design rather than an
-    # inconsistency (core review §5.8).
+    # serves both simtcp and simbt; they differ only in forcing.
     _simulated = tuple(n for n in TRANSPORT_NAMES if n.startswith("sim"))
     if transport_arg in _simulated:
         from .sim_transport import SimTransport
