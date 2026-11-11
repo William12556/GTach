@@ -43,3 +43,4 @@ approvals:
   - { uuid: "2550e4ee", stage: "change", date: "2026-11-11T10:37:46Z", blobs: { "change/change-2550e4ee-gauge-display-touch.md": "48da22487bea419fc34ab956df4e026acb265ea9" } }
   - { uuid: "2550e4ee", stage: "prompt", date: "2026-11-11T10:37:48Z", blobs: { "prompt/prompt-2550e4ee-gauge-display-touch.md": "e349786aa7ba2040e892c811c2e2c4ad386ab1df" } }
   - { uuid: "cfa4e617", stage: "change", date: "2026-11-11T10:55:09Z", blobs: { "change/change-cfa4e617-dead-code-removal.md": "02cc8149aa915d7e97bc0c948b565410abfd1d54" } }
+  - { uuid: "b4f9607a", stage: "change", date: "2026-11-11T10:55:11Z", blobs: { "change/change-b4f9607a-comm-layer-defects.md": "6b8413477469478eeedbc1b66956ec06a566fc87" } }
