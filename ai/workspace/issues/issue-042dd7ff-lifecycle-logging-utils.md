@@ -17,7 +17,7 @@ issue_info:
   title: "Setup re-entry, OBD start and exit-status defects in app.py; logging cost and side effects in main.py; watchdog log repetition; configuration, dependency, terminal and reset-outcome defects in utils/"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -140,9 +140,9 @@ resolution:
   target_date: ""
   approach: "See change-042dd7ff."
   change_ref: "change-042dd7ff"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-11"
+  resolved_by: "change-042dd7ff"
+  fix_description: "Setup re-entry keeps the pairing factory; simbt uses config/devices-sim.yaml; ATZ is skipped only after an adapter reset in this setup session (attribute supplied by run 4); _obd_started cleared when _start_obd raises; exit status 1 after startup failure, runtime error or watchdog exit; shutdown steps isolated; root log level WARNING after startup unless debug; validation commands log to stderr only; log paths from gtach_home(); one rate-limited WARNING for a stalled non-critical thread; one type rule for ConfigStore load and validate; serialised save; engine profile resolved through files('gtach') (Python 3.9 namespace-package TypeError); find_spec guard; TerminalRestorer tolerates a missing stdin; reboot return code logged, a negative code treated as a reboot in progress; pi_reset docstring corrected; get_state_info checks its type; [tool.mypy] platform = linux; SIGTERM test asserts status 0 (commit 2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11; report-042dd7ff)."
 
 verification:
   verified_date: ""
@@ -159,7 +159,7 @@ verification_enhanced:
     - "Confirm from source. [DONE, audit-71ab3751.]"
     - "After the fix: unit tests per change-042dd7ff."
     - "After the fix: device session A — start.log unchanged after 'gtach --validate-config'; debug toggle writes debug.log; Reset logs its return code; 'systemctl status' after a forced startup failure."
-  verification_results: ""
+  verification_results: "pytest 654 passed and mypy clean (worker's results). Device session A outstanding."
 
 traceability:
   design_refs: []
@@ -182,6 +182,12 @@ version_history:
     changes:
       - "Initial issue document."
 
+  - version: "1.1"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-042dd7ff (2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11); awaiting device session A."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -197,6 +203,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial issue document. B01-B04, B06, B07, E02-E06, F01, O1 and six task rows. |
+| 1.1 | 2026-11-11 | Resolved by change-042dd7ff (2cffdae); awaiting device session A. |
 
 ---
 

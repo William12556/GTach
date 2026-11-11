@@ -17,7 +17,7 @@ change_info:
   title: "Keep the pairing factory on setup re-entry; skip ATZ only after a reset in this session; truthful exit status; step-wise shutdown; root log level follows the debug switch; side-effect-free validation commands; log paths under GTACH_HOME; utility corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -290,16 +290,20 @@ implementation:
   deployment_notes: "bin/gtach-verify-36b6ea95.sh reads /opt/gtach/start.log; unaffected with the default home."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-11-11"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
-  test_results: ""
-  issues_found: []
+  test_results: "Commit 2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11: pytest 654 passed (35 new in tests/test_lifecycle_logging_utils.py); mypy src/ no issues (worker's results, report-042dd7ff section 5)."
+  issues_found:
+    - "load_engine_profile cause: gtach.assets has no __init__.py; on Python 3.9 importlib.resources.files() raises TypeError for such a namespace package. Fixed by resolving from files('gtach'). Not reproduced on 3.9 by the worker; confirm in device session A."
+    - "E06: an integral float (fps_limit: 30.0) is now accepted by both load() and validate(); validate() previously rejected it."
+    - "B03: if _start_obd fails after the transport thread has started, that thread keeps running until setup is re-entered. Accepted."
+    - "toggle_debug_logging(False): 'Debug logging disabled' is not written anywhere, as before the change."
 
 traceability:
   design_updates:
-    - "design-b4c5d6e7 (config): load() type rule. Planner, after the run."
+    - "design-b4c5d6e7 (config): load() type rule. Planner, in the design refresh after run 5."
   related_changes:
     - change_ref: "change-b4f9607a"
       relationship: "depends on"
@@ -328,6 +332,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-11-11"
+    author: "William Watson"
+    changes:
+      - "Implemented in 2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11; awaiting device session A."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -344,6 +354,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to F. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
+| 1.2 | 2026-11-11 | Implemented in 2cffdae; awaiting device session A. |
 
 ---
 
