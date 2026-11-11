@@ -254,7 +254,7 @@ class TestProcessExit:
             time.sleep(3.0)
             assert proc.poll() is None, "process exited before SIGTERM"
             proc.send_signal(signal.SIGTERM)
-            assert proc.wait(timeout=10.0) is not None
+            assert proc.wait(timeout=10.0) == 0
         finally:
             if proc.poll() is None:
                 proc.kill()

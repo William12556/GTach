@@ -126,6 +126,7 @@ known_first_party = ["gtach"]
 
 [tool.mypy]
 python_version = "3.9"
+platform = "linux"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

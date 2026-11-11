@@ -8,32 +8,20 @@
 
 """Operator-initiated reboot of the host.
 
-This module is the ONLY place in GTach permitted to invoke an external
-command. `subprocess` is imported here and nowhere else, and in
-particular nowhere under `gtach.comm`, where change-5e7a03c4
-established that the transport reports faults and never acts on the
-host.
+This module is the only part of GTach that acts on the host.
+``subprocess`` is also used read-only, for Bluetooth discovery
+(comm/system_bluetooth.py) and platform detection (utils/platform.py);
+neither changes host state (issue-042dd7ff).
 
-That boundary is the entire basis on which host action is permitted at
-all. :func:`reboot_device` has exactly one call site — the DISCONNECTED
-screen's Reset button, through ``GTachApplication._on_reset_pi``.
-Nothing invokes it automatically: not a wedge diagnosis, not a retry
-count, not startup, not a timer. An operator presses a button, or it
-does not run (issue-4ab5ff88).
+:func:`reboot_device` has one call site, the DISCONNECTED screen's
+Reset button through ``GTachApplication._on_reset_pi``; nothing invokes
+it automatically (issue-4ab5ff88).
 
-Two further rules hold the privileged surface small:
-
-* No ``shell=True``, anywhere. A fixed argument list is invoked with an
-  absolute path, and no value derived from configuration, the network
-  or the operator reaches the command line.
-* ``/sbin/reboot`` at that literal path, with no arguments. The path is
-  not resolved through PATH, and neither ``systemctl reboot`` nor
-  ``shutdown -r now`` is used. That is an explicit choice for the
-  deployed OS (Debian 11 on a Raspberry Pi Zero 2W), not an oversight.
-
-The predecessor of this module reset the Bluetooth controller with
-``hciconfig hci0 reset``; on target that frequently left the adapter
-down, and only a reboot recovered the link (issue-4ab5ff88).
+* No ``shell=True``. A fixed argument list is invoked by absolute path,
+  and no value from configuration, the network or the operator reaches
+  the command line.
+* ``/sbin/reboot`` at that literal path, with no arguments, for the
+  deployed OS (Debian 11 on a Raspberry Pi Zero 2W).
 
 :func:`reboot_device` returns a short string rather than raising,
 because the caller runs on a worker thread whose only report is the
@@ -58,6 +46,16 @@ _NOT_PERMITTED = "reboot not permitted"
 _NOT_FOUND = "reboot command not found"
 _FAILED = "reboot failed"
 _COMMAND_FAILED = "reboot command failed"
+
+
+def _first_line(output: object) -> str:
+    """Return the first line of captured output, decoded, or ''."""
+    if isinstance(output, bytes):
+        output = output.decode("utf-8", errors="replace")
+    if not isinstance(output, str):
+        return ""
+    lines = output.strip().splitlines()
+    return lines[0] if lines else ""
 
 
 def reboot_device(timeout: float = 10.0) -> str:
@@ -90,13 +88,20 @@ def reboot_device(timeout: float = 10.0) -> str:
             timeout=timeout,
             check=False,
         )
-        logger.debug("%s -> rc=%d", _REBOOT_PATH, completed.returncode)
-
-        if completed.returncode == 0:
+        returncode = completed.returncode
+        if returncode == 0:
             return _OK
 
-        # A non-zero return is a failure, not a reboot already under
-        # way: it must not be reported as success.
+        logger.warning(
+            "%s returned %d: %s",
+            _REBOOT_PATH,
+            returncode,
+            _first_line(completed.stderr),
+        )
+        # A negative code means the command was ended by a signal: the
+        # host is already stopping (issue-042dd7ff).
+        if returncode < 0:
+            return _OK
         return _COMMAND_FAILED
 
     except subprocess.TimeoutExpired:
@@ -109,7 +114,7 @@ def reboot_device(timeout: float = 10.0) -> str:
         return _NOT_PERMITTED
     except FileNotFoundError:
         logger.error(
-            "reboot vanished between the existence check and " "invocation",
+            "reboot vanished between the existence check and invocation",
             exc_info=True,
         )
         return _NOT_FOUND

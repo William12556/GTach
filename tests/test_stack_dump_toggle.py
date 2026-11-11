@@ -224,6 +224,8 @@ class TestSetupLoggingGate:
     @pytest.fixture
     def isolated_logging(self, tmp_path, monkeypatch):
         """Redirect the log paths and restore the root handler set."""
+        monkeypatch.setenv("GTACH_HOME", str(tmp_path))
+        monkeypatch.setattr(gtach_main, "_STACKS_LOG", str(tmp_path / "stacks.log"))
         monkeypatch.setattr(gtach_main, "_START_LOG", str(tmp_path / "start.log"))
         monkeypatch.setattr(gtach_main, "_DEBUG_LOG", str(tmp_path / "debug.log"))
         monkeypatch.setattr(gtach_main, "_ERROR_LOG", str(tmp_path / "error.log"))

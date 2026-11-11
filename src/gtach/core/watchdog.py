@@ -21,6 +21,9 @@ from typing import Any, Callable, Dict, Optional
 from ..utils.waits import wait_for_event
 from .thread import ThreadManager, ThreadStatus
 
+# Repeat interval of the critical-level warning for a non-critical thread.
+NON_CRITICAL_WARNING_INTERVAL_S = 60.0
+
 
 class RecoveryLevel(Enum):
     """Recovery escalation levels"""
@@ -54,6 +57,8 @@ class ThreadHealth:
     recovery_attempts: int = 0
     current_level: RecoveryLevel = RecoveryLevel.WARNING
     is_critical: bool = False  # Critical threads trigger shutdown if recovery fails
+    # Last critical-level warning for a non-critical thread; -inf means none.
+    last_critical_warning_time: float = float("-inf")
 
 
 class WatchdogMonitor:
@@ -283,17 +288,35 @@ class WatchdogMonitor:
     def _handle_critical_timeout(
         self, name: str, health: ThreadHealth, timeout: float
     ) -> None:
-        """Handle critical timeout - may trigger shutdown"""
-        self.logger.error(
-            f"Thread {name} critical timeout ({timeout:.1f}s) - initiating emergency "
-            "procedures"
-        )
+        """Handle a critical-level timeout.
 
+        A critical thread triggers graceful shutdown. A non-critical
+        thread is reported at WARNING when the stall is first seen at
+        this level and at most once per NON_CRITICAL_WARNING_INTERVAL_S
+        while it lasts; no action is taken for it (issue-042dd7ff).
+        """
         if health.is_critical:
+            self.logger.error(
+                f"Thread {name} critical timeout ({timeout:.1f}s) - initiating "
+                "emergency procedures"
+            )
             self.logger.critical(
                 f"Critical thread {name} failed recovery - initiating graceful shutdown"
             )
             self._initiate_graceful_shutdown(f"Critical thread {name} timeout")
+            return
+
+        current_time = time.monotonic()
+        if (
+            current_time - health.last_critical_warning_time
+            < NON_CRITICAL_WARNING_INTERVAL_S
+        ):
+            return
+        health.last_critical_warning_time = current_time
+        self.logger.warning(
+            f"Thread {name} unresponsive ({timeout:.1f}s); not critical, "
+            "no action taken"
+        )
 
     def _attempt_soft_recovery(
         self, name: str, health: ThreadHealth, timeout: float
@@ -362,6 +385,7 @@ class WatchdogMonitor:
         """Reset thread health counters when thread becomes responsive"""
         health.consecutive_failures = 0
         health.current_level = RecoveryLevel.WARNING
+        health.last_critical_warning_time = float("-inf")
 
     def _initiate_graceful_shutdown(self, reason: str) -> None:
         """Initiate graceful application shutdown"""

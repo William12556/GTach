@@ -227,15 +227,16 @@ class AcknowledgementStateManager:
         Get current acknowledgement state information.
 
         Returns:
-            Dictionary with state info, or None if state file doesn't exist
+            The state mapping, or None if the file is missing, unreadable
+            or not a mapping.
         """
         if not self.state_file_path.exists():
             return None
 
         try:
             with open(self.state_file_path, "r") as f:
-                # TODO: issue-ac11505d candidate defect - YAML may not be a mapping
-                return yaml.safe_load(f)  # type: ignore[no-any-return]  # TODO: issue-ac11505d  # noqa: E501
+                data = yaml.safe_load(f)
+            return data if isinstance(data, dict) else None
         except Exception as e:
             self.logger.error(f"Failed to read state info: {e}", exc_info=True)
             return None

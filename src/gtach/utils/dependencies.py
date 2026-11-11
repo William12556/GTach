@@ -331,12 +331,21 @@ class DependencyValidator:
         except ImportError as e:
             if self.debug:
                 self.logger.debug(f"ImportError for {import_name}: {str(e)}")
-                # Try to get more detailed information about why import failed
-                spec = importlib.util.find_spec(import_name)
-                if spec is None:
-                    self.logger.debug(f"Module spec not found for {import_name}")
+                # find_spec of a dotted name raises when the parent is
+                # absent (issue-042dd7ff).
+                try:
+                    spec = importlib.util.find_spec(import_name)
+                except (ImportError, ValueError) as spec_error:
+                    self.logger.debug(
+                        f"Module spec lookup failed for {import_name}: {spec_error}"
+                    )
                 else:
-                    self.logger.debug(f"Module spec found but import failed: {spec}")
+                    if spec is None:
+                        self.logger.debug(f"Module spec not found for {import_name}")
+                    else:
+                        self.logger.debug(
+                            f"Module spec found but import failed: {spec}"
+                        )
 
             return False, None, str(e)
         except Exception as e:

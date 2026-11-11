@@ -17,6 +17,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, TextIO
 
+from .utils.home import DEFAULT_GTACH_HOME, gtach_home
+
 # Module-level handler references for runtime manipulation.
 _start_handler: Optional[logging.Handler] = None
 _debug_handler: Optional[logging.Handler] = None
@@ -24,43 +26,61 @@ _error_handler: Optional[logging.Handler] = None
 # Kept referenced so faulthandler's fd stays open for the process
 # lifetime; faulthandler writes to the file descriptor directly.
 _stacks_file: Optional[TextIO] = None
-# Rotation is once per PROCESS, not once per arm. Arming occurs on
-# every OPTIONS toggle-on, and rotating each time would push a
-# just-captured reproduction off the end of the backup chain — the
-# operator toggling debug off and on three times would discard the
-# very dumps they had just gone to the trouble of provoking
+# stacks.log is rotated once per process, not once per arm
 # (issue-3b8c50f2).
 _stacks_rotated = False
 
 _LOG_FORMAT = "%(asctime)s,%(msecs)03d %(name)s %(levelname)s %(message)s"
 _LOG_DATE_FMT = "%Y-%m-%d %H:%M:%S"
-_START_LOG = "/opt/gtach/start.log"
-_DEBUG_LOG = "/opt/gtach/debug.log"
-_STACKS_LOG = "/opt/gtach/stacks.log"
-# Dumps are written on fatal errors and on request (SIGUSR1, written by
-# gtach.utils.stack_dump; issue-1a8f40ea), so each run's file is small.
-# Three backups plus the live file bound cross-run accumulation at four files — enough to
-# span a watchdog restart and the run before it, which is the span
-# issue-2ac1c602's verification needs.
+# Log file paths. These hold the default-home paths until setup_logging
+# derives them from gtach_home() (issue-042dd7ff).
+_START_LOG = str(DEFAULT_GTACH_HOME / "start.log")
+_DEBUG_LOG = str(DEFAULT_GTACH_HOME / "debug.log")
+_STACKS_LOG = str(DEFAULT_GTACH_HOME / "stacks.log")
+_ERROR_LOG = str(DEFAULT_GTACH_HOME / "error.log")
+# Dumps are written on fatal errors and on request (SIGUSR1), so each
+# run's file is small; three backups span a watchdog restart and the run
+# before it (issue-2ac1c602).
 _STACKS_BACKUPS = 3
-# 10 MB is about ninety minutes of debug output at 30 Hz.
-# Ten backups gives roughly sixteen hours of history for
-# 110 MB of card. bin/gtach.service caps a restart loop at
-# three rapid starts (StartLimitBurst), so rotate-at-start
-# cannot exhaust the backups (issue-6a3b7c52).
+# 10 MB is about ninety minutes of debug output at 30 Hz; ten backups
+# keep about sixteen hours (issue-6a3b7c52).
 _DEBUG_MAX_BYTES = 10 * 1024 * 1024
 _DEBUG_BACKUPS = 10
-# error.log is always on: WARNING and above, size rotation only, and
-# never rotated at start, so a fault that caused a restart is still in
-# the live file afterwards. Without it nothing at all was persisted
-# after startup with debug off (issue-269871a0).
-_ERROR_LOG = "/opt/gtach/error.log"
+# error.log: WARNING and above, size rotation only (issue-269871a0).
 _ERROR_MAX_BYTES = 1 * 1024 * 1024
 _ERROR_BACKUPS = 5
+# Root logger level after startup while debug is off.
+_RUNTIME_LOG_LEVEL = logging.WARNING
+
+
+def _derive_log_paths() -> None:
+    """Set the four log paths from gtach_home()."""
+    global _START_LOG, _DEBUG_LOG, _STACKS_LOG, _ERROR_LOG
+    home = gtach_home()
+    _START_LOG = str(home / "start.log")
+    _DEBUG_LOG = str(home / "debug.log")
+    _STACKS_LOG = str(home / "stacks.log")
+    _ERROR_LOG = str(home / "error.log")
+
+
+def set_runtime_log_level(debug: bool) -> None:
+    """Set the root logger level for the running application.
+
+    DEBUG while debug is on; WARNING otherwise, so logger.debug and
+    logger.info calls build no record. Handler levels are unchanged
+    (issue-042dd7ff).
+
+    Args:
+        debug: Whether debug logging is on.
+    """
+    logging.getLogger().setLevel(logging.DEBUG if debug else _RUNTIME_LOG_LEVEL)
 
 
 def setup_logging(debug: bool = False) -> None:
-    """Attach the three root log handlers.
+    """Attach the three root log handlers under gtach_home().
+
+    The root logger is set to DEBUG for startup; set_runtime_log_level
+    lowers it once startup is complete.
 
     * start.log — truncated at boot; written during startup and then
       silenced by GTachApplication._finish_startup_logging.
@@ -76,6 +96,7 @@ def setup_logging(debug: bool = False) -> None:
     """
     global _start_handler, _debug_handler, _error_handler
 
+    _derive_log_paths()
     formatter = logging.Formatter(_LOG_FORMAT, datefmt=_LOG_DATE_FMT)
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
@@ -89,21 +110,10 @@ def setup_logging(debug: bool = False) -> None:
     except OSError as e:
         print(f"[gtach] WARNING: could not open {_START_LOG}: {e}", file=sys.stderr)
 
-    # debug.log — rotated at boot, so each run has its own file
-    # and the previous ten survive; suppressed unless toggled on.
-    #
-    # NOTE the absence of mode='w'. RotatingFileHandler discards
-    # it whenever maxBytes > 0 and opens in append mode
-    # regardless — deliberate CPython behaviour, so that
-    # rotation is not defeated by truncation. The previous
-    # mode='w' here was dead, and debug.log had never truncated
-    # despite the comment saying it did (issue-6a3b7c52).
-    # Rotation at start is done explicitly below instead, which
-    # keeps the previous run rather than discarding it — the
-    # distinction that matters under systemd Restart=always.
-    #
-    # The size is read BEFORE the handler is constructed, because
-    # construction opens the file.
+    # debug.log — rotated at start, so each run has its own file;
+    # suppressed unless toggled on. RotatingFileHandler opens in append
+    # mode when maxBytes > 0, so rotation is explicit; the size is read
+    # before construction opens the file (issue-6a3b7c52).
     _had_content = False
     try:
         _had_content = os.path.getsize(_DEBUG_LOG) > 0
@@ -131,9 +141,9 @@ def setup_logging(debug: bool = False) -> None:
     except OSError as e:
         print(f"[gtach] WARNING: could not open {_DEBUG_LOG}: {e}", file=sys.stderr)
 
-    # error.log — always on, WARNING and above. Deliberately no
-    # doRollover here: a restart caused by a fault must leave that
-    # fault's record in the live file (issue-269871a0).
+    # error.log — always on, WARNING and above; not rotated at start,
+    # so a fault that caused a restart stays in the live file
+    # (issue-269871a0).
     try:
         _error_handler = RotatingFileHandler(
             _ERROR_LOG,
@@ -207,63 +217,25 @@ def enable_stack_dumps() -> bool:
     """Arm fatal-error capture to stacks.log.
 
     While armed, a fatal error (segmentation fault, abort) writes the
-    traceback of every thread to stacks.log.
+    traceback of every thread to stacks.log. faulthandler's dumps of a
+    live process are not used, because they terminated the process on
+    the Pi (issue-1a8f40ea); on-request dumps are written by
+    gtach.utils.stack_dump.
 
-    faulthandler's all-thread dumps for live processes are not used:
-    the 15 s dump_traceback_later timer (issue-fe755cfd) and the
-    SIGUSR1 faulthandler.register dump (issue-1a8f40ea) both walk
-    running threads' frames without the GIL, and both terminated the
-    process on the Pi. On-request dumps are written by the Python-level
-    handler in gtach.utils.stack_dump, installed by main() for the
-    process lifetime and independent of this function.
+    Callable at any point in the process: setup_logging calls it with
+    --debug, and GTachApplication.toggle_debug_logging calls it when
+    debug is switched on at runtime.
 
-    The dumps were originally written to
-    sys.stderr, which under systemd is the journal rather than the
-    app-owned log set beside start.log and debug.log, so they were not
-    recoverable alongside the run they belonged to.
-
-    Arming lives here, with the other log-file handles, but is
-    deliberately callable at any point in the process lifetime rather
-    than from setup_logging alone. bin/gtach.service's ExecStart passes
-    no --debug, so args.debug is False on every service-launched run
-    and the startup path is not the path that matters in production
-    (issue-2ac1c602 iteration 3). Debug is enabled in the field at
-    runtime, through the OPTIONS screen toggle, and
-    GTachApplication.toggle_debug_logging calls this function on that
-    signal.
-
-    Idempotent: a second call while already armed opens no second file
-    handle and enables no second handler. Safe to call from a thread other
-    than the one that ran setup_logging — faulthandler's own calls are
-    thread-safe, and _stacks_file, the only shared state, transitions
-    by single assignment.
-
-    Two things happen around the arming itself. On the FIRST arm of a
-    process lifetime the existing stacks.log is rotated, bounding
-    cross-run accumulation without discarding the previous run — mode
-    is 'a', so a relaunch appends rather than truncating. And on EVERY
-    arm an identifying header is written before faulthandler is armed,
-    because the dumps themselves carry no timestamp, PID or run
-    identifier and would otherwise concatenate indistinguishably across
-    process lifetimes (issue-3b8c50f2).
-
-    The PID in that header is not incidental. Two headers with
-    different PIDs in one stacks.log is direct evidence that systemd
-    restarted the process, which is what issue-2ac1c602's verification
-    requires — captured automatically, rather than needing an operator
-    watching systemctl at the moment it happens.
-
-    Both additions run at arming time, when the process is by
-    definition healthy: the operator has just enabled the toggle, or
-    the process has just started. Nothing here runs during a stall,
-    which is why the anchor it writes survives one. Deliberately no
-    periodic timer of any kind (issue-fe755cfd).
+    Idempotent: a second call while armed opens no second file. On the
+    first arm of a process stacks.log is rotated; on every arm a header
+    with version, PID and time is written before faulthandler is armed,
+    so dumps from different runs can be told apart (issue-3b8c50f2).
 
     Returns:
-        True if stack dumps are armed on return — including when they
+        True if stack dumps are armed on return, including when they
         were already armed. False if the log file could not be opened.
         Rotation and header failures are reported to stderr but do not
-        change the result; the dumps matter more than their label.
+        change the result.
     """
     global _stacks_file, _stacks_rotated
 
@@ -349,17 +321,27 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
-    args = parse_arguments()
-    # One location rule: --config, else the ConfigStore default under
-    # GTACH_HOME (issue-5fbff586).
-    config_file = args.config
-    setup_logging(args.debug)
-    # On-request stack dumps for the process lifetime, independent of
-    # debug; SIGUSR1 never terminates the process (issue-1a8f40ea).
-    from .utils import stack_dump
+def _run_validation(args: argparse.Namespace) -> Optional[int]:
+    """Run a validation command if one was requested.
 
-    stack_dump.install(lambda: _STACKS_LOG)
+    Logs to stderr only and opens no log file, so it can run beside the
+    service (issue-042dd7ff).
+
+    Args:
+        args: Parsed arguments.
+
+    Returns:
+        The exit status, or None when no validation command was given.
+    """
+    if not (args.validate_dependencies or args.validate_config):
+        return None
+    logging.basicConfig(
+        stream=sys.stderr,
+        level=logging.DEBUG if args.debug else logging.WARNING,
+        format=_LOG_FORMAT,
+        datefmt=_LOG_DATE_FMT,
+    )
+    config_file = args.config
 
     if args.validate_dependencies:
         from .utils import validate_dependencies
@@ -368,23 +350,43 @@ def main() -> int:
         v.print_report(show_successful=args.debug)
         return 0 if v.can_start_application() else 1
 
-    if args.validate_config:
-        from .utils.config import ConfigStore
+    from .utils.config import ConfigStore
 
-        store = ConfigStore(Path(config_file) if config_file else None)
-        errors = store.validate()
-        for error in errors:
-            print(f"Config invalid: {error}")
-        if errors:
-            return 1
-        print(f"Config valid: {store.path}")
-        return 0
+    store = ConfigStore(Path(config_file) if config_file else None)
+    errors = store.validate()
+    for error in errors:
+        print(f"Config invalid: {error}")
+    if errors:
+        return 1
+    print(f"Config valid: {store.path}")
+    return 0
+
+
+def main() -> int:
+    """Run GTach.
+
+    Returns:
+        The process exit status: 1 after a startup failure, runtime
+        error or watchdog exit, else 0.
+    """
+    args = parse_arguments()
+    status = _run_validation(args)
+    if status is not None:
+        return status
+
+    setup_logging(args.debug)
+    # On-request stack dumps for the process lifetime, independent of
+    # debug (issue-1a8f40ea).
+    from .utils import stack_dump
+
+    stack_dump.install(lambda: _STACKS_LOG)
 
     from .app import GTachApplication
 
-    app = GTachApplication(config_file, args.debug, args)
-    app.run()
-    return 0
+    # One location rule: --config, else the ConfigStore default under
+    # GTACH_HOME (issue-5fbff586).
+    app = GTachApplication(args.config, args.debug, args)
+    return app.run()
 
 
 if __name__ == "__main__":

@@ -26,10 +26,15 @@ class TerminalRestorer:
         self.logger = logging.getLogger("TerminalRestorer")
         self.original_termios = None
 
-        # Backup terminal settings right away if we're in a TTY
-        if os.isatty(sys.stdin.fileno()):
+        # Backup terminal settings right away if stdin is a TTY. stdin may
+        # be None or closed; then no backup is taken (issue-042dd7ff).
+        try:
+            fd = sys.stdin.fileno() if sys.stdin is not None else None
+        except (ValueError, OSError):
+            fd = None
+        if fd is not None and os.isatty(fd):
             try:
-                self.original_termios = termios.tcgetattr(sys.stdin.fileno())
+                self.original_termios = termios.tcgetattr(fd)
                 self.logger.debug("Terminal settings backed up")
             except Exception as e:
                 self.logger.warning(f"Failed to backup terminal settings: {e}")

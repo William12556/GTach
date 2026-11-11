@@ -75,12 +75,14 @@ class TestEscalationWithoutRestart:
         manager.register_thread("worker", original)
         _age(manager, "worker", watchdog.critical_timeout + 5)
 
-        with caplog.at_level(logging.ERROR, logger="WatchdogMonitor"):
+        with caplog.at_level(logging.WARNING, logger="WatchdogMonitor"):
             for _ in range(3):
                 watchdog._check_thread_health()
                 watchdog.thread_health["worker"].last_recovery_time = float("-inf")
 
-        assert any(r.levelno == logging.ERROR for r in caplog.records)
+        # A non-critical thread is reported, not escalated (issue-042dd7ff).
+        assert any(r.levelno == logging.WARNING for r in caplog.records)
+        assert not any("emergency" in r.getMessage() for r in caplog.records)
         assert manager.threads["worker"].thread is original
         assert calls == []
 

@@ -237,7 +237,9 @@ class TestValidate:
 @pytest.fixture
 def logs(tmp_path, monkeypatch):
     """Redirect every log path and restore the root logger afterwards."""
+    monkeypatch.setenv("GTACH_HOME", str(tmp_path))
     for name, file in (
+        ("_STACKS_LOG", "stacks.log"),
         ("_START_LOG", "start.log"),
         ("_DEBUG_LOG", "debug.log"),
         ("_ERROR_LOG", "error.log"),

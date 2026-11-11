@@ -39,6 +39,9 @@ def logs(tmp_path, monkeypatch):
         "debug": tmp_path / "debug.log",
         "error": tmp_path / "error.log",
     }
+    # setup_logging derives the paths from GTACH_HOME (issue-042dd7ff).
+    monkeypatch.setenv("GTACH_HOME", str(tmp_path))
+    monkeypatch.setattr(gtach_main, "_STACKS_LOG", str(tmp_path / "stacks.log"))
     monkeypatch.setattr(gtach_main, "_START_LOG", str(paths["start"]))
     monkeypatch.setattr(gtach_main, "_DEBUG_LOG", str(paths["debug"]))
     monkeypatch.setattr(gtach_main, "_ERROR_LOG", str(paths["error"]))
@@ -116,8 +119,8 @@ class TestErrorLogHandler:
         assert not (logs["error"].parent / "error.log.1").exists()
 
     def test_unopenable_path_does_not_raise(self, logs, tmp_path, monkeypatch, capsys):
-        missing = tmp_path / "no" / "such" / "dir" / "error.log"
-        monkeypatch.setattr(gtach_main, "_ERROR_LOG", str(missing))
+        # A directory where error.log should be cannot be opened.
+        (tmp_path / "error.log").mkdir()
 
         gtach_main.setup_logging(debug=False)
 

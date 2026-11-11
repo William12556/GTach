@@ -17,11 +17,10 @@ the packaged engine profiles; SplashConfig configures the splash screen.
 import importlib.resources
 import logging
 import os
-import sys
 import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -29,6 +28,30 @@ from .home import gtach_home
 
 if TYPE_CHECKING:
     from ..display.models import RPMBands
+
+
+def _engine_profiles_path() -> Path:
+    """Locate the packaged assets/engine_profiles.yaml.
+
+    Resolved through importlib.resources on the regular package 'gtach':
+    'gtach.assets' has no __init__.py, and on Python 3.9 files() of such
+    a namespace package raises TypeError (issue-042dd7ff). Falls back to
+    the path relative to this module.
+
+    Returns:
+        The path; it may not exist.
+    """
+    logger = logging.getLogger(f"{__name__}.load_engine_profile")
+    try:
+        resource = (
+            importlib.resources.files("gtach") / "assets" / "engine_profiles.yaml"
+        )
+        path = Path(str(resource))
+        if path.exists():
+            return path
+    except Exception as e:
+        logger.debug(f"importlib.resources failed: {e}")
+    return Path(__file__).parent.parent / "assets" / "engine_profiles.yaml"
 
 
 def load_engine_profile(profile_name: str = "abarth_595_turismo") -> "RPMBands":
@@ -53,32 +76,9 @@ def load_engine_profile(profile_name: str = "abarth_595_turismo") -> "RPMBands":
         raise
 
     try:
-        # Try to load engine_profiles.yaml from assets directory
-        profile_path: Optional[Path] = None
+        profile_path = _engine_profiles_path()
 
-        # Method 1: Try importlib.resources (Python 3.9+)
-        try:
-            if sys.version_info >= (3, 9):
-                import importlib.resources as pkg_resources
-
-                files = pkg_resources.files("gtach.assets")
-                profile_path = cast(Path, files / "engine_profiles.yaml")
-            else:
-                # Fallback for older Python versions
-                import pkg_resources as pkg_res
-
-                profile_path = Path(
-                    pkg_res.resource_filename("gtach.assets", "engine_profiles.yaml")
-                )
-        except Exception as e:
-            logger.debug(f"importlib.resources failed: {e}")
-
-        # Method 2: Try relative path from this file
-        if profile_path is None or not Path(profile_path).exists():
-            config_dir = Path(__file__).parent.parent / "assets"
-            profile_path = config_dir / "engine_profiles.yaml"
-
-        if not Path(profile_path).exists():
+        if not profile_path.exists():
             logger.warning(
                 f"Engine profiles file not found at {profile_path}, using defaults"
             )
@@ -208,6 +208,38 @@ CONFIG_KEYS: Dict[str, type] = {
 }
 
 
+def _typed_value(kind: type, value: Any) -> Tuple[bool, Any]:
+    """Apply the config.yaml type rule to one value.
+
+    A bool is never a number, None is never valid, and an int key
+    accepts an integral float (converted to int). A float key accepts an
+    int (converted to float).
+
+    Args:
+        kind: The key's type from CONFIG_KEYS.
+        value: The parsed value.
+
+    Returns:
+        (True, converted value) if the value is acceptable, else
+        (False, None).
+    """
+    if value is None or isinstance(value, bool):
+        return False, None
+    if kind is float:
+        if isinstance(value, (int, float)):
+            return True, float(value)
+        return False, None
+    if kind is int:
+        if isinstance(value, int):
+            return True, value
+        if isinstance(value, float) and value.is_integer():
+            return True, int(value)
+        return False, None
+    if isinstance(value, kind):
+        return True, value
+    return False, None
+
+
 def _unknown_keys(data: Dict[str, Any]) -> Dict[str, Any]:
     """Return the entries of a parsed config mapping not in CONFIG_KEYS.
 
@@ -223,21 +255,12 @@ def _unknown_keys(data: Dict[str, Any]) -> Dict[str, Any]:
 def _engine_profile_names() -> List[str]:
     """Names of the profiles in assets/engine_profiles.yaml.
 
-    Resolves the file the way load_engine_profile does: the package
-    resource first, then the path relative to this module.
+    Resolves the file the way load_engine_profile does.
 
     Returns:
         The profile names; empty if the file cannot be read.
     """
-    profile_path: Optional[Path] = None
-    try:
-        profile_path = cast(
-            Path, importlib.resources.files("gtach.assets") / "engine_profiles.yaml"
-        )
-    except Exception:
-        profile_path = None
-    if profile_path is None or not Path(str(profile_path)).exists():
-        profile_path = Path(__file__).parent.parent / "assets" / "engine_profiles.yaml"
+    profile_path = _engine_profiles_path()
     try:
         with open(profile_path, "r") as f:
             data = yaml.safe_load(f)
@@ -253,9 +276,10 @@ class ConfigStore:
 
     load() never writes; save() writes atomically and keeps any keys it
     does not know, reading them from the file at save time so a save
-    without a prior load() does not drop them (issue-ae65fa10). The lock
-    guards the retained unknown keys; file I/O and logging happen
-    outside it (CLAUDE.md §4 rule 8).
+    without a prior load() does not drop them (issue-ae65fa10). _lock
+    guards the retained unknown keys and is never held across I/O.
+    _save_lock serialises whole saves and spans the file's I/O
+    (CLAUDE.md §4 rule 8).
     """
 
     def __init__(self, path: Optional[Path] = None):
@@ -268,6 +292,7 @@ class ConfigStore:
         self.path = Path(path) if path is not None else gtach_home() / "config.yaml"
         self.logger = logging.getLogger(f"{__name__}.ConfigStore")
         self._lock = threading.Lock()
+        self._save_lock = threading.Lock()
         self._unknown: Dict[str, Any] = {}
 
     def _read(self) -> Any:
@@ -305,9 +330,10 @@ class ConfigStore:
         for key, kind in CONFIG_KEYS.items():
             if key not in data:
                 continue
-            try:
-                values[key] = kind(data[key])
-            except (TypeError, ValueError):
+            ok, value = _typed_value(kind, data[key])
+            if ok:
+                values[key] = value
+            else:
                 self.logger.warning(
                     f"Invalid value for {key}: {data[key]!r}; using default "
                     f"{getattr(defaults, key)!r}"
@@ -339,7 +365,8 @@ class ConfigStore:
         mapping, the keys retained by the last load() or save() are used.
         Known fields are merged over the unknown keys, written to a
         temporary file in the same directory, flushed, fsync'd and moved
-        into place. The directory is created if missing.
+        into place. The directory is created if missing. Concurrent
+        saves are serialised (issue-042dd7ff).
 
         Args:
             config: The configuration to write.
@@ -347,6 +374,11 @@ class ConfigStore:
         Returns:
             True on success, False (logged) on failure.
         """
+        with self._save_lock:
+            return self._save_locked(config)
+
+    def _save_locked(self, config: AppConfig) -> bool:
+        """Body of save(); the caller holds _save_lock."""
         file_unknown: Optional[Dict[str, Any]] = None
         if self.path.exists():
             try:
@@ -405,17 +437,11 @@ class ConfigStore:
                 errors.append(f"unknown key: {key}")
                 continue
             kind = CONFIG_KEYS[key]
-            if kind is float:
-                type_ok = isinstance(value, (int, float)) and not isinstance(
-                    value, bool
-                )
-            elif kind is int:
-                type_ok = isinstance(value, int) and not isinstance(value, bool)
-            else:
-                type_ok = isinstance(value, kind)
+            type_ok, typed = _typed_value(kind, value)
             if not type_ok:
                 errors.append(f"{key}: expected {kind.__name__}, got {value!r}")
                 continue
+            value = typed
             if key == "mode" and value not in MODE_VALUES + LEGACY_MODE_VALUES:
                 errors.append(f"mode: {value!r} not in {list(MODE_VALUES)}")
             elif key == "palette" and value not in PALETTE_VALUES:
