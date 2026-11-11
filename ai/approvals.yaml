@@ -32,3 +32,4 @@ approvals:
   - { uuid: "72f95f73", stage: "prompt", date: "2026-10-14T13:01:10Z", blobs: { "prompt/prompt-72f95f73-sim_transport_monotonic.md": "c8354eeb49928558eabe9f8a0d5f2dcc4c034190" } }
   - { uuid: "72f95f73", stage: "change", date: "2026-10-14T13:05:35Z", blobs: { "change/change-72f95f73-sim-transport-monotonic.md": "5428dad47cb36b9c40f8a9d0a1b92f04a7327303" } }
   - { uuid: "72f95f73", stage: "accept", date: "2026-10-14T13:14:08Z", blobs: {  } }
+  - { uuid: "cfa4e617", stage: "change", date: "2026-11-11T10:37:30Z", blobs: { "change/change-cfa4e617-dead-code-removal.md": "1d11ab82dfe8bd3c382119156e0da04cb278d857" } }
