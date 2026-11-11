@@ -41,3 +41,4 @@ approvals:
   - { uuid: "34781bfe", stage: "change", date: "2026-11-11T10:37:42Z", blobs: { "change/change-34781bfe-setup-flow.md": "cb7cd763c9e6d05dd0f227f716f9badf3043ec3a" } }
   - { uuid: "34781bfe", stage: "prompt", date: "2026-11-11T10:37:44Z", blobs: { "prompt/prompt-34781bfe-setup-flow.md": "1a5b23c268d1da592381c9351f9b412979b74dd6" } }
   - { uuid: "2550e4ee", stage: "change", date: "2026-11-11T10:37:46Z", blobs: { "change/change-2550e4ee-gauge-display-touch.md": "48da22487bea419fc34ab956df4e026acb265ea9" } }
+  - { uuid: "2550e4ee", stage: "prompt", date: "2026-11-11T10:37:48Z", blobs: { "prompt/prompt-2550e4ee-gauge-display-touch.md": "e349786aa7ba2040e892c811c2e2c4ad386ab1df" } }
