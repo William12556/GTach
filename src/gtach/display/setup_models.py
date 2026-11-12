@@ -93,7 +93,6 @@ class SetupState:
 class SetupAction(Enum):
     """User actions during setup"""
 
-    NEXT = auto()
     BACK = auto()
     SELECT_DEVICE = auto()
     RETRY = auto()

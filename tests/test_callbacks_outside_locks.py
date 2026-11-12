@@ -90,6 +90,8 @@ def _interface(async_manager, pairing_factory=None, device_store=None):
     iface._state_coordinator = None
     iface.pairing = None
     iface._active_operations = {}
+    iface._submitted_ids = {}
+    iface._adapter_reset = False
     iface._ops_lock = threading.Lock()  # issue-d140121d
     iface._pairing_ready = threading.Event()
     return iface
@@ -302,6 +304,9 @@ class TestCurrentContinue:
         manager = object.__new__(SetupDisplayManager)
         manager.logger = logging.getLogger("test.callbacks_outside_locks")
         manager._probe_in_flight = False
+        manager._screen_render_cache = {}
+        manager._screen_needs_refresh = False
+        manager._render_cache_lock = threading.Lock()
         probes = []
         manager.bluetooth_interface = types.SimpleNamespace(
             start_device_probe=lambda on_result: probes.append(on_result)

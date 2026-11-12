@@ -155,6 +155,8 @@ def _interface(coordinator=None):
     iface._state_coordinator = coordinator
     iface.pairing = None
     iface._active_operations = {}
+    iface._submitted_ids = {}
+    iface._adapter_reset = False
     iface._ops_lock = threading.Lock()
     iface._pairing_ready = threading.Event()
     return iface
@@ -198,8 +200,10 @@ class TestInterfaceWrites:
         _, on_discovery = iface.async_manager.submitted[OperationType.DEVICE_DISCOVERY]
         on_discovery(_op(OperationStatus.COMPLETED, result=[]))
 
+        # An empty scan has no error line; DEVICE_LIST shows the state
+        # (issue-34781bfe).
         assert passed.pairing_status == PairingStatus.IDLE
-        assert passed.error_message.startswith("No devices found.")
+        assert passed.error_message is None
         assert iface._add_device(passed, _device(2)) is True
         assert iface._add_device(passed, _device(2)) is False
 

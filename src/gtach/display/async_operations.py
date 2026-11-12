@@ -11,6 +11,7 @@ Async operation framework for non-blocking UI operations.
 Provides worker thread architecture for setup operations and other blocking tasks.
 """
 
+import inspect
 import logging
 import queue
 import threading
@@ -147,9 +148,15 @@ class AsyncOperationManager:
             metadata: Optional operation metadata
             **kwargs: Keyword arguments for task function
 
+        The task receives the operation's progress reporter as the keyword
+        argument progress_callback when its signature declares a parameter
+        of that name.
+
         Returns:
             Operation ID for tracking
         """
+        wants_progress = "progress_callback" in inspect.signature(task_func).parameters
+
         with self._operations_lock:
             operation_id = f"op_{self._next_operation_id}"
             self._next_operation_id += 1
@@ -160,9 +167,8 @@ class AsyncOperationManager:
 
         with self._operations_lock:
             self.operations[operation_id] = operation
-
-        if progress_callback:
-            self.progress_callbacks[operation_id] = progress_callback
+            if progress_callback:
+                self.progress_callbacks[operation_id] = progress_callback
 
         # Queue the work
         work_item = {
@@ -170,6 +176,7 @@ class AsyncOperationManager:
             "task_func": task_func,
             "args": args,
             "kwargs": kwargs,
+            "wants_progress": wants_progress,
         }
 
         self.operation_queue.put(work_item)
@@ -190,7 +197,10 @@ class AsyncOperationManager:
             return self.operations.get(operation_id)
 
     def cancel_operation(self, operation_id: str) -> bool:
-        """Cancel a pending operation
+        """Cancel a pending operation.
+
+        A running operation cannot be interrupted; its owner ignores its
+        completion instead (issue-34781bfe).
 
         Args:
             operation_id: ID of operation to cancel
@@ -221,37 +231,6 @@ class AsyncOperationManager:
                 if op.status in {OperationStatus.PENDING, OperationStatus.RUNNING}
             }
 
-    def cleanup_completed_operations(self, max_age_seconds: float = 300.0) -> None:
-        """Clean up old completed operations
-
-        Args:
-            max_age_seconds: Maximum age for completed operations
-        """
-        current_time = time.monotonic()
-        to_remove = []
-
-        with self._operations_lock:
-            for op_id, operation in self.operations.items():
-                if (
-                    operation.status
-                    in {
-                        OperationStatus.COMPLETED,
-                        OperationStatus.FAILED,
-                        OperationStatus.CANCELLED,
-                    }
-                    and operation.end_time
-                    and (current_time - operation.end_time) > max_age_seconds
-                ):
-                    to_remove.append(op_id)
-
-            for op_id in to_remove:
-                del self.operations[op_id]
-                if op_id in self.progress_callbacks:
-                    del self.progress_callbacks[op_id]
-
-        if to_remove:
-            self.logger.debug(f"Cleaned up {len(to_remove)} completed operations")
-
     def _worker_loop(self) -> None:
         """Main worker thread loop"""
         worker_name = threading.current_thread().name
@@ -267,10 +246,12 @@ class AsyncOperationManager:
 
                 operation_id = work_item["operation_id"]
 
-                # Check if operation was cancelled
+                # A cancelled operation is dropped without running.
                 with self._operations_lock:
                     operation = self.operations.get(operation_id)
                     if not operation or operation.status == OperationStatus.CANCELLED:
+                        self.operations.pop(operation_id, None)
+                        self.progress_callbacks.pop(operation_id, None)
                         self.operation_queue.task_done()
                         continue
 
@@ -291,9 +272,8 @@ class AsyncOperationManager:
                     args = work_item["args"]
                     kwargs = work_item["kwargs"]
 
-                    # Add progress callback to kwargs if the function expects it
-                    if "progress_callback" in task_func.__code__.co_varnames:
-                        kwargs["progress_callback"] = progress_callback
+                    if work_item["wants_progress"]:
+                        kwargs = {**kwargs, "progress_callback": progress_callback}
 
                     result = task_func(*args, **kwargs)
 
@@ -323,21 +303,24 @@ class AsyncOperationManager:
                         f"Operation {operation_id} failed: {e}", exc_info=True
                     )
 
-                # Notify progress callback if registered
-                if operation_id in self.progress_callbacks:
+                # Capture under the lock, call after releasing it
+                # (CLAUDE.md §4 rule 8).
+                with self._operations_lock:
+                    operation = self.operations.get(operation_id)
+                    callback = self.progress_callbacks.get(operation_id)
+                if operation and callback:
                     try:
-                        # Capture under the lock, call after releasing it
-                        # (CLAUDE.md §4 rule 8, issue-fbe7e98a).
-                        with self._operations_lock:
-                            operation = self.operations.get(operation_id)
-                            callback = self.progress_callbacks.get(operation_id)
-                        if operation and callback:
-                            callback(operation)
+                        callback(operation)
                     except Exception as e:
                         self.logger.error(
                             f"Progress callback error for {operation_id}: {e}",
                             exc_info=True,
                         )
+
+                # A finished operation is not retained (issue-34781bfe).
+                with self._operations_lock:
+                    self.operations.pop(operation_id, None)
+                    self.progress_callbacks.pop(operation_id, None)
 
                 self.operation_queue.task_done()
 
@@ -363,16 +346,13 @@ class AsyncOperationManager:
                 if message:
                     operation.metadata["progress_message"] = message
 
-        # Notify progress callback if registered
-        if operation_id in self.progress_callbacks:
+        # Capture under the lock, call after releasing it (CLAUDE.md §4 rule 8).
+        with self._operations_lock:
+            operation = self.operations.get(operation_id)
+            callback = self.progress_callbacks.get(operation_id)
+        if operation and callback:
             try:
-                # Capture under the lock, call after releasing it
-                # (CLAUDE.md §4 rule 8, issue-fbe7e98a).
-                with self._operations_lock:
-                    operation = self.operations.get(operation_id)
-                    callback = self.progress_callbacks.get(operation_id)
-                if operation and callback:
-                    callback(operation)
+                callback(operation)
             except Exception as e:
                 self.logger.error(
                     f"Progress callback error for {operation_id}: {e}", exc_info=True

@@ -47,9 +47,8 @@ class SetupStateCoordinator:
         #
         # focused_index is the 0-based index into
         # state.discovered_devices of the device occupying the middle
-        # (and only selectable) slot of the DEVICE_LIST screen. It
-        # replaces the former scroll_offset/max_scroll pair, which no
-        # render or touch path ever read (change-479b2e51).
+        # (and only selectable) slot of the DEVICE_LIST screen
+        # (change-479b2e51).
         self.focused_index = 0
         self.animation_time = 0.0
 
@@ -132,9 +131,10 @@ class SetupStateCoordinator:
                 if screen == SetupScreen.DISCOVERY:
                     self.state.pairing_status = PairingStatus.IDLE
                 elif screen == SetupScreen.DEVICE_LIST:
-                    # Focus starts on the first device every time the
-                    # screen is entered (change-479b2e51).
+                    # Focus starts on the first device; no operation is
+                    # in progress on entry.
                     self.focused_index = 0
+                    self.state.pairing_status = PairingStatus.IDLE
                 elif screen == SetupScreen.PAIRING:
                     if not self.state.selected_device:
                         self.logger.warning(
@@ -176,9 +176,11 @@ class SetupStateCoordinator:
         try:
             self.logger.debug(f"Handling setup action: {action.name}")
 
+            # The device list is reset before each transition, so the new
+            # screen never shows a stale list (issue-34781bfe).
             if action == SetupAction.START_DISCOVERY:
-                self.transition_to_screen(SetupScreen.DISCOVERY)
                 self.reset_discovery()
+                self.transition_to_screen(SetupScreen.DISCOVERY)
                 return True
 
             elif action == SetupAction.SELECT_DEVICE:
@@ -209,12 +211,9 @@ class SetupStateCoordinator:
             elif action == SetupAction.BACK:
                 return self._handle_back_navigation()
 
-            elif action == SetupAction.NEXT:
-                return self._handle_next_navigation()
-
             elif action == SetupAction.CANCEL:
-                self.transition_to_screen(SetupScreen.WELCOME)
                 self.reset_discovery()
+                self.transition_to_screen(SetupScreen.WELCOME)
                 return True
 
             elif action == SetupAction.COMPLETE:
@@ -246,32 +245,6 @@ class SetupStateCoordinator:
             self.transition_to_screen(SetupScreen.WELCOME)
         else:
             self.transition_to_screen(SetupScreen.WELCOME)
-
-        return True
-
-    def _handle_next_navigation(self) -> bool:
-        """Handle next navigation between screens"""
-        current = self.state.current_screen
-
-        if current == SetupScreen.WELCOME:
-            self.transition_to_screen(SetupScreen.DISCOVERY)
-        elif current == SetupScreen.DISCOVERY:
-            if self.state.discovered_devices:
-                self.transition_to_screen(SetupScreen.DEVICE_LIST)
-            else:
-                self.logger.warning("NEXT from discovery without discovered devices")
-                return False
-        elif current == SetupScreen.DEVICE_LIST:
-            if self.state.selected_device:
-                self.transition_to_screen(SetupScreen.PAIRING)
-            else:
-                self.logger.warning("NEXT from device list without selected device")
-                return False
-        else:
-            self.logger.warning(
-                f"NEXT navigation not defined for screen: {current.name}"
-            )
-            return False
 
         return True
 

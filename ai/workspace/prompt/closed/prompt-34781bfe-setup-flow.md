@@ -158,6 +158,7 @@ notes: "Model: Claude Opus 5.5, effort medium; effort high may be chosen for thi
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial prompt implementing change-34781bfe iteration 1. Target profile claude_code. |
+| 1.1 | 2026-11-12 | Executed by Claude Code. EDITS A to G and the COMMENT RULE applied; deviations are listed in report-34781bfe. pytest and mypy pass. Closed and moved to ai/workspace/prompt/closed/. |
 
 ---
 

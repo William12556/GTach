@@ -16,6 +16,7 @@ cause, a bounded number of times.
 import errno
 import logging
 import socket
+import threading
 import time
 import types
 from typing import List, Optional
@@ -67,6 +68,8 @@ def verify(monkeypatch):
     interface = BluetoothSetupInterface.__new__(BluetoothSetupInterface)
     interface.logger = logging.getLogger("test")
     interface._pairing_factory = None
+    interface._ops_lock = threading.Lock()
+    interface._adapter_reset = False
     device = types.SimpleNamespace(mac_address="00:11:22:33:44:55")
     interface.device_store = types.SimpleNamespace(  # type: ignore[assignment]
         get_primary_device=lambda: device

@@ -429,8 +429,7 @@ class GTachApplication:
             except Exception as e:
                 self.logger.error(f"Stopping setup manager failed: {e}", exc_info=True)
         self._setup_manager = SetupDisplayManager(
-            # TODO: issue-ac11505d candidate defect - main_surface may be None here
-            self._display.rendering_engine.main_surface,  # type: ignore[arg-type]  # TODO: issue-ac11505d  # noqa: E501
+            self._display.rendering_engine.main_surface,
             self._thread_manager,
             self._display.touch_handler,
             pairing_factory=pairing_factory,
