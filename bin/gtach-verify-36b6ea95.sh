@@ -176,11 +176,13 @@ fi
 
 # ------------------------------------------------- C4 907de6de (Phase 2)
 hdr "C4 907de6de — OBD initialisation and link events"
-for p in "Initialization failed" "No valid 0100" "adapter closed the connection" \
+# A silent vehicle is a WARNING "Vehicle not answering" since change-b4f9607a;
+# "Initialization failed" now marks an exception during initialisation only.
+for p in "Initialization failed" "Vehicle not answering" "adapter closed the connection" \
          "consecutive timeouts" "dropped - will attempt to reconnect" "Connected to "; do
     printf '   %-40s %s\n' "$p" "$(count "$p")"
 done
-show "Initialization failed|No valid 0100|adapter closed the connection|consecutive timeouts|dropped - will|Connected to " 10
+show "Initialization failed|Vehicle not answering|adapter closed the connection|consecutive timeouts|dropped - will|Connected to " 10
 if [ -z "$DBG_FILES" ]; then
     echo "   debug.log absent: INFO-level link records are only in debug.log; enable Debug for guide session F (4.6)."
 fi
