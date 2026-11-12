@@ -17,7 +17,7 @@ issue_info:
   title: "Setup re-entry, OBD start and exit-status defects in app.py; logging cost and side effects in main.py; watchdog log repetition; configuration, dependency, terminal and reset-outcome defects in utils/"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "verified"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -148,7 +148,7 @@ verification:
   verified_date: "2026-11-12"
   verified_by: "William Watson"
   test_results: "Device session A (test-71ab3751-device-session-a steps A1 to A3, A5, A6, A8 to A10): all checks passed. The 2026-10-09 'reboot command failed' record is explained: /sbin/reboot is ended by SIGTERM (-15) during shutdown, now reported as 'reboot initiated'."
-  closure_notes: ""
+  closure_notes: "Closed with the 71ab3751 series (version 0.5.0). The [tool.mypy] python_version decision remains an ai/task.md row."
 
 prevention:
   preventive_measures: "Diagnostic entry points do not share the service's logging setup."
@@ -194,6 +194,12 @@ version_history:
     changes:
       - "Verified on device in session A."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series; moved to issues/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -211,6 +217,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial issue document. B01-B04, B06, B07, E02-E06, F01, O1 and six task rows. |
 | 1.1 | 2026-11-11 | Resolved by change-042dd7ff (2cffdae); awaiting device session A. |
 | 1.2 | 2026-11-12 | Verified on device in session A. |
+| 1.3 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 

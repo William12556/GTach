@@ -11,6 +11,7 @@ Created: 2026 November 10
 - [5.0 Scheduled Audit Dispositions](#50-scheduled-audit-dispositions)
 - [6.0 Verification of Suspected Findings](#60-verification-of-suspected-findings)
 - [7.0 Recommendations](#70-recommendations)
+- [8.0 Closure](#80-closure)
 - [Version History](#version-history)
 
 ---
@@ -640,12 +641,31 @@ Each `src/` change requires an issue, change and prompt set, unless it qualifies
 
 ---
 
+## 8.0 Closure
+
+| Item | Record |
+|---|---|
+| Closure date | 2026-11-12 |
+| Approver | William Watson |
+| Remediation | proposal-71ab3751: five issue/change/prompt sets (cfa4e617, b4f9607a, 042dd7ff, 34781bfe, 2550e4ee) and one follow-up set (146491ba), all verified and closed |
+| Device verification | test-71ab3751-device-session-a and test-71ab3751-device-session-b, both passed on 2026-11-12 |
+| Direct edits | G02, G03 (`bin/`), 2026-11-11 |
+| Version | 0.5.0 |
+| Scheduled audits | 005f1cf4, 8264c76d, 008e2929 and fccd5931 closed as superseded (section 5.0) |
+| Not changed | O3 (deferred row 821919ce); W4 (decision D8); D3 deviation (`rpm_warning`, `rpm_danger` kept) |
+| Carried forward in `ai/task.md` | In-car test (deferred); stuck Bluetooth (EBUSY) recovery; design review; engine-off display state; simbt device classification; mypy `python_version`; `DEVICE_NOT_SAVED_TEXT` width; session B observations (ECONNABORTED after setup, EBADF at ERROR, boot-time connect) |
+
+[Return to Table of Contents](#table-of-contents)
+
+---
+
 ## Version History
 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-10 | Initial audit |
 | 1.1 | 2026-11-10 | §5.0 added: dispositions for the four open scheduled daily audits; findings C08 (medium), A12, B06, B07, C09, E05, E06, F01, F02, F03, G01, G02, G03 added; A06, A09, E01 extended; B05 withdrawn; totals and section numbers updated |
+| 1.2 | 2026-11-12 | §8.0 added: closure record; moved to audit/closed/ |
 
 ---
 

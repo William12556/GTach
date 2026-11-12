@@ -2,6 +2,8 @@ Created: 2026 October 15
 
 # GTach Scheduled Daily Audit — 2026-10-15 (audit-fccd5931)
 
+> **Status: Closed — superseded (2026-11-12).** Every item was re-checked in audit-71ab3751 §5.4 and resolved by the 71ab3751 series (version 0.5.0).
+
 ---
 
 ## Table of Contents
@@ -138,5 +140,6 @@ assert result == "41 0C 39 08"
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-15 | Initial scheduled daily audit. |
+| 1.1 | 2026-11-12 | Closed as superseded by audit-71ab3751 §5.4; moved to audit/closed/. |
 
 Copyright (c) 2026 William Watson. MIT License.

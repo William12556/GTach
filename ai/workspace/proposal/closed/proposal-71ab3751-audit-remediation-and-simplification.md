@@ -2,6 +2,8 @@
 
 Created: 2026 November 11
 
+> **Status: Closed — completed (2026-11-12).** All five runs and the follow-up set 146491ba were implemented, verified on the device and closed; version 0.5.0. The in-car test is deferred (`ai/task.md`).
+
 ## Table of Contents
 
 - [1.0 Summary](#10-summary)
@@ -330,6 +332,7 @@ ANTHROPIC, 2026b. *Claude Opus 5.5* [online]. Claude Platform Docs. Available fr
 | 1.2 | 2026-11-11 | §3.0 contracts corrected and extended (existing `show_all_devices` parameter, same-scan fallback, three further interfaces); §4.7 Document Sets added with the five UUIDs and the deviations; Execution Profile renumbered to §4.8; §5.0 G02 and G03 marked done; D1 refinement noted |
 | 1.3 | 2026-11-11 | §6.0 D3 revised after run 1 (`rpm_warning`, `rpm_danger` kept) |
 | 1.4 | 2026-11-12 | §6.0 D1 refinement approved |
+| 1.5 | 2026-11-12 | Closed: series completed; moved to proposal/closed/ |
 
 ---
 

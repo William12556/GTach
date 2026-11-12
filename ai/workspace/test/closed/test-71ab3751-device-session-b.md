@@ -218,6 +218,7 @@ Session run on 2026-11-12, 08:02 to 09:57, with GTach 0.4.15 (`main` at the run 
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial procedure for device session B (runs 4 and 5 of proposal-71ab3751). |
 | 1.1 | 2026-11-12 | Session run; results and notes recorded. |
+| 1.2 | 2026-11-12 | Closed with the 71ab3751 series; moved to test/closed/. |
 
 ---
 

@@ -17,7 +17,7 @@ change_info:
   title: "Keep the pairing factory on setup re-entry; skip ATZ only after a reset in this session; truthful exit status; step-wise shutdown; root log level follows the debug switch; side-effect-free validation commands; log paths under GTACH_HOME; utility corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "verified"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -344,6 +344,12 @@ version_history:
     changes:
       - "Verified on device in session A (test-71ab3751-device-session-a)."
 
+  - version: "1.4"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series (version 0.5.0); moved to change/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -362,6 +368,7 @@ metadata:
 | 1.1 | 2026-11-11 | Approved for implementation. |
 | 1.2 | 2026-11-11 | Implemented in 2cffdae; awaiting device session A. |
 | 1.3 | 2026-11-12 | Verified on device in session A. |
+| 1.4 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 

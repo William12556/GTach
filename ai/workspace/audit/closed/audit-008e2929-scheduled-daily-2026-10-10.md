@@ -2,6 +2,8 @@ Created: 2026 October 10
 
 # GTach Scheduled Daily Audit — 2026-10-10 (audit-008e2929)
 
+> **Status: Closed — superseded (2026-11-12).** Every item was re-checked in audit-71ab3751 §5.3; F1 was already resolved, the rest by the 71ab3751 series (version 0.5.0).
+
 ---
 
 ## Table of Contents
@@ -118,5 +120,6 @@ _global_performance_manager = None
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-10 | Initial scheduled daily audit. |
+| 1.1 | 2026-11-12 | Closed as superseded by audit-71ab3751 §5.3; moved to audit/closed/. |
 
 Copyright (c) 2026 William Watson. MIT License.

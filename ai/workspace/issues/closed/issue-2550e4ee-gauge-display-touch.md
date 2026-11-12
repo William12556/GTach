@@ -17,7 +17,7 @@ issue_info:
   title: "DisplayManager initialisation and setup-mode races; long press decided by duration alone; stale touch start; documentation and efficiency defects in the gauge display"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "verified"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -126,7 +126,7 @@ verification:
   verified_date: "2026-11-12"
   verified_by: "William Watson"
   test_results: "Device session B (test-71ab3751-device-session-b steps B6 and B7): all checks passed. In-car test deferred."
-  closure_notes: ""
+  closure_notes: "Closed with the 71ab3751 series (version 0.5.0). The in-car test is deferred and remains an ai/task.md row."
 
 prevention:
   preventive_measures: "Attributes read by other threads are assigned before any step that can fail; shared references are copied to a local before test-and-use."
@@ -173,6 +173,12 @@ version_history:
     changes:
       - "Verified on device in session B; in-car test deferred."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series; moved to issues/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -190,6 +196,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial issue document. C03-C07, C09, F02, A09, O2, O5 and two task rows. |
 | 1.1 | 2026-11-12 | Resolved by change-2550e4ee (afe7423); awaiting device session B. |
 | 1.2 | 2026-11-12 | Verified on device in session B; in-car test deferred. |
+| 1.3 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 

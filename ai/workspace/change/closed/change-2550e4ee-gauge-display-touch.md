@@ -17,7 +17,7 @@ change_info:
   title: "Assign display attributes before fallible initialisation; local copies of the setup manager; long press requires a touch at rest; bounded touch-start age; one link evaluation per frame; documentation, font and default corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "verified"
+  status: "closed"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -273,6 +273,12 @@ version_history:
     changes:
       - "Verified on device in session B (test-71ab3751-device-session-b); in-car test deferred."
 
+  - version: "1.4"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series (version 0.5.0); moved to change/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -291,6 +297,7 @@ metadata:
 | 1.1 | 2026-11-11 | Approved for implementation. |
 | 1.2 | 2026-11-12 | Implemented in afe7423; awaiting device session B. |
 | 1.3 | 2026-11-12 | Verified on device in session B; in-car test deferred. |
+| 1.4 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 

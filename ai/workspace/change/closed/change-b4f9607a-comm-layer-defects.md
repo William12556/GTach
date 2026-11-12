@@ -17,7 +17,7 @@ change_info:
   title: "Close a link that connects after disconnect; treat OSError as serial link loss; discovery fallback and wait sizing; effective pairing cancellation; truthful device-store results; separate simulation store path; quieter OBD start-up; non-joining OBD stop function"
   date: "2026-11-11"
   author: "William Watson"
-  status: "verified"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -338,6 +338,12 @@ version_history:
     changes:
       - "Fallback observed on device in session B."
 
+  - version: "1.5"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series (version 0.5.0); moved to change/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -357,6 +363,7 @@ metadata:
 | 1.2 | 2026-11-11 | Implemented in 963fd0f; awaiting device session A. |
 | 1.3 | 2026-11-12 | Verified on device in session A; fallback to be observed in session B. |
 | 1.4 | 2026-11-12 | Fallback observed on device in session B. |
+| 1.5 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 

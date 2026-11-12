@@ -17,7 +17,7 @@ issue_info:
   title: "Code, configuration keys and one data file under src/gtach have no caller or reader"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "verified"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -142,7 +142,7 @@ verification:
   verified_date: "2026-11-12"
   verified_by: "William Watson"
   test_results: "Device session A (test-71ab3751-device-session-a step A1): gauge, touch, palette and setup screens unchanged."
-  closure_notes: ""
+  closure_notes: "Closed with the 71ab3751 series (version 0.5.0). D3 deviation stands: rpm_warning and rpm_danger remain in the configuration schema and are read by no rendering path."
 
 prevention:
   preventive_measures: "Remove superseded code in the change that supersedes it."
@@ -188,6 +188,12 @@ version_history:
     changes:
       - "Verified on device in session A."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series; moved to issues/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -205,6 +211,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial issue document. E01, W1, D2, D3, D4. |
 | 1.1 | 2026-11-11 | Resolved by change-cfa4e617 (f89dc2f); rpm_warning and rpm_danger kept; awaiting device session A. |
 | 1.2 | 2026-11-12 | Verified on device in session A. |
+| 1.3 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 

@@ -17,7 +17,7 @@ issue_info:
   title: "OBD check after pairing fails on a connection reset; the fallback notice is truncated on DEVICE_LIST; a link lost during initialisation is logged as a silent vehicle"
   date: "2026-11-12"
   reporter: "William Watson"
-  status: "verified"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -110,7 +110,7 @@ verification:
   verified_date: "2026-11-12"
   verified_by: "William Watson"
   test_results: "Four setups with the emulator completed without Retry; ECONNRESET did not recur, so F1's reset retry is covered by unit tests only. F2: 'No ELM327' shown in full. F3: unit tests only."
-  closure_notes: ""
+  closure_notes: "Closed with the 71ab3751 series (version 0.5.0). The reset retry has not yet run on the device (no ECONNRESET in four pairings). DEVICE_NOT_SAVED_TEXT (221 px) remains an ai/task.md row."
 
 prevention:
   preventive_measures: "Fixed display texts are checked against their render width by a unit test."
@@ -158,6 +158,12 @@ version_history:
     changes:
       - "Verified on device; reset retry not observed."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series; moved to issues/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -175,6 +181,7 @@ metadata:
 | 1.0 | 2026-11-12 | Initial issue document. Session B findings F1 to F3. |
 | 1.1 | 2026-11-12 | Resolved by change-146491ba (33a40e3); awaiting device check. |
 | 1.2 | 2026-11-12 | Verified on device; reset retry not observed. |
+| 1.3 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 

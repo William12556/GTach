@@ -17,7 +17,7 @@ change_info:
   title: "Retry the post-pairing OBD check on a connection reset; shorten the fallback notice; do not report a lost link as a silent vehicle"
   date: "2026-11-12"
   author: "William Watson"
-  status: "verified"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -215,6 +215,12 @@ version_history:
     changes:
       - "Verified on device; reset retry not observed (no ECONNRESET in four pairings). design-a3b4c5d6 4.3 updated."
 
+  - version: "1.4"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series (version 0.5.0); moved to change/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -233,6 +239,7 @@ metadata:
 | 1.1 | 2026-11-12 | Approved for implementation. |
 | 1.2 | 2026-11-12 | Implemented in 33a40e3; awaiting device check. |
 | 1.3 | 2026-11-12 | Verified on device; reset retry covered by unit tests only. |
+| 1.4 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 

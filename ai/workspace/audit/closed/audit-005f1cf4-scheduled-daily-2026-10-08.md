@@ -1,6 +1,8 @@
 Created: 2026 October 8
 # GTach Scheduled Daily Audit — 2026-10-08 (audit-005f1cf4)
 
+> **Status: Closed — superseded (2026-11-12).** Every item was re-checked in audit-71ab3751 §5.1 and resolved by the 71ab3751 series (version 0.5.0).
+
 ---
 
 ## Table of Contents
@@ -351,5 +353,6 @@ return min(9000, max(7000, math.ceil((redline + 500) / 1000) * 1000))
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-08 | Initial scheduled daily audit. |
+| 1.1 | 2026-11-12 | Closed as superseded by audit-71ab3751 §5.1; moved to audit/closed/. |
 
 Copyright (c) 2026 William Watson. MIT License.

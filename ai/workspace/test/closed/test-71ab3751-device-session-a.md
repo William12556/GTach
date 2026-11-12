@@ -309,6 +309,7 @@ Session run on 2026-11-12, 05:39 to 07:12, with GTach at commit `2cffdae`.
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial procedure for device session A (runs 1 to 3 of proposal-71ab3751). |
 | 1.1 | 2026-11-12 | Session run; results recorded. Section 3.0: engine-off and pull-logs commands added. A6 item 4 and A7 items 1 and 3 corrected. Section 4.12 notes added. |
+| 1.2 | 2026-11-12 | Closed with the 71ab3751 series; moved to test/closed/. |
 
 ---
 

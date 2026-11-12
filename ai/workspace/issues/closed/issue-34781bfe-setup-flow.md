@@ -17,7 +17,7 @@ issue_info:
   title: "Discovery outcomes are not presented and scans repeat without end; the stored-device probe acts after the operator has left its screen; cancellation does not stop or silence running operations; further setup-screen defects"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "verified"
+  status: "closed"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -135,7 +135,7 @@ verification:
   verified_date: "2026-11-12"
   verified_by: "William Watson"
   test_results: "Device session B (test-71ab3751-device-session-b steps B2 to B5 and B8): all checks passed. New Setup visibility during the probe and an empty device list were not observable on the device; unit tests cover both."
-  closure_notes: ""
+  closure_notes: "Closed with the 71ab3751 series (version 0.5.0). New Setup during a probe and an empty device list were not observable on the device; unit tests cover both. The simbt device classification remains an ai/task.md row."
 
 prevention:
   preventive_measures: "The operation rule of design-a3b4c5d6 section 6.0 applies to every new setup operation."
@@ -182,6 +182,12 @@ version_history:
     changes:
       - "Verified on device in session B."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Closed with the 71ab3751 series; moved to issues/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -199,6 +205,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial issue document. D01-D04, C01, C02, C08, X01, A09, B02, O4, W2. |
 | 1.1 | 2026-11-12 | Resolved by change-34781bfe (c8901f5); awaiting device session B. |
 | 1.2 | 2026-11-12 | Verified on device in session B. |
+| 1.3 | 2026-11-12 | Closed with the 71ab3751 series; moved to closed/. |
 
 ---
 
