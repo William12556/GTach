@@ -17,7 +17,7 @@ change_info:
   title: "Assign display attributes before fallible initialisation; local copies of the setup manager; long press requires a touch at rest; bounded touch-start age; one link evaluation per frame; documentation, font and default corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -222,12 +222,17 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-11-12"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
-  test_results: ""
-  issues_found: []
+  test_results: "Commit afe74234f1207b8c931b4d21048b492651713af0: pytest 721 passed (27 new in tests/test_gauge_display_touch.py); mypy src/ no issues (worker's results, report-2550e4ee section 4). Against the base code 18 of the new tests fail and the C04 frame test hangs."
+  issues_found:
+    - "New public method TouchEventCoordinator.is_button_at(pos) (not listed in interface_changes): wraps the private hit test under the coordinator lock; used by TouchHandler to recognise a hold on a button. Accepted."
+    - "A hold on a button presses at the start position; movement is below the swipe threshold. Accepted."
+    - "A failed palette save logs an ERROR in _save_config and the WARNING in _toggle_palette. Accepted."
+    - "Helpers _swipe_threshold (touch.py) and gauge_full_scale (manager.py) are module functions so that existing tests with stub hosts keep working. Accepted."
+    - "The per-frame link value reflects samples drained up to the previous frame (about 33 ms at 30 Hz), as recorded under risks."
 
 traceability:
   design_updates:
@@ -256,6 +261,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Implemented in afe74234f1207b8c931b4d21048b492651713af0; awaiting device session B."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -272,6 +283,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to E. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
+| 1.2 | 2026-11-12 | Implemented in afe7423; awaiting device session B. |
 
 ---
 
