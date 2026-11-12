@@ -6,11 +6,11 @@
 # GTach is licensed under the MIT License.
 # See the LICENSE file in the project root for full license text.
 
-"""Bounded link-busy retry in the post-pairing OBD verify (issue-d26ca557).
+"""Bounded retry in the post-pairing OBD verify (issue-d26ca557, issue-146491ba).
 
 The RFCOMM connect issued milliseconds after pairing can fail with
-EBUSY. verify_obd_connection now retries that cause, and only that
-cause, a bounded number of times.
+EBUSY or ECONNRESET. verify_obd_connection retries those two causes,
+and only those, a bounded number of times.
 """
 
 import errno
@@ -24,7 +24,11 @@ from typing import List, Optional
 import pytest
 
 import gtach.comm.rfcomm as rfcomm_module
-from gtach.comm.transport import _CONNECT_FAULT_CAUSES, LINK_BUSY_CAUSE
+from gtach.comm.transport import (
+    _CONNECT_FAULT_CAUSES,
+    LINK_BUSY_CAUSE,
+    LINK_RESET_CAUSE,
+)
 from gtach.display.setup_components.bluetooth.interface import (
     BluetoothSetupInterface,
 )
@@ -112,3 +116,55 @@ def test_busy_three_times_gives_up(verify):
 
 def test_link_busy_cause_matches_mapping():
     assert LINK_BUSY_CAUSE == _CONNECT_FAULT_CAUSES[errno.EBUSY]
+
+
+def test_reset_then_success(verify):
+    run, sleeps = verify
+
+    assert run([LINK_RESET_CAUSE, None]) is True
+    (transport,) = _FakeRFCOMM.instances
+    assert transport.connect_calls == 2
+    assert sleeps == [1.0]
+    assert transport.disconnect_calls == 1
+
+
+def test_reset_then_busy_then_success(verify):
+    run, sleeps = verify
+
+    assert run([LINK_RESET_CAUSE, LINK_BUSY_CAUSE, None]) is True
+    (transport,) = _FakeRFCOMM.instances
+    assert transport.connect_calls == 3
+    assert sleeps == [1.0, 1.0]
+
+
+def test_reset_three_times_gives_up(verify):
+    run, sleeps = verify
+
+    assert run([LINK_RESET_CAUSE] * 3) is False
+    (transport,) = _FakeRFCOMM.instances
+    assert transport.connect_calls == 3
+    assert len(sleeps) == 2
+
+
+def test_refused_is_not_retried(verify):
+    run, sleeps = verify
+
+    assert run(["connection refused by adapter"]) is False
+    (transport,) = _FakeRFCOMM.instances
+    assert transport.connect_calls == 1
+    assert sleeps == []
+
+
+def test_retry_record_names_the_cause(verify, caplog):
+    run, _ = verify
+
+    with caplog.at_level(logging.INFO, logger="test"):
+        run([LINK_RESET_CAUSE, None])
+
+    messages = [r.getMessage() for r in caplog.records]
+    assert f"OBD verify: {LINK_RESET_CAUSE}, retrying (attempt 2/3)" in messages
+
+
+def test_link_reset_cause_matches_mapping():
+    assert LINK_RESET_CAUSE == _CONNECT_FAULT_CAUSES[errno.ECONNRESET]
+    assert len(LINK_RESET_CAUSE) <= 40

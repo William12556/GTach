@@ -47,6 +47,11 @@ TRANSPORT_FAST = ("simbt", "simtcp", "tcp")
 # duplicating the literal.
 LINK_BUSY_CAUSE = "bluetooth link busy - may need reset"
 
+# A connect issued just after pairing can be reset by the adapter while
+# the pairing link closes; public so the post-pairing check can retry
+# it (issue-146491ba).
+LINK_RESET_CAUSE = "connection reset by adapter"
+
 _CONNECT_FAULT_CAUSES = {
     _errno.EBUSY: LINK_BUSY_CAUSE,
     _errno.ETIMEDOUT: "connection timed out",
@@ -55,6 +60,7 @@ _CONNECT_FAULT_CAUSES = {
     _errno.ENODEV: "no bluetooth controller",
     _errno.ENETDOWN: "bluetooth controller down",
     _errno.ECONNREFUSED: "connection refused by adapter",
+    _errno.ECONNRESET: LINK_RESET_CAUSE,
 }
 
 # Recorded when a link is torn down for sustained silence rather than

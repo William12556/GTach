@@ -15,12 +15,12 @@ import logging
 import threading
 import time
 import uuid
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, cast
 
 from ....comm.device_store import get_device_store
 from ....comm.models import BluetoothDevice as CommBluetoothDevice
 from ....comm.pairing import BluetoothPairing
-from ....comm.transport import LINK_BUSY_CAUSE
+from ....comm.transport import LINK_BUSY_CAUSE, LINK_RESET_CAUSE
 from ....utils.waits import wait_for_event
 from ...async_operations import (
     AsyncOperation,
@@ -47,7 +47,7 @@ DEVICE_PROBE = "device_probe"
 
 # DEVICE_LIST error-line texts (design-a3b4c5d6 section 4.0).
 SCAN_FAILED_TEXT = "Scan failed"
-FALLBACK_LIST_TEXT = "No ELM327 found - showing all devices"
+FALLBACK_LIST_TEXT = "No ELM327"
 DEVICE_NOT_SAVED_TEXT = "Device not saved"
 OBD_CHECK_FAILED_TEXT = "OBD check failed"
 
@@ -62,8 +62,10 @@ class BluetoothSetupInterface:
     """
 
     # The RFCOMM connect issued milliseconds after pairing can fail with
-    # EBUSY while the link is still held. Retry that cause only, up to
-    # this many attempts in total, this far apart (issue-d26ca557).
+    # EBUSY or ECONNRESET while the pairing link is still held or closing.
+    # Retry those causes only, up to this many attempts in total, this far
+    # apart (issue-146491ba).
+    _VERIFY_RETRIED_CAUSES: Tuple[str, ...] = (LINK_BUSY_CAUSE, LINK_RESET_CAUSE)
     _VERIFY_BUSY_ATTEMPTS: int = 3
     _VERIFY_BUSY_RETRY_DELAY_S: float = 1.0
 
@@ -257,14 +259,15 @@ class BluetoothSetupInterface:
             for attempt in range(1, self._VERIFY_BUSY_ATTEMPTS + 1):
                 if transport.connect():
                     break
+                cause = transport.last_failure_cause
                 if (
-                    transport.last_failure_cause != LINK_BUSY_CAUSE
+                    cause not in self._VERIFY_RETRIED_CAUSES
                     or attempt == self._VERIFY_BUSY_ATTEMPTS
                 ):
                     self.logger.warning("OBD verify: RFCOMM connect failed")
                     return False
                 self.logger.info(
-                    "OBD verify: link busy, retrying "
+                    f"OBD verify: {cause}, retrying "
                     f"(attempt {attempt + 1}/{self._VERIFY_BUSY_ATTEMPTS})"
                 )
                 time.sleep(self._VERIFY_BUSY_RETRY_DELAY_S)

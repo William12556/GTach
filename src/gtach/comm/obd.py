@@ -197,6 +197,10 @@ class OBDProtocol:
             self.thread_manager.update_heartbeat("obd_protocol")
 
             response = self._send_command(b"0100", timeout=self._INIT_0100_TIMEOUT_S)
+            if response is None and not self.transport.is_connected():
+                # A lost link is not a silent vehicle (issue-146491ba).
+                self.logger.debug("Link lost during initialisation")
+                return False
             # Only a positive 0100 reply proves the vehicle answered;
             # NO DATA, '?' and 7F replies do not (issue-907de6de).
             normalised = re.sub(r"\s", "", (response or "").upper())
