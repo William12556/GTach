@@ -11,7 +11,7 @@ Shared data models for display components.
 Contains enums and data classes used across display modules.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Tuple
 
@@ -67,9 +67,8 @@ class DisplayMode(Enum):
     """Display mode enumeration for different display screens"""
 
     SPLASH = auto()  # Application startup splash screen
-    RADIAL = auto()  # The only normal display mode; carries the
-    # arc, the indicator and the numeric readout
-    # (change-378703da retired DIGITAL)
+    RADIAL = auto()  # The only normal display mode: arc, indicator
+    # and numeric readout
     OPTIONS = auto()  # Options configuration screen
     ACKNOWLEDGEMENT = auto()  # RPM threshold acknowledgement screen
 
@@ -107,12 +106,8 @@ class Palette:
     band_centres: Tuple[Tuple[int, int, int], ...]
 
 
-# Values copied verbatim from the constants in use before
-# change-5012004e — the six FACE_ constants and BAND_COLOURS added by
-# change-5014040c — so day rendering is provably unchanged. The
-# shift-cue fields that once sat alongside band_centres were removed
-# with the rim border they coloured (issue-950128c0); band_centres is
-# now the centre disc's unconditional source.
+# The day palette (change-5012004e). band_centres is the centre disc's
+# colour source.
 DAY_PALETTE = Palette(
     name="day",
     ground=(16, 16, 16),
@@ -121,18 +116,9 @@ DAY_PALETTE = Palette(
     line=(90, 90, 90),
     edge=(70, 70, 70),
     label=(200, 80, 80),
-    # Torque and caution were the two brightest elements on the panel —
-    # 0.715 and 0.928 relative luminance against a danger band at 0.213
-    # — so the instrument's brightness order ran almost exactly counter
-    # to its urgency order, and the operator reported both as too bright
-    # in daylight (issue-e7c3a512).
-    #
-    # sRGB weights green at 0.7152 and red at 0.2126, so a palette chosen
-    # for hue distinctness at full saturation inherits that ordering
-    # rather than choosing it. These two values are set deliberately and
-    # are not arbitrary; they sit between the previous full-saturation
-    # pair and the night set, and were measured against ground
-    # (16, 16, 16):
+    # Torque and caution are reduced from full saturation so they are not
+    # the brightest elements on the panel (issue-e7c3a512). Measured
+    # against ground (16, 16, 16):
     #
     #   2 torque   (0, 170, 0)     lum 0.287   6.12:1
     #   3 caution  (205, 180, 0)   lum 0.456   9.17:1
@@ -140,8 +126,7 @@ DAY_PALETTE = Palette(
     # Band 1's 2.21:1 is below the 3:1 used elsewhere and is not
     # correctable — pure blue is 0.0722 and cannot reach 3:1 against any
     # ground darker than itself (ai/task.md §9.8.5 item 3). Danger is
-    # deliberately not brightened to lead the ordering: urgency is
-    # carried by the shift-cue flash, not by band brightness.
+    # not brightened to lead the ordering.
     bands=(
         (0, 0, 255),  # 0 idle
         (0, 0, 255),  # 1 torque approach
@@ -150,13 +135,11 @@ DAY_PALETTE = Palette(
         (255, 128, 0),  # 4 warning
         (255, 0, 0),  # 5 danger
     ),
-    # The centre disc takes the active band's colour, so the zone
-    # reading is present at the point of fixation and not only at the
-    # rim (change-64d8d8fc). Dim, because the disc is 30,800 px in the
-    # driver's forward field of view and the HyperPixel's backlight
-    # cannot be reduced in software — full-saturation band colour here
-    # would reinstate the glare change-5014040c removed from the face,
-    # and would leave the white readout at 1.07:1 against band 3.
+    # The centre disc takes the active band's colour at the point of
+    # fixation (change-64d8d8fc). Dim, because the disc is 30,800 px in
+    # the driver's forward view and the backlight cannot be reduced in
+    # software; full saturation would glare and leave the white readout
+    # at 1.07:1 against band 3.
     band_centres=(
         (0, 0, 89),  # 0 idle
         (0, 0, 89),  # 1 torque approach
@@ -212,13 +195,4 @@ class DisplayConfig:
     engine_profile: str = (
         "abarth_595_turismo"  # Engine profile identifier for acknowledgement state
     )
-
-    # RPM colour bands. Will be initialized with default in __post_init__.
-    # TODO: issue-ac11505d candidate defect - None default; use default_factory
-    rpm_bands: RPMBands = None  # type: ignore[assignment]  # TODO: issue-ac11505d
-
-    def __post_init__(self) -> None:
-        """Initialize rpm_bands if not provided."""
-        if self.rpm_bands is None:
-            # TODO: issue-ac11505d candidate defect - None default; use default_factory
-            self.rpm_bands = RPMBands()  # type: ignore[unreachable]  # TODO: issue-ac11505d  # noqa: E501
+    rpm_bands: RPMBands = field(default_factory=RPMBands)
