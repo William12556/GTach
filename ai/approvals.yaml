@@ -50,3 +50,4 @@ approvals:
   - { uuid: "146491ba", stage: "change", date: "2026-11-12T09:06:26Z", blobs: { "change/change-146491ba-session-b-findings.md": "4d9d71116ed1fe4b15940fe25b1155be1632fffc" } }
   - { uuid: "146491ba", stage: "prompt", date: "2026-11-12T09:06:28Z", blobs: { "prompt/prompt-146491ba-session-b-findings.md": "3b58e1d1c788a09336dff7db686a7a6d498cc96c" } }
   - { uuid: "b29cbd71", stage: "change", date: "2026-11-12T10:40:46Z", blobs: { "change/change-b29cbd71-engine-off-state.md": "1c3214f8e426a32be3b96304d2d260f3d7e3b848" } }
+  - { uuid: "b29cbd71", stage: "prompt", date: "2026-11-12T10:40:48Z", blobs: { "prompt/prompt-b29cbd71-engine-off-state.md": "a566366525c6caa135de118402bbc5692e413f61" } }
