@@ -17,7 +17,7 @@ change_info:
   title: "Retry the post-pairing OBD check on a connection reset; shorten the fallback notice; do not report a lost link as a silent vehicle"
   date: "2026-11-12"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -193,6 +193,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-146491ba iteration 1."
 
+  - version: "1.1"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -208,6 +214,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial change document. EDITS A to C. |
+| 1.1 | 2026-11-12 | Approved for implementation. |
 
 ---
 
