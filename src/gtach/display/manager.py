@@ -61,6 +61,22 @@ from .typography import (
 
 if TYPE_CHECKING:
     from .setup import SetupDisplayManager
+    from .touch import TouchHandler
+
+# Full-scale cap of the gauge; a redline above it is off the dial.
+GAUGE_MAX_RPM_CAP = 9000
+
+
+def gauge_full_scale(redline: float) -> int:
+    """Full-scale RPM of the gauge for a redline.
+
+    Args:
+        redline: Configured redline RPM.
+
+    Returns:
+        min(GAUGE_MAX_RPM_CAP, max(7000, ceil((redline + 500) / 1000) * 1000)).
+    """
+    return min(GAUGE_MAX_RPM_CAP, max(7000, math.ceil((redline + 500) / 1000) * 1000))
 
 
 class DisplayManager:
@@ -185,25 +201,33 @@ class DisplayManager:
         self._palette = DAY_PALETTE
         self._palette_notice_until = 0.0
 
+        # Inactive defaults, assigned before any initialisation step that
+        # can fail; other threads read them (issue-2550e4ee).
+        self.touch_handler: Optional["TouchHandler"] = None
+        self._setup_manager: Optional["SetupDisplayManager"] = None
+        self._in_setup_mode = False
+        self._setup_entry_callback: Optional[Callable[[], None]] = None
+        self._splash_screen: Optional[SplashScreen] = None
+        self.performance_monitor: Optional[PerformanceMonitor] = None
+
+        # _link_lost() result for the current frame; set at frame start.
+        self._frame_link_lost = True
+
         # Component initialization
         self._initialize_components()
 
         # Configuration
         self._load_config()
 
-        # Performance monitor, built here rather than in
-        # _initialize_components because it takes the frame rate in
-        # its constructor and self.config does not exist until
-        # _load_config has run. It was previously given a literal 60
-        # for that reason, which made every dropped-frame figure
-        # wrong at any other rate and reported a constant in the
-        # startup line (issue-6a3b7c52).
+        # Built after _load_config because it takes the configured frame
+        # rate (issue-6a3b7c52). Left None if construction fails.
         try:
             _fps = getattr(self.config, "fps_limit", 0) or 0
             if _fps <= 0:
                 _fps = DisplayConfig.fps_limit
-            self.performance_monitor = PerformanceMonitor(target_fps=_fps)
-            self.performance_monitor.start_monitoring()
+            monitor = PerformanceMonitor(target_fps=_fps)
+            monitor.start_monitoring()
+            self.performance_monitor = monitor
         except Exception as e:
             self.logger.error(
                 f"Performance monitor initialization failed: {e}", exc_info=True
@@ -244,15 +268,19 @@ class DisplayManager:
     def _toggle_palette(self) -> None:
         """Swap the active palette, notify, and persist the choice.
 
-        A failed save leaves the palette as it was, so the display never
-        shows a state the configuration does not describe.
+        The palette switches for the session even if the save fails; a
+        failed save is logged at WARNING (issue-2550e4ee).
         """
         try:
             self._palette = (
                 NIGHT_PALETTE if self._palette is DAY_PALETTE else DAY_PALETTE
             )
             self._palette_notice_until = time.monotonic() + 2.0
-            self._save_config()
+            if not self._save_config():
+                self.logger.warning(
+                    f"Palette {self._palette.name} not saved; "
+                    "applies to this session only"
+                )
             self.logger.info(f"Palette switched to {self._palette.name}")
         except Exception as e:
             self.logger.error(f"Palette toggle error: {e}", exc_info=True)
@@ -430,31 +458,28 @@ class DisplayManager:
             return TouchAction.NONE
 
     def _initialize_legacy_components(self) -> None:
-        """Initialize legacy components for backward compatibility"""
+        """Create the touch handler and the splash screen.
+
+        Each failure leaves its component None and is logged once; the
+        attributes already hold their inactive defaults (issue-2550e4ee).
+        """
         try:
-            # Touch handler compatibility
             try:
                 from .touch import TouchHandler
                 from .touch_interface import create_touch_interface
 
                 _touch_interface = create_touch_interface()
                 _touch_interface.start()
-                self.touch_handler: Optional["TouchHandler"] = TouchHandler(
+                self.touch_handler = TouchHandler(
                     self, touch_interface=_touch_interface
                 )
-            except ImportError as e:
-                self.logger.warning(f"TouchHandler not available: {e}")
+            except Exception as e:
+                self.logger.error(f"Touch interface unavailable: {e}", exc_info=True)
                 self.touch_handler = None
 
-            # Setup mode components
-            self._setup_manager: Optional["SetupDisplayManager"] = None
-            self._in_setup_mode = False
-            self._setup_entry_callback: Optional[Callable[[], None]] = None
-
-            # Initialize splash screen
             try:
                 splash_config = getattr(self.config, "splash", None)
-                self._splash_screen: Optional[SplashScreen] = SplashScreen(
+                self._splash_screen = SplashScreen(
                     surface_size=(480, 480), duration=4.0, config=splash_config
                 )
                 self.logger.info("Splash screen initialized successfully")
@@ -521,6 +546,13 @@ class DisplayManager:
             )
             self._post_splash_mode = saved_mode
 
+            full_scale = gauge_full_scale(rpm_bands.redline_rpm)
+            if rpm_bands.redline_rpm > full_scale:
+                self.logger.warning(
+                    f"Redline {rpm_bands.redline_rpm} RPM is above the gauge "
+                    f"full scale of {full_scale} RPM and is off the dial"
+                )
+
         except Exception as e:
             self.logger.error(f"Config load failed: {e}", exc_info=True)
 
@@ -537,12 +569,14 @@ class DisplayManager:
             self.config = DisplayConfig(mode=DisplayMode.SPLASH, rpm_bands=rpm_bands)
             self._post_splash_mode = DisplayMode.RADIAL
 
-    def _save_config(self) -> None:
+    def _save_config(self) -> bool:
         """Save current configuration through the ConfigStore.
 
-        Never persists SPLASH as the display mode — saves _post_splash_mode
-        instead so that the next startup transitions correctly to the last
-        active mode rather than looping the splash screen.
+        A transient mode (SPLASH, OPTIONS, ACKNOWLEDGEMENT) is never
+        persisted; _post_splash_mode is saved in its place.
+
+        Returns:
+            True when the configuration was saved, False on failure.
         """
         try:
             # Do not persist transient modes: SPLASH, OPTIONS, ACKNOWLEDGEMENT
@@ -567,9 +601,11 @@ class DisplayManager:
                     rpm_danger=self.config.rpm_danger,
                 )
             )
+            return True
 
         except Exception as e:
             self.logger.error(f"Config save failed: {e}", exc_info=True)
+            return False
 
     def start(self) -> None:
         """Start display manager."""
@@ -610,7 +646,8 @@ class DisplayManager:
 
         # Clean up components
         try:
-            self.performance_monitor.stop_monitoring()
+            if self.performance_monitor is not None:
+                self.performance_monitor.stop_monitoring()
             self.rendering_engine.cleanup()
             self.logger.info("Display manager stopped")
         except Exception as e:
@@ -623,16 +660,16 @@ class DisplayManager:
         while not self._shutdown_event.is_set():
             try:
                 _frame_start = time.monotonic()
-                # No event handling. SDL_VIDEODRIVER is 'dummy' and
-                # set_mode is never called, so no window exists and no
-                # window events are generated — the previous poll loop
-                # and its QUIT path were unreachable (display review
-                # §8.4, recommendation 22). Shutdown is driven entirely
-                # by _shutdown_event. Reinstating a real SDL video
-                # driver would require reinstating event handling.
+                # No SDL event handling: SDL_VIDEODRIVER is 'dummy' and no
+                # window exists. Shutdown is driven by _shutdown_event.
 
-                # Register touch regions once per view rather than per
-                # frame (recommendation 20).
+                # One link evaluation per frame, read by every call site
+                # of the frame (issue-2550e4ee).
+                self._frame_link_lost = self._link_lost()
+                monitor = self.performance_monitor
+                setup_manager = self._setup_manager
+
+                # Touch regions are registered once per view.
                 _view = self._current_view_key()
                 if _view != self._registered_view:
                     try:
@@ -644,8 +681,7 @@ class DisplayManager:
                         # retries rather than rendering unregistered.
                         pass
 
-                # Record frame start for performance monitoring
-                frame_id = self.performance_monitor.record_frame_start()
+                frame_id = monitor.record_frame_start() if monitor else None
 
                 self.thread_manager.update_heartbeat("display")
 
@@ -657,8 +693,8 @@ class DisplayManager:
                 # Render current mode
                 if self.config.mode == DisplayMode.SPLASH:
                     self._draw_splash_mode()
-                elif self._in_setup_mode and self._setup_manager:
-                    self._render_setup_mode()
+                elif self._in_setup_mode and setup_manager:
+                    self._render_setup_mode(setup_manager)
                 else:
                     self._render_normal_modes()
 
@@ -666,15 +702,12 @@ class DisplayManager:
                 self.rendering_engine.swap_buffers()
                 self.rendering_engine.write_to_framebuffer()
 
-                # Close the frame BEFORE the pacing sleep so the recorded
-                # interval measures render cost, not the loop period
-                # (display review §6.2, recommendation 15).
-                self.performance_monitor.record_frame_end(frame_id)
+                # The frame is closed before the pacing sleep, so the
+                # recorded interval measures render cost.
+                if monitor is not None and frame_id is not None:
+                    monitor.record_frame_end(frame_id)
 
-                # Frame pacing.
-                # pygame.time.Clock.tick() uses SDL_Delay which can block
-                # indefinitely on macOS when the Cocoa run loop stalls.
-                # Use time.sleep() for reliable frame pacing on all platforms.
+                # Frame pacing by time.sleep().
                 _frame_end = time.monotonic()
                 _frame_elapsed = _frame_end - _frame_start
                 _frame_target = 1.0 / self.config.fps_limit
@@ -682,11 +715,9 @@ class DisplayManager:
                 if _sleep > 0:
                     time.sleep(_sleep)
 
-                # Periodic performance logging. The monitor owns the
-                # cadence test, so no metrics object is constructed on
-                # ordinary frames (recommendation 16).
-                if self.performance_monitor.should_log_periodic():
-                    metrics = self.performance_monitor.get_current_metrics()
+                # Periodic performance logging; the monitor owns the cadence.
+                if monitor is not None and monitor.should_log_periodic():
+                    metrics = monitor.get_current_metrics()
                     self.logger.info(
                         f"Performance: {metrics.fps:.1f} FPS, "
                         f"{metrics.frame_time_ms:.1f}ms frame, "
@@ -766,12 +797,17 @@ class DisplayManager:
 
         self.config.mode = self._post_splash_mode
 
-    def _render_setup_mode(self) -> None:
-        """Render setup mode using setup manager"""
+    def _render_setup_mode(self, setup_manager: "SetupDisplayManager") -> None:
+        """Render setup mode.
+
+        Args:
+            setup_manager: The setup manager read once by the caller;
+                exit_setup_mode may clear the attribute meanwhile.
+        """
         try:
             back_surface = self.rendering_engine.get_surface(RenderTarget.BACK_BUFFER)
-            if back_surface and self._setup_manager:
-                self._setup_manager.render(back_surface)
+            if back_surface:
+                setup_manager.render(back_surface)
         except Exception as e:
             self.logger.error(f"Setup mode render error: {e}", exc_info=True)
             self._draw_setup_mode_fallback()
@@ -846,22 +882,18 @@ class DisplayManager:
 
         Two signals, because neither alone suffices. The transport's own
         view catches a clean disconnect at once. Staleness catches an
-        adapter that vanishes without closing its socket — a flat
-        battery — which is the failure this method exists for and the
-        one the previous thread-status proxy could never see: the
-        obd_protocol thread stays RUNNING while its transport retries
-        indefinitely, so that proxy reported a live connection whenever
-        the software was running (issue-4d9e2f18).
+        adapter that vanishes without closing its socket, such as on a
+        flat battery (issue-4d9e2f18).
 
-        EVERY FAILURE PATH RETURNS True. The asymmetry is the safety
-        property of this method. A false 'disconnected' costs the
+        EVERY FAILURE PATH RETURNS True. A false 'disconnected' costs the
         operator a screen they can leave in one swipe; a false
         'connected' puts a stale needle and a green light in front of a
         driver. An absent or raising callback therefore means 'socket
         state unavailable', never 'connected'.
 
-        Called from the render path at 30 Hz, so it stays cheap and logs
-        only on a transition.
+        Evaluated once per frame by _display_loop and directly by code
+        outside the frame. Logs only on a transition; updates the
+        _link_ok latch.
 
         Returns:
             True when the link is lost or its state cannot be
@@ -869,9 +901,8 @@ class DisplayManager:
             in simulation mode.
         """
         try:
-            # FIRST, and unconditionally. Simulation is a display
-            # without an adapter; that is its purpose, so it must never
-            # report a lost link.
+            # Simulation is a display without an adapter; it never
+            # reports a lost link.
             if self._sim_mode:
                 return False
 
@@ -906,30 +937,15 @@ class DisplayManager:
             return True
 
     def _render_normal_modes(self) -> None:
-        """Render normal display modes"""
+        """Render the normal display modes for the current frame."""
         try:
-            # Consume samples first, whatever is about to be drawn.
-            # This is what lets a lost link recover: the drain is the
-            # only place an arrival is recorded, and the gauge that
-            # used to host it is exactly what stops being drawn when
-            # the link is declared lost (issue-4d9e2f18).
+            # Samples are consumed whatever is drawn, so a lost link can
+            # recover while the DISCONNECTED screen is shown.
             self._drain_samples()
 
-            # Link state, not thread liveness. The obd_protocol thread
-            # stays RUNNING while its transport retries indefinitely,
-            # so the old test reported a live connection whenever the
-            # software was running (issue-4d9e2f18). _link_lost is
-            # already False in simulation mode, so the _sim_mode clause
-            # is subsumed rather than duplicated.
-            #
-            # RADIAL only. The DISCONNECTED screen replaces the GAUGE,
-            # which is the thing a lost link falsifies — not the
-            # settings screens. Ungated, this would make OPTIONS
-            # unreachable exactly when the adapter is down, which is
-            # when Simulate and Clear settings are most wanted. The old
-            # test could never fire, so it never needed the gate; this
-            # one fires routinely.
-            if self._link_lost() and self.config.mode == DisplayMode.RADIAL:
+            # The DISCONNECTED screen replaces the gauge only; OPTIONS
+            # stays reachable while the link is down (issue-4d9e2f18).
+            if self._frame_link_lost and self.config.mode == DisplayMode.RADIAL:
                 self._render_disconnected()
                 return
 
@@ -1045,10 +1061,11 @@ class DisplayManager:
     def _gauge_max_rpm(self) -> int:
         """Return the gauge's full-scale RPM.
 
-        max_rpm = min(9000, max(7000, ceil((redline + 500) / 1000) * 1000)),
-        so the configured redline is always on the dial. Redline 6000
-        (abarth_595_turismo) yields 7000, the previous fixed value
-        (issue-674bec49). A missing configuration counts as 6000.
+        max_rpm = min(9000, max(7000, ceil((redline + 500) / 1000) * 1000)).
+        A redline up to 8500 is on the dial. Full scale is capped at
+        GAUGE_MAX_RPM_CAP (9000); a redline above the cap is off the dial
+        and its boundary mark is omitted, and _load_config logs a WARNING
+        (issue-2550e4ee). A missing configuration counts as 6000.
 
         Returns:
             The full-scale RPM, a multiple of 1000 from 7000 to 9000.
@@ -1057,7 +1074,7 @@ class DisplayManager:
             redline = self.config.rpm_bands.redline_rpm
         except Exception:
             redline = 6000
-        return min(9000, max(7000, math.ceil((redline + 500) / 1000) * 1000))
+        return gauge_full_scale(redline)
 
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
@@ -1371,10 +1388,9 @@ class DisplayManager:
           - _options_view: selects menu or update sub-view.
           - disconnected: DISCONNECTED is NOT a DisplayMode. It is a
             derived condition — _render_normal_modes shows that screen
-            in place of the gauge when _link_lost() (issue-4d9e2f18;
-            it previously asked the obd_protocol thread's status, which
-            never changed). Omitting it would mean the Setup and
-            Simulate buttons were never registered when the link drops.
+            in place of the gauge when the link is lost (issue-4d9e2f18).
+            Omitting it would mean the Setup and Reset buttons were
+            never registered when the link drops.
             The mode gate _render_normal_modes applies is not repeated
             here: config.mode is already a member, so no registration
             decision can change without this key changing.
@@ -1390,7 +1406,7 @@ class DisplayManager:
             (mode, options sub-view, update status, disconnected,
             in setup mode, options page).
         """
-        disconnected = self._link_lost()
+        disconnected = self._frame_link_lost
         return (
             self.config.mode,
             self._options_view,
@@ -1416,7 +1432,7 @@ class DisplayManager:
         try:
             # The setup subsystem registers and owns its own regions.
             # Clearing here would destroy them.
-            if self._in_setup_mode and self._setup_manager:
+            if self._in_setup_mode and self._setup_manager is not None:
                 return
 
             self.touch_coordinator.clear_regions()
@@ -1424,16 +1440,11 @@ class DisplayManager:
             if self.config.mode == DisplayMode.SPLASH:
                 return  # no controls
 
-            # DISCONNECTED is a derived condition, not a DisplayMode,
-            # and _render_normal_modes gives it precedence over the
-            # mode. The dispatch must mirror that order exactly — so
-            # this asks _link_lost, exactly as that method now does
-            # (issue-4d9e2f18). Left on thread status it would register
-            # the gauge's regions, which are none, while the
-            # DISCONNECTED screen was drawn: Setup and Simulate would
-            # be visible and dead, and that screen is the operator's
-            # only route out of a lost link.
-            disconnected = self._link_lost() and self.config.mode == DisplayMode.RADIAL
+            # DISCONNECTED takes precedence over the mode, mirroring
+            # _render_normal_modes (issue-4d9e2f18).
+            disconnected = (
+                self._frame_link_lost and self.config.mode == DisplayMode.RADIAL
+            )
             if disconnected:
                 self._register_disconnected_regions()
                 return
@@ -2092,15 +2103,22 @@ class DisplayManager:
         self._options_view = "menu"
 
     def _on_clear_settings(self) -> None:
-        """Clear DeviceStore and enter SETUP mode"""
+        """Remove every stored device, then enter SETUP mode.
+
+        A device that could not be removed is logged at ERROR; the setup
+        entry callback is invoked either way (issue-2550e4ee).
+        """
         try:
             self.logger.info("Clearing device settings")
             from ..comm.device_store import get_device_store
 
             ds = get_device_store()
-            device = ds.get_primary_device()
-            if device:
-                ds.remove_device(device.mac_address)
+            for device in ds.get_all_devices():
+                if not ds.remove_device(device.mac_address):
+                    self.logger.error(
+                        f"Clear settings: device {device.mac_address} "
+                        "could not be removed"
+                    )
             if self._setup_entry_callback:
                 self.logger.info("Device store cleared — invoking setup_entry_callback")
                 self._setup_entry_callback()
@@ -2349,17 +2367,17 @@ class DisplayManager:
                     center=True,
                 )
 
-            # Cause line — why the last connect failed, when known.
-            # Drawn between the message at y=180 and the button column,
-            # whose top is 240 (_register_disconnected_regions); the
-            # buttons are not moved. Nothing is drawn when no connect
-            # has failed, so the screen is unchanged from before
-            # issue-5e7a03c4 until there is something to say.
+            # Cause line: why the last connect failed, when known. Drawn
+            # between the message at y=180 and the button column, whose
+            # top is 240; nothing is drawn when no connect has failed
+            # (issue-5e7a03c4).
             _cause = None
             if self._link_cause_callback:
                 _cause = self._link_cause_callback()
             if _cause:
-                cause_font = get_font_manager().get_font(18)
+                cause_font = get_font_manager().get_font(
+                    TypographyConstants.FONT_SMALL_TEXT
+                )
                 if cause_font:
                     self.rendering_engine.render_text(
                         RenderTarget.BACK_BUFFER,
@@ -2501,15 +2519,10 @@ class DisplayManager:
     def _draw_status_indicator(self) -> None:
         """Draw connection status indicator"""
         try:
-            # The indicator names the link, so it is derived from the
-            # link. It previously mapped ThreadStatus.RUNNING to
-            # CONNECTED, which made it green whenever the software was
-            # running (issue-4d9e2f18).
-            #
-            # CONNECTING is the honest state between a transport that
-            # says it is connected and the two samples that confirm
-            # data is actually flowing.
-            if self._link_lost():
+            # Derived from the link (issue-4d9e2f18). CONNECTING is the
+            # state between a transport that reports connected and the
+            # samples that confirm data is flowing.
+            if self._frame_link_lost:
                 status = ConnectionStatus.DISCONNECTED
             elif not self._link_ok:
                 status = ConnectionStatus.CONNECTING
@@ -2589,17 +2602,18 @@ class DisplayManager:
         return self._in_setup_mode
 
     def handle_touch_event(self, pos: Tuple[int, int]) -> Optional[object]:
-        """Handle touch events using touch coordinator"""
+        """Route a touch to the setup manager or the touch coordinator.
+
+        The setup manager is read once: exit_setup_mode may clear the
+        attribute on another thread (issue-2550e4ee).
+        """
         try:
             self.logger.debug(f"Touch event at {pos}")
 
-            if self._in_setup_mode and self._setup_manager:
-                # Route to setup manager
-                return self._setup_manager.handle_touch_event(pos)
-            else:
-                # Use touch coordinator
-                action = self.touch_coordinator.handle_touch_down(pos)
-                return action
+            setup_manager = self._setup_manager
+            if self._in_setup_mode and setup_manager is not None:
+                return setup_manager.handle_touch_event(pos)
+            return self.touch_coordinator.handle_touch_down(pos)
 
         except Exception as e:
             self.logger.error(f"Touch event error: {e}", exc_info=True)
@@ -2609,16 +2623,15 @@ class DisplayManager:
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get comprehensive performance statistics"""
         try:
-            return {
+            stats: Dict[str, Any] = {
                 "rendering_stats": self.rendering_engine.get_stats(),
                 "touch_stats": self.touch_coordinator.get_stats(),
-                "performance_metrics": (
-                    self.performance_monitor.get_current_metrics().to_dict()
-                ),
-                "performance_summary": (
-                    self.performance_monitor.get_performance_summary()
-                ),
             }
+            monitor = self.performance_monitor
+            if monitor is not None:
+                stats["performance_metrics"] = monitor.get_current_metrics().to_dict()
+                stats["performance_summary"] = monitor.get_performance_summary()
+            return stats
         except Exception as e:
             self.logger.error(f"Performance stats error: {e}", exc_info=True)
             return {}
@@ -2632,7 +2645,10 @@ class DisplayManager:
                 "components_initialized": {
                     "rendering_engine": self.rendering_engine.is_initialized(),
                     "touch_coordinator": True,
-                    "performance_monitor": self.performance_monitor._monitoring,
+                    "performance_monitor": (
+                        self.performance_monitor is not None
+                        and self.performance_monitor._monitoring
+                    ),
                 },
                 "active_touch_regions": len(
                     self.touch_coordinator.get_active_regions()

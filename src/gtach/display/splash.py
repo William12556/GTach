@@ -15,7 +15,7 @@ import logging
 import threading
 import time
 from collections import deque
-from typing import Deque, Dict, Optional, Tuple
+from typing import Deque, Dict, Optional, Set, Tuple
 
 from ..utils.config import SplashConfig
 from ..utils.waits import wait_for_event
@@ -57,6 +57,9 @@ class SplashScreen:
         All public methods are thread-safe using internal locking mechanisms.
         Safe to call from display manager threads and main application thread.
     """
+
+    _TITLE_FONT_SIZE = 72
+    _VERSION_FONT_SIZE = 40
 
     def __init__(
         self,
@@ -118,6 +121,8 @@ class SplashScreen:
 
         # Typography system integration and font caching
         self._typography_available = TYPOGRAPHY_AVAILABLE
+        # Texts whose circular-display fit has been checked (issue-2550e4ee)
+        self._fit_checked: Set[str] = set()
         # Cache for font objects to improve performance
         self._cached_fonts: Dict[str, "pygame.font.Font"] = {}
         self._font_cache_lock = threading.Lock()  # Thread-safe font cache access
@@ -128,11 +133,8 @@ class SplashScreen:
         self._last_progress_log = float("-inf")  # monotonic
         self._total_render_time = 0.0
 
-        # Color scheme - professional dark theme. Deliberately excluded
-        # from change-ba2d5de2's DISCONNECTED-matching scheme; the
-        # splash screen remains black background / white text
-        # (correction recorded 2026-08-13, trivial exemption P03
-        # §1.4.12 — see change-ba2d5de2 version history).
+        # Dark background with white text; independent of the
+        # DISCONNECTED screen's scheme (change-ba2d5de2).
         self._colors = {
             "background": (15, 20, 25),  # Dark blue-gray background
             "primary_text": (255, 255, 255),  # Pure white for main text
@@ -269,8 +271,7 @@ class SplashScreen:
 
         Args:
             font_type: Type of font ('title', 'body', 'label')
-            fallback_size: Retained for call-site compatibility; unused
-                since the raw pygame fallback was removed
+            fallback_size: Unused; kept for call-site compatibility
                 (change-ba672e81)
 
         Returns:
@@ -410,24 +411,21 @@ class SplashScreen:
             graphics_mode = getattr(self, "_graphics_mode", "automotive")
 
             if graphics_mode == "text_only":
-                # Text-only mode - reduced spacing from 40px to 25px
+                # Text-only mode: 25 px spacing
                 self._draw_title_text(surface, center_x, center_y - 25)
                 self._draw_subtitle_text(surface, center_x, center_y)
                 self._draw_version_text(surface, center_x, center_y + 25)
             elif graphics_mode == "minimal":
-                # Minimal mode - reduced spacing for more compact layout
+                # Minimal mode: compact layout
                 self._draw_title_text(surface, center_x, center_y - 50)
                 self._draw_subtitle_text(surface, center_x, center_y - 25)
                 self._draw_progress_indicator(surface, center_x, center_y + 25)
                 self._draw_version_text(surface, center_x, center_y + 75)
             else:
-                # Full automotive mode - optimized spacing for minimalist design
+                # Automotive mode: title, gauge and version; no border
                 self._draw_title_text(surface, center_x, center_y - 115)
                 self._draw_progress_indicator(surface, center_x, center_y + 20)
                 self._draw_version_text(surface, center_x, center_y + 110)
-                # Circular red border removed 2026-08-13 (William's request,
-                # trivial exemption P03 §1.4.12) — the splash screen is now
-                # borderless, matching its restored black/white scheme.
 
             return True
 
@@ -438,37 +436,20 @@ class SplashScreen:
     def _draw_title_text(
         self, surface: "pygame.Surface", center_x: int, center_y: int
     ) -> None:
-        """Draw the main application title with minimalist typography.
-
-        FONT_TITLE = 36px (was 56px).
-        """
+        """Draw the application title at _TITLE_FONT_SIZE."""
         try:
-            # 72px via FontManager, which resolves Michroma and owns
-            # the system-default fallback (change-ba672e81). Replaces a
-            # direct font-file load that bypassed the typography cache.
-            font_large = get_font_manager().get_font(72)
+            # FontManager resolves Michroma and owns the system-default
+            # fallback (change-ba672e81).
+            font_large = get_font_manager().get_font(self._TITLE_FONT_SIZE)
 
             title_surface = font_large.render(
                 self._app_title, True, self._colors["primary_text"]
             )
             title_rect = title_surface.get_rect(center=(center_x, center_y))
 
-            # Shadow effect removed to reduce rendering overhead and establish
-            # minimalist tone
             surface.blit(title_surface, title_rect)
 
-            # Validate text fits within circular display if typography system available
-            if self._typography_available:
-                try:
-                    manager = get_font_manager()
-                    if not manager.validate_text_fits_circular_display(
-                        self._app_title, TypographyConstants.FONT_TITLE
-                    ):
-                        self.logger.warning(
-                            "Splash title may not fit in circular display"
-                        )
-                except Exception as e:
-                    self.logger.debug(f"Circular validation failed for title: {e}")
+            self._check_fit_once("title", self._app_title, self._TITLE_FONT_SIZE)
 
         except Exception as e:
             self.logger.error(f"Title text rendering failed: {e}", exc_info=True)
@@ -476,10 +457,7 @@ class SplashScreen:
     def _draw_subtitle_text(
         self, surface: "pygame.Surface", center_x: int, center_y: int
     ) -> None:
-        """Draw the application subtitle with body typography.
-
-        FONT_BODY = 20px (was 32px).
-        """
+        """Draw the application subtitle at FONT_BODY."""
         try:
             # Use typography system for consistent body text sizing
             font_medium = self._get_cached_font(
@@ -495,18 +473,9 @@ class SplashScreen:
             subtitle_rect = subtitle_surface.get_rect(center=(center_x, center_y))
             surface.blit(subtitle_surface, subtitle_rect)
 
-            # Validate text fits within circular display
-            if self._typography_available:
-                try:
-                    manager = get_font_manager()
-                    if not manager.validate_text_fits_circular_display(
-                        self._subtitle, TypographyConstants.FONT_BODY
-                    ):
-                        self.logger.warning(
-                            "Splash subtitle may not fit in circular display"
-                        )
-                except Exception as e:
-                    self.logger.debug(f"Circular validation failed for subtitle: {e}")
+            self._check_fit_once(
+                "subtitle", self._subtitle, TypographyConstants.FONT_BODY
+            )
 
         except Exception as e:
             self.logger.error(f"Subtitle text rendering failed: {e}", exc_info=True)
@@ -546,15 +515,11 @@ class SplashScreen:
     def _draw_version_text(
         self, surface: "pygame.Surface", center_x: int, center_y: int
     ) -> None:
-        """Draw version information with small-text typography.
-
-        FONT_SMALL_TEXT = 18px.
-        """
+        """Draw the version text at _VERSION_FONT_SIZE."""
         try:
-            # 40px via FontManager, which resolves Michroma and owns
-            # the system-default fallback (change-ba672e81). Replaces a
-            # direct font-file load that bypassed the typography cache.
-            font_ver = get_font_manager().get_font(40)
+            # FontManager resolves Michroma and owns the system-default
+            # fallback (change-ba672e81).
+            font_ver = get_font_manager().get_font(self._VERSION_FONT_SIZE)
 
             version_surface = font_ver.render(
                 self._version_text, True, self._colors["secondary_text"]
@@ -562,21 +527,31 @@ class SplashScreen:
             version_rect = version_surface.get_rect(center=(center_x, center_y))
             surface.blit(version_surface, version_rect)
 
-            # Validate text fits within circular display
-            if self._typography_available:
-                try:
-                    manager = get_font_manager()
-                    if not manager.validate_text_fits_circular_display(
-                        self._version_text, TypographyConstants.FONT_SMALL_TEXT
-                    ):
-                        self.logger.warning(
-                            "Splash version text may not fit in circular display"
-                        )
-                except Exception as e:
-                    self.logger.debug(f"Circular validation failed for version: {e}")
+            self._check_fit_once("version", self._version_text, self._VERSION_FONT_SIZE)
 
         except Exception as e:
             self.logger.error(f"Version text rendering failed: {e}", exc_info=True)
+
+    def _check_fit_once(self, key: str, text: str, font_size: int) -> None:
+        """Log a warning if text does not fit the circular display.
+
+        Runs once per key for this instance; later calls return at once.
+        The result is used only for logging (issue-2550e4ee).
+
+        Args:
+            key: Name of the text element, e.g. 'title'.
+            text: The text drawn.
+            font_size: The font size it is drawn at.
+        """
+        if key in self._fit_checked or not self._typography_available:
+            return
+        self._fit_checked.add(key)
+        try:
+            manager = get_font_manager()
+            if not manager.validate_text_fits_circular_display(text, font_size):
+                self.logger.warning(f"Splash {key} may not fit in circular display")
+        except Exception as e:
+            self.logger.debug(f"Circular validation failed for {key}: {e}")
 
     def _render_text_fallback(self) -> bool:
         """

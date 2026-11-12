@@ -34,6 +34,7 @@ import pytest
 
 from gtach.display.manager import DisplayManager
 from gtach.display.models import DAY_PALETTE
+from gtach.display.typography import TypographyConstants
 
 
 @pytest.fixture(autouse=True)
@@ -369,13 +370,9 @@ class TestRenderIntegration:
 
         assert recorder.buttons == [("rect-0", "Setup")]
 
-    def test_cause_line_is_unchanged_position_and_font(self):
-        """change-5e7a03c4's line keeps its position and font.
-
-        Its colour is no longer independent of the rest of the page —
-        the DISCONNECTED screen now draws all text in
-        _DISCONNECTED_TEXT_COLOUR (issue-<pending>).
-        """
+    def test_cause_line_position_and_font(self):
+        """The cause line is drawn at (240, 210) in FONT_SMALL_TEXT and
+        _DISCONNECTED_TEXT_COLOUR (issue-2550e4ee)."""
         recorder, _host = self._render(
             _link_cause_callback=lambda: "no bluetooth controller"
         )
@@ -386,7 +383,7 @@ class TestRenderIntegration:
         assert "no bluetooth controller" in drawn
         pos, font, colour = drawn["no bluetooth controller"]
         assert pos == (240, 210)
-        assert font == "font-18"
+        assert font == f"font-{TypographyConstants.FONT_SMALL_TEXT}"
         assert colour == DisplayManager._DISCONNECTED_TEXT_COLOUR
 
     def test_title_and_message_unchanged(self):

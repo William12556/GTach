@@ -7,10 +7,10 @@
 # See the LICENSE file in the project root for full license text.
 
 """
-Touch Event Coordinator - Extracted from monolithic DisplayManager.
+Touch Event Coordinator.
 
-Handles touch event processing and interaction
-with UI components for the OBDII display system.
+Holds the touch regions of the current view and dispatches touches to
+them for the OBDII display system.
 """
 
 import logging
@@ -197,6 +197,19 @@ class TouchEventCoordinator(TouchEventInterface):
                 )
 
         return result
+
+    def is_button_at(self, pos: Tuple[int, int]) -> bool:
+        """Whether the topmost region at pos is a button. Invokes nothing.
+
+        Args:
+            pos: Touch position (x, y).
+
+        Returns:
+            True if a registered, enabled button region contains pos.
+        """
+        with self._lock:
+            region = self._find_hit_region(pos)
+            return region is not None and region.metadata.get("type") == "button"
 
     def _find_hit_region(self, pos: Tuple[int, int]) -> Optional[TouchRegion]:
         """Find the topmost region that contains the touch point"""

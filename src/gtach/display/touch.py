@@ -28,9 +28,30 @@ except ImportError:
     TOUCH_INTERFACE_AVAILABLE = False
     logging.getLogger("TouchHandler").error("Touch interface abstraction not available")
 
+# Swipe threshold used when the coordinator is unavailable.
+_DEFAULT_SWIPE_THRESHOLD = 100
+
+
+def _swipe_threshold(display_manager: "DisplayManager") -> int:
+    """The coordinator's swipe threshold, shared by every gesture test.
+
+    Args:
+        display_manager: The display manager owning the coordinator.
+
+    Returns:
+        Minimum movement in pixels for a swipe; _DEFAULT_SWIPE_THRESHOLD
+        if the coordinator is unavailable.
+    """
+    coordinator = getattr(display_manager, "touch_coordinator", None)
+    return int(getattr(coordinator, "swipe_threshold", _DEFAULT_SWIPE_THRESHOLD))
+
 
 class TouchHandler:
     """Handles touch input and gestures using the touch interface abstraction layer"""
+
+    # A stored touch start older than this is stale: a lost touch-up must
+    # not carry its time and position into the next gesture (issue-2550e4ee).
+    _TOUCH_START_MAX_AGE_S = 10.0
 
     def __init__(
         self,
@@ -133,61 +154,90 @@ class TouchHandler:
         state: bool,
         timestamp: Optional[float] = None,
     ) -> None:
-        """Process touch events with gesture recognition integration"""
+        """Track a touch and classify it on release.
+
+        A down or move records the start when none is stored, or when the
+        stored start is older than _TOUCH_START_MAX_AGE_S. On release a
+        stale start is discarded without action. In setup mode every
+        release goes to the short-press path. Otherwise movement at or
+        above the swipe threshold is a swipe whatever the duration; a
+        hold of at least touch_long_press below the threshold presses the
+        button it started on, or is a long press if it started on none
+        (issue-2550e4ee).
+
+        Args:
+            touch_id: Touch slot; unused.
+            x: Touch x in pixels.
+            y: Touch y in pixels.
+            state: True for down or move, False for release.
+            timestamp: time.monotonic() of the event; now when None.
+        """
         try:
-            current_time = timestamp if timestamp else time.monotonic()
+            current_time = timestamp if timestamp is not None else time.monotonic()
 
-            if state:  # Touch down/move
-                if self._touch_start is None:  # Only record on first touch down
+            if state:
+                if (
+                    self._touch_start is None
+                    or current_time - self._touch_start[0] > self._TOUCH_START_MAX_AGE_S
+                ):
                     self._touch_start = (current_time, x, y)
+                return
 
-            else:  # Touch end
-                if not self._touch_start:
-                    return
+            if self._touch_start is None:
+                return
 
-                start_time, start_x, start_y = self._touch_start
-                duration = current_time - start_time
-                self.logger.debug(
-                    f"Touch end: duration={duration:.3f}s, pos=({x},{y}), "
-                    f"start=({start_x},{start_y})"
-                )
+            start_time, start_x, start_y = self._touch_start
+            self._touch_start = None
+            duration = current_time - start_time
+            self.logger.debug(
+                f"Touch end: duration={duration:.3f}s, pos=({x},{y}), "
+                f"start=({start_x},{start_y})"
+            )
 
-                # Skip gesture handler in setup mode - route directly
-                if self.display_manager.is_in_setup_mode():
-                    self._touch_start = None
-                    self._handle_short_press(x, y, start_x, start_y)
-                    return
+            if self.display_manager.is_in_setup_mode():
+                self._handle_short_press(x, y, start_x, start_y)
+                return
 
-                # Direct swipe/press handling - no gesture handler intermediary
-                if duration >= self.display_manager.config.touch_long_press:
-                    self._handle_long_press(x, y)
-                else:
-                    self._handle_short_press(x, y, start_x, start_y)
+            if duration > self._TOUCH_START_MAX_AGE_S:
+                self.logger.debug("Touch start stale; release ignored")
+                return
 
-                self._touch_start = None
+            movement = max(abs(x - start_x), abs(y - start_y))
+            if (
+                movement >= _swipe_threshold(self.display_manager)
+                or duration < self.display_manager.config.touch_long_press
+            ):
+                self._handle_short_press(x, y, start_x, start_y)
+            elif self._starts_on_button(start_x, start_y):
+                self._handle_short_press(start_x, start_y, start_x, start_y)
+            else:
+                self._handle_long_press(x, y)
 
         except Exception as e:
             self.logger.error(f"Touch processing error: {e}", exc_info=True)
 
+    def _starts_on_button(self, x: int, y: int) -> bool:
+        """Whether (x, y) lies on a registered button region.
+
+        Args:
+            x: Touch x in pixels.
+            y: Touch y in pixels.
+
+        Returns:
+            True if the coordinator's hit test finds a button there.
+        """
+        coordinator = getattr(self.display_manager, "touch_coordinator", None)
+        if coordinator is None:
+            return False
+        return bool(coordinator.is_button_at((x, y)))
+
     def _handle_long_press(self, x: int, y: int) -> None:
-        """Handle long press events"""
+        """Delegate a long press to the DisplayManager.
+
+        The DisplayManager owns the mode gating and the palette toggle.
+        A long press has one position, passed as both start and end.
+        """
         try:
-            # OPTIONS is reached by swiping, not by long press
-            # (change-3e8b1d72). A long press now delegates on every
-            # screen, DISCONNECTED included, where it toggles the
-            # day/night palette as it does elsewhere (issue-7d4e91a3,
-            # change-2b6f4d91). The branch removed from here claimed to
-            # enter SETUP but only logged saying so; Setup is reached by
-            # tapping the DISCONNECTED screen's button, which the same
-            # issue made reachable.
-            #
-            # Delegate to the DisplayManager, which owns the mode
-            # gating and the palette state. Called directly rather
-            # than through the touch coordinator, whose gesture
-            # callbacks are never dispatched (issue-2b6f4d91) —
-            # the same route change-3e8b1d72 used for the vertical
-            # swipes. A long press has one position, so it is
-            # passed as both start and end.
             self.display_manager._handle_long_press((x, y), (x, y))
 
         except Exception as e:
@@ -199,39 +249,21 @@ class TouchHandler:
             in_setup = self.display_manager.is_in_setup_mode()
             self.logger.debug(f"Short press at ({x}, {y}), in_setup_mode={in_setup}")
             if in_setup:
-                # A vertical drag on the device list moves the focus
-                # rather than selecting whatever it ended over
-                # (change-479b2e51). Every other setup screen, and
-                # every movement below the threshold, falls through to
-                # the tap dispatch unchanged.
+                # A vertical drag on the device list moves the focus;
+                # anything else is a tap (change-479b2e51).
                 if self._handle_setup_swipe(x, y, start_x, start_y):
                     return
                 self._handle_setup_touch(x, y)
                 return
 
-            # Vertical swipes move between the gauge and OPTIONS
-            # (change-3e8b1d72); horizontal swipes page within the
-            # options menu (change-8c5a1e73). Both are tested before
-            # the region dispatch below, and must stay that way: a
-            # swipe that ends over a registered region would otherwise
-            # be consumed as a tap on it, and the dispatch returns
-            # nothing to distinguish the two.
-            #
-            # The entry, exit and paging rules are the DisplayManager's;
-            # this path delegates rather than duplicating them, so the
-            # two live handler paths agree by construction.
-            #
-            # The coordinator's own threshold, so the two paths accept
-            # the same movement; 100 — the value the removed horizontal
-            # branch used — if the coordinator is unavailable.
-            swipe_threshold = getattr(
-                getattr(self.display_manager, "touch_coordinator", None),
-                "swipe_threshold",
-                100,
-            )
+            # Vertical swipes move between the gauge and OPTIONS;
+            # horizontal swipes page the options menu. Swipes are tested
+            # before the region dispatch, so a swipe ending over a
+            # button is not a tap on it. The entry, exit and paging
+            # rules are the DisplayManager's.
             dx = x - start_x
             dy = y - start_y
-            if max(abs(dx), abs(dy)) >= swipe_threshold:
+            if max(abs(dx), abs(dy)) >= _swipe_threshold(self.display_manager):
                 # The dominant axis wins. An exact diagonal
                 # (abs(dx) == abs(dy)) falls to the vertical branch
                 # deliberately: leaving OPTIONS is the more recoverable
@@ -256,19 +288,9 @@ class TouchHandler:
                         )
                 return
 
-            # The coordinator is consulted on EVERY screen, with no mode
-            # test. This handler must not enumerate screens: the
-            # coordinator already knows which regions exist, because
-            # DisplayManager._register_touch_regions rebuilds that set
-            # on every render pass (manager.py:1454). Screens with no
-            # regions are therefore a no-op by construction — it
-            # returns early for SPLASH (manager.py:1456) and registers
-            # nothing for connected RADIAL (manager.py:1484).
-            #
-            # Gating this on DisplayMode.OPTIONS left the DISCONNECTED
-            # screen's Setup and Simulate buttons and the
-            # ACKNOWLEDGEMENT screen's dismiss region registered,
-            # drawn, and never hit-tested (issue-7d4e91a3).
+            # The coordinator is consulted on every screen, with no mode
+            # test: it holds the regions of the current view, and a
+            # screen without regions is a no-op (issue-7d4e91a3).
             action = self.display_manager.handle_touch_event((x, y))
             self.logger.debug(f"Touch dispatch at ({x}, {y}) -> {action}")
 
@@ -278,11 +300,8 @@ class TouchHandler:
     def _handle_setup_swipe(self, x: int, y: int, start_x: int, start_y: int) -> bool:
         """Consume a vertical swipe on the setup DEVICE_LIST screen.
 
-        Setup mode skips the gesture handler entirely (_process_touch),
-        so the drag distance is measured here, before the tap dispatch,
-        exactly as the non-setup path does in this method's caller. The
-        same swipe_threshold is used so both paths accept the same
-        movement (change-479b2e51).
+        Measured before the tap dispatch with the same swipe threshold as
+        the non-setup path (change-479b2e51).
 
         Args:
             x, y: Touch end position.
@@ -306,11 +325,7 @@ class TouchHandler:
             if setup_manager.state.current_screen != SetupScreen.DEVICE_LIST:
                 return False
 
-            swipe_threshold = getattr(
-                getattr(self.display_manager, "touch_coordinator", None),
-                "swipe_threshold",
-                100,
-            )
+            swipe_threshold = _swipe_threshold(self.display_manager)
             dx = x - start_x
             dy = y - start_y
 
@@ -333,8 +348,6 @@ class TouchHandler:
     def _handle_setup_touch(self, x: int, y: int) -> None:
         """Handle touch events in setup mode"""
         try:
-            # Route touch events through the DisplayManager's new handle_touch_event
-            # method
             action = self.display_manager.handle_touch_event((x, y))
 
             # Handle special setup actions that affect the main application

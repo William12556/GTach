@@ -223,10 +223,25 @@ class TestTouchCoordinatorButtonCallback:
         assert result == TouchAction.BUTTON_PRESS
 
     def test_callback_may_register_regions(self):
-        """Edge case: DisplayManager re-registers regions from a callback."""
+        """A callback may re-register regions; the lock is free while it runs.
+
+        The coordinator lock is an RLock, so re-entry on the dispatching
+        thread succeeds whether or not the lock is held. Only a second
+        thread can show that it is free (issue-2550e4ee).
+        """
         coordinator = TouchEventCoordinator()
+        acquired_elsewhere = []
+
+        def try_acquire():
+            got = coordinator._lock.acquire(timeout=1.0)
+            if got:
+                coordinator._lock.release()
+            acquired_elsewhere.append(got)
 
         def callback(pos):
+            probe = threading.Thread(target=try_acquire, daemon=True)
+            probe.start()
+            probe.join(WAIT_TIMEOUT)
             coordinator.register_button_region("c", pygame.Rect(200, 200, 10, 10))
 
         coordinator.register_button_region(
@@ -240,6 +255,8 @@ class TestTouchCoordinatorButtonCallback:
         worker.join(WAIT_TIMEOUT)
 
         assert not worker.is_alive()
+        assert acquired_elsewhere == [True]
+        assert "c" in {r.region_id for r in coordinator.get_active_regions()}
 
 
 class TestTouchInterfaceEmit:
