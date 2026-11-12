@@ -1,6 +1,7 @@
 [Unit]
 Description=GTach OBD-II Tachometer
-After=local-fs.target bluetooth.service gtach-boot-splash.service hyperpixel2r-init.service
+# Ordering only: the Pi Zero 2W controller appears when hciuart attaches it (issue-76ef5387).
+After=local-fs.target bluetooth.service gtach-boot-splash.service hyperpixel2r-init.service hciuart.service
 # Pull in Bluetooth rather than only ordering after it.
 Wants=bluetooth.service
 # Five starts in two minutes before systemd gives up, so a preflight

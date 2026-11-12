@@ -20,6 +20,7 @@ tool parsing was introduced into any file this change edits.
 """
 
 import errno
+import logging
 import types
 
 import pytest
@@ -29,6 +30,8 @@ from gtach.comm.transport import (
     _CONNECT_FAULT_CAUSES,
     _SILENT_LINK_CAUSE,
     _WEDGED_LINK_CAUSE,
+    LINK_BUSY_CAUSE,
+    LINK_RESET_CAUSE,
     OBDTransport,
     TransportState,
     _bluetooth_adapter_present,
@@ -777,3 +780,122 @@ class TestEveryCauseFitsTheDisplay:
             assert len(text) <= 40, (text, len(text))
             assert text == text.strip()
             assert text
+
+
+class _ClosingReadStub(_StubTransport):
+    """A connected transport whose read runs a hook, then raises EBADF.
+
+    The hook models another thread closing the link while send_command
+    is blocked in the read (issue-76ef5387).
+    """
+
+    def __init__(self, on_read=None):
+        super().__init__()
+        self._on_read = on_read
+
+    def _write(self, handle, data):
+        pass
+
+    def _set_timeout(self, handle, timeout):
+        pass
+
+    def _read(self, handle, size):
+        if self._on_read is not None:
+            self._on_read(self)
+        raise OSError(errno.EBADF, "Bad file descriptor")
+
+
+class TestPlannedCloseIsNotAnError:
+    """EDIT C (issue-76ef5387): a handle this process closed is no fault."""
+
+    def _errors(self, caplog):
+        return [r for r in caplog.records if r.levelno >= logging.ERROR]
+
+    def test_disconnect_during_read(self, adapter_present, caplog):
+        stub = _ClosingReadStub(on_read=lambda t: t.disconnect())
+        assert stub.connect() is True
+        caplog.clear()
+
+        with caplog.at_level(logging.DEBUG):
+            assert stub.send_command("010C") is None
+
+        assert self._errors(caplog) == []
+        assert stub.last_failure_cause is None
+        assert stub.state == TransportState.DISCONNECTED
+        assert any("ended by link close" in r.getMessage() for r in caplog.records)
+
+    def test_drop_link_during_read(self, adapter_present, caplog):
+        stub = _ClosingReadStub(on_read=lambda t: t.drop_link(cause="planned"))
+        assert stub.connect() is True
+        caplog.clear()
+
+        with caplog.at_level(logging.DEBUG):
+            assert stub.send_command("010C") is None
+
+        assert self._errors(caplog) == []
+        # The cause the closer recorded is kept.
+        assert stub.last_failure_cause == "planned"
+
+    def test_fault_on_current_handle_is_still_an_error(self, adapter_present, caplog):
+        stub = _ClosingReadStub()
+        assert stub.connect() is True
+        caplog.clear()
+
+        assert stub.send_command("010C") is None
+
+        assert any(
+            "Error communicating with device" in r.getMessage()
+            for r in self._errors(caplog)
+        )
+        assert stub.last_failure_cause == "EBADF"
+        assert stub.state == TransportState.DISCONNECTED
+
+
+class TestConnAbortedIsALinkReset:
+    """EDIT D (issue-76ef5387)."""
+
+    def test_econnaborted_maps_to_link_reset(self):
+        assert _CONNECT_FAULT_CAUSES[errno.ECONNABORTED] == LINK_RESET_CAUSE
+
+
+class TestWorkingControllerCausesDoNotEscalate:
+    """EDIT G (issue-76ef5387): a reachable controller is not wedged."""
+
+    def _fail(self, stub, times, code):
+        for _ in range(times):
+            stub._outcome = OSError(code, errno.errorcode[code])
+            assert stub.connect() is False
+
+    def test_ehostdown_never_escalates(self, adapter_present):
+        stub = _StubTransport()
+
+        for _ in range(8):
+            self._fail(stub, 1, errno.EHOSTDOWN)
+            assert stub.last_failure_cause == "adapter not reachable"
+
+        assert stub._consecutive_connect_failures == 0
+
+    def test_ehostdown_then_ebusy_is_busy(self, adapter_present):
+        stub = _StubTransport()
+
+        self._fail(stub, 8, errno.EHOSTDOWN)
+        self._fail(stub, 1, errno.EBUSY)
+
+        assert stub.last_failure_cause == LINK_BUSY_CAUSE
+
+    def test_alternating_ehostdown_and_ebusy_counts_ebusy_only(self, adapter_present):
+        stub = _StubTransport()
+
+        for _ in range(5):
+            self._fail(stub, 1, errno.EHOSTDOWN)
+            self._fail(stub, 1, errno.EBUSY)
+
+        assert stub.last_failure_cause == LINK_BUSY_CAUSE
+        assert stub._consecutive_connect_failures == 5
+
+    def test_six_ebusy_still_escalate(self, adapter_present):
+        stub = _StubTransport()
+
+        self._fail(stub, 6, errno.EBUSY)
+
+        assert stub.last_failure_cause == _WEDGED_LINK_CAUSE

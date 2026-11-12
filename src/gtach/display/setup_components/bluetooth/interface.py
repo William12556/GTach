@@ -48,7 +48,7 @@ DEVICE_PROBE = "device_probe"
 # DEVICE_LIST error-line texts (design-a3b4c5d6 section 4.0).
 SCAN_FAILED_TEXT = "Scan failed"
 FALLBACK_LIST_TEXT = "No ELM327"
-DEVICE_NOT_SAVED_TEXT = "Device not saved"
+DEVICE_NOT_SAVED_TEXT = "Not saved"
 OBD_CHECK_FAILED_TEXT = "OBD check failed"
 
 
@@ -488,7 +488,8 @@ class BluetoothSetupInterface:
                     self._finish_pairing(device, state, current)
                 elif operation.status == OperationStatus.COMPLETED:
                     self._set_state(state, pairing_status=PairingStatus.FAILED)
-                    self.logger.error(f"Failed to pair with device: {device.name}")
+                    # A refused pairing is not a fault (issue-76ef5387).
+                    self.logger.warning(f"Failed to pair with device: {device.name}")
                 else:
                     self._set_state(
                         state,

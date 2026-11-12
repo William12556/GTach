@@ -20,15 +20,17 @@ import time
 from datetime import datetime
 from typing import Callable, List, Optional
 
-from ..display.setup_models import BluetoothDevice, PairingStatus
+from ..display.setup_models import BluetoothDevice, DeviceType, PairingStatus
 
-# Hardcoded fake devices for discovery
+# Hardcoded fake devices for discovery; each classified so a scan shows the
+# normal device list (issue-76ef5387).
 _FAKE_DEVICES = [
     BluetoothDevice(
         name="ELM327 OBD Adapter",
         mac_address="AA:BB:CC:DD:EE:01",
         signal_strength=-60,
         device_type="ELM327",
+        device_classification=DeviceType.HIGHLY_LIKELY_ELM327,
         last_seen=datetime.now(),
     ),
     BluetoothDevice(
@@ -36,6 +38,7 @@ _FAKE_DEVICES = [
         mac_address="AA:BB:CC:DD:EE:02",
         signal_strength=-55,
         device_type="ELM327",
+        device_classification=DeviceType.HIGHLY_LIKELY_ELM327,
         last_seen=datetime.now(),
     ),
     BluetoothDevice(
@@ -43,6 +46,7 @@ _FAKE_DEVICES = [
         mac_address="AA:BB:CC:DD:EE:03",
         signal_strength=-70,
         device_type="ELM327",
+        device_classification=DeviceType.HIGHLY_LIKELY_ELM327,
         last_seen=datetime.now(),
     ),
     BluetoothDevice(
@@ -50,6 +54,7 @@ _FAKE_DEVICES = [
         mac_address="AA:BB:CC:DD:EE:04",
         signal_strength=-65,
         device_type="Compatible",
+        device_classification=DeviceType.POSSIBLY_COMPATIBLE,
         last_seen=datetime.now(),
     ),
 ]

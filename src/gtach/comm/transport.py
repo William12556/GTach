@@ -17,7 +17,7 @@ import threading
 import time
 from abc import ABC
 from enum import Enum, auto
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 from ..utils.platform import PlatformType
 from ..utils.waits import wait_for_event
@@ -47,9 +47,9 @@ TRANSPORT_FAST = ("simbt", "simtcp", "tcp")
 # duplicating the literal.
 LINK_BUSY_CAUSE = "bluetooth link busy - may need reset"
 
-# A connect issued just after pairing can be reset by the adapter while
-# the pairing link closes; public so the post-pairing check can retry
-# it (issue-146491ba).
+# A connect issued just after pairing can be reset (ECONNRESET) or
+# aborted (ECONNABORTED) by the adapter while the pairing link closes;
+# public so the post-pairing check can retry it (issue-146491ba).
 LINK_RESET_CAUSE = "connection reset by adapter"
 
 _CONNECT_FAULT_CAUSES = {
@@ -61,7 +61,16 @@ _CONNECT_FAULT_CAUSES = {
     _errno.ENETDOWN: "bluetooth controller down",
     _errno.ECONNREFUSED: "connection refused by adapter",
     _errno.ECONNRESET: LINK_RESET_CAUSE,
+    _errno.ECONNABORTED: LINK_RESET_CAUSE,
 }
+
+# The peer answered or was paged, so the controller is working; a
+# connect failing with one of these causes is no sign of a wedge
+# (issue-76ef5387).
+_CONTROLLER_WORKING_CAUSES: Tuple[str, ...] = (
+    _CONNECT_FAULT_CAUSES[_errno.ECONNREFUSED],
+    _CONNECT_FAULT_CAUSES[_errno.EHOSTDOWN],
+)
 
 # Recorded when a link is torn down for sustained silence rather than
 # failing to open, so the DISCONNECTED screen explains a mid-session
@@ -407,11 +416,11 @@ class OBDTransport(ABC):
             return True
         except self._IO_ERRORS as e:
             cause = self._classify_connect_error(e)
-            # A refused connect shows a working controller, so it does not
-            # count towards the wedge diagnosis (audit A03).
-            refused = cause == _CONNECT_FAULT_CAUSES[_errno.ECONNREFUSED]
+            # A refused or unreachable peer shows a working controller, so
+            # it does not count towards the wedge diagnosis (issue-76ef5387).
+            controller_working = cause in _CONTROLLER_WORKING_CAUSES
             with self._lock:
-                if not refused:
+                if not controller_working:
                     self._consecutive_connect_failures += 1
                 failures = self._consecutive_connect_failures
 
@@ -425,13 +434,13 @@ class OBDTransport(ABC):
             # counter, this one latches: the condition persists until a
             # connect succeeds, and the cause should keep reporting it.
             #
-            # A refused connect is excluded: the peer's stack answered, so
-            # the controller is working and only the service is absent.
+            # Causes showing a working controller are excluded: the peer
+            # answered or was paged (issue-76ef5387).
             if (
                 self._ADAPTER_CHECKS
                 and failures >= self._MAX_CONSECUTIVE_CONNECT_FAILURES
                 and cause != "no bluetooth controller"
-                and cause != _CONNECT_FAULT_CAUSES[_errno.ECONNREFUSED]
+                and cause not in _CONTROLLER_WORKING_CAUSES
                 and _bluetooth_adapter_present()
             ):
                 cause = _WEDGED_LINK_CAUSE
@@ -589,6 +598,12 @@ class OBDTransport(ABC):
             self._record_timeout(command, timeout)
             return None
         except self._IO_ERRORS as e:
+            # A handle this process closed (disconnect() or drop_link())
+            # is no fault; state and cause are left as the closer set
+            # them (issue-76ef5387).
+            if self._acquire_handle() is not handle:
+                logger.debug("Command %r ended by link close: %s", command, e)
+                return None
             logger.error("Error communicating with device: %s", e)
             cause = self._classify_connect_error(e)
             with self._lock:

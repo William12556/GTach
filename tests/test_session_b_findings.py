@@ -6,7 +6,7 @@
 # GTach is licensed under the MIT License.
 # See the LICENSE file in the project root for full license text.
 
-"""Session B findings F2 and F3 (change-146491ba).
+"""Session B findings F2 and F3 (change-146491ba, change-76ef5387).
 
 F2: every DEVICE_LIST error-line text fits the 220 px error line in
 get_label_small_font(). F3: a 0100 reply of None with the transport
@@ -45,12 +45,7 @@ def small_font() -> pygame.font.Font:
     [
         SCAN_FAILED_TEXT,
         FALLBACK_LIST_TEXT,
-        pytest.param(
-            DEVICE_NOT_SAVED_TEXT,
-            marks=pytest.mark.xfail(
-                strict=True, reason="measured 221 px; out of scope (change-146491ba)"
-            ),
-        ),
+        DEVICE_NOT_SAVED_TEXT,
         OBD_CHECK_FAILED_TEXT,
     ],
 )
