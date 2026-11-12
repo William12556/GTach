@@ -29,8 +29,8 @@ document_info:
   component: "DisplayManager"
   parent: "design-2c6b8e4d-domain_display.md"
   source_file: "src/gtach/display/manager.py"
-  version: "1.0"
-  date: "2025-12-29"
+  version: "1.3"
+  date: "2026-11-12"
   author: "William Watson"
 ```
 
@@ -361,6 +361,65 @@ class DisplayConfig:
     splash_duration: float = 4.0 # Splash screen seconds
 ```
 
+### 5.4 Engine Off Condition
+
+A derived condition, like DISCONNECTED; not a `DisplayMode`. It applies
+in RADIAL when the adapter is connected and answering but the vehicle
+is not (design-e5f6a7b8 §6.3).
+
+**5.4.1 Evaluation (once per frame, after `_link_lost()`)**
+
+`_frame_engine_off` is True only when ALL hold:
+
+1. `_frame_link_lost` is True (no live samples);
+2. the transport callback returns exactly True (None or an exception
+   counts as not connected);
+3. `_vehicle_silent_callback()` returns a timestamp, and
+   `time.monotonic() - timestamp <= ENGINE_OFF_FRESHNESS_S` (15.0 s);
+4. simulation mode is off.
+
+Any failure, including an absent or raising callback, gives False, so
+the display falls back to DISCONNECTED. Engine off is never shown
+without fresh evidence from the adapter.
+
+`_vehicle_silent_callback: Optional[Callable[[], Optional[float]]]` is
+injected by `app.py` and returns `OBDProtocol.last_vehicle_silent_ts()`,
+following the pattern of `_link_connected_callback`.
+
+**5.4.2 Precedence (RADIAL)**
+
+| Condition | Screen | Status dot |
+|---|---|---|
+| `_frame_link_lost` and not `_frame_engine_off` | DISCONNECTED (unchanged) | Red |
+| `_frame_engine_off` | Engine off | Yellow |
+| Link up, not yet confirmed | Gauge (unchanged) | Yellow |
+| Link confirmed | Gauge (unchanged) | Green |
+
+Every site that currently decides DISCONNECTED from `_frame_link_lost`
+(`_render_normal_modes`, `_register_view_regions`,
+`_draw_status_indicator`) uses `_frame_link_lost and not
+_frame_engine_off`. `_current_view_key()` includes `_frame_engine_off`,
+so the DISCONNECTED buttons are unregistered on entry to Engine off.
+OPTIONS remains reachable by swipe.
+
+**5.4.3 Engine off screen**
+
+- The RADIAL gauge drawn at 0 RPM: needle at zero, band 0.
+- The numeric readout is replaced by the text "Engine off", sized to fit
+  the centre disc; no RPM figure is shown.
+- On entry, the RPM conditioning state is reset (`_last_rpm = 0`,
+  `_rpm_display = 0.0`, `_rpm_last_ts = None`, `_active_band = 0`), so
+  the needle does not ease down from a stale value and the next live
+  reading starts from that reading.
+- No buttons.
+
+**5.4.4 Return to the live gauge**
+
+Unchanged: `LINK_RECOVERY_SAMPLES` valid samples within
+`LINK_LOSS_TIMEOUT` of each other. The protocol resumes polling once the
+vehicle answers `0100`, which follows its re-check interval
+(design-e5f6a7b8 §6.3.3).
+
 [Return to Table of Contents](<#table of contents>)
 
 ---
@@ -559,6 +618,7 @@ flowchart TD
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
 | 1.1 | 2026-03-13 | William Watson | C3: fps_limit 60->30. C4: fixed 4-band background colour scheme; removed rpm_warning/rpm_danger from DisplayConfig; updated frame sequence and colour constants. H1: added DISCONNECTED mode, set_connection_state(), _render_disconnected(), updated transitions. |
 | 1.2 | 2026-05-27 | William Watson | Renamed SETTINGS → OPTIONS throughout. Added naming note re source code identifier lag. Updated DisplayMode enum, mode transitions table, gesture methods, and render loop diagram. |
+| 1.3 | 2026-11-12 | William Watson | §5.4: added Engine off condition — evaluation, precedence against DISCONNECTED, screen content, return to live. Other sections predate the current source (DIGITAL/GAUGE, long-press OPTIONS) and are not revised here (report-71ab3751-design-review) |
 
 ---
 

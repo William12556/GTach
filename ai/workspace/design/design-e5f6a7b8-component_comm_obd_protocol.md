@@ -27,8 +27,8 @@ document_info:
   component: "OBDProtocol"
   parent: "design-7d3e9f5a-domain_comm.md"
   source_file: "src/gtach/comm/obd.py"
-  version: "1.0"
-  date: "2025-12-29"
+  version: "1.1"
+  date: "2026-11-12"
   author: "William Watson"
 ```
 
@@ -340,6 +340,54 @@ async def request_with_retry(self,
     return None
 ```
 
+### 6.3 Vehicle Silent State
+
+The adapter is connected and answering, but the vehicle is not (normally
+ignition off). The protocol records this as evidence for the display's
+"Engine off" state (design-b8c9d0e1 §5.4).
+
+**6.3.1 Evidence rule**
+
+| `0100` outcome | Classification | Effect |
+|---|---|---|
+| Reply containing `4100` | Vehicle answering | Clear the silent timestamp; start or resume RPM polling |
+| Reply from the adapter without `4100` (`NO DATA`, `UNABLE TO CONNECT`, `BUS INIT: ...ERROR`, `CAN ERROR`, `?`, `7F ...`) | Vehicle silent | Set the silent timestamp to `time.monotonic()`; log per audit A05 |
+| No reply (timeout), transport connected | Unknown | Log per audit A05; do NOT set the silent timestamp |
+| No reply, transport disconnected | Link lost | Clear the silent timestamp (issue-146491ba path) |
+
+A timeout is never evidence of a silent vehicle: an adapter that has
+lost power without closing its socket also produces timeouts.
+
+**6.3.2 Interface**
+
+```python
+def last_vehicle_silent_ts(self) -> Optional[float]:
+    """Monotonic time of the latest adapter reply showing a silent vehicle.
+
+    Returns:
+        The timestamp, or None if the vehicle last answered, the
+        transport has disconnected, or no such reply has been seen.
+        Safe to call from any thread (a single float read).
+    """
+```
+
+The timestamp is cleared (None) by a `4100` reply, by a valid `010C`
+sample, and when the protocol loop sees the transport disconnected.
+
+**6.3.3 Silence during polling**
+
+If `010C` produces no valid sample for `_RPM_SILENT_RECHECK_S` (2.0 s)
+while the transport is connected, the protocol leaves the polling loop
+and re-checks the vehicle with `0100` (timeout `_INIT_0100_TIMEOUT_S`),
+classified by §6.3.1. The re-check sends no `ATZ`, applies no settle
+delay and repeats no configuration commands; the adapter has not been
+reset. While the vehicle stays silent, the re-check repeats after
+`_INIT_RETRY_DELAY_S`. On a `4100` reply, polling resumes.
+
+An engine that stalls with the ignition on is expected to keep
+answering `010C` with 0 RPM. That is a valid sample and does not
+enter this path (inference; to be confirmed in the in-car test).
+
 [Return to Table of Contents](<#table of contents>)
 
 ---
@@ -403,6 +451,7 @@ sequenceDiagram
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| 1.1 | 2026-11-12 | William Watson | §6.3: added vehicle silent state — evidence rule, `last_vehicle_silent_ts()`, re-check after silence during polling. Other sections predate the current source and are not revised here (report-71ab3751-design-review) |
 
 ---
 
