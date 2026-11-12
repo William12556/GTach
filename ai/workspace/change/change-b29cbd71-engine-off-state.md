@@ -17,7 +17,7 @@ change_info:
   title: "Show 'Engine off' when the adapter is connected and reports a silent vehicle; re-check the vehicle when samples stop during polling"
   date: "2026-11-12"
   author: "William Watson"
-  status: "proposed"
+  status: "approved"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -261,6 +261,12 @@ version_history:
     changes:
       - "Initial change document resolving issue-b29cbd71 iteration 1."
 
+  - version: "1.1"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Approved for implementation by William Watson, including the brief DISCONNECTED gap when the ignition is switched off while driving."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -276,6 +282,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial change document. EDITS A to C. |
+| 1.1 | 2026-11-12 | Approved for implementation. |
 
 ---
 
