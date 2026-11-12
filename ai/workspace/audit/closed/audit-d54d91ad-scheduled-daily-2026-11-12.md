@@ -1,6 +1,8 @@
 Created: 2026 November 12
 # GTach Scheduled Daily Audit — 2026-11-12 (audit-d54d91ad)
 
+> **Status: Closed (2026-11-12).** F1: executable bit restored on both scripts. F2: check C4 counts "Vehicle not answering" instead of "No valid 0100". The observation on `adapter_reset_in_session` was resolved by change-34781bfe.
+
 ---
 
 ## Table of Contents
@@ -166,6 +168,7 @@ for p in "Initialization failed" "No valid 0100" "adapter closed the connection"
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial scheduled daily audit. |
+| 1.1 | 2026-11-12 | F1 and F2 fixed by direct `bin/` edits; closed and moved to audit/closed/. |
 
 ---
 
