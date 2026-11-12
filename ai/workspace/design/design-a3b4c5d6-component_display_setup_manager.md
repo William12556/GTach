@@ -30,10 +30,10 @@ document_info:
     - "src/gtach/display/setup_components/state/coordinator.py"
     - "src/gtach/display/setup_components/bluetooth/interface.py"
     - "src/gtach/display/async_operations.py"
-  version: "2.0"
-  date: "2026-11-11"
+  version: "2.1"
+  date: "2026-11-12"
   author: "William Watson"
-  status: "proposed - awaiting approval"
+  status: "approved"
 ```
 
 Version 2.0 replaces the 2025 class model, which described a structure that was never built (`setup_manager.py`, `SetupStep`, `BluetoothManager`, `async` methods). Sections 2.0 to 3.0 describe the source at commit `94ce959b`. Sections 4.0 to 6.0 state the target behaviour for change-34781bfe; each difference from the current source is marked **(change)**.
@@ -121,7 +121,7 @@ Setup opens on `CURRENT_DEVICE` when a primary device is stored, otherwise on `W
 - **(change)** `DEVICE_LIST` then shows "No ELM327 found - showing all devices" on the error line (5.2).
 - The manual filter toggle and manual MAC entry are removed (decision D2).
 
-Note for approval: decision D1 was worded as "one automatic unfiltered pass". Using the first scan's results reaches the same outcome without the second pass. If a second scan is preferred, this subsection is the place to say so.
+Decision D1 was worded as "one automatic unfiltered pass". Using the first scan's results reaches the same outcome without a second pass; this refinement was approved on 2026-11-12. A scan with nothing in range takes about 36 s (device session A), which a second pass would double.
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -224,6 +224,7 @@ stateDiagram-v2
 | 1.1 | 2026-10-02 | Claude | Added 5.3 DEVICE_LIST Screen Behaviour; updated 4.7 and 5.2 DEVICE_LIST interaction (change-479b2e51) |
 | 1.2 | 2026-10-16 | Claude | 5.3: slot column geometry, slot interior, arrow and error-line positions (change-d38362aa) |
 | 2.0 | 2026-11-11 | Claude | Rewritten against the source at `94ce959b`: the unbuilt 2025 class model removed; structure, flow, screen behaviour and the operation rule stated. Target behaviour for change-34781bfe marked "(change)": empty and failed scans reach DEVICE_LIST, unfiltered fallback (D1), effective cancellation, probe guard, no Continue button, spinner fade. DEVICE_LIST text carried over as 5.2. Layout converted to GFM heading links |
+| 2.1 | 2026-11-12 | William Watson | Approved, including the D1 same-scan fallback in 4.3 |
 
 ---
 

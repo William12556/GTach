@@ -17,7 +17,7 @@ change_info:
   title: "Close a link that connects after disconnect; treat OSError as serial link loss; discovery fallback and wait sizing; effective pairing cancellation; truthful device-store results; separate simulation store path; quieter OBD start-up; non-joining OBD stop function"
   date: "2026-11-11"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -282,12 +282,12 @@ implementation:
 verification:
   implemented_date: "2026-11-11"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: "Commit 963fd0fc82ccead532d1192ef99aee25e23f26aa: pytest 619 passed (30 new in tests/test_comm_layer_defects.py); mypy src/ no issues (worker's results, report-b4f9607a section 4)."
+  verification_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Commit 963fd0fc82ccead532d1192ef99aee25e23f26aa: pytest 619 passed (30 new in tests/test_comm_layer_defects.py); mypy src/ no issues (worker's results, report-b4f9607a section 4). Device session A (2026-11-12, test-71ab3751-device-session-a): A4 cause shown at link loss and no wedge cause after about 15 refusals, reconnect; A5 no socket leak, probe connected, no EBUSY; A6 scan 5.3 s with the emulator and 36 s with nothing in range, no hcitool warning; A7 one vehicle-silent WARNING per minute, no traceback, recovery record; A9 devices.yaml unchanged, devices-sim.yaml used. Not provoked on device: A01 race (unit test), A02 (no serial adapter), fallback (no device in range)."
   issues_found:
     - "EDIT G: pair_device still clears _cancel_pairing on entry and makes the initial CONNECTING status call before the first check; a cancel issued before pair_device starts has no effect. Accepted: run 4 ignores completions of cancelled operations. See report-b4f9607a section 6."
-    - "EDIT E: a chunk may now wait up to 14 s before it is abandoned (previously 9 s), so a scan whose hcitool calls hang can take longer in total. To be measured in device session A."
+    - "EDIT E: a chunk may now wait up to 14 s before it is abandoned (previously 9 s), so a scan whose hcitool calls hang can take longer in total. Measured in device session A: a scan with nothing in range took 36 s (7 chunks of about 5.2 s); no chunk was abandoned."
     - "reset_device_store() does not reset the path set by set_device_store_path(); relevant to test isolation only."
 
 traceability:
@@ -326,6 +326,12 @@ version_history:
     changes:
       - "Implemented in 963fd0fc82ccead532d1192ef99aee25e23f26aa; awaiting device session A."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session A (test-71ab3751-device-session-a); fallback to be observed in session B."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -343,6 +349,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to J. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
 | 1.2 | 2026-11-11 | Implemented in 963fd0f; awaiting device session A. |
+| 1.3 | 2026-11-12 | Verified on device in session A; fallback to be observed in session B. |
 
 ---
 

@@ -50,10 +50,16 @@ All commands run on the Mac from `~/Documents/GitHub/GTach`.
 | Emulator radio off | `ssh root@ELM327-Emulator.local 'bluetoothctl power off'` |
 | Emulator radio on | `ssh root@ELM327-Emulator.local 'bluetoothctl power on'` |
 | Pi time | `ssh root@gtach.local 'date "+%F %T"'` |
+| Emulator engine off | `ssh root@ELM327-Emulator.local 'systemctl stop elm327-emulator.service; sed "s/-s car/-s engineoff/" /opt/elm327/start-elm327-emulator-bt.sh > /tmp/start-engineoff.sh; nohup bash /tmp/start-engineoff.sh > /tmp/engineoff.log 2>&1 &'` |
+| Emulator engine on | `ssh root@ELM327-Emulator.local 'pkill -f "[s]tart-engineoff.sh"; sleep 3; systemctl start elm327-emulator.service'` |
+| Pull logs | `./bin/pull_logs.sh` (copies the Pi logs to `logs/` for review) |
 | Socket count | `ssh root@gtach.local 'ls -l /proc/$(systemctl show -p MainPID --value gtach)/fd \| grep -c socket'` |
 | Restart count | `ssh root@gtach.local 'systemctl show -p NRestarts -p ActiveEnterTimestamp gtach'` |
 
-`Emulator radio off` and `on` assume that `bluetoothctl` controls the emulator's adapter. If they do not, use your usual way of making the emulator undiscoverable.
+- `Emulator radio off` and `on` were confirmed to work on 2026-11-12.
+- `Emulator engine off` runs a temporary copy of the emulator's start script with the built-in `engineoff` scenario: `0100` answers `SEARCHING... UNABLE TO CONNECT`, then `NO DATA` or `BUS INIT:ERROR`. The service cannot switch scenario while running, because it has no command console.
+- In `Emulator engine on`, the brackets in `[s]tart-engineoff.sh` stop `pkill` from matching its own remote shell. Without them the shell is killed and the service is not started.
+- After a service stop, `systemctl status elm327-emulator.service` shows `failed` with status 143. This is the start script's exit on SIGTERM and clears on the next start.
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -162,7 +168,7 @@ All commands run on the Mac from `~/Documents/GitHub/GTach`.
    ssh root@gtach.local 'grep -E "Starting .*discovery|Discovery complete|hcitool returned|adapter_pre_initialised" /opt/gtach/debug.log | tail -6'
    ```
 
-4. Run `Emulator radio off`. Open OPTIONS → "Clear settings" → "Clear" again, note the Pi time, and tap Start Setup.
+4. Run `Emulator radio off`. The link drops and DISCONNECTED appears, so OPTIONS is not reachable. Tap Setup, then New Setup on CURRENT_DEVICE, then Start Setup on WELCOME.
 5. Let one scan finish. Note what the display shows:
    - DEVICE_LIST with other named Bluetooth devices: the fallback works;
    - DISCOVERY repeating: no named device was in range. Run 4 changes this behaviour.
@@ -178,14 +184,14 @@ All commands run on the Mac from `~/Documents/GitHub/GTach`.
 
 ### 4.7 A7: Vehicle Off (Run 2, A05)
 
-1. Note the Pi time. Set the emulator so that `0100` answers `NO DATA`, in your usual way. Leave it for 2 minutes.
+1. Note the Pi time. Run `Emulator engine off`. GTach reconnects within about 10 s and then shows DISCONNECTED (see the note in 4.12). Leave it for 2 minutes.
 2. Check error.log from the noted time:
 
    ```
    ssh root@gtach.local 'grep -E "Vehicle not answering|Initialization failed|Traceback" /opt/gtach/error.log | tail -6'
    ```
 
-3. Return the emulator to normal. RPM returns. Check:
+3. Run `Emulator engine on`. RPM returns. Check:
 
    ```
    ssh root@gtach.local 'grep "Vehicle answered 0100" /opt/gtach/debug.log | tail -1'
@@ -260,30 +266,38 @@ All commands run on the Mac from `~/Documents/GitHub/GTach`.
 2. Run `Restart count`. Record NRestarts.
 3. Turn Debug off on the display.
 
+### 4.12 Notes from the First Session (2026-11-12)
+
+- From A3 onwards, reading the pulled logs (`Pull logs`) proved quicker and more reliable than recording screen sequences.
+- With the vehicle off, the display shows DISCONNECTED rather than the gauge, because `_link_lost()` treats missing RPM data as a lost link. This is current behaviour, not a defect of runs 1 to 3; an "Engine off" display is recorded as new work in `ai/task.md`.
+- The A01 race needs the tap to land while a connect is blocked waiting for the adapter. With the emulator service stopped, connects are refused within milliseconds, so the window is not reachable this way.
+
 [Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 5.0 Results Sheet
 
+Session run on 2026-11-12, 05:39 to 07:12, with GTach at commit `2cffdae`.
+
 | Step | Change | Check | Result | Note |
 |---|---|---|---|---|
-| A1 | cfa4e617 | Display, touch, palette unchanged | | |
-| A1 | 042dd7ff | No importlib.resources failure; startup complete | | |
-| A2 | 042dd7ff | `--validate-config` leaves logs untouched | | |
-| A3 | 042dd7ff | Debug toggle writes debug.log | | |
-| A4 | b4f9607a | No wedge cause after refusals; cause shown; reconnect | | |
-| A5 | b4f9607a | No leaked socket; Continue succeeds; no EBUSY | | Attempts: |
-| A5 | 042dd7ff | ATZ sent after the probe path | | |
-| A6 | b4f9607a | Scan durations: emulator on / radio off | | |
-| A6 | b4f9607a | Fallback observation | | |
-| A6 | 042dd7ff | ATZ sent after pairing | | |
-| A7 | b4f9607a | Vehicle off: rate-limited WARNING, no traceback, recovery record | | |
-| A8 | 042dd7ff | Stop: Result=success, status 0 | | |
-| A9 | b4f9607a | devices.yaml unchanged; devices-sim.yaml used | | |
-| A9 | 042dd7ff | Re-entered setup uses the simulated back end | | |
-| A10 | 042dd7ff | Reset: reboot; outcome record and return code | | |
-| A11 | — | NRestarts | | |
+| A1 | cfa4e617 | Display, touch, palette unchanged | Pass | First connect after deploy failed once with EHOSTUNREACH ("no bluetooth controller"): the Pi's Bluetooth was not ready 0.2 s after startup; the retry 5 s later connected |
+| A1 | 042dd7ff | No importlib.resources failure; startup complete | Pass | Count 0; Python 3.9 fix confirmed |
+| A2 | 042dd7ff | `--validate-config` leaves logs untouched | Pass | `Config valid`, exit 0; start.log checksum and debug.log file list unchanged |
+| A3 | 042dd7ff | Debug toggle writes debug.log | Pass | Off: 41906 lines, unchanged after 10 s. On: 47124, then 48617 |
+| A4 | b4f9607a | No wedge cause after refusals; cause shown; reconnect | Pass | Link loss 05:50:18 (ENOTCONN), cause shown; about 15 refusals, cause stayed "connection refused by adapter"; reconnect 05:51:53 |
+| A5 | b4f9607a | No leaked socket; Continue succeeds; no EBUSY | Pass | Sockets 3 then 2; probe connected 06:33:47; no busy error. A01 race not provoked (4.12); covered by unit test |
+| A5 | 042dd7ff | ATZ sent after the probe path | Pass | `adapter_pre_initialised=False` at 06:33:49 |
+| A6 | b4f9607a | Scan durations: emulator on / radio off | Pass | 5.3 s (early exit) / 36 s (7 chunks of about 5.2 s); no hcitool warning |
+| A6 | b4f9607a | Fallback observation | Not testable | hcitool found no Bluetooth device of any kind in range; retest in session B with a named device nearby |
+| A6 | 042dd7ff | ATZ sent after pairing | Pass | `adapter_pre_initialised=False` at 06:37:33 and 06:40:05. First OBD check after pairing failed once with ECONNRESET 25 ms after the pairing test; Retry passed (recorded in `ai/task.md`) |
+| A7 | b4f9607a | Vehicle off: rate-limited WARNING, no traceback, recovery record | Pass | WARNING at 06:49:46, 06:50:50, 06:51:55; no traceback; "Vehicle answered 0100" at 06:56:20 |
+| A8 | 042dd7ff | Stop: Result=success, status 0 | Pass | Stop and start in about 3 s |
+| A9 | b4f9607a | devices.yaml unchanged; devices-sim.yaml used | Pass | Checksum `cb85a7a0…` before and after; devices-sim.yaml written 07:08 |
+| A9 | 042dd7ff | Re-entered setup uses the simulated back end | Pass | Both setups used SimBluetoothPairing; no hcitool scan |
+| A10 | 042dd7ff | Reset: reboot; outcome record and return code | Pass | `/sbin/reboot returned -15`; outcome "reboot initiated". Explains the 2026-10-09 "reboot command failed" record |
+| A11 | — | Evidence collected | Done | Logs pulled to `logs/` after each step; NRestarts not recorded (reset by the A10 reboot) |
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -294,6 +308,7 @@ All commands run on the Mac from `~/Documents/GitHub/GTach`.
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial procedure for device session A (runs 1 to 3 of proposal-71ab3751). |
+| 1.1 | 2026-11-12 | Session run; results recorded. Section 3.0: engine-off and pull-logs commands added. A6 item 4 and A7 items 1 and 3 corrected. Section 4.12 notes added. |
 
 ---
 

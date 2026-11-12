@@ -17,7 +17,7 @@ issue_info:
   title: "Code, configuration keys and one data file under src/gtach have no caller or reader"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "resolved"
+  status: "verified"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -139,9 +139,9 @@ resolution:
   fix_description: "Unused code, the gesture_* configuration fields, utils/default-config.txt and the dead import fallbacks removed; rpm_warning and rpm_danger kept, because ConfigStore.validate() would reject existing files without them (commit f89dc2f6216ff113e7aaf819cb46c21ce873b4ce; report-cfa4e617)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Device session A (test-71ab3751-device-session-a step A1): gauge, touch, palette and setup screens unchanged."
   closure_notes: ""
 
 prevention:
@@ -153,7 +153,7 @@ verification_enhanced:
     - "Confirm from source. [DONE for the list in test_data, textual search.]"
     - "After the change: pytest tests/ passes and mypy src/ reports no issues."
     - "After the change: device session A (proposal-71ab3751 section 7.0) shows gauge, touch and setup behaviour unchanged."
-  verification_results: "pytest 589 passed and mypy clean (worker's results). Device session A outstanding."
+  verification_results: "pytest 589 passed and mypy clean (worker's results). Device session A passed on 2026-11-12."
 
 traceability:
   design_refs: []
@@ -182,6 +182,12 @@ version_history:
     changes:
       - "Resolved by change-cfa4e617 (f89dc2f6216ff113e7aaf819cb46c21ce873b4ce); rpm_warning and rpm_danger kept; awaiting device session A."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session A."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -198,6 +204,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial issue document. E01, W1, D2, D3, D4. |
 | 1.1 | 2026-11-11 | Resolved by change-cfa4e617 (f89dc2f); rpm_warning and rpm_danger kept; awaiting device session A. |
+| 1.2 | 2026-11-12 | Verified on device in session A. |
 
 ---
 

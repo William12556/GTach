@@ -17,7 +17,7 @@ change_info:
   title: "Keep the pairing factory on setup re-entry; skip ATZ only after a reset in this session; truthful exit status; step-wise shutdown; root log level follows the debug switch; side-effect-free validation commands; log paths under GTACH_HOME; utility corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -292,11 +292,11 @@ implementation:
 verification:
   implemented_date: "2026-11-11"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: "Commit 2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11: pytest 654 passed (35 new in tests/test_lifecycle_logging_utils.py); mypy src/ no issues (worker's results, report-042dd7ff section 5)."
+  verification_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Commit 2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11: pytest 654 passed (35 new in tests/test_lifecycle_logging_utils.py); mypy src/ no issues (worker's results, report-042dd7ff section 5). Device session A (2026-11-12, test-71ab3751-device-session-a): A1 no importlib.resources failure on Python 3.9; A2 --validate-config leaves start.log and debug.log untouched; A3 debug toggle writes and stops writing debug.log; A5/A6 ATZ sent after setup (B02 interim); A8 stop Result=success, status 0; A9 re-entered setup stays simulated; A10 /sbin/reboot returned -15, outcome 'reboot initiated'. Not provoked on device: startup-failure and watchdog exit status, non-critical watchdog record (unit tests)."
   issues_found:
-    - "load_engine_profile cause: gtach.assets has no __init__.py; on Python 3.9 importlib.resources.files() raises TypeError for such a namespace package. Fixed by resolving from files('gtach'). Not reproduced on 3.9 by the worker; confirm in device session A."
+    - "load_engine_profile cause: gtach.assets has no __init__.py; on Python 3.9 importlib.resources.files() raises TypeError for such a namespace package. Fixed by resolving from files('gtach'). Confirmed on the Pi in device session A."
     - "E06: an integral float (fps_limit: 30.0) is now accepted by both load() and validate(); validate() previously rejected it."
     - "B03: if _start_obd fails after the transport thread has started, that thread keeps running until setup is re-entered. Accepted."
     - "toggle_debug_logging(False): 'Debug logging disabled' is not written anywhere, as before the change."
@@ -338,6 +338,12 @@ version_history:
     changes:
       - "Implemented in 2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11; awaiting device session A."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session A (test-71ab3751-device-session-a)."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -355,6 +361,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to F. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
 | 1.2 | 2026-11-11 | Implemented in 2cffdae; awaiting device session A. |
+| 1.3 | 2026-11-12 | Verified on device in session A. |
 
 ---
 

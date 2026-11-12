@@ -17,7 +17,7 @@ issue_info:
   title: "A connect that completes after disconnect leaves the link open; serial unplug is not detected; discovery, pairing cancellation, device-store persistence, simulation and OBD start-up logging defects in comm/"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "resolved"
+  status: "verified"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -138,9 +138,9 @@ resolution:
   fix_description: "connect() closes a handle that arrives after disconnect(); OSError is a serial link loss; refused connects no longer count towards the wedge cause; send-time I/O errors record a cause; a missing 4100 reply is a rate-limited WARNING; OBDProtocol.stop(timeout) with a non-joining registered stop function; discovery chunk wait covers the back end's limit, hcitool return code logged, one shared manager; same-scan fallback to named UNKNOWN devices; pairing and discovery honour cancellation; DeviceStore save and remove return truthful results; set_device_store_path(); SimTransport keeps _shutdown; last_connected parsed in from_dict only; F03 test corrected (commit 963fd0fc82ccead532d1192ef99aee25e23f26aa; report-b4f9607a). A12 recorded as a known limit in a comment."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Device session A (test-71ab3751-device-session-a steps A4 to A7 and A9): all checks passed. A01 race not provoked (unit test covers it); A02 not tested (no serial adapter); fallback not observable (no Bluetooth device in range), to be observed in session B."
   closure_notes: ""
 
 prevention:
@@ -153,7 +153,7 @@ verification_enhanced:
     - "After the fix: unit tests per change-b4f9607a."
     - "After the fix: device session A — A01 procedure of audit-71ab3751 section 6.0 leaves no RFCOMM socket open; link loss and reconnect work; EBUSY re-test."
     - "After the fix, if hardware is available: A02 unplug test."
-  verification_results: "pytest 619 passed and mypy clean (worker's results). Device session A outstanding: A01 procedure, link loss and reconnect, EBUSY re-test, discovery duration; A02 unplug test if hardware is available."
+  verification_results: "pytest 619 passed and mypy clean (worker's results). Device session A passed on 2026-11-12; see verification.test_results."
 
 traceability:
   design_refs:
@@ -184,6 +184,12 @@ version_history:
     changes:
       - "Resolved by change-b4f9607a (963fd0fc82ccead532d1192ef99aee25e23f26aa); awaiting device session A."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session A."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -200,6 +206,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial issue document. A01-A07, A09-A12, F03, X01, B06, discovery fallback, last_connected. |
 | 1.1 | 2026-11-11 | Resolved by change-b4f9607a (963fd0f); awaiting device session A. |
+| 1.2 | 2026-11-12 | Verified on device in session A. |
 
 ---
 

@@ -17,7 +17,7 @@ issue_info:
   title: "Setup re-entry, OBD start and exit-status defects in app.py; logging cost and side effects in main.py; watchdog log repetition; configuration, dependency, terminal and reset-outcome defects in utils/"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "resolved"
+  status: "verified"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -145,9 +145,9 @@ resolution:
   fix_description: "Setup re-entry keeps the pairing factory; simbt uses config/devices-sim.yaml; ATZ is skipped only after an adapter reset in this setup session (attribute supplied by run 4); _obd_started cleared when _start_obd raises; exit status 1 after startup failure, runtime error or watchdog exit; shutdown steps isolated; root log level WARNING after startup unless debug; validation commands log to stderr only; log paths from gtach_home(); one rate-limited WARNING for a stalled non-critical thread; one type rule for ConfigStore load and validate; serialised save; engine profile resolved through files('gtach') (Python 3.9 namespace-package TypeError); find_spec guard; TerminalRestorer tolerates a missing stdin; reboot return code logged, a negative code treated as a reboot in progress; pi_reset docstring corrected; get_state_info checks its type; [tool.mypy] platform = linux; SIGTERM test asserts status 0 (commit 2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11; report-042dd7ff)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Device session A (test-71ab3751-device-session-a steps A1 to A3, A5, A6, A8 to A10): all checks passed. The 2026-10-09 'reboot command failed' record is explained: /sbin/reboot is ended by SIGTERM (-15) during shutdown, now reported as 'reboot initiated'."
   closure_notes: ""
 
 prevention:
@@ -159,7 +159,7 @@ verification_enhanced:
     - "Confirm from source. [DONE, audit-71ab3751.]"
     - "After the fix: unit tests per change-042dd7ff."
     - "After the fix: device session A — start.log unchanged after 'gtach --validate-config'; debug toggle writes debug.log; Reset logs its return code; 'systemctl status' after a forced startup failure."
-  verification_results: "pytest 654 passed and mypy clean (worker's results). Device session A outstanding."
+  verification_results: "pytest 654 passed and mypy clean (worker's results). Device session A passed on 2026-11-12."
 
 traceability:
   design_refs: []
@@ -188,6 +188,12 @@ version_history:
     changes:
       - "Resolved by change-042dd7ff (2cffdaeaef6b774b3b2ba21fbe4741d647ad0b11); awaiting device session A."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session A."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -204,6 +210,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial issue document. B01-B04, B06, B07, E02-E06, F01, O1 and six task rows. |
 | 1.1 | 2026-11-11 | Resolved by change-042dd7ff (2cffdae); awaiting device session A. |
+| 1.2 | 2026-11-12 | Verified on device in session A. |
 
 ---
 

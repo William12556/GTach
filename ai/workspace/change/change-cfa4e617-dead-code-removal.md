@@ -17,7 +17,7 @@ change_info:
   title: "Delete code, configuration keys and one data file that have no caller or reader; no behaviour change"
   date: "2026-11-11"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -252,9 +252,9 @@ implementation:
 verification:
   implemented_date: "2026-11-11"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: "Commit f89dc2f6216ff113e7aaf819cb46c21ce873b4ce (merged to main): pytest 589 passed; mypy src/ no issues (worker's results, report-cfa4e617 section 6)."
+  verification_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Commit f89dc2f6216ff113e7aaf819cb46c21ce873b4ce (merged to main): pytest 589 passed; mypy src/ no issues (worker's results, report-cfa4e617 section 6). Device session A (2026-11-12, test-71ab3751-device-session-a step A1): display, touch and palette unchanged; pass."
   issues_found:
     - "EDIT B partly not applied: rpm_warning and rpm_danger kept. ConfigStore.validate() reports keys outside CONFIG_KEYS as unknown, so removing them would make --validate-config fail on existing config files. Decision D3 rested on a premise that holds for load and save only. Accepted deviation; see report-cfa4e617 sections 4 and 9."
     - "Pre-existing flaky test tests/test_pi_reset.py::TestDispatchIsOffThread::test_second_press_while_in_flight_is_ignored (fails about 1 in 8 full-suite runs on the unchanged tree). Not caused by this change."
@@ -292,6 +292,12 @@ version_history:
     changes:
       - "Implemented in f89dc2f6216ff113e7aaf819cb46c21ce873b4ce; EDIT B partly not applied (rpm_warning, rpm_danger kept); awaiting device session A."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session A (test-71ab3751-device-session-a)."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -309,6 +315,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial change document. E01, W1, D2, D3, D4. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
 | 1.2 | 2026-11-11 | Implemented in f89dc2f; rpm_warning and rpm_danger kept (D3 deviation); awaiting device session A. |
+| 1.3 | 2026-11-12 | Verified on device in session A. |
 
 ---
 
