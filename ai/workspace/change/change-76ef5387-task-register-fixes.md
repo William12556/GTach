@@ -203,7 +203,22 @@ traceability:
     - issue_ref: "issue-5e7a03c4"
       relationship: "related"
 
-notes: "Bundled at the owner's request; the owner delegated the technical decisions (2026-11-12)."
+notes: >
+  Bundled at the owner's request; the owner delegated the technical
+  decisions (2026-11-12).
+  EDIT E reverted after the device check (2026-11-12 13:36 boot). Boot
+  sequence: bluetooth.service skipped at 13:36:28.45 (start condition:
+  no controller in /sys/class/bluetooth); hciuart 13:36:28.49 to
+  13:36:34.94; bluetoothd started 13:36:35.07 to 35.59; GTach started
+  13:36:35.72. The first connect at 13:36:40.18 failed with EACCES
+  (Permission denied), cause not identified (a btmon trace across a
+  reboot would be needed); the retry about 5 s later succeeded. Before
+  EDIT E, GTach was ordered after the skipped bluetooth.service, started
+  about 7 s earlier, failed once with EHOSTUNREACH and connected on the
+  retry. Time to first RPM is about the same with or without EDIT E,
+  while the display starts about 7 s later with it, so the ordering is
+  removed. F5 is accepted: the first connect after boot fails once and
+  recovers by the existing retry.
 
 version_history:
   - version: "1.0"
@@ -211,6 +226,12 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change document."
+
+  - version: "1.1"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Implemented by Claude Code (c717048). EDIT E reverted after the device check; F5 accepted (notes)."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -227,6 +248,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial change document. EDITS A to G. |
+| 1.1 | 2026-11-12 | Implemented (c717048). EDIT E reverted after the device check; F5 accepted. |
 
 ---
 
