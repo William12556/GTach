@@ -17,7 +17,7 @@ change_info:
   title: "Completions act only for the registered operation; cancellation is effective; empty, failed and fallback scans reach DEVICE_LIST; one scan per entry to DISCOVERY; probe guard; screen and async-manager corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -286,12 +286,19 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-11-12"
+  implemented_by: "Claude Code"
   verification_date: ""
   verified_by: ""
-  test_results: ""
-  issues_found: []
+  test_results: "Commit c8901f50feec06824916813f496a667bd4e68dfc: pytest 694 passed (40 new in tests/test_setup_flow.py); mypy src/ no issues (worker's results, report-34781bfe section 7). Removing the _is_current checks made six new tests fail (mutation check)."
+  issues_found:
+    - "EDIT A: the closures hold a registration id issued by the interface before submit, not the async manager's id, because submit_operation cannot be given an id and may complete before it returns. The async id is kept separately for cancellation. Accepted."
+    - "EDIT B(1): Retry now depends on the screen (scan on DEVICE_LIST, pairing on PAIRING); previously Retry on DEVICE_LIST could pair a leftover selected device. Accepted."
+    - "EDIT B(4): pairing_status is reset on every entry to DEVICE_LIST, not only after a scan. Accepted."
+    - "EDIT C: New Setup is neither drawn nor registered while the probe runs; a one-frame render-cache window can still show it, and new_setup then cancels the probe. Accepted."
+    - "cancel_operations() no longer calls cancel_discovery() and cancel_pairing() unconditionally; shutdown() still sets both back-end cancel events through pairing.shutdown()."
+    - "The discovery task checks _is_current after its 2 s settle delay, so a Cancel during the delay prevents the 36 s scan."
+    - "In simbt sessions all fake devices are unclassified, so DEVICE_LIST shows the fallback notice; fix belongs in comm/sim_bluetooth.py (ai/task.md)."
 
 traceability:
   design_updates:
@@ -320,6 +327,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Implemented in c8901f50feec06824916813f496a667bd4e68dfc; awaiting device session B."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -336,6 +349,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to G. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
+| 1.2 | 2026-11-12 | Implemented in c8901f5; awaiting device session B. |
 
 ---
 
