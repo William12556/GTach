@@ -101,6 +101,12 @@ class DisplayManager:
     LINK_LOSS_TIMEOUT = 2.0
     LINK_RECOVERY_SAMPLES = 2
 
+    # Engine off: the adapter's latest silent-vehicle reply must be no
+    # older than this, and the text replaces the RPM readout
+    # (issue-b29cbd71).
+    ENGINE_OFF_FRESHNESS_S = 15.0
+    ENGINE_OFF_TEXT = "Engine off"
+
     def __init__(
         self,
         thread_manager: ThreadManager,
@@ -114,6 +120,11 @@ class DisplayManager:
         self._shutdown_event = threading.Event()
         self.terminal_restorer = terminal_restorer
         self._sim_mode = False  # Session-only simulation mode flag
+        # Injected by app.py; returns OBDProtocol.last_vehicle_silent_ts()
+        # (issue-b29cbd71).
+        self._vehicle_silent_callback: Optional[Callable[[], Optional[float]]] = None
+        # _engine_off() result for the current frame; set at frame start.
+        self._frame_engine_off = False
         # Set by app.py
         self._debug_toggle_callback: Optional[Callable[[bool], None]] = None
         self._debug_logging_on = False  # Reflects current debug logging state
@@ -666,6 +677,7 @@ class DisplayManager:
                 # One link evaluation per frame, read by every call site
                 # of the frame (issue-2550e4ee).
                 self._frame_link_lost = self._link_lost()
+                self._set_frame_engine_off(self._engine_off())
                 monitor = self.performance_monitor
                 setup_manager = self._setup_manager
 
@@ -936,6 +948,54 @@ class DisplayManager:
             self.logger.error(f"Link state error: {e}", exc_info=True)
             return True
 
+    def _engine_off(self) -> bool:
+        """Whether the adapter is connected and reports a silent vehicle.
+
+        EVERY FAILURE PATH RETURNS False, so the display falls back to
+        DISCONNECTED: Engine off is never shown without fresh evidence
+        from the adapter (issue-b29cbd71).
+
+        Returns:
+            True only when the link is lost for this frame, the transport
+            callback returns exactly True, the silent-vehicle callback
+            returns a timestamp no older than ENGINE_OFF_FRESHNESS_S, and
+            simulation mode is off.
+        """
+        try:
+            if self._sim_mode or not self._frame_link_lost:
+                return False
+            link_cb = self._link_connected_callback
+            silent_cb = self._vehicle_silent_callback
+            if link_cb is None or silent_cb is None:
+                return False
+            if link_cb() is not True:
+                return False
+            ts = silent_cb()
+            if not isinstance(ts, float):
+                return False
+            return time.monotonic() - ts <= self.ENGINE_OFF_FRESHNESS_S
+        except Exception:
+            return False
+
+    def _set_frame_engine_off(self, engine_off: bool) -> None:
+        """Record this frame's engine-off state and act on a transition.
+
+        On entry the RPM conditioning state is reset, so the needle does
+        not ease down from a stale value (issue-b29cbd71).
+
+        Args:
+            engine_off: The _engine_off() result for this frame.
+        """
+        if engine_off and not self._frame_engine_off:
+            self._last_rpm = 0
+            self._rpm_display = 0.0
+            self._rpm_last_ts = None
+            self._active_band = 0
+            self.logger.info("Engine off - adapter reports no vehicle")
+        elif self._frame_engine_off and not engine_off:
+            self.logger.info("Engine off cleared")
+        self._frame_engine_off = engine_off
+
     def _render_normal_modes(self) -> None:
         """Render the normal display modes for the current frame."""
         try:
@@ -945,7 +1005,11 @@ class DisplayManager:
 
             # The DISCONNECTED screen replaces the gauge only; OPTIONS
             # stays reachable while the link is down (issue-4d9e2f18).
-            if self._frame_link_lost and self.config.mode == DisplayMode.RADIAL:
+            if (
+                self._frame_link_lost
+                and not self._frame_engine_off
+                and self.config.mode == DisplayMode.RADIAL
+            ):
                 self._render_disconnected()
                 return
 
@@ -1079,9 +1143,12 @@ class DisplayManager:
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
         try:
-            # Use synthetic RPM in simulation mode
-            if self._sim_mode:
-                rpm: float = int(3000 + 3000 * math.sin(time.time()))
+            # Engine off draws 0 RPM; simulation mode a synthetic RPM.
+            engine_off = getattr(self, "_frame_engine_off", False)
+            if engine_off:
+                rpm: float = 0.0
+            elif self._sim_mode:
+                rpm = int(3000 + 3000 * math.sin(time.time()))
                 self._last_rpm = rpm
                 rpm = self._condition_rpm(rpm)
             else:
@@ -1328,7 +1395,21 @@ class DisplayManager:
             # admits a 198 px chord, and three glyphs at 72 px measure
             # roughly 120 x 72. The RPM is clamped to max_rpm (at most
             # 9000) above, so the string is never wider than three glyphs.
-            readout_font = get_font_manager().get_font(72)
+            if engine_off:
+                # 177 px wide at this size; the disc admits 198 px.
+                engine_off_font = get_font_manager().get_font(
+                    TypographyConstants.FONT_RPM_MEDIUM
+                )
+                if engine_off_font:
+                    self.rendering_engine.render_text(
+                        RenderTarget.BACK_BUFFER,
+                        self.ENGINE_OFF_TEXT,
+                        engine_off_font,
+                        (255, 255, 255),
+                        center,
+                        center=True,
+                    )
+            readout_font = None if engine_off else get_font_manager().get_font(72)
             if readout_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
@@ -1402,9 +1483,12 @@ class DisplayManager:
             it would register one page's regions and draw the
             other's.
 
+          - _frame_engine_off: Engine off pre-empts DISCONNECTED and
+            registers no regions (issue-b29cbd71).
+
         Returns:
             (mode, options sub-view, update status, disconnected,
-            in setup mode, options page).
+            in setup mode, options page, engine off).
         """
         disconnected = self._frame_link_lost
         return (
@@ -1414,6 +1498,7 @@ class DisplayManager:
             disconnected,
             self._in_setup_mode,
             self._options_page,
+            self._frame_engine_off,
         )
 
     def _register_view_regions(self) -> None:
@@ -1443,7 +1528,9 @@ class DisplayManager:
             # DISCONNECTED takes precedence over the mode, mirroring
             # _render_normal_modes (issue-4d9e2f18).
             disconnected = (
-                self._frame_link_lost and self.config.mode == DisplayMode.RADIAL
+                self._frame_link_lost
+                and not self._frame_engine_off
+                and self.config.mode == DisplayMode.RADIAL
             )
             if disconnected:
                 self._register_disconnected_regions()
@@ -2522,7 +2609,9 @@ class DisplayManager:
             # Derived from the link (issue-4d9e2f18). CONNECTING is the
             # state between a transport that reports connected and the
             # samples that confirm data is flowing.
-            if self._frame_link_lost:
+            if self._frame_engine_off:
+                status = ConnectionStatus.CONNECTING
+            elif self._frame_link_lost:
                 status = ConnectionStatus.DISCONNECTED
             elif not self._link_ok:
                 status = ConnectionStatus.CONNECTING

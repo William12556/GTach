@@ -403,6 +403,13 @@ class GTachApplication:
             # there is no transport, and 'no transport' has no failure
             # cause to report (issue-5e7a03c4).
             self._display._link_cause_callback = self._disconnected_cause
+            # Evidence for the Engine off state; None without a protocol
+            # (issue-b29cbd71).
+            self._display._vehicle_silent_callback = lambda: (
+                self._obd.last_vehicle_silent_ts()
+                if getattr(self, "_obd", None) is not None
+                else None
+            )
             # Wired here as well as in _start_normal_mode: _start_obd
             # runs against this display instance after setup completes.
             self._display._reset_callback = self._on_reset_pi
@@ -550,6 +557,13 @@ class GTachApplication:
         # there is no transport, and 'no transport' has no failure
         # cause to report (issue-5e7a03c4).
         self._display._link_cause_callback = self._disconnected_cause
+        # Evidence for the Engine off state; None without a protocol
+        # (issue-b29cbd71).
+        self._display._vehicle_silent_callback = lambda: (
+            self._obd.last_vehicle_silent_ts()
+            if getattr(self, "_obd", None) is not None
+            else None
+        )
         self._display._reset_callback = self._on_reset_pi
         # Period for the DISCONNECTED screen's retry arc, guarded the
         # same way and for the same reason. OBDTransport.retry_delay is

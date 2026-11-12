@@ -56,6 +56,10 @@ class OBDProtocol:
     # Minimum interval between 'vehicle not answering' records (audit A05).
     _NO_VEHICLE_LOG_INTERVAL_S: float = 60.0
 
+    # Time without a valid 010C sample after which polling re-checks the
+    # vehicle with 0100 (issue-b29cbd71).
+    _RPM_SILENT_RECHECK_S: float = 2.0
+
     def __init__(
         self,
         transport: OBDTransport,
@@ -77,6 +81,11 @@ class OBDProtocol:
         # protocol thread.
         self._no_vehicle_logged_at: Optional[float] = None
         self._vehicle_silent = False
+        # Monotonic time of the latest adapter reply without 4100; None
+        # when the vehicle answered, the link is down or no such reply
+        # has been seen. Written by the protocol thread, read by the
+        # display thread as a single attribute (issue-b29cbd71).
+        self._vehicle_silent_ts: Optional[float] = None
         self.logger.info(
             f"OBDProtocol init — adapter_pre_initialised={adapter_pre_initialised}"
         )
@@ -95,9 +104,20 @@ class OBDProtocol:
         self.obd_thread.start()
         self.logger.info("OBD protocol handler started")
 
+    def last_vehicle_silent_ts(self) -> Optional[float]:
+        """Monotonic time of the latest adapter reply showing a silent vehicle.
+
+        Returns:
+            The timestamp, or None if the vehicle last answered, the
+            transport has disconnected, or no such reply has been seen.
+            Safe to call from any thread (a single float read).
+        """
+        return self._vehicle_silent_ts
+
     def _signal_stop(self) -> None:
         """Ask the protocol loop to stop, without waiting for it."""
         self._adapter_initialised = False
+        self._vehicle_silent_ts = None
         self.shutdown_event.set()
 
     def stop(self, timeout: float = 5.0) -> None:
@@ -119,6 +139,7 @@ class OBDProtocol:
                 self.thread_manager.update_heartbeat("obd_protocol")
 
                 if not self.transport.is_connected():
+                    self._vehicle_silent_ts = None
                     time.sleep(0.1)
                     continue
 
@@ -128,12 +149,29 @@ class OBDProtocol:
                     wait_for_event(self.shutdown_event, self._INIT_RETRY_DELAY_S)
                     continue
 
+                last_sample_ts = time.monotonic()
                 while (
                     self.transport.is_connected() and not self.shutdown_event.is_set()
                 ):
                     self.thread_manager.update_heartbeat("obd_protocol")
                     rpm_data = self._request_rpm()
-                    if rpm_data:
+                    if not rpm_data:
+                        silent_s = time.monotonic() - last_sample_ts
+                        if (
+                            silent_s >= self._RPM_SILENT_RECHECK_S
+                            and self.transport.is_connected()
+                        ):
+                            self.logger.info(
+                                f"No RPM data for {self._RPM_SILENT_RECHECK_S}s"
+                                " - re-checking vehicle"
+                            )
+                            if not self._recheck_vehicle():
+                                break
+                            last_sample_ts = time.monotonic()
+                            continue
+                    else:
+                        self._vehicle_silent_ts = None
+                        last_sample_ts = time.monotonic()
                         try:
                             self.thread_manager.message_queue.put_nowait(rpm_data)
                         except queue.Full:
@@ -152,6 +190,7 @@ class OBDProtocol:
                     time.sleep(self.poll_interval_s)
 
                 self._adapter_initialised = False
+                self._vehicle_silent_ts = None
                 self.logger.debug("Transport disconnected — adapter init flag reset")
 
             except Exception as e:
@@ -199,13 +238,10 @@ class OBDProtocol:
             response = self._send_command(b"0100", timeout=self._INIT_0100_TIMEOUT_S)
             if response is None and not self.transport.is_connected():
                 # A lost link is not a silent vehicle (issue-146491ba).
+                self._vehicle_silent_ts = None
                 self.logger.debug("Link lost during initialisation")
                 return False
-            # Only a positive 0100 reply proves the vehicle answered;
-            # NO DATA, '?' and 7F replies do not (issue-907de6de).
-            normalised = re.sub(r"\s", "", (response or "").upper())
-            if "4100" not in normalised:
-                self._report_no_vehicle(response)
+            if not self._classify_0100(response):
                 return False
 
             if self._vehicle_silent:
@@ -218,6 +254,57 @@ class OBDProtocol:
         except Exception as e:
             self.logger.error(f"Initialization failed: {e}", exc_info=True)
             return False
+
+    def _classify_0100(self, response: Optional[str]) -> bool:
+        """Classify a 0100 reply and record silent-vehicle evidence.
+
+        Only a positive reply proves the vehicle answered; NO DATA, '?'
+        and 7F replies do not (issue-907de6de). An adapter reply without
+        4100 sets the silent timestamp; no reply (None) never does, as an
+        unpowered adapter also times out (issue-b29cbd71).
+
+        Args:
+            response: The 0100 reply, or None if none arrived.
+
+        Returns:
+            True if the reply contains 4100.
+        """
+        normalised = re.sub(r"\s", "", (response or "").upper())
+        if "4100" in normalised:
+            self._vehicle_silent_ts = None
+            return True
+        if response is not None:
+            self._vehicle_silent_ts = time.monotonic()
+        self._report_no_vehicle(response)
+        return False
+
+    def _recheck_vehicle(self) -> bool:
+        """Re-check a vehicle that stopped answering 010C, with 0100 only.
+
+        Sends no ATZ and no configuration command, applies no settle
+        delay and leaves _adapter_initialised unchanged. Repeats after
+        _INIT_RETRY_DELAY_S while the vehicle stays silent
+        (issue-b29cbd71).
+
+        Returns:
+            True when the vehicle answered 4100; False when the
+            transport disconnected or a stop was requested.
+        """
+        while self.transport.is_connected() and not self.shutdown_event.is_set():
+            response = self._send_command(b"0100", timeout=self._INIT_0100_TIMEOUT_S)
+            if response is None and not self.transport.is_connected():
+                self._vehicle_silent_ts = None
+                return False
+            if self._classify_0100(response):
+                self._vehicle_silent = False
+                self._no_vehicle_logged_at = None
+                self.logger.info("Vehicle answered 0100 - polling resumed")
+                return True
+            self.thread_manager.update_heartbeat("obd_protocol")
+            if wait_for_event(self.shutdown_event, self._INIT_RETRY_DELAY_S):
+                return False
+            self.thread_manager.update_heartbeat("obd_protocol")
+        return False
 
     def _report_no_vehicle(self, response: Optional[str]) -> None:
         """Log a missing 4100 reply, at most once per interval (audit A05).
