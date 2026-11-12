@@ -30,7 +30,7 @@ document_info:
     - "src/gtach/display/setup_components/state/coordinator.py"
     - "src/gtach/display/setup_components/bluetooth/interface.py"
     - "src/gtach/display/async_operations.py"
-  version: "2.1"
+  version: "2.2"
   date: "2026-11-12"
   author: "William Watson"
   status: "approved"
@@ -118,7 +118,7 @@ Setup opens on `CURRENT_DEVICE` when a primary device is stored, otherwise on `W
 
 - Discovery lists devices whose name is classified as ELM327 or compatible.
 - **(change)** When a scan ends with no such device but other named devices were seen, those devices are listed instead. No second scan is run: the fallback uses the names the same scan already returned, so it adds no scan time.
-- **(change)** `DEVICE_LIST` then shows "No ELM327 found - showing all devices" on the error line (5.2).
+- **(change)** `DEVICE_LIST` then shows "No ELM327" on the error line (5.2). The list itself shows that all named devices are offered (change-146491ba; the longer text did not fit 220 px).
 - The manual filter toggle and manual MAC entry are removed (decision D2).
 
 Decision D1 was worded as "one automatic unfiltered pass". Using the first scan's results reaches the same outcome without a second pass; this refinement was approved on 2026-11-12. A scan with nothing in range takes about 36 s (device session A), which a second pass would double.
@@ -225,6 +225,7 @@ stateDiagram-v2
 | 1.2 | 2026-10-16 | Claude | 5.3: slot column geometry, slot interior, arrow and error-line positions (change-d38362aa) |
 | 2.0 | 2026-11-11 | Claude | Rewritten against the source at `94ce959b`: the unbuilt 2025 class model removed; structure, flow, screen behaviour and the operation rule stated. Target behaviour for change-34781bfe marked "(change)": empty and failed scans reach DEVICE_LIST, unfiltered fallback (D1), effective cancellation, probe guard, no Continue button, spinner fade. DEVICE_LIST text carried over as 5.2. Layout converted to GFM heading links |
 | 2.1 | 2026-11-12 | William Watson | Approved, including the D1 same-scan fallback in 4.3 |
+| 2.2 | 2026-11-12 | Claude | 4.3: fallback notice text is "No ELM327" (change-146491ba) |
 
 ---
 

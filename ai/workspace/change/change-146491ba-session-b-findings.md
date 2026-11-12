@@ -17,7 +17,7 @@ change_info:
   title: "Retry the post-pairing OBD check on a connection reset; shorten the fallback notice; do not report a lost link as a silent vehicle"
   date: "2026-11-12"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -167,9 +167,9 @@ implementation:
 verification:
   implemented_date: "2026-11-12"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: "Commit 33a40e35716af4cc7a130ab1366783d0b461d9cd: pytest 733 passed, 1 xfailed; mypy src/ no issues (worker's results, report-146491ba section 5). Device check outstanding."
+  verification_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Commit 33a40e35716af4cc7a130ab1366783d0b461d9cd: pytest 733 passed, 1 xfailed; mypy src/ no issues (worker's results, report-146491ba section 5). Device check (2026-11-12, GTach after deploy at 10:14): four setups with the emulator (10:17:03, 10:17:49, 10:18:32, 10:22:54) completed without Retry; three met EBUSY once and passed on attempt 2, logged with the cause named. ECONNRESET did not recur in these four pairings, so the reset retry is covered by unit tests only. Fallback scan at 10:22:06 offered one named device; the error line read 'No ELM327' in full. EDIT C not provokable on demand; unit tests only."
   issues_found:
     - "EDIT B: 'No ELM327 found' measures 243 px, so FALLBACK_LIST_TEXT is 'No ELM327' (163 px)."
     - "EDIT B: DEVICE_NOT_SAVED_TEXT measures 221 px, 1 px over the error line; left unchanged and marked strict xfail. Recorded in ai/task.md."
@@ -209,6 +209,12 @@ version_history:
     changes:
       - "Implemented in 33a40e35716af4cc7a130ab1366783d0b461d9cd; awaiting device check."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device; reset retry not observed (no ECONNRESET in four pairings). design-a3b4c5d6 4.3 updated."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -226,6 +232,7 @@ metadata:
 | 1.0 | 2026-11-12 | Initial change document. EDITS A to C. |
 | 1.1 | 2026-11-12 | Approved for implementation. |
 | 1.2 | 2026-11-12 | Implemented in 33a40e3; awaiting device check. |
+| 1.3 | 2026-11-12 | Verified on device; reset retry covered by unit tests only. |
 
 ---
 

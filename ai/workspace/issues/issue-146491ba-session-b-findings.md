@@ -17,7 +17,7 @@ issue_info:
   title: "OBD check after pairing fails on a connection reset; the fallback notice is truncated on DEVICE_LIST; a link lost during initialisation is logged as a silent vehicle"
   date: "2026-11-12"
   reporter: "William Watson"
-  status: "resolved"
+  status: "verified"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -107,9 +107,9 @@ resolution:
   fix_description: "ECONNRESET maps to LINK_RESET_CAUSE ('connection reset by adapter'), which the post-pairing verify retries with LINK_BUSY_CAUSE within 3 attempts 1.0 s apart; FALLBACK_LIST_TEXT is 'No ELM327' (163 px); a None 0100 reply with the transport disconnected is logged at DEBUG as a lost link (commit 33a40e35716af4cc7a130ab1366783d0b461d9cd; report-146491ba)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Four setups with the emulator completed without Retry; ECONNRESET did not recur, so F1's reset retry is covered by unit tests only. F2: 'No ELM327' shown in full. F3: unit tests only."
   closure_notes: ""
 
 prevention:
@@ -121,7 +121,7 @@ verification_enhanced:
     - "Confirm from source and logs. [DONE, 2026-11-12.]"
     - "After the fix: unit tests per change-146491ba."
     - "After the fix: device check — three setups with the emulator; fallback notice with no ELM327 in range."
-  verification_results: "pytest 733 passed, 1 xfailed; mypy clean (worker's results). Device check outstanding."
+  verification_results: "pytest 733 passed, 1 xfailed; mypy clean (worker's results). Device check passed on 2026-11-12."
 
 traceability:
   design_refs:
@@ -152,6 +152,12 @@ version_history:
     changes:
       - "Resolved by change-146491ba (33a40e35716af4cc7a130ab1366783d0b461d9cd); awaiting device check."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device; reset retry not observed."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -168,6 +174,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial issue document. Session B findings F1 to F3. |
 | 1.1 | 2026-11-12 | Resolved by change-146491ba (33a40e3); awaiting device check. |
+| 1.2 | 2026-11-12 | Verified on device; reset retry not observed. |
 
 ---
 
