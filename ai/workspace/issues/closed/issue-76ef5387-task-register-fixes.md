@@ -17,7 +17,7 @@ issue_info:
   title: "Six open ai/task.md items: truncated 'Device not saved', unclassified simulated devices, EBADF at ERROR on planned disconnect, unmapped ECONNABORTED after setup, no-controller connect at boot, and a 'wedged' diagnosis for an adapter that is simply off"
   date: "2026-11-12"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -121,15 +121,15 @@ resolution:
   target_date: ""
   approach: "See change-76ef5387."
   change_ref: "change-76ef5387"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-12"
+  resolved_by: "change-76ef5387"
+  fix_description: "F1 'Not saved' (135 px); F2 fake devices classified; F3 an I/O error on a handle this process closed logs DEBUG and keeps state and cause; F4 ECONNABORTED maps to LINK_RESET_CAUSE; F6 'adapter not reachable' and 'refused' neither count towards nor escalate to the wedge cause; failed pairing logged at WARNING (c717048). F5 accepted: the hciuart ordering was tried and reverted (change-76ef5387 notes)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "pytest 780 passed; mypy clean (worker's results). Device: F3 two planned stops without ERROR; F4 ECONNABORTED shown as 'connection reset by adapter', retry connected; F6 nine EHOSTDOWN failures without 'wedged'. F1, F2 and the pairing log level by unit tests only."
+  closure_notes: "F5 remains as accepted behaviour: the first connect after boot fails once (EHOSTUNREACH before, EACCES with the ordering) and the retry connects."
 
 prevention:
   preventive_measures: "Unit tests per change-76ef5387."
@@ -140,7 +140,7 @@ verification_enhanced:
     - "Confirm from source. [DONE, 2026-11-12.]"
     - "After the fix: unit tests per change-76ef5387."
     - "After the fix: device check — hciuart.service state and type; service stop while connected; adapter radio off for 2 min; reboot with the adapter in range; one setup."
-  verification_results: ""
+  verification_results: "See report-76ef5387 section 6.0."
 
 traceability:
   design_refs:
@@ -171,6 +171,12 @@ version_history:
     changes:
       - "Initial issue document."
 
+  - version: "1.1"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-76ef5387 (c717048); verified on the device; closed and moved to issues/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -186,6 +192,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial issue document. Findings F1 to F6 from ai/task.md. |
+| 1.1 | 2026-11-12 | Resolved (c717048), verified on the device; F5 accepted; closed and moved to closed/. |
 
 ---
 

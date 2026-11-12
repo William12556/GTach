@@ -17,7 +17,7 @@ change_info:
   title: "Shorten DEVICE_NOT_SAVED_TEXT, classify simulated devices, quiet planned-close and pairing-failure records, map ECONNABORTED, order after hciuart, and keep 'adapter not reachable' out of the wedge diagnosis"
   date: "2026-11-12"
   author: "William Watson"
-  status: "proposed"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -187,11 +187,11 @@ implementation:
   deployment_notes: "EDIT E takes effect after the service file is redeployed and systemctl daemon-reload (deploy.sh / install.sh)."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-11-12"
+  implemented_by: "Claude Code (c717048); EDIT E reverted by the planner"
+  verification_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "pytest 780 passed; mypy clean. Device check per report-76ef5387 section 6.0."
   issues_found: []
 
 traceability:
@@ -233,6 +233,12 @@ version_history:
     changes:
       - "Implemented by Claude Code (c717048). EDIT E reverted after the device check; F5 accepted (notes)."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on the device; closed and moved to change/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -249,6 +255,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial change document. EDITS A to G. |
 | 1.1 | 2026-11-12 | Implemented (c717048). EDIT E reverted after the device check; F5 accepted. |
+| 1.2 | 2026-11-12 | Verified on the device; closed and moved to closed/. |
 
 ---
 

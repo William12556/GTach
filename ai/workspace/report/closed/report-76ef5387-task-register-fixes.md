@@ -1,21 +1,20 @@
-Created: 2026 November 12
-
 # Report: Task Register Fixes — Texts, Simulation, Log Levels, Connect Causes
 
----
+Created: 2026 November 12
 
 ## Table of Contents
 
-1. [Summary](<#1. summary>)
-2. [Changes by Edit](<#2. changes by edit>)
-3. [Tests](<#3. tests>)
-4. [Success Criteria](<#4. success criteria>)
-5. [Deviations and Notes](<#5. deviations and notes>)
-6. [Version History](<#version history>)
+- [1.0 Summary](#10-summary)
+- [2.0 Changes by Edit](#20-changes-by-edit)
+- [3.0 Tests](#30-tests)
+- [4.0 Success Criteria](#40-success-criteria)
+- [5.0 Deviations and Notes](#50-deviations-and-notes)
+- [6.0 Device Verification](#60-device-verification)
+- [Version History](#version-history)
 
 ---
 
-## 1. Summary
+## 1.0 Summary
 
 prompt-76ef5387 (change-76ef5387, issue-76ef5387) was implemented in one commit on branch `claude/friendly-cerf-egri96`. EDITS A to G were applied. The issue and change T-Docs remain active pending test results. The prompt T-Doc was closed and moved to `ai/workspace/prompt/closed/`.
 
@@ -24,11 +23,11 @@ prompt-76ef5387 (change-76ef5387, issue-76ef5387) was implemented in one commit 
 - black, isort and flake8 report nothing in the touched files.
 - `git diff` touches only `transport.py`, `sim_bluetooth.py`, `interface.py`, `bin/gtach.service`, the three test modules, this report and the prompt move.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 2. Changes by Edit
+## 2.0 Changes by Edit
 
 | Edit | File | Change |
 |---|---|---|
@@ -43,11 +42,11 @@ prompt-76ef5387 (change-76ef5387, issue-76ef5387) was implemented in one commit 
 
 Unchanged as required: retry intervals, `_MAX_CONSECUTIVE_CONNECT_FAILURES` (6), `_MAX_CONSECUTIVE_TIMEOUTS` (5), the verify retry bound and delay.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 3. Tests
+## 3.0 Tests
 
 | Module | Tests added | Covers |
 |---|---|---|
@@ -63,11 +62,11 @@ Results:
 - Full suite `pytest tests/` (run with `-o addopts=""`, i.e. without coverage): 780 passed, 0 failed, 1 warning (pygame `pkg_resources` deprecation).
 - Regression scope of the change (`test_comm_layer_defects.py`, `test_reconnect_path.py`, `test_setup_flow.py`, `test_obd_verify_busy_retry.py`) is included in the full run.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 4. Success Criteria
+## 4.0 Success Criteria
 
 | Criterion | Result |
 |---|---|
@@ -81,11 +80,11 @@ Results:
 | Diff limited to the listed files | Met (plus the prompt move to `closed/`). |
 | pytest and mypy clean | Met. |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 5. Deviations and Notes
+## 5.0 Deviations and Notes
 
 1. `tests/test_task_register_fixes.py` imports `_Env`, `_op` and `_device` from `test_setup_flow` (the same cross-module import pattern as `test_gauge_display_touch.py`) rather than duplicating the setup harness. It defines its own module-scoped `pygame.init()` fixture.
 2. The `_IO_ERRORS` handler's existing `logger.error("Error communicating with device: %s", e)` has no `exc_info=True`. It is a narrow handler, and the prompt requires its ERROR path unchanged, so it was left as is.
@@ -95,7 +94,25 @@ Results:
 6. EDIT G compares cause strings, as specified. EHOSTUNREACH maps to the same "adapter not reachable" string as EHOSTDOWN, so EHOSTUNREACH failures are also excluded from the wedge counter and escalation. No test asserts this; the planner may confirm it is intended.
 7. Device verification (owner): `systemctl show hciuart -p Type,ActiveState`; `systemd-analyze critical-chain gtach.service`; reboot with the adapter in range; service stop while connected; adapter radio off for 2 min; one setup with the emulator. EDIT E needs the service file redeployed and `systemctl daemon-reload`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
+
+---
+
+## 6.0 Device Verification
+
+Planner-guided check on the Pi with GTach 0.5.0 plus c717048, 2026-11-12. Logs pulled to `logs/`.
+
+| Edit | Check | Result |
+|---|---|---|
+| A | Not triggerable on the device (needs a failed device save) | Unit test only (135 px). |
+| B | — | Unit tests only. |
+| C | Service stopped while connected (reboot 13:36; `systemctl stop` about 13:42) | No ERROR record. The last 'Bad file descriptor' is 13:21:21, the stop of the previous version for deployment. |
+| D | Setup with the emulator, 13:50 | The first main-transport connect after setup failed with ECONNABORTED, shown as '(connection reset by adapter)'; the retry connected. The post-pairing verify met ECONNRESET at 13:50:04 and passed on its retry (first on-device run of the issue-146491ba reset retry). |
+| E | Reboot 13:36 with the adapter in range | Ordering applied (hciuart 13:36:28.49 to 34.94, GTach started 35.72), but the first connect still failed once (EACCES, cause not identified) and the retry connected. bluetooth.service is skipped at boot until hciuart attaches the controller. Display start about 7 s later for no gain: reverted (change-76ef5387 v1.1 notes). |
+| F | — | Unit tests only. |
+| G | Emulator radio off, 13:46:05 to 13:47:26 | Nine consecutive EHOSTDOWN failures, all 'adapter not reachable'; no 'wedged'. After power on, the 13:50 setup paired and connected. |
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -104,6 +121,7 @@ Results:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial report for prompt-76ef5387. |
+| 1.1 | 2026-11-12 | Layout aligned with project conventions (title, flat ToC, GFM slugs, numbered sections); added 6.0 Device Verification. |
 
 ---
 
