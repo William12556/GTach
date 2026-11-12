@@ -17,7 +17,7 @@ change_info:
   title: "Completions act only for the registered operation; cancellation is effective; empty, failed and fallback scans reach DEVICE_LIST; one scan per entry to DISCOVERY; probe guard; screen and async-manager corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -288,9 +288,9 @@ implementation:
 verification:
   implemented_date: "2026-11-12"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: "Commit c8901f50feec06824916813f496a667bd4e68dfc: pytest 694 passed (40 new in tests/test_setup_flow.py); mypy src/ no issues (worker's results, report-34781bfe section 7). Removing the _is_current checks made six new tests fail (mutation check)."
+  verification_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Commit c8901f50feec06824916813f496a667bd4e68dfc: pytest 694 passed (40 new in tests/test_setup_flow.py); mypy src/ no issues (worker's results, report-34781bfe section 7). Removing the _is_current checks made six new tests fail (mutation check). Device session B (2026-11-12, test-71ab3751-device-session-b): B2 one scan per tap, no Continue, ATZ skipped after pairing; B3 probe completes, stored device kept; B4 three cancels, completions ignored, WELCOME unchanged; B5 no rescan, fallback list with notice; B8 simulated setup completes. Not observable on device: New Setup hidden during a 0.9 s probe, and an empty device list (named devices always in range); unit tests cover both."
   issues_found:
     - "EDIT A: the closures hold a registration id issued by the interface before submit, not the async manager's id, because submit_operation cannot be given an id and may complete before it returns. The async id is kept separately for cancellation. Accepted."
     - "EDIT B(1): Retry now depends on the screen (scan on DEVICE_LIST, pairing on PAIRING); previously Retry on DEVICE_LIST could pair a leftover selected device. Accepted."
@@ -333,6 +333,12 @@ version_history:
     changes:
       - "Implemented in c8901f50feec06824916813f496a667bd4e68dfc; awaiting device session B."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session B (test-71ab3751-device-session-b)."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -350,6 +356,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to G. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
 | 1.2 | 2026-11-12 | Implemented in c8901f5; awaiting device session B. |
+| 1.3 | 2026-11-12 | Verified on device in session B. |
 
 ---
 

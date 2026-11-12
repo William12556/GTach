@@ -17,7 +17,7 @@ change_info:
   title: "Assign display attributes before fallible initialisation; local copies of the setup manager; long press requires a touch at rest; bounded touch-start age; one link evaluation per frame; documentation, font and default corrections"
   date: "2026-11-11"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -224,9 +224,9 @@ implementation:
 verification:
   implemented_date: "2026-11-12"
   implemented_by: "Claude Code"
-  verification_date: ""
-  verified_by: ""
-  test_results: "Commit afe74234f1207b8c931b4d21048b492651713af0: pytest 721 passed (27 new in tests/test_gauge_display_touch.py); mypy src/ no issues (worker's results, report-2550e4ee section 4). Against the base code 18 of the new tests fail and the C04 frame test hangs."
+  verification_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Commit afe74234f1207b8c931b4d21048b492651713af0: pytest 721 passed (27 new in tests/test_gauge_display_touch.py); mypy src/ no issues (worker's results, report-2550e4ee section 4). Against the base code 18 of the new tests fail and the C04 frame test hangs. Device session B (2026-11-12, test-71ab3751-device-session-b): B6 slow swipe (9.98 s, 232 px) opened OPTIONS without a palette change, a 4.47 s hold on Debug toggled Debug only, holds at rest toggled the palette; B7 cause line readable at 20 px and fits, Clear settings removed the device and setup completed. In-car test deferred."
   issues_found:
     - "New public method TouchEventCoordinator.is_button_at(pos) (not listed in interface_changes): wraps the private hit test under the coordinator lock; used by TouchHandler to recognise a hold on a button. Accepted."
     - "A hold on a button presses at the start position; movement is below the swipe threshold. Accepted."
@@ -267,6 +267,12 @@ version_history:
     changes:
       - "Implemented in afe74234f1207b8c931b4d21048b492651713af0; awaiting device session B."
 
+  - version: "1.3"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session B (test-71ab3751-device-session-b); in-car test deferred."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -284,6 +290,7 @@ metadata:
 | 1.0 | 2026-11-11 | Initial change document. EDITS A to E. |
 | 1.1 | 2026-11-11 | Approved for implementation. |
 | 1.2 | 2026-11-12 | Implemented in afe7423; awaiting device session B. |
+| 1.3 | 2026-11-12 | Verified on device in session B; in-car test deferred. |
 
 ---
 

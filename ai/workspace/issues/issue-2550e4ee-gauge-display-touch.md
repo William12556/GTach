@@ -17,7 +17,7 @@ issue_info:
   title: "DisplayManager initialisation and setup-mode races; long press decided by duration alone; stale touch start; documentation and efficiency defects in the gauge display"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "resolved"
+  status: "verified"
   severity: "low"
   type: "defect"
   iteration: 1
@@ -123,9 +123,9 @@ resolution:
   fix_description: "Display attributes get inactive defaults before fallible initialisation and touch initialisation catches any exception; _setup_manager is read once by each reader; a release with movement at or above the swipe threshold is a swipe, a hold at rest on a button presses it, a long press needs rest; a touch start older than 10 s is stale; _link_lost evaluated once per frame; cause line uses FONT_SMALL_TEXT; redline above full scale warned at load and documented; failed palette save warned and documented; Clear settings removes every stored device and checks the results; rpm_bands uses default_factory; splash fit checks once with the drawn size; the lock test detects a callback under the lock (commit afe74234f1207b8c931b4d21048b492651713af0; report-2550e4ee)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Device session B (test-71ab3751-device-session-b steps B6 and B7): all checks passed. In-car test deferred."
   closure_notes: ""
 
 prevention:
@@ -137,7 +137,7 @@ verification_enhanced:
     - "Confirm from source. [DONE, audit-71ab3751.]"
     - "After the fix: unit tests per change-2550e4ee."
     - "After the fix: device session B — slow swipe, held button, long press at rest, palette toggle, DISCONNECTED cause line, Clear settings; then the in-car test."
-  verification_results: "pytest 721 passed and mypy clean (worker's results). Device session B outstanding; in-car test deferred."
+  verification_results: "pytest 721 passed and mypy clean (worker's results). Device session B passed on 2026-11-12; in-car test deferred."
 
 traceability:
   design_refs:
@@ -167,6 +167,12 @@ version_history:
     changes:
       - "Resolved by change-2550e4ee (afe74234f1207b8c931b4d21048b492651713af0); awaiting device session B."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session B; in-car test deferred."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -183,6 +189,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial issue document. C03-C07, C09, F02, A09, O2, O5 and two task rows. |
 | 1.1 | 2026-11-12 | Resolved by change-2550e4ee (afe7423); awaiting device session B. |
+| 1.2 | 2026-11-12 | Verified on device in session B; in-car test deferred. |
 
 ---
 

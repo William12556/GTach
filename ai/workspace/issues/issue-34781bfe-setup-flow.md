@@ -17,7 +17,7 @@ issue_info:
   title: "Discovery outcomes are not presented and scans repeat without end; the stored-device probe acts after the operator has left its screen; cancellation does not stop or silence running operations; further setup-screen defects"
   date: "2026-11-11"
   reporter: "William Watson"
-  status: "resolved"
+  status: "verified"
   severity: "medium"
   type: "defect"
   iteration: 1
@@ -132,9 +132,9 @@ resolution:
   fix_description: "Operations are registered by name with an id issued before submit; completions and in-task callbacks act only while current; Cancel on DISCOVERY and Back on PAIRING cancel through one path; a scan starts only on Start Setup and on Retry from DEVICE_LIST; empty, failed and fallback scans reach DEVICE_LIST ('Scan failed', 'No ELM327 found - showing all devices'); New Setup is not offered while the probe runs; no Continue on PAIRING; spinner fade by colour blend; progress passed to a declared progress_callback; finished operations removed; uncached screens drawn on the target; save_device result honoured ('Device not saved'); SetupDisplayManager.adapter_reset_in_session; Optional surface (commit c8901f50feec06824916813f496a667bd4e68dfc; report-34781bfe)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
+  verified_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Device session B (test-71ab3751-device-session-b steps B2 to B5 and B8): all checks passed. New Setup visibility during the probe and an empty device list were not observable on the device; unit tests cover both."
   closure_notes: ""
 
 prevention:
@@ -146,7 +146,7 @@ verification_enhanced:
     - "Confirm from source. [DONE, audit-71ab3751.]"
     - "After the fix: unit tests per change-34781bfe."
     - "After the fix: device session B — setup end to end with the emulator; empty scan; Cancel during a scan; New Setup during a probe; simbt path."
-  verification_results: "pytest 694 passed and mypy clean (worker's results). Device session B outstanding."
+  verification_results: "pytest 694 passed and mypy clean (worker's results). Device session B passed on 2026-11-12."
 
 traceability:
   design_refs:
@@ -176,6 +176,12 @@ version_history:
     changes:
       - "Resolved by change-34781bfe (c8901f50feec06824916813f496a667bd4e68dfc); awaiting device session B."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Verified on device in session B."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -192,6 +198,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-11 | Initial issue document. D01-D04, C01, C02, C08, X01, A09, B02, O4, W2. |
 | 1.1 | 2026-11-12 | Resolved by change-34781bfe (c8901f5); awaiting device session B. |
+| 1.2 | 2026-11-12 | Verified on device in session B. |
 
 ---
 
