@@ -17,7 +17,7 @@ issue_info:
   title: "With the adapter connected and the vehicle not answering (ignition off), the display shows DISCONNECTED instead of an engine-off state"
   date: "2026-11-12"
   reporter: "William Watson"
-  status: "open"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -96,15 +96,15 @@ resolution:
   target_date: ""
   approach: "See change-b29cbd71."
   change_ref: "change-b29cbd71"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-12"
+  resolved_by: "change-b29cbd71"
+  fix_description: "OBDProtocol records the time of the latest adapter reply without 4100 (never a timeout) and re-checks the vehicle with 0100 alone after 2.0 s without a valid 010C sample; DisplayManager shows Engine off (gauge at zero, text in place of the readout, yellow dot, no buttons) only with the transport connected and that evidence no older than 15 s, otherwise DISCONNECTED; app.py wires the callback (commit b718b6a994a508e82673b8ad6de06cef90d1f3b1; report-b29cbd71)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Device check with the emulator passed: Engine off at connect, held 81 s without flicker; live gauge after engine on; DISCONNECTED within 6 ms of an adapter radio-off while Engine off. Ignition off mid-drive and the 15 s freshness fallback covered by unit tests only."
+  closure_notes: "Closed after the device check. The in-car test remains deferred."
 
 prevention:
   preventive_measures: "Unit tests for the evidence rule and the display precedence."
@@ -115,7 +115,7 @@ verification_enhanced:
     - "Confirm from source and session A notes. [DONE, 2026-11-12.]"
     - "After the fix: unit tests per change-b29cbd71."
     - "After the fix: device check with the emulator — engineoff at connect; car scenario; emulator stopped (adapter lost)."
-  verification_results: ""
+  verification_results: "pytest 766 passed, 1 xfailed; mypy clean. Device check passed on 2026-11-12 (change-b29cbd71 verification)."
 
 traceability:
   design_refs:
@@ -141,6 +141,12 @@ version_history:
     changes:
       - "Initial issue document."
 
+  - version: "1.1"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-b29cbd71 (b718b6a); verified on device; closed and moved to issues/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -156,6 +162,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial issue document. |
+| 1.1 | 2026-11-12 | Resolved by change-b29cbd71 (b718b6a); verified on device; closed and moved to closed/. |
 
 ---
 

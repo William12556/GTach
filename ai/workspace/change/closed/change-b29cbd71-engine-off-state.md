@@ -17,7 +17,7 @@ change_info:
   title: "Show 'Engine off' when the adapter is connected and reports a silent vehicle; re-check the vehicle when samples stop during polling"
   date: "2026-11-12"
   author: "William Watson"
-  status: "approved"
+  status: "closed"
   priority: "medium"
   iteration: 1
   coupled_docs:
@@ -233,12 +233,18 @@ implementation:
   deployment_notes: "Version increment at the owner's discretion."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-11-12"
+  implemented_by: "Claude Code"
+  verification_date: "2026-11-12"
+  verified_by: "William Watson"
+  test_results: "Commit b718b6a994a508e82673b8ad6de06cef90d1f3b1: pytest 766 passed, 1 xfailed (worker's and owner's runs); mypy src/ no issues (report-b29cbd71). Device check (2026-11-12, emulator): engineoff at connect - reconnect 12:07:52, silent reply and Engine off 12:07:57.3, held until 12:09:18 without flicker; silent replies every 7.2 s (freshness limit 15 s). Engine on - DISCONNECTED during reconnect, vehicle answered 12:09:29.1, link restored 12:09:29.2. Adapter lost while Engine off (radio off 12:11:34.6) - connection reset, Engine off cleared and DISCONNECTED within 6 ms. Restore - live gauge. Ignition off mid-drive and the 15 s freshness fallback (adapter silent without a closed socket) not provokable with the emulator; unit tests only."
+  issues_found:
+    - "Entry/exit handling placed in a per-frame helper rather than _draw_radial_mode, so the exit record is never missed. Accepted."
+    - "Re-check applies the lost-link rule (design-e5f6a7b8 6.3.1 row 4) and resets the A05 rate limit on 4100. Accepted."
+    - "Font FONT_RPM_MEDIUM (28 px); 'Engine off' measures 177 px. Accepted."
+    - "Yellow dot also shown in OPTIONS while Engine off, per design-b8c9d0e1 5.4.1. Accepted."
+    - "Observation: a vehicle answering 0100 but not PID 0C would re-check about every 2 s indefinitely. Recorded in ai/task.md."
+    - "Observation (pre-existing): with the engine off at connect, every initialisation cycle sends ATZ (about every 7 s)."
 
 traceability:
   design_updates:
@@ -267,6 +273,12 @@ version_history:
     changes:
       - "Approved for implementation by William Watson, including the brief DISCONNECTED gap when the ignition is switched off while driving."
 
+  - version: "1.2"
+    date: "2026-11-12"
+    author: "William Watson"
+    changes:
+      - "Implemented in b718b6a; verified on device; closed and moved to change/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -283,6 +295,7 @@ metadata:
 |---|---|---|
 | 1.0 | 2026-11-12 | Initial change document. EDITS A to C. |
 | 1.1 | 2026-11-12 | Approved for implementation. |
+| 1.2 | 2026-11-12 | Implemented in b718b6a; verified on device; closed and moved to closed/. |
 
 ---
 
