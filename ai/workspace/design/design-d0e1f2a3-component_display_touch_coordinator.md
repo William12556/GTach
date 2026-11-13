@@ -2,17 +2,16 @@
 
 Created: 2025-12-29
 
----
-
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 Class Design](<#3.0 class design>)
-- [4.0 Method Specifications](<#4.0 method specifications>)
-- [5.0 Gesture Recognition](<#5.0 gesture recognition>)
-- [6.0 Visual Documentation](<#6.0 visual documentation>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Interface](#30-interface)
+- [4.0 Behaviour](#40-behaviour)
+- [5.0 Error Handling](#50-error-handling)
+- [6.0 Visual Documentation](#60-visual-documentation)
+- [7.0 Related Documents](#70-related-documents)
+- [Version History](#version-history)
 
 ---
 
@@ -25,342 +24,127 @@ document_info:
   domain: "Display"
   component: "TouchEventCoordinator"
   parent: "design-2c6b8e4d-domain_display.md"
-  source_file: "src/gtach/display/input.py"
-  version: "1.0"
-  date: "2025-12-29"
+  source_files:
+    - "src/gtach/display/input/touch_coordinator.py"
+    - "src/gtach/display/input/interfaces.py"
+  version: "2.0"
+  date: "2026-11-13"
   author: "William Watson"
+  status: "Implemented"
 ```
 
-### 1.1 Parent Reference
+- **Domain design:** [design-2c6b8e4d-domain_display.md](design-2c6b8e4d-domain_display.md)
 
-- **Domain Design**: [design-2c6b8e4d-domain_display.md](<design-2c6b8e4d-domain_display.md>)
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 2.0 Component Overview
 
-### 2.1 Purpose
+`TouchEventCoordinator` is the registry of touch regions for the screen currently drawn. `DisplayManager` registers one region per button; a tap is hit-tested against the regions and the matching button's callback is invoked.
 
-TouchEventCoordinator processes touch events from Pygame and recognizes gestures (swipe, long press, tap). It provides callback registration for gesture handlers.
+Gesture classification (swipe, tap, long press) is not done here; it is done by `TouchHandler` (`display/touch.py`) and described in [design-b8c9d0e1 §6.0](design-b8c9d0e1-component_display_manager.md#60-gestures). The coordinator supplies the swipe threshold that `TouchHandler` uses.
 
-### 2.2 Responsibilities
-
-1. Track touch start, move, and end events
-2. Calculate gesture metrics (distance, velocity, duration)
-3. Classify gestures based on thresholds
-4. Invoke registered callbacks for recognized gestures
-5. Provide touch state for rendering overlays
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 3.0 Class Design
-
-### 3.1 TouchEventCoordinator Class
+## 3.0 Interface
 
 ```python
-class TouchEventCoordinator:
-    """Touch event processor and gesture recognizer."""
-```
+class TouchAction(Enum):  NONE, SETTINGS_CHANGE, NAVIGATION, BUTTON_PRESS
 
-### 3.2 Constructor
-
-```python
-def __init__(self, 
-             screen_size: Tuple[int, int] = (480, 480),
-             config: GestureConfig = None) -> None:
-    """Initialize touch coordinator.
-    
-    Args:
-        screen_size: Display dimensions for bounds checking
-        config: Gesture thresholds (uses defaults if None)
-    """
-```
-
-### 3.3 Attributes
-
-| Attribute | Type | Purpose |
-|-----------|------|---------|
-| `screen_size` | `Tuple[int, int]` | Display bounds |
-| `config` | `GestureConfig` | Threshold settings |
-| `_callbacks` | `Dict[GestureType, Callable]` | Gesture handlers |
-| `_touch_start` | `Optional[TouchPoint]` | Touch down position |
-| `_touch_current` | `Optional[TouchPoint]` | Latest position |
-| `_touch_start_time` | `float` | Touch down timestamp |
-| `_is_touching` | `bool` | Active touch state |
-
-### 3.4 GestureType Enum
-
-```python
-class GestureType(Enum):
-    """Recognized gesture types."""
-    TAP = auto()          # Quick touch and release
-    LONG_PRESS = auto()   # Press and hold
-    SWIPE_LEFT = auto()   # Horizontal swipe left
-    SWIPE_RIGHT = auto()  # Horizontal swipe right
-    SWIPE_UP = auto()     # Vertical swipe up
-    SWIPE_DOWN = auto()   # Vertical swipe down
-    DOUBLE_TAP = auto()   # Two quick taps
-```
-
-### 3.5 GestureConfig Dataclass
-
-```python
 @dataclass
-class GestureConfig:
-    """Gesture recognition thresholds."""
-    swipe_threshold: int = 50       # Min pixels for swipe
-    velocity_threshold: int = 100   # Min pixels/sec for swipe
-    long_press_duration: float = 1.0  # Seconds for long press
-    tap_max_duration: float = 0.3   # Max seconds for tap
-    double_tap_interval: float = 0.3  # Max seconds between taps
+class TouchRegion:
+    region_id: str
+    rect: pygame.Rect
+    action_type: TouchAction
+    metadata: Dict[str, Any]
+    enabled: bool = True
+
+class TouchEventCoordinator(TouchEventInterface):
+    def __init__(self, display_bounds: Tuple[int, int] = (480, 480)): ...
+    swipe_threshold = 50          # pixels; instance attribute
+
+    def register_region(self, region: TouchRegion) -> bool: ...
+    def register_button_region(self, region_id: str, rect: pygame.Rect,
+                               action_type: TouchAction = TouchAction.BUTTON_PRESS,
+                               callback: Optional[Callable] = None) -> bool: ...
+    def unregister_region(self, region_id: str) -> bool: ...
+    def clear_regions(self) -> None: ...
+    def handle_touch_down(self, pos: Tuple[int, int]) -> Optional[TouchAction]: ...
+    def is_button_at(self, pos: Tuple[int, int]) -> bool: ...
+    def get_active_regions(self) -> List[TouchRegion]: ...
+    def validate_coordinates(self, pos: Tuple[int, int]) -> bool: ...
+    def get_stats(self) -> Dict[str, Any]: ...
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 4.0 Method Specifications
+## 4.0 Behaviour
 
-### 4.1 process_event
+- **Registration:** `register_button_region()` stores a region whose metadata holds the callback. `DisplayManager` clears and re-registers all regions whenever its view key changes, so the regions always match the screen drawn.
+- **Dispatch:** `handle_touch_down(pos)` validates the coordinates against the display bounds, finds the first enabled region containing the point, and returns its `TouchAction`. The button callback is captured under the lock and invoked after the lock is released (CLAUDE.md rule 8); it receives the position.
+- **`is_button_at(pos)`** reports whether a button region contains the point; `TouchHandler` uses it to turn a hold that starts on a button into a press of that button.
+- All registry access is guarded by an internal `threading.RLock`. Regions are registered on the display thread and hit-tested on the touch thread.
 
-```python
-def process_event(self, event: pygame.event.Event) -> Optional[TouchAction]:
-    """Process Pygame event.
-    
-    Args:
-        event: Pygame event (MOUSEBUTTONDOWN, MOUSEMOTION, MOUSEBUTTONUP)
-    
-    Returns:
-        TouchAction if gesture recognized, None otherwise
-    
-    Supported Events:
-        MOUSEBUTTONDOWN: Touch start
-        MOUSEMOTION: Touch move
-        MOUSEBUTTONUP: Touch end (triggers recognition)
-    """
-```
-
-### 4.2 _on_touch_down
-
-```python
-def _on_touch_down(self, pos: Tuple[int, int]) -> None:
-    """Handle touch start.
-    
-    Records:
-        - Start position
-        - Start timestamp
-        - Sets _is_touching = True
-    """
-```
-
-### 4.3 _on_touch_move
-
-```python
-def _on_touch_move(self, pos: Tuple[int, int]) -> None:
-    """Handle touch movement.
-    
-    Updates:
-        - Current position
-        - Can trigger early recognition for long press
-    """
-```
-
-### 4.4 _on_touch_up
-
-```python
-def _on_touch_up(self, pos: Tuple[int, int]) -> Optional[GestureType]:
-    """Handle touch end and recognize gesture.
-    
-    Algorithm:
-        1. Calculate duration
-        2. Calculate distance (dx, dy)
-        3. Calculate velocity
-        4. Check long press (duration > threshold)
-        5. Check swipe (distance > threshold, velocity > threshold)
-        6. Check tap (duration < threshold, small distance)
-        7. Invoke callback if recognized
-        8. Reset touch state
-    """
-```
-
-### 4.5 register_gesture_callback
-
-```python
-def register_gesture_callback(self, 
-                              gesture: GestureType,
-                              callback: Callable[[], None]) -> None:
-    """Register callback for gesture type.
-    
-    Args:
-        gesture: GestureType to handle
-        callback: Function to call when gesture recognized
-    """
-```
-
-### 4.6 unregister_gesture_callback
-
-```python
-def unregister_gesture_callback(self, gesture: GestureType) -> None:
-    """Remove callback for gesture type."""
-```
-
-### 4.7 get_touch_state
-
-```python
-def get_touch_state(self) -> Dict[str, Any]:
-    """Get current touch state for overlays.
-    
-    Returns:
-        Dict with is_touching, position, duration
-    """
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 5.0 Gesture Recognition
+## 5.0 Error Handling
 
-### 5.1 Swipe Detection
+| Condition | Handling |
+|---|---|
+| Coordinates outside the display bounds | No action; `None` |
+| No region at the point | `TouchAction.NONE` |
+| Button callback raises | ERROR with traceback; the action type is still returned |
 
-```python
-def _detect_swipe(self, dx: int, dy: int, 
-                  velocity: float, duration: float) -> Optional[GestureType]:
-    """Detect swipe gesture.
-    
-    Criteria:
-        - Distance > swipe_threshold (50px)
-        - Velocity > velocity_threshold (100px/s)
-        - Duration < 1.0s (not a hold)
-    
-    Direction:
-        - |dx| > |dy|: Horizontal swipe
-            - dx < 0: SWIPE_LEFT
-            - dx > 0: SWIPE_RIGHT
-        - |dy| > |dx|: Vertical swipe
-            - dy < 0: SWIPE_UP
-            - dy > 0: SWIPE_DOWN
-    """
-```
+Logger: `TouchEventCoordinator`.
 
-### 5.2 Long Press Detection
-
-```python
-def _detect_long_press(self, distance: float, 
-                       duration: float) -> bool:
-    """Detect long press gesture.
-    
-    Criteria:
-        - Duration > long_press_duration (1.0s)
-        - Distance < swipe_threshold (didn't move much)
-    """
-```
-
-### 5.3 Tap Detection
-
-```python
-def _detect_tap(self, distance: float, 
-                duration: float) -> bool:
-    """Detect tap gesture.
-    
-    Criteria:
-        - Duration < tap_max_duration (0.3s)
-        - Distance < swipe_threshold / 2 (minimal movement)
-    """
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 6.0 Visual Documentation
 
-### 6.1 Gesture Recognition Flow
+Purpose: dispatch of one tap. Legend: solid arrows are calls, dashed arrows are returns.
 
 ```mermaid
-flowchart TD
-    DOWN[Touch Down] --> RECORD[Record Start]
-    RECORD --> MOVE{Moving?}
-    
-    MOVE -->|Yes| UPDATE[Update Position]
-    UPDATE --> MOVE
-    
-    MOVE -->|No| UP[Touch Up]
-    UP --> CALC[Calculate Metrics]
-    
-    CALC --> DUR{Duration > 1s?}
-    DUR -->|Yes| LP[Long Press]
-    
-    DUR -->|No| DIST{Distance > 50px?}
-    DIST -->|Yes| VEL{Velocity > 100px/s?}
-    VEL -->|Yes| SWIPE[Detect Swipe Direction]
-    
-    DIST -->|No| TAP_CHK{Duration < 0.3s?}
-    TAP_CHK -->|Yes| TAP[Tap]
-    TAP_CHK -->|No| NONE[No Gesture]
-    
-    VEL -->|No| NONE
-    
-    LP --> CALLBACK[Invoke Callback]
-    SWIPE --> CALLBACK
-    TAP --> CALLBACK
+sequenceDiagram
+    participant H as TouchHandler
+    participant M as DisplayManager
+    participant C as TouchEventCoordinator
+    H->>M: handle_touch_event(pos)
+    M->>C: handle_touch_down(pos)
+    C->>C: hit test under the lock
+    C->>M: button callback(pos), lock released
+    C-->>M: TouchAction
+    M-->>H: TouchAction
 ```
 
-### 6.2 Class Diagram
+[Return to Table of Contents](#table-of-contents)
 
-```mermaid
-classDiagram
-    class TouchEventCoordinator {
-        -Tuple screen_size
-        -GestureConfig config
-        -Dict _callbacks
-        -TouchPoint _touch_start
-        -float _touch_start_time
-        -bool _is_touching
-        +process_event(event) TouchAction
-        +register_gesture_callback(gesture, callback)
-        +unregister_gesture_callback(gesture)
-        +get_touch_state() Dict
-        -_on_touch_down(pos)
-        -_on_touch_move(pos)
-        -_on_touch_up(pos) GestureType
-    }
-    
-    class GestureType {
-        <<enumeration>>
-        TAP
-        LONG_PRESS
-        SWIPE_LEFT
-        SWIPE_RIGHT
-        SWIPE_UP
-        SWIPE_DOWN
-    }
-    
-    class GestureConfig {
-        +int swipe_threshold
-        +int velocity_threshold
-        +float long_press_duration
-        +float tap_max_duration
-    }
-    
-    TouchEventCoordinator --> GestureConfig
-    TouchEventCoordinator --> GestureType
-```
+---
 
-[Return to Table of Contents](<#table of contents>)
+## 7.0 Related Documents
+
+- [design-b8c9d0e1-component_display_manager.md](design-b8c9d0e1-component_display_manager.md)
+- Tests: `tests/test_touch_dispatch.py`, `tests/test_callbacks_outside_locks.py`, `tests/test_gauge_display_touch.py`
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## Version History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| Version | Date | Description |
+|---|---|---|
+| 1.0 | 2025-12-29 | Initial component design document |
+| 2.0 | 2026-11-13 | Rewritten against the source: source path corrected to `display/input/touch_coordinator.py`; region registry and button dispatch only, gesture classification is in `TouchHandler`; callback outside the lock; links converted to GitHub slugs (proposal-f8d0064b WP4). |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

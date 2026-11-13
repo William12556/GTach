@@ -6,12 +6,12 @@ Created: 2025-12-29
 
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 Function Specification](<#3.0 function specification>)
-- [4.0 Path Resolution](<#4.0 path resolution>)
-- [5.0 Visual Documentation](<#5.0 visual documentation>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Function Specification](#30-function-specification)
+- [4.0 Path Resolution](#40-path-resolution)
+- [5.0 Visual Documentation](#50-visual-documentation)
+- [Version History](#version-history)
 
 ---
 
@@ -25,7 +25,7 @@ document_info:
   component: "gtach_home"
   parent: "design-9a1f3c7e-domain_utils.md"
   source_file: "src/gtach/utils/home.py"
-  version: "2.0"
+  version: "2.1"
   date: "2026-10-07"
   author: "William Watson"
   change_ref: "change-5fbff586"
@@ -33,10 +33,10 @@ document_info:
 
 ### 1.1 Parent Reference
 
-- **Domain Design**: [design-9a1f3c7e-domain_utils.md](<design-9a1f3c7e-domain_utils.md>)
-- **Source Change**: [change-5fbff586](<../change/change-5fbff586-configuration-split.md>)
+- **Domain Design**: [design-9a1f3c7e-domain_utils.md](design-9a1f3c7e-domain_utils.md)
+- **Source Change**: [change-5fbff586](../change/closed/change-5fbff586-configuration-split.md)
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -52,7 +52,7 @@ document_info:
 2. Otherwise return `/opt/gtach`, the installed location on the Pi.
 3. Create nothing; callers create directories when they write.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -67,7 +67,7 @@ def gtach_home() -> Path: ...
 
 The function has no side effects and no caching; changing the environment variable takes effect on the next call.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -83,7 +83,7 @@ Log files (`start.log`, `debug.log`, `error.log`, `stacks.log`) keep their fixed
 
 Development and the test suite set `GTACH_HOME` to a directory of their own, so nothing is written into the repository. The systemd service sets nothing and therefore uses `/opt/gtach`.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -98,7 +98,7 @@ flowchart TD
     D --> E
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -107,7 +107,8 @@ flowchart TD
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
-| 2.0 | 2026-10-07 | William Watson | Rewritten for [change-5fbff586](<../change/change-5fbff586-configuration-split.md>): OBDIIHome replaced by gtach_home(); GTACH_HOME with default /opt/gtach; no side effects. DeviceStore location per [change-453f0a80](<../change/change-453f0a80-device-store-sharing.md>). Matches commits f5ab73a and 3747d2f. |
+| 2.0 | 2026-10-07 | William Watson | Rewritten for [change-5fbff586](../change/closed/change-5fbff586-configuration-split.md): OBDIIHome replaced by gtach_home(); GTACH_HOME with default /opt/gtach; no side effects. DeviceStore location per [change-453f0a80](../change/closed/change-453f0a80-device-store-sharing.md). Matches commits f5ab73a and 3747d2f. |
+| 2.1 | 2026-11-13 | William Watson | Links converted to GitHub heading slugs; change document links point to `change/closed/`. No content change (proposal-f8d0064b WP4). |
 
 ---
 

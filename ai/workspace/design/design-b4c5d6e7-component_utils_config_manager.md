@@ -6,15 +6,15 @@ Created: 2025-12-29
 
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 Class Design](<#3.0 class design>)
-- [4.0 Method Specifications](<#4.0 method specifications>)
-- [5.0 Configuration File](<#5.0 configuration file>)
-- [6.0 Thread Safety](<#6.0 thread safety>)
-- [7.0 Error Handling](<#7.0 error handling>)
-- [8.0 Visual Documentation](<#8.0 visual documentation>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Class Design](#30-class-design)
+- [4.0 Method Specifications](#40-method-specifications)
+- [5.0 Configuration File](#50-configuration-file)
+- [6.0 Thread Safety](#60-thread-safety)
+- [7.0 Error Handling](#70-error-handling)
+- [8.0 Visual Documentation](#80-visual-documentation)
+- [Version History](#version-history)
 
 ---
 
@@ -28,7 +28,7 @@ document_info:
   component: "ConfigStore"
   parent: "design-9a1f3c7e-domain_utils.md"
   source_file: "src/gtach/utils/config.py"
-  version: "2.0"
+  version: "2.1"
   date: "2026-10-07"
   author: "William Watson"
   change_ref: "change-5fbff586"
@@ -36,11 +36,11 @@ document_info:
 
 ### 1.1 Parent Reference
 
-- **Domain Design**: [design-9a1f3c7e-domain_utils.md](<design-9a1f3c7e-domain_utils.md>)
-- **Home Directory**: [design-f8a9b0c1-component_utils_home.md](<design-f8a9b0c1-component_utils_home.md>)
-- **Source Change**: [change-5fbff586](<../change/change-5fbff586-configuration-split.md>)
+- **Domain Design**: [design-9a1f3c7e-domain_utils.md](design-9a1f3c7e-domain_utils.md)
+- **Home Directory**: [design-f8a9b0c1-component_utils_home.md](design-f8a9b0c1-component_utils_home.md)
+- **Source Change**: [change-5fbff586](../change/closed/change-5fbff586-configuration-split.md)
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -74,7 +74,7 @@ The document identifier is retained from the former `ConfigManager` design, whic
 
 `ConfigManager`, `ConfigValidator`, `ConfigTransaction`, `RWLock`, `BluetoothConfig`, `DisplayConfig` (utils), `SessionConfig`, `SessionManager`, `OBDConfig` and the legacy INI path.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -119,7 +119,7 @@ class ConfigStore:
 | `FPS_LIMIT_RANGE` | `(1, 60)` |
 | `TOUCH_LONG_PRESS_RANGE` | `(0.1, 5.0)` |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -146,7 +146,7 @@ class ConfigStore:
 
 Returns one error string per problem; an empty list means valid. A missing or empty file is valid. Checks: readable mapping; no unknown keys; types (booleans rejected for numeric keys); `mode` in `MODE_VALUES` or `LEGACY_MODE_VALUES`; `palette` in `PALETTE_VALUES`; `engine_profile` defined in `assets/engine_profiles.yaml`; `fps_limit` and `touch_long_press` within their ranges.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -154,7 +154,7 @@ Returns one error string per problem; an empty list means valid. A missing or em
 
 ### 5.1 Location
 
-`gtach_home() / 'config.yaml'`, overridable by `--config`. See [design-f8a9b0c1](<design-f8a9b0c1-component_utils_home.md>).
+`gtach_home() / 'config.yaml'`, overridable by `--config`. See [design-f8a9b0c1](design-f8a9b0c1-component_utils_home.md).
 
 ### 5.2 Schema
 
@@ -170,7 +170,7 @@ rpm_danger: 7000
 
 `config/config.example.yaml` in the repository holds this schema at the defaults.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -178,7 +178,7 @@ rpm_danger: 7000
 
 `_lock` (a `threading.Lock`) guards only `_unknown`. File I/O and logging run outside the lock (CLAUDE.md §4 rule 8). Concurrent `save()` calls each write a complete file; `os.replace` makes the last writer win.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -194,7 +194,7 @@ rpm_danger: 7000
 
 Configuration problems never prevent startup.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -240,7 +240,7 @@ sequenceDiagram
     CS-->>DM: True
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -250,7 +250,8 @@ sequenceDiagram
 |---------|------|--------|---------|
 | 1.0 | 2025-12-29 | William Watson | Initial component design document |
 | 1.1 | 2026-03-13 | William Watson | OOS-05/06/07: removed SessionConfig, ConfigTransaction, RWLock; simplified to threading.Lock. C3: fps_limit 60->30. C4: removed rpm_warning/rpm_danger. C1: removed retry_limit. H2/H3/H4: removed session logging attributes. |
-| 2.0 | 2026-10-07 | William Watson | Rewritten for [change-5fbff586](<../change/change-5fbff586-configuration-split.md>): ConfigManager replaced by ConfigStore over the flat GTACH_HOME/config.yaml; AppConfig; validate(); obsolete classes removed. Matches the implementation in commit f5ab73a. |
+| 2.0 | 2026-10-07 | William Watson | Rewritten for [change-5fbff586](../change/closed/change-5fbff586-configuration-split.md): ConfigManager replaced by ConfigStore over the flat GTACH_HOME/config.yaml; AppConfig; validate(); obsolete classes removed. Matches the implementation in commit f5ab73a. |
+| 2.1 | 2026-11-13 | William Watson | Links converted to GitHub heading slugs; change document links point to `change/closed/`. No content change (proposal-f8d0064b WP4). |
 
 ---
 
