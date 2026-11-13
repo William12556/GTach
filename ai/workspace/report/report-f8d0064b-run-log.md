@@ -54,7 +54,7 @@ Measured 2026-11-13 at commit `2f32b45`, branch `claude/gtach-v1-release-run-g01
 | WP7-T2 | Trivial change P04.12 — odd hex digit count in the 010C reply (L01) | Done | `b2077e6` | Regression test added |
 | WP7-D | Document and `bin/` remediation (M01, M02, M03, L02, L03, L05, L09) | Done | `55bdbd1` | `LICENSE` added: copyright line needs the owner's confirmation |
 | WP8 | Release preparation | Done | `3b7b552` | Version `1.0.0rc1` (D1). `releases/RELEASE_NOTES_v1.0.0.md`. README v2.8. Suite 818 passed on Python 3.13.18 and 3.9.25; mypy clean; lint clean on changed files. `python -m build`: sdist and wheel. Wheel installed in a clean Python 3.9.25 venv: `gtach --version` → `GTach 1.0.0rc1`; `--validate-config` and `--validate-dependencies` exit 0; `pip check` clean. Headless run `gtach --transport simtcp --debug` for 14 s: start, splash, acknowledgement screen, SIGUSR1 dump, SIGTERM shutdown in 0.2 s with 3 of 3 threads stopped. No tag, no release, no deployment |
-| Final | Final report and pull request | Done | (final commit) | `report-f8d0064b-v1-release-run.md`; pull request from `claude/gtach-v1-release-run-g0106d` to `main`. Release gate G1 to G8 met |
+| Final | Final report and pull request | Done | `bff72a3` | `report-f8d0064b-v1-release-run.md`; pull request https://github.com/William12556/GTach/pull/1 from `claude/gtach-v1-release-run-g0106d` to `main`. Release gate G1 to G8 met |
 
 [Return to Table of Contents](#table-of-contents)
 
