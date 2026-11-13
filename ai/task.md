@@ -8,7 +8,6 @@ outcome is recorded (a closed triple, or an explicit drop).
 
 | ID | Item | Status | References |
 | --- | --- | --- | --- |
-| — | `[tool.mypy] python_version = "3.9"` is not selectable in the installed mypy release; the device runs Python 3.9. Decide: pin an older mypy, or raise the value | Open — owner decision | `change-042dd7ff` notes (closed); `pyproject.toml` |
 | `821919ce` | Render caching | Deferred — own withdrawal condition met (frames complete well inside budget); not implemented. Re-evaluate with measured frame times | `issue-821919ce`, `change-821919ce` |
 | `9ed1c77e` | Conditional render (Part 3 only — `fps_limit` reduction and import/f-string housekeeping already shipped) | Deferred — same basis as `821919ce`; not implemented | `issue-9ed1c77e`, `change-9ed1c77e` |
 | — | In-car normal use (audit-36b6ea95 Session I); vehicle not yet prepared. General regression check on version 0.5.0 or later | Deferred (2026-11-12) — in-car tests not possible yet | `ai/workspace/test/closed/test-36b6ea95-on-device-verification.md` §4.9 |
