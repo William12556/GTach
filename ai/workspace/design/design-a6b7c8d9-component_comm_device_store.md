@@ -1,21 +1,17 @@
-# Component Design: DeviceStore and BluetoothDevice
+# Component Design: DeviceStore
 
 Created: 2026 March 24
 
----
-
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 File Locations](<#3.0 file locations>)
-- [4.0 Elements](<#4.0 elements>)
-- [5.0 Interfaces](<#5.0 interfaces>)
-- [6.0 Data Design](<#6.0 data design>)
-- [7.0 Error Handling](<#7.0 error handling>)
-- [8.0 Visual Documentation](<#8.0 visual documentation>)
-- [9.0 Element Registry](<#9.0 element registry>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Interface](#30-interface)
+- [4.0 Data Design](#40-data-design)
+- [5.0 Error Handling](#50-error-handling)
+- [6.0 Visual Documentation](#60-visual-documentation)
+- [7.0 Related Documents](#70-related-documents)
+- [Version History](#version-history)
 
 ---
 
@@ -26,249 +22,66 @@ document_info:
   document_id: "design-a6b7c8d9-component_comm_device_store"
   tier: 3
   domain: "Communication"
+  component: "DeviceStore"
   parent: "design-7d3e9f5a-domain_comm.md"
-  version: "1.1"
-  date: "2026-10-07"
+  source_file: "src/gtach/comm/device_store.py"
+  version: "1.2"
+  date: "2026-11-13"
   author: "William Watson"
+  status: "Implemented"
+  supersedes: "design-f6a7b8c9-component_comm_device_store (closed)"
 ```
 
-### 1.1 Parent Reference
+- **Domain design:** [design-7d3e9f5a-domain_comm.md](design-7d3e9f5a-domain_comm.md)
 
-- **Domain Design**: [design-7d3e9f5a-domain_comm.md](<design-7d3e9f5a-domain_comm.md>)
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 2.0 Component Overview
 
-### 2.1 Purpose
+`DeviceStore` persists the paired ELM327 adapters in a YAML file. The persisted model, `BluetoothDevice`, is described in [design-a7b8c9d0](design-a7b8c9d0-component_comm_bluetooth_device.md).
 
-`DeviceStore` provides YAML-backed persistence for the primary paired ELM327 device MAC address. `BluetoothDevice` is the data model that carries device information. Both reside within the Communication domain.
+Responsibilities:
 
-### 2.2 Change from Existing Source
+1. Load and save `gtach_home()/config/devices.yaml` (default `/opt/gtach/config/devices.yaml`).
+2. Hold one primary device and any number of secondary devices; return the primary device to `select_transport()` for `RFCOMMTransport`.
+3. Serialise all access with an internal `threading.Lock`.
+4. Provide one process-wide instance through `get_device_store()`.
 
-`device_store.py` currently imports `BluetoothDevice` from `..display.setup_models` — a cross-domain dependency that violates domain boundaries. This redesign corrects the import to use the `BluetoothDevice` dataclass defined in `comm/models.py`. Fields are rationalised to remove BLE-specific attributes (`connection_verified`, `is_paired`, `last_seen`) and replace with transport-agnostic equivalents.
-
-### 2.3 Responsibilities
-
-**DeviceStore:**
-1. Load and save device configuration from `gtach_home()/config/devices.yaml` (default `/opt/gtach/config/devices.yaml`) ([change-453f0a80](<../change/change-453f0a80-device-store-sharing.md>))
-2. Return the primary device MAC address for use by `RFCOMMTransport`
-3. Fall back to in-memory storage if `yaml` is unavailable
-4. Serialise all access with an internal `threading.Lock`; one shared instance is obtained through `get_device_store()`
-
-**BluetoothDevice:**
-1. Represent ELM327 adapter identity and connection metadata
-2. Provide serialisation (`to_dict`) and deserialisation (`from_dict`)
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 3.0 File Locations
-
-```yaml
-files:
-  - path: "src/gtach/comm/models.py"
-    status: "Existing — rationalise BluetoothDevice fields; remove BLE-specific attributes"
-    exports:
-      - "BluetoothDevice"
-
-  - path: "src/gtach/comm/device_store.py"
-    status: "Existing — correct import; remove BLE-specific methods; simplify to transport-agnostic interface"
-    exports:
-      - "DeviceStore"
-```
-
-[Return to Table of Contents](<#table of contents>)
-
----
-
-## 4.0 Elements
-
-### 4.1 BluetoothDevice (models.py)
-
-```yaml
-element:
-  name: "BluetoothDevice"
-  type: "dataclass"
-  file: "src/gtach/comm/models.py"
-
-  fields:
-    - name: "name"
-      type: "str"
-      description: "Device display name (e.g. 'ELM327')"
-    - name: "mac_address"
-      type: "str"
-      description: "Bluetooth MAC address; normalised to uppercase with colons (AA:BB:CC:DD:EE:FF)"
-    - name: "device_type"
-      type: "str"
-      default: "'UNKNOWN'"
-      description: "ELM327, OBD, or UNKNOWN; auto-detected from name if not set"
-    - name: "last_connected"
-      type: "Optional[datetime]"
-      default: "None"
-      description: "ISO datetime of last successful connection"
-
-  post_init_logic:
-    - "Normalise mac_address to uppercase with colons"
-    - "Auto-detect device_type from name if set to UNKNOWN"
-
-  methods:
-    - name: "to_dict"
-      signature: "to_dict(self) -> Dict[str, Any]"
-      purpose: "Serialise to dict for YAML persistence; omit None fields"
-
-    - name: "from_dict"
-      signature: "from_dict(cls, data: Dict[str, Any]) -> BluetoothDevice"
-      type: "classmethod"
-      purpose: "Deserialise from dict loaded from YAML"
-```
-
-### 4.2 DeviceStore (device_store.py)
-
-```yaml
-element:
-  name: "DeviceStore"
-  type: "class"
-  file: "src/gtach/comm/device_store.py"
-
-  constructor:
-    signature: "__init__(self, config_path: str = 'config/devices.yaml') -> None"
-    processing_logic:
-      - "Store config_path"
-      - "If yaml available: ensure config dir exists; call _load_config()"
-      - "If yaml not available: initialise in-memory default config; log warning"
-
-  methods:
-    - name: "save_device"
-      signature: "save_device(self, device: BluetoothDevice, is_primary: bool = True) -> None"
-      processing_logic:
-        - "Convert device to dict via device.to_dict()"
-        - "Store under config['paired_devices']['primary'] if is_primary"
-        - "Store under config['paired_devices']['secondary'][mac] otherwise"
-        - "Call _save_config()"
-
-    - name: "get_primary_device"
-      signature: "get_primary_device(self) -> Optional[BluetoothDevice]"
-      processing_logic:
-        - "Read config['paired_devices'].get('primary')"
-        - "If present: return BluetoothDevice.from_dict(data)"
-        - "If absent or error: return None"
-
-    - name: "get_all_devices"
-      signature: "get_all_devices(self) -> List[BluetoothDevice]"
-      processing_logic:
-        - "Collect primary device (if present)"
-        - "Collect all secondary devices"
-        - "Return combined list"
-
-    - name: "remove_device"
-      signature: "remove_device(self, mac_address: str) -> bool"
-      processing_logic:
-        - "Remove from primary or secondary as appropriate"
-        - "Call _save_config(); return True on success, False if not found"
-
-    - name: "get_device_by_mac"
-      signature: "get_device_by_mac(self, mac_address: str) -> Optional[BluetoothDevice]"
-      processing_logic:
-        - "Iterate get_all_devices(); match on mac_address"
-        - "Return matching device or None"
-
-    - name: "_load_config"
-      signature: "_load_config(self) -> None"
-      processing_logic:
-        - "Open config_path with yaml.safe_load"
-        - "On FileNotFoundError: create default config; call _save_config()"
-        - "On Exception: log error; use default in-memory config"
-
-    - name: "_save_config"
-      signature: "_save_config(self) -> None"
-      processing_logic:
-        - "If yaml not available: log debug and return"
-        - "Write to temp file; rename to config_path (atomic write)"
-        - "On Exception: log error"
-```
-
-[Return to Table of Contents](<#table of contents>)
-
----
-
-## 5.0 Interfaces
-
-### 5.1 BluetoothDevice
+## 3.0 Interface
 
 ```python
-import datetime
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
-
-@dataclass
-class BluetoothDevice:
-    name: str
-    mac_address: str
-    device_type: str = "UNKNOWN"
-    last_connected: Optional[datetime.datetime] = None
-
-    def __post_init__(self) -> None: ...
-    def to_dict(self) -> Dict[str, Any]: ...
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BluetoothDevice": ...
-```
-
-### 5.2 DeviceStore
-
-```python
-from typing import List, Optional
-from .models import BluetoothDevice
-
 class DeviceStore:
-
-    def __init__(self, config_path: Optional[str] = None) -> None: ...
-        # default: str(gtach_home() / 'config' / 'devices.yaml')
-
-    def save_device(self, device: BluetoothDevice,
-                    is_primary: bool = True) -> bool: ...
-
+    def __init__(self, config_path: Optional[str] = None): ...
+    def save_device(self, device: BluetoothDevice, is_primary: bool = True) -> bool: ...
     def get_primary_device(self) -> Optional[BluetoothDevice]: ...
-
     def get_all_devices(self) -> List[BluetoothDevice]: ...
-
     def remove_device(self, mac_address: str) -> bool: ...
-
     def get_device_by_mac(self, mac_address: str) -> Optional[BluetoothDevice]: ...
 
-
+def set_device_store_path(path: Optional[str]) -> None: ...
 def get_device_store() -> DeviceStore: ...
-    # Process-wide shared instance, created on first use through the
-    # module-level name DeviceStore.
-
 def reset_device_store() -> None: ...
-    # Discard the shared instance (tests).
 ```
 
-### 5.3 Concurrency
+- `save_device` and `remove_device` return `True` only when the change reached disk. When a save fails, the in-memory state is restored to its previous content (audit A09).
+- `set_device_store_path(path)` sets the file used by the shared instance and discards the current one (audit A10); `None` selects the default path.
+- `get_device_store()` creates the shared instance on first use, through the module-level name `DeviceStore`, so that a test that patches the class gets its replacement. `reset_device_store()` discards it (tests).
 
-Every public method holds the instance lock for its whole read or read-modify-save, including the file write, so that concurrent callers never interleave a load and a save. Public methods delegate to unlocked `_..._locked` helpers and never call each other under the lock. No callback or foreign component is called under the lock. The file I/O under the lock is a deliberate exception to the "no blocking I/O" part of CLAUDE.md §4 rule 8: the lock protects exactly that file.
+### 3.1 Concurrency
 
-[Return to Table of Contents](<#table of contents>)
+Every public method holds the instance lock for its whole read or read-modify-save, including the file write, so that concurrent callers never interleave a load and a save (CLAUDE.md rule 8 permits a file-serialising lock across that file's I/O). Public methods delegate to `_..._locked` helpers and never call each other under the lock, because `threading.Lock` is not reentrant. No callback and no other component is called under the lock. The shared instance is guarded by a separate module lock.
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 6.0 Data Design
-
-### 6.1 BluetoothDevice Fields
-
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `name` | `str` | Yes | Display name |
-| `mac_address` | `str` | Yes | Normalised to `AA:BB:CC:DD:EE:FF` |
-| `device_type` | `str` | No | Default `UNKNOWN`; auto-detected |
-| `last_connected` | `Optional[datetime]` | No | ISO format in YAML |
-
-### 6.2 devices.yaml Structure
+## 4.0 Data Design
 
 ```yaml
 paired_devices:
@@ -276,97 +89,76 @@ paired_devices:
     name: "ELM327"
     mac_address: "AA:BB:CC:DD:EE:FF"
     device_type: "ELM327"
-    last_connected: "2026-03-24T10:00:00"
-  secondary:
-    AA:BB:CC:DD:EE:00:
+    last_connected: "2026-03-24T10:00:00"   # optional
+  secondary:                                 # optional
+    "AA:BB:CC:DD:EE:00":
       name: "ELM327 backup"
       mac_address: "AA:BB:CC:DD:EE:00"
       device_type: "ELM327"
-      last_connected: "2026-01-01T08:00:00"
 ```
 
-[Return to Table of Contents](<#table of contents>)
+`_normalise_config()` runs after every load. It replaces a top level that is not a mapping, a `paired_devices` value that is not a mapping, and a `secondary` value that is not a mapping, each with an empty mapping and a WARNING. A missing file is created with `paired_devices: {}`.
+
+Writes go to `<path>.tmp`, are flushed and `fsync`ed, and then replace the file with `os.replace` (issue-453f0a80).
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 7.0 Error Handling
+## 5.0 Error Handling
 
 | Condition | Handling |
-|-----------|----------|
-| `yaml` not installed | In-memory config; log WARNING; persistence disabled |
-| Config file not found | Create default config; save |
-| YAML parse error | Log ERROR; use default in-memory config |
-| Save | Write temporary file, flush, `os.fsync`, `os.replace` (audit A10) |
-| Save failure | Log ERROR; data remains in memory |
-| `get_primary_device` with missing/corrupt data | Log error; return None |
+|---|---|
+| File missing | Create it with an empty store |
+| YAML unreadable or malformed | ERROR with traceback; empty store in memory |
+| Unexpected structure | WARNING; structure repaired in memory |
+| Save failure | ERROR with traceback; the method returns `False`; in-memory state restored |
+| Corrupt device entry on read | ERROR with traceback; the entry is skipped or `None` is returned |
 
-### 7.1 Logging
+Logger: `DeviceStore`. PyYAML is a required dependency; there is no in-memory fallback for a missing `yaml` module.
 
-```yaml
-logger_name: "DeviceStore"
-log_levels:
-  DEBUG: "config load/save operations"
-  INFO: "device saved, device removed"
-  WARNING: "yaml not available"
-  ERROR: "load/save failures with exception detail"
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 8.0 Visual Documentation
+## 6.0 Visual Documentation
 
-### 8.1 DeviceStore Initialisation
+Purpose: the save path. Legend: rectangles are steps, diamonds are decisions.
 
 ```mermaid
 flowchart TD
-    A[DeviceStore.__init__] --> B{yaml available?}
-    B -- No --> C[in-memory default config]
-    C --> D[log WARNING]
-    B -- Yes --> E[ensure config dir]
-    E --> F[_load_config]
-    F --> G{file exists?}
-    G -- Yes --> H[yaml.safe_load]
-    G -- No --> I[default config]
-    I --> J[_save_config]
+    A[save_device] --> B[acquire lock]
+    B --> C[copy current config]
+    C --> D[update primary or secondary entry]
+    D --> E[write tmp file, flush, fsync]
+    E --> F{written?}
+    F -- yes --> G[os.replace] --> H[return True]
+    F -- no --> I[restore copied config] --> J[return False]
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 9.0 Element Registry
+## 7.0 Related Documents
 
-```yaml
-modules:
-  - name: "gtach.comm.models"
-    path: "src/gtach/comm/models.py"
-    package: "gtach.comm"
-  - name: "gtach.comm.device_store"
-    path: "src/gtach/comm/device_store.py"
-    package: "gtach.comm"
+- [design-a7b8c9d0-component_comm_bluetooth_device.md](design-a7b8c9d0-component_comm_bluetooth_device.md)
+- [design-f8a9b0c1-component_utils_home.md](design-f8a9b0c1-component_utils_home.md) (`gtach_home()`)
+- `closed/design-f6a7b8c9-component_comm_device_store.md` (superseded)
+- Tests: `tests/test_device_store_shared.py`, `tests/test_low_defects.py`, `tests/test_medium_defects.py`
 
-classes:
-  - name: "BluetoothDevice"
-    module: "gtach.comm.models"
-    base_classes: []
-  - name: "DeviceStore"
-    module: "gtach.comm.device_store"
-    base_classes: []
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## Version History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-03-24 | William Watson | Initial component design; corrects cross-domain BluetoothDevice import; rationalises fields and interface |
-| 1.1 | 2026-10-07 | William Watson | [change-453f0a80](<../change/change-453f0a80-device-store-sharing.md>): location under gtach_home(); internal lock; get_device_store()/reset_device_store(); fsync before replace. Matches commit 3747d2f. Supersedes design-f6a7b8c9. |
+| Version | Date | Description |
+|---|---|---|
+| 1.0 | 2026-03-24 | Initial component design; corrects cross-domain BluetoothDevice import; rationalises fields and interface |
+| 1.1 | 2026-10-07 | [change-453f0a80](../change/closed/change-453f0a80-device-store-sharing.md): location under gtach_home(); internal lock; get_device_store()/reset_device_store(); fsync before replace. Matches commit 3747d2f. Supersedes design-f6a7b8c9. |
+| 1.2 | 2026-11-13 | Retired design-f6a7b8c9 (already superseded by v1.1; nothing further to fold in). Corrected against the source: no `yaml` fallback, `_normalise_config`, `set_device_store_path`, boolean results and rollback on a failed save; transitional status text removed; `BluetoothDevice` detail left to design-a7b8c9d0; links converted to GitHub slugs (proposal-f8d0064b WP4). |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

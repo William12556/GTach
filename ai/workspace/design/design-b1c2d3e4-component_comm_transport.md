@@ -2,20 +2,17 @@
 
 Created: 2026 March 24
 
----
-
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 File Location](<#3.0 file location>)
-- [4.0 Elements](<#4.0 elements>)
-- [5.0 Interfaces](<#5.0 interfaces>)
-- [6.0 Data Design](<#6.0 data design>)
-- [7.0 Error Handling](<#7.0 error handling>)
-- [8.0 Visual Documentation](<#8.0 visual documentation>)
-- [9.0 Element Registry](<#9.0 element registry>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Module Constants](#30-module-constants)
+- [4.0 Elements](#40-elements)
+- [5.0 Behaviour](#50-behaviour)
+- [6.0 Error Handling](#60-error-handling)
+- [7.0 Visual Documentation](#70-visual-documentation)
+- [8.0 Related Documents](#80-related-documents)
+- [Version History](#version-history)
 
 ---
 
@@ -26,50 +23,57 @@ document_info:
   document_id: "design-b1c2d3e4-component_comm_transport"
   tier: 3
   domain: "Communication"
+  component: "OBDTransport"
   parent: "design-7d3e9f5a-domain_comm.md"
-  version: "1.0"
-  date: "2026-03-24"
+  source_file: "src/gtach/comm/transport.py"
+  version: "2.0"
+  date: "2026-11-13"
   author: "William Watson"
+  status: "Implemented"
 ```
 
-### 1.1 Parent Reference
+- **Domain design:** [design-7d3e9f5a-domain_comm.md](design-7d3e9f5a-domain_comm.md)
 
-- **Domain Design**: [design-7d3e9f5a-domain_comm.md](<design-7d3e9f5a-domain_comm.md>)
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 2.0 Component Overview
 
-### 2.1 Purpose
+`transport.py` holds the transport abstraction of the Communication domain:
 
-Defines the `OBDTransport` abstract base class, `TransportState` enumeration, `TransportError` exception hierarchy, and `select_transport()` factory function. All concrete transport implementations (`RFCOMMTransport`, `SerialTransport`, `TCPTransport`) inherit from `OBDTransport`. `OBDProtocol` depends only on this interface.
+- `OBDTransport`, the base class with the complete connection skeleton (connect, disconnect, drop, command exchange, supervision loop).
+- `TransportState` and the `TransportError` exception hierarchy.
+- The connect-failure cause strings shown on the DISCONNECTED screen.
+- `select_transport()`, the factory used by `GTachApplication`.
+- The transport name tuples read by `main.py`, `app.py` and `select_transport()`.
 
-### 2.2 Responsibilities
+A concrete transport (`RFCOMMTransport`, `TCPTransport`, `SerialTransport`) supplies only how a handle is opened, closed, written to and read from. `SimTransport` overrides the whole skeleton.
 
-1. Define the uniform transport interface via `OBDTransport` ABC
-2. Define `TransportState` enumeration for connection state tracking
-3. Define `TransportError` exception hierarchy
-4. Provide `select_transport()` factory returning a concrete transport based on CLI args or platform detection
+Design constraint (issue-5e7a03c4): the transport reports faults and never acts on the host. It performs no adapter reset, rfkill cycle, hciuart restart, module reload or shell invocation.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 3.0 File Location
+## 3.0 Module Constants
 
-```yaml
-file: "src/gtach/comm/transport.py"
-status: "New — does not exist in current source"
-exports:
-  - "OBDTransport"
-  - "TransportState"
-  - "TransportError"
-  - "select_transport"
-```
+| Name | Value | Purpose |
+|---|---|---|
+| `TRANSPORT_NAMES` | `("tcp", "serial", "rfcomm", "simtcp", "simbt")` | Valid `--transport` values |
+| `TRANSPORT_FORCED` | `("tcp", "serial", "simtcp")` | Transports that skip setup mode |
+| `TRANSPORT_FAST` | `("simbt", "simtcp", "tcp")` | Transports polled at 0.02 s instead of 0.05 s |
+| `LINK_BUSY_CAUSE` | `"bluetooth link busy - may need reset"` | Cause for `EBUSY`; public for the post-pairing check |
+| `LINK_RESET_CAUSE` | `"connection reset by adapter"` | Cause for `ECONNRESET` and `ECONNABORTED`; public for the post-pairing check |
+| `_CONNECT_FAULT_CAUSES` | errno → cause | `EBUSY`, `ETIMEDOUT`, `EHOSTDOWN`, `EHOSTUNREACH`, `ENODEV`, `ENETDOWN`, `ECONNREFUSED`, `ECONNRESET`, `ECONNABORTED` |
+| `_CONTROLLER_WORKING_CAUSES` | causes of `ECONNREFUSED` and `EHOSTDOWN` | Failures that show a working controller; excluded from the wedge diagnosis (issue-76ef5387) |
+| `_SILENT_LINK_CAUSE` | `"adapter stopped responding"` | Default cause of `drop_link()` |
+| `_PEER_CLOSED_CAUSE` | `"adapter closed the connection"` | Cause recorded on an EOF read |
+| `_WEDGED_LINK_CAUSE` | `"bluetooth wedged - reset required"` | Escalated cause after sustained connect failures |
 
-[Return to Table of Contents](<#table of contents>)
+Every cause string is 40 characters or fewer so that it renders on the 480×480 display; a test asserts the bound.
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -77,216 +81,141 @@ exports:
 
 ### 4.1 TransportState
 
-```yaml
-element:
-  name: "TransportState"
-  type: "enum"
-  base: "enum.Enum"
+`DISCONNECTED`, `CONNECTING`, `CONNECTED`, `ERROR` (`enum.Enum`). `ERROR` is set only by an unexpected exception in `connect()`.
 
-  members:
-    DISCONNECTED: "No active transport connection"
-    CONNECTING: "Connection attempt in progress"
-    CONNECTED: "Active connection established"
-    ERROR: "Unrecoverable error state requiring reset"
-```
-
-### 4.2 TransportError
-
-```yaml
-element:
-  name: "TransportError"
-  type: "exception hierarchy"
-  base: "Exception"
-
-  subclasses:
-    - name: "ConnectionError"
-      purpose: "Transport could not establish or lost a connection"
-    - name: "TimeoutError"
-      purpose: "Transport read or write timed out"
-    - name: "ProtocolError"
-      purpose: "Unexpected response format from transport"
-```
-
-### 4.3 OBDTransport
-
-```yaml
-element:
-  name: "OBDTransport"
-  type: "class (ABC)"
-  base: "abc.ABC"
-
-  abstract_methods:
-    - name: "connect"
-      signature: "connect(self) -> bool"
-      purpose: "Establish transport connection; return True on success"
-
-    - name: "disconnect"
-      signature: "disconnect(self) -> None"
-      purpose: "Close transport connection and release resources"
-
-    - name: "send_command"
-      signature: "send_command(self, command: str, timeout: float = 2.0) -> Optional[str]"
-      purpose: "Send AT/OBD command string; return response string or None on timeout/error"
-
-    - name: "is_connected"
-      signature: "is_connected(self) -> bool"
-      purpose: "Return True if transport is in CONNECTED state"
-
-  abstract_properties:
-    - name: "state"
-      type: "TransportState"
-      purpose: "Current connection state (read-only)"
-
-  concrete_methods:
-    - name: "reconnect_indefinitely"
-      signature: "reconnect_indefinitely(self, retry_delay: float = 5.0) -> None"
-      purpose: "Retry connect() in a loop until connected or shutdown requested"
-      processing_logic:
-        - "Loop: call connect(); if True return"
-        - "On failure: log warning, sleep retry_delay"
-        - "Checks self._shutdown for loop exit"
-
-  attributes:
-    - name: "_shutdown"
-      type: "threading.Event"
-      purpose: "Signal reconnect_indefinitely to exit"
-    - name: "_lock"
-      type: "threading.RLock"
-      purpose: "Protect state transitions"
-```
-
-### 4.4 select_transport
-
-```yaml
-element:
-  name: "select_transport"
-  type: "function"
-  signature: "select_transport(platform_type: PlatformType, args: argparse.Namespace) -> OBDTransport"
-  purpose: "Factory function; instantiate and return the correct concrete transport"
-
-  processing_logic:
-    - "Check args.transport first (explicit CLI override)"
-    - "'tcp'    -> TCPTransport(host=args.obd_host, port=args.obd_port)"
-    - "'serial' -> SerialTransport(port=getattr(args, 'serial_port', None))"
-    - "'rfcomm' -> load MAC from DeviceStore; RFCOMMTransport(mac_address)"
-    - "No CLI arg: PlatformType.MACOS -> SerialTransport()"
-    - "No CLI arg: PlatformType.RASPBERRY_PI_* -> load MAC from DeviceStore; RFCOMMTransport(mac_address)"
-    - "Unknown platform with no CLI arg: raise TransportError('Unsupported platform')"
-
-  parameters:
-    - name: "platform_type"
-      type: "PlatformType"
-      description: "Detected platform from utils.platform"
-    - name: "args"
-      type: "argparse.Namespace"
-      description: "Parsed CLI arguments; expected attrs: transport, obd_host, obd_port, serial_port"
-
-  returns:
-    type: "OBDTransport"
-    description: "Configured concrete transport instance (not yet connected)"
-
-  raises:
-    - exception: "TransportError"
-      condition: "Platform unsupported and no explicit --transport arg provided"
-    - exception: "TransportError"
-      condition: "DeviceStore returns no primary device when RFCOMM required"
-```
-
-[Return to Table of Contents](<#table of contents>)
-
----
-
-## 5.0 Interfaces
-
-### 5.1 OBDTransport ABC
-
-```python
-from abc import ABC, abstractmethod
-from typing import Optional
-
-class OBDTransport(ABC):
-
-    @abstractmethod
-    def connect(self) -> bool: ...
-
-    @abstractmethod
-    def disconnect(self) -> None: ...
-
-    @abstractmethod
-    def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]: ...
-
-    @abstractmethod
-    def is_connected(self) -> bool: ...
-
-    @property
-    @abstractmethod
-    def state(self) -> "TransportState": ...
-
-    def reconnect_indefinitely(self, retry_delay: float = 5.0) -> None: ...
-```
-
-### 5.2 select_transport Factory
-
-```python
-import argparse
-from ..utils.platform import PlatformType
-
-def select_transport(platform_type: PlatformType,
-                     args: argparse.Namespace) -> OBDTransport: ...
-```
-
-### 5.3 Exception Classes
+### 4.2 Exceptions
 
 ```python
 class TransportError(Exception): ...
-class ConnectionError(TransportError): ...
-class TimeoutError(TransportError): ...
+class TransportConnectionError(TransportError): ...
+class TransportTimeoutError(TransportError): ...
 class ProtocolError(TransportError): ...
 ```
 
-[Return to Table of Contents](<#table of contents>)
+`select_transport()` raises `TransportError`. The I/O paths of `OBDTransport` do not raise; they return `False` or `None` and record a cause.
+
+### 4.3 OBDTransport
+
+```python
+class OBDTransport(ABC):
+    _IO_ERRORS: tuple = (OSError,)
+    _TIMEOUT_ERRORS: tuple = ()
+    _EMPTY_READ_IS_EOF: bool = True
+    _MAX_CONSECUTIVE_TIMEOUTS: int = 5
+    _READ_DEADLINE_MARGIN_S: float = 1.0
+    _MAX_CONSECUTIVE_CONNECT_FAILURES: int = 6
+    _ADAPTER_CHECKS: bool = False
+    _DISCARD_MAX_READS: int = 64
+
+    def connect(self) -> bool: ...
+    def disconnect(self) -> None: ...
+    def drop_link(self, cause: Optional[str] = None) -> None: ...
+    def send_command(self, command: str, timeout: float = 2.0) -> Optional[str]: ...
+    def is_connected(self) -> bool: ...
+    def reconnect_indefinitely(self, retry_delay: float = 5.0,
+                               heartbeat: Optional[Callable[[], None]] = None) -> None: ...
+    @property
+    def state(self) -> TransportState: ...
+    @property
+    def last_failure_cause(self) -> Optional[str]: ...
+    @property
+    def retry_delay(self) -> float: ...
+
+    # Handle primitives supplied by a subclass
+    def _open(self) -> Any: ...
+    def _close(self, handle: Any) -> None: ...
+    def _write(self, handle: Any, data: bytes) -> None: ...
+    def _read(self, handle: Any, n: int) -> bytes: ...
+    def _set_timeout(self, handle: Any, timeout: float) -> None: ...   # optional override
+    def _discard_input(self, handle: Any) -> int: ...                  # optional override
+    def _describe(self) -> str: ...                                    # optional override
+```
+
+- The handle primitives are not `@abstractmethod`, because `SimTransport` supplies none of them. Direct instantiation of `OBDTransport` raises `TypeError`.
+- State (`_handle`, `_state`, the two failure counters, `_last_failure_cause`) is guarded by `self._lock` (`threading.RLock`). No I/O and no call-out happens under the lock, except closing the handle in `_discard_handle_locked`.
+
+### 4.4 select_transport
+
+```python
+def select_transport(platform_type: PlatformType, args: argparse.Namespace) -> OBDTransport
+```
+
+| `args.transport` | Result |
+|---|---|
+| `simtcp`, `simbt` | `SimTransport()` |
+| `tcp` | `TCPTransport(host=args.obd_host, port=args.obd_port)` |
+| `serial` | `SerialTransport(port=args.serial_port)` |
+| `rfcomm` | `RFCOMMTransport` for the primary device of `get_device_store()` |
+| not set, platform `RASPBERRY_PI_*` | as `rfcomm` |
+| not set, other platform | `TransportError("Unsupported platform")` |
+
+`TransportError("No paired device found")` is raised when RFCOMM is selected and the device store has no primary device.
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 6.0 Data Design
+## 5.0 Behaviour
 
-### 6.1 TransportState Values
+### 5.1 connect
 
-| State | Description |
-|-------|-------------|
-| DISCONNECTED | Initial state; no active connection |
-| CONNECTING | connect() in progress |
-| CONNECTED | Transport ready for send_command() |
-| ERROR | Unrecoverable; requires reset or restart |
+1. State `CONNECTING`; call `_open()` outside the lock.
+2. `_open()` returns `None` (no device resolved): state `DISCONNECTED`, return `False`.
+3. If `disconnect()` ran during a blocking `_open()`, the new handle is closed and not published (audit A01).
+4. On success: publish the handle, state `CONNECTED`, clear the failure cause and the connect-failure counter.
+5. On `_IO_ERRORS`: classify the cause (§5.5), log at ERROR, state `DISCONNECTED`, record the cause, return `False`.
+6. On any other exception: log with traceback, state `ERROR`, return `False`.
 
-### 6.2 CLI Argument Contract
+### 5.2 send_command
 
-| Attribute | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `args.transport` | `Optional[str]` | `None` | `'tcp'`, `'serial'`, `'rfcomm'`, or absent |
-| `args.obd_host` | `str` | `'localhost'` | TCP host for TCPTransport |
-| `args.obd_port` | `int` | `35000` | TCP port for TCPTransport |
-| `args.serial_port` | `Optional[str]` | `None` | Serial device path; None triggers auto-discovery |
+1. Capture the handle once under the lock; `None` means not connected.
+2. Discard stale input (`_discard_input`), so that a late reply to an earlier command is not read as this command's reply (issue-dc52c4e4).
+3. Set the timeout, write `command + "\r"`, then read until `>` within a monotonic deadline of `timeout + _READ_DEADLINE_MARGIN_S`.
+4. The reply ends at the first prompt; bytes after it are dropped.
+5. An empty read is an EOF where `_EMPTY_READ_IS_EOF` is true: `drop_link(_PEER_CLOSED_CAUSE)`. Otherwise (serial) it is a timeout when nothing was buffered.
+6. A timeout is counted by `_record_timeout`; `_MAX_CONSECUTIVE_TIMEOUTS` consecutive timeouts drop the link (issue-9c2f41d8). Any reply resets the count.
+7. An I/O error on a handle that this process has since closed (`disconnect()` or `drop_link()`) is logged at DEBUG and changes neither state nor cause (issue-76ef5387). Any other I/O error is logged at ERROR, classified, and the handle discarded.
 
-[Return to Table of Contents](<#table of contents>)
+### 5.3 disconnect and drop_link
+
+- `disconnect()` ends the transport's life: it sets `_shutdown`, which nothing clears, and closes the handle.
+- `drop_link(cause)` closes only the current link and records the cause, so that `reconnect_indefinitely()` re-establishes it.
+
+### 5.4 reconnect_indefinitely
+
+Runs on the `transport` thread for the life of the process. It connects, polls `is_connected()` once per second while the link is up, and retries after `retry_delay` when the link drops or a connect fails. Its only exit is `_shutdown`. All waits use `wait_for_event` (issue-4f671d09). The optional `heartbeat` callable is invoked on every iteration and on every supervising poll; an exception from it is logged at DEBUG and swallowed.
+
+### 5.5 Connect failure causes
+
+- With `_ADAPTER_CHECKS` set (RFCOMM only), a missing controller in `/sys/class/bluetooth` overrides the errno and yields `"no bluetooth controller"`. An unreadable sysfs is treated as "controller present".
+- A mapped errno yields its cause; an unmapped errno yields its symbolic name; otherwise the exception text.
+- After `_MAX_CONSECUTIVE_CONNECT_FAILURES` consecutive failures with a controller present, the cause escalates to `_WEDGED_LINK_CAUSE`. Failures whose cause is in `_CONTROLLER_WORKING_CAUSES` neither count nor escalate. The counter resets only on a successful connect.
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 7.0 Error Handling
+## 6.0 Error Handling
 
 | Condition | Handling |
-|-----------|----------|
-| Unknown platform, no --transport arg | Raise `TransportError('Unsupported platform')` |
-| DeviceStore returns no primary device for RFCOMM | Raise `TransportError('No paired device found')` |
-| Concrete subclass fails to implement abstract method | `TypeError` at instantiation (Python ABC enforcement) |
+|---|---|
+| Connect I/O error | ERROR record with cause; `last_failure_cause` set; `False` |
+| Unexpected connect exception | ERROR record with traceback; state `ERROR`; `False` |
+| Command timeout | WARNING; counted; link dropped at the threshold |
+| Peer closed | `drop_link(_PEER_CLOSED_CAUSE)`; ERROR record; `None` |
+| I/O error on a handle closed by this process | DEBUG; `None` |
+| Other command I/O error | ERROR; cause recorded; handle discarded; `None` |
+| Unsupported platform, or no paired device for RFCOMM | `TransportError` from `select_transport()` |
 
-[Return to Table of Contents](<#table of contents>)
+Loggers are named after the concrete class (`RFCOMMTransport`, `TCPTransport`, ...).
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 8.0 Visual Documentation
+## 7.0 Visual Documentation
 
-### 8.1 Class Hierarchy
+Purpose: class relationships of the transport layer. Legend: `<|--` inheritance.
 
 ```mermaid
 classDiagram
@@ -294,99 +223,60 @@ classDiagram
         <<abstract>>
         +connect() bool
         +disconnect() None
+        +drop_link(cause) None
         +send_command(command, timeout) Optional~str~
         +is_connected() bool
+        +reconnect_indefinitely(retry_delay, heartbeat) None
         +state TransportState
-        +reconnect_indefinitely(retry_delay) None
-        #_shutdown Event
-        #_lock RLock
-    }
-    class RFCOMMTransport {
-        +connect() bool
-        +disconnect() None
-        +send_command(command, timeout) Optional~str~
-        +is_connected() bool
-    }
-    class SerialTransport {
-        +connect() bool
-        +disconnect() None
-        +send_command(command, timeout) Optional~str~
-        +is_connected() bool
-    }
-    class TCPTransport {
-        +connect() bool
-        +disconnect() None
-        +send_command(command, timeout) Optional~str~
-        +is_connected() bool
+        +last_failure_cause Optional~str~
+        +retry_delay float
+        #_open() Any
+        #_close(handle) None
+        #_write(handle, data) None
+        #_read(handle, n) bytes
     }
     OBDTransport <|-- RFCOMMTransport
-    OBDTransport <|-- SerialTransport
     OBDTransport <|-- TCPTransport
+    OBDTransport <|-- SerialTransport
+    OBDTransport <|-- SimTransport
 ```
 
-### 8.2 select_transport Logic
+Purpose: state transitions of `TransportState`.
 
 ```mermaid
-flowchart TD
-    A[select_transport called] --> B{args.transport set?}
-    B -- tcp --> C[TCPTransport host port]
-    B -- serial --> D[SerialTransport port]
-    B -- rfcomm --> E[DeviceStore.get_primary_device]
-    E --> F[RFCOMMTransport mac]
-    B -- not set --> G{platform_type?}
-    G -- MACOS --> D
-    G -- RASPBERRY_PI --> E
-    G -- other --> H[raise TransportError]
+stateDiagram-v2
+    [*] --> DISCONNECTED
+    DISCONNECTED --> CONNECTING: connect()
+    CONNECTING --> CONNECTED: handle opened
+    CONNECTING --> DISCONNECTED: I/O error or no device
+    CONNECTING --> ERROR: unexpected exception
+    CONNECTED --> DISCONNECTED: disconnect(), drop_link(), I/O error
+    ERROR --> CONNECTING: connect()
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 9.0 Element Registry
+## 8.0 Related Documents
 
-```yaml
-modules:
-  - name: "gtach.comm.transport"
-    path: "src/gtach/comm/transport.py"
-    package: "gtach.comm"
+- [design-c2d3e4f5-component_comm_rfcomm_transport.md](design-c2d3e4f5-component_comm_rfcomm_transport.md)
+- [design-d3e4f5a6-component_comm_tcp_transport.md](design-d3e4f5a6-component_comm_tcp_transport.md)
+- [design-e4f5a6b7-component_comm_serial_transport.md](design-e4f5a6b7-component_comm_serial_transport.md)
+- [design-f5a6b7c8-component_comm_obd_protocol.md](design-f5a6b7c8-component_comm_obd_protocol.md)
+- Tests: `tests/test_connect_error_classification.py`, `tests/test_comm_layer_defects.py`, `tests/test_reconnect_path.py`, `tests/test_link_loss_recovery.py`, `tests/test_response_alignment.py`, `tests/test_transport_heartbeat.py`
 
-classes:
-  - name: "TransportState"
-    module: "gtach.comm.transport"
-    base_classes: ["enum.Enum"]
-  - name: "TransportError"
-    module: "gtach.comm.transport"
-    base_classes: ["Exception"]
-  - name: "ConnectionError"
-    module: "gtach.comm.transport"
-    base_classes: ["TransportError"]
-  - name: "TimeoutError"
-    module: "gtach.comm.transport"
-    base_classes: ["TransportError"]
-  - name: "ProtocolError"
-    module: "gtach.comm.transport"
-    base_classes: ["TransportError"]
-  - name: "OBDTransport"
-    module: "gtach.comm.transport"
-    base_classes: ["abc.ABC"]
-
-functions:
-  - name: "select_transport"
-    module: "gtach.comm.transport"
-    signature: "select_transport(platform_type: PlatformType, args: argparse.Namespace) -> OBDTransport"
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## Version History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-03-24 | William Watson | Initial component design |
+| Version | Date | Description |
+|---|---|---|
+| 1.0 | 2026-03-24 | Initial component design |
+| 2.0 | 2026-11-13 | Rewritten against the source: status corrected (the module exists); skeleton in the base class with handle primitives; `drop_link`, `last_failure_cause`, `retry_delay`; failure causes and wedge escalation; simulation transports; the macOS branch and the abstract-method interface removed; links converted to GitHub slugs (proposal-f8d0064b WP4). |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

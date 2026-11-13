@@ -2,20 +2,17 @@
 
 Created: 2026 March 24
 
----
-
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 File Location](<#3.0 file location>)
-- [4.0 Elements](<#4.0 elements>)
-- [5.0 Interfaces](<#5.0 interfaces>)
-- [6.0 Data Design](<#6.0 data design>)
-- [7.0 Error Handling](<#7.0 error handling>)
-- [8.0 Visual Documentation](<#8.0 visual documentation>)
-- [9.0 Element Registry](<#9.0 element registry>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Elements](#30-elements)
+- [4.0 Behaviour](#40-behaviour)
+- [5.0 Vehicle Silent State](#50-vehicle-silent-state)
+- [6.0 Error Handling](#60-error-handling)
+- [7.0 Visual Documentation](#70-visual-documentation)
+- [8.0 Related Documents](#80-related-documents)
+- [Version History](#version-history)
 
 ---
 
@@ -26,337 +23,205 @@ document_info:
   document_id: "design-f5a6b7c8-component_comm_obd_protocol"
   tier: 3
   domain: "Communication"
+  component: "OBDProtocol"
   parent: "design-7d3e9f5a-domain_comm.md"
-  version: "1.0"
-  date: "2026-03-24"
+  source_file: "src/gtach/comm/obd.py"
+  version: "2.0"
+  date: "2026-11-13"
   author: "William Watson"
+  status: "Implemented"
+  supersedes: "design-e5f6a7b8-component_comm_obd_protocol (closed)"
 ```
 
-### 1.1 Parent Reference
+- **Domain design:** [design-7d3e9f5a-domain_comm.md](design-7d3e9f5a-domain_comm.md)
 
-- **Domain Design**: [design-7d3e9f5a-domain_comm.md](<design-7d3e9f5a-domain_comm.md>)
-- **Interface Contract**: [design-b1c2d3e4-component_comm_transport.md](<design-b1c2d3e4-component_comm_transport.md>)
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 2.0 Component Overview
 
-### 2.1 Purpose
+`OBDProtocol` initialises an ELM327 adapter over an `OBDTransport`, polls engine speed (mode 01, PID 0C) on its own thread, and delivers samples to the display through `ThreadManager.message_queue`.
 
-Implements the ELM327 AT command initialisation sequence and OBD-II RPM data acquisition loop. Communicates exclusively through the `OBDTransport` interface, making it transport-agnostic. Delivers parsed `OBDResponse` objects to the Core domain via `ThreadManager.message_queue`.
+Responsibilities:
 
-### 2.2 Change from Existing Source
+1. Initialise the adapter (`ATZ`, `ATE0`, `ATL0`, `ATS0`, `ATSP0`) and confirm that the vehicle answers `0100`.
+2. Poll `010C` at `poll_interval_s` and queue each valid sample as an `OBDResponse`.
+3. Record evidence of a silent vehicle (adapter answering, vehicle not) for the display's "Engine off" state.
+4. Report liveness to `ThreadManager` under the name `obd_protocol`.
 
-The existing `obd.py` imports and depends on `BluetoothManager`. This component redesign replaces that dependency with `OBDTransport`. The file `src/gtach/comm/obd.py` is updated in place; the `OBDResponse` dataclass is retained unchanged.
+The protocol never connects or disconnects the transport; `OBDTransport.reconnect_indefinitely()` on the `transport` thread does that. The protocol loop waits while the transport is disconnected and re-initialises after each reconnect.
 
-### 2.3 Responsibilities
-
-1. Accept an `OBDTransport` instance; wait for it to reach CONNECTED state
-2. Execute ELM327 initialisation sequence (`ATZ`, `ATE0`, `ATSP0`)
-3. Run continuous RPM acquisition loop: send `010C`, parse response, enqueue `OBDResponse`
-4. Register with `ThreadManager`; maintain heartbeat
-5. Handle transport disconnection by waiting for reconnection before resuming
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 3.0 File Location
+## 3.0 Elements
 
-```yaml
-file: "src/gtach/comm/obd.py"
-status: "Existing — replace BluetoothManager dependency with OBDTransport"
-exports:
-  - "OBDProtocol"
-  - "OBDResponse"
-```
-
-[Return to Table of Contents](<#table of contents>)
-
----
-
-## 4.0 Elements
-
-### 4.1 OBDResponse
-
-```yaml
-element:
-  name: "OBDResponse"
-  type: "dataclass"
-  note: "Unchanged from existing implementation"
-
-  fields:
-    - name: "pid"
-      type: "int"
-      description: "OBD PID (e.g. 0x0C for RPM)"
-    - name: "data"
-      type: "bytes"
-      description: "Raw response bytes (A, B pair for RPM)"
-    - name: "timestamp"
-      type: "float"
-      description: "Unix timestamp of acquisition"
-    - name: "error"
-      type: "Optional[str]"
-      default: "None"
-      description: "Error message if parsing failed; None on success"
-```
-
-### 4.2 OBDProtocol
-
-```yaml
-element:
-  name: "OBDProtocol"
-  type: "class"
-
-  constructor:
-    signature: "__init__(self, transport: OBDTransport, thread_manager: ThreadManager) -> None"
-    parameters:
-      - name: "transport"
-        type: "OBDTransport"
-        description: "Concrete transport instance (RFCOMMTransport, SerialTransport, or TCPTransport)"
-      - name: "thread_manager"
-        type: "ThreadManager"
-        description: "Core domain thread manager for registration and message queue"
-    processing_logic:
-      - "Store transport and thread_manager references"
-      - "Create shutdown_event (threading.Event)"
-      - "Create obd_thread (threading.Thread, target=_protocol_loop, name='OBDProtocol')"
-      - "Register obd_thread with thread_manager"
-
-  attributes:
-    - name: "transport"
-      type: "OBDTransport"
-    - name: "thread_manager"
-      type: "ThreadManager"
-    - name: "shutdown_event"
-      type: "threading.Event"
-    - name: "obd_thread"
-      type: "threading.Thread"
-    - name: "PROMPT"
-      type: "bytes"
-      value: "b'>'"
-    - name: "RPM_PID"
-      type: "int"
-      value: "0x0C"
-    - name: "timeout"
-      type: "float"
-      value: "1.0"
-
-  methods:
-    - name: "start"
-      signature: "start(self) -> None"
-      processing_logic:
-        - "obd_thread.start()"
-        - "Log INFO 'OBD protocol handler started'"
-
-    - name: "stop"
-      signature: "stop(self) -> None"
-      processing_logic:
-        - "Set shutdown_event"
-        - "obd_thread.join()"
-        - "Log INFO 'OBD protocol handler stopped'"
-
-    - name: "_protocol_loop"
-      signature: "_protocol_loop(self) -> None"
-      processing_logic:
-        - "While not shutdown_event.is_set():"
-        - "  Update heartbeat: thread_manager.update_heartbeat('obd_protocol')"
-        - "  If not transport.is_connected(): sleep 0.1 s; continue"
-        - "  Call _initialize_protocol(); if returns False: sleep 1.0 s; continue"
-        - "  Inner loop while transport.is_connected() and not shutdown_event.is_set():"
-        - "    Update heartbeat"
-        - "    rpm_data = _request_rpm()"
-        - "    If rpm_data: thread_manager.message_queue.put(rpm_data)"
-        - "    If rpm_data: thread_manager.data_available.set()"
-        - "    sleep 0.1 s"
-        - "  On exception: log ERROR with traceback; sleep 1.0 s"
-
-    - name: "_initialize_protocol"
-      signature: "_initialize_protocol(self) -> bool"
-      processing_logic:
-        - "Send 'ATZ' via transport.send_command(); ignore response"
-        - "Send 'ATE0' via transport.send_command()"
-        - "Send 'ATSP0' via transport.send_command()"
-        - "Send '0100' (supported PIDs); check response is not None and not '7F'"
-        - "Return True on success; return False on None response or '7F' prefix"
-        - "On exception: log error; return False"
-
-    - name: "_request_rpm"
-      signature: "_request_rpm(self) -> Optional[OBDResponse]"
-      processing_logic:
-        - "response = transport.send_command('010C', timeout=self.timeout)"
-        - "If response is None: return None"
-        - "Strip whitespace; check starts with '41' and length >= 8 chars"
-        - "Parse: data = bytes.fromhex(response.replace(' ', ''))"
-        - "Return OBDResponse(pid=RPM_PID, data=data[2:4], timestamp=time.time())"
-        - "On ValueError (hex parse): log warning; return None"
-```
-
-[Return to Table of Contents](<#table of contents>)
-
----
-
-## 5.0 Interfaces
+### 3.1 OBDResponse
 
 ```python
-import threading
-import time
-from dataclasses import dataclass
-from typing import Optional
-from .transport import OBDTransport
-from ..core import ThreadManager
-
 @dataclass
 class OBDResponse:
-    pid: int
-    data: bytes
-    timestamp: float
+    pid: int            # 0x0C
+    data: bytes         # the two data bytes A, B
+    timestamp: float    # time.time() at decode
     error: Optional[str] = None
-
-class OBDProtocol:
-
-    def __init__(self, transport: OBDTransport,
-                 thread_manager: ThreadManager) -> None: ...
-
-    def start(self) -> None: ...
-
-    def stop(self) -> None: ...
-
-    def _protocol_loop(self) -> None: ...
-
-    def _initialize_protocol(self) -> bool: ...
-
-    def _request_rpm(self) -> Optional[OBDResponse]: ...
 ```
 
-[Return to Table of Contents](<#table of contents>)
+RPM is `((A * 256) + B) / 4`; the display performs the calculation.
+
+### 3.2 OBDProtocol
+
+```python
+class OBDProtocol:
+    _INIT_RETRY_DELAY_S: float = 2.0
+    _INIT_0100_TIMEOUT_S: float = 5.0
+    _PRE_INIT_SETTLE_S: float = 1.5
+    _SETTLE_SLICE_S: float = 0.5
+    _NO_VEHICLE_LOG_INTERVAL_S: float = 60.0
+    _RPM_SILENT_RECHECK_S: float = 2.0
+
+    def __init__(self, transport: OBDTransport, thread_manager: ThreadManager,
+                 poll_interval_s: float = 0.05, adapter_pre_initialised: bool = False): ...
+    def start(self) -> None: ...
+    def stop(self, timeout: float = 5.0) -> None: ...
+    def last_vehicle_silent_ts(self) -> Optional[float]: ...
+```
+
+- The constructor creates the thread `OBDProtocol` and registers it with `ThreadManager` as `obd_protocol`, with `_signal_stop` as its stop function. The stop function signals without joining, so `ThreadManager.stop_thread`'s timeout bounds the stop.
+- `adapter_pre_initialised=True` is passed after setup, whose probe has already reset the adapter; `ATZ` is then skipped once.
+- `stop(timeout=0)` signals and returns without waiting.
+- The command timeout is 1.0 s (`self.timeout`), except `ATZ` (5.0 s) and `0100` (`_INIT_0100_TIMEOUT_S`).
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 6.0 Data Design
+## 4.0 Behaviour
 
-### 6.1 RPM Calculation
+### 4.1 Protocol loop
 
-| Field | Source |
-|-------|--------|
-| PID request | `010C` |
-| Expected response prefix | `41 0C` |
-| Data bytes | A = response[2], B = response[3] |
-| RPM formula | `((A * 256) + B) / 4` |
+```text
+while not stopped:
+    heartbeat
+    if transport not connected: clear silent timestamp; sleep 0.1 s; continue
+    if not _initialize_protocol(): heartbeat; wait _INIT_RETRY_DELAY_S; continue
+    while transport connected and not stopped:
+        heartbeat
+        sample = _request_rpm()
+        if sample: clear silent timestamp; queue sample; set data_available
+        elif no sample for _RPM_SILENT_RECHECK_S: _recheck_vehicle() (leave the loop if it returns False)
+        sleep poll_interval_s
+    adapter-initialised flag reset; silent timestamp cleared
+```
 
-The `OBDResponse.data` field contains bytes A and B. RPM value calculation is performed by the Display domain consumer, not by `OBDProtocol`.
+- When the queue is full, the oldest sample is discarded and the newest inserted.
+- An unexpected exception in the loop is logged with traceback, followed by a 1.0 s sleep.
 
-### 6.2 Initialisation Commands
+### 4.2 Initialisation
 
-| Command | Purpose |
-|---------|---------|
-| `ATZ` | Reset ELM327 |
-| `ATE0` | Disable echo |
-| `ATSP0` | Auto-select OBD protocol |
+1. Not pre-initialised: `ATZ` (5.0 s timeout). Pre-initialised: no `ATZ`; settle `_PRE_INIT_SETTLE_S` in slices of `_SETTLE_SLICE_S`, with a heartbeat after each slice and an early exit on stop (issue-04c18cda).
+2. `ATE0`, `ATL0`, `ATS0`, `ATSP0` (always).
+3. `0100` with `_INIT_0100_TIMEOUT_S`. After `ATSP0` the adapter searches for the vehicle protocol before answering, which can take several seconds (issue-dc52c4e4).
+4. The reply is classified by §5.0. Only a reply containing `4100` completes initialisation.
 
-[Return to Table of Contents](<#table of contents>)
+One heartbeat is sent per command, so that the heartbeat gap is bounded by one command timeout plus the transport's 1.0 s margin (issue-860fd5f7).
+
+### 4.3 RPM request
+
+`_request_rpm()` sends `010C`. A reply is decoded only when it starts with `41`, yields at least four bytes after removal of non-hex characters, and is a mode 01 reply for PID 0C (`41 0C A B`) (issue-907de6de). Any other reply yields no sample.
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 7.0 Error Handling
+## 5.0 Vehicle Silent State
+
+The adapter is connected and answering, but the vehicle is not (normally ignition off). The protocol records this as evidence for the display's "Engine off" state ([design-b8c9d0e1](design-b8c9d0e1-component_display_manager.md)). Source: issue-b29cbd71.
+
+### 5.1 Evidence rule
+
+| `0100` outcome | Classification | Effect |
+|---|---|---|
+| Reply containing `4100` | Vehicle answering | Clear the silent timestamp; start or resume RPM polling |
+| Reply from the adapter without `4100` (`NO DATA`, `UNABLE TO CONNECT`, `BUS INIT: ...ERROR`, `CAN ERROR`, `?`, `7F ...`) | Vehicle silent | Set the silent timestamp to `time.monotonic()`; log per §6.0 |
+| No reply (timeout), transport connected | Unknown | Log per §6.0; do not set the silent timestamp |
+| No reply, transport disconnected | Link lost | Clear the silent timestamp (issue-146491ba) |
+
+A timeout is never evidence of a silent vehicle: an adapter that has lost power without closing its socket also produces timeouts.
+
+### 5.2 Interface
+
+`last_vehicle_silent_ts()` returns the monotonic time of the latest adapter reply that showed a silent vehicle, or `None` if the vehicle last answered, the transport has disconnected, or no such reply has been seen. It is a single attribute read and is safe from any thread. The timestamp is cleared by a `4100` reply, by a valid `010C` sample, and when the protocol loop sees the transport disconnected.
+
+### 5.3 Silence during polling
+
+If `010C` produces no valid sample for `_RPM_SILENT_RECHECK_S` (2.0 s) while the transport is connected, `_recheck_vehicle()` sends `0100` (timeout `_INIT_0100_TIMEOUT_S`), classified by §5.1. The re-check sends no `ATZ`, applies no settle delay and repeats no configuration command; the adapter has not been reset. While the vehicle stays silent, the re-check repeats after `_INIT_RETRY_DELAY_S`. On a `4100` reply, polling resumes.
+
+An engine that stalls with the ignition on is expected to keep answering `010C` with 0 RPM. That is a valid sample and does not enter this path (inference; to be confirmed in the in-car test).
+
+[Return to Table of Contents](#table-of-contents)
+
+---
+
+## 6.0 Error Handling
 
 | Condition | Handling |
-|-----------|----------|
-| Transport not connected at loop start | Sleep 0.1 s; retry |
-| `_initialize_protocol` returns False | Sleep 1.0 s; retry outer loop |
-| `send_command` returns None | Return None from `_request_rpm`; outer loop continues |
-| `0100` response is `7F` | Initialization failure; log error; return False |
-| ValueError in hex parse | Log warning; return None from `_request_rpm` |
-| Unhandled exception in protocol loop | Log ERROR with traceback; sleep 1.0 s; resume |
+|---|---|
+| Transport not connected | The loop waits; `_send_command` returns `None` |
+| `0100` without `4100` | WARNING `Vehicle not answering: no valid 0100 response (...)`, at most once per `_NO_VEHICLE_LOG_INTERVAL_S` (audit A05); retry after `_INIT_RETRY_DELAY_S` |
+| Link lost during initialisation | DEBUG; initialisation fails; not treated as a silent vehicle |
+| Malformed or foreign reply to `010C` | No sample; no log record |
+| Exception in a command, in initialisation or in the loop | ERROR with traceback; the loop continues |
 
-### 7.1 Logging
+Logger: `OBDProtocol`.
 
-```yaml
-logger_name: "OBDProtocol"
-log_levels:
-  DEBUG: "command/response detail"
-  INFO: "started, stopped, protocol initialized"
-  WARNING: "parse failure, None response"
-  ERROR: "initialization failure, unhandled exception (with traceback)"
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 8.0 Visual Documentation
+## 7.0 Visual Documentation
 
-### 8.1 Protocol Loop
+Purpose: the states of the protocol loop. Legend: transitions are labelled with the event that causes them.
 
 ```mermaid
-flowchart TD
-    A[_protocol_loop start] --> B{shutdown?}
-    B -- Yes --> Z[exit]
-    B -- No --> C[update heartbeat]
-    C --> D{transport connected?}
-    D -- No --> E[sleep 0.1s]
-    E --> B
-    D -- Yes --> F[_initialize_protocol]
-    F --> G{success?}
-    G -- No --> H[sleep 1.0s]
-    H --> B
-    G -- Yes --> I[inner loop]
-    I --> J{connected and not shutdown?}
-    J -- No --> B
-    J -- Yes --> K[update heartbeat]
-    K --> L[_request_rpm]
-    L --> M{rpm_data?}
-    M -- Yes --> N[put to message_queue]
-    N --> O[set data_available]
-    O --> P[sleep 0.1s]
-    M -- No --> P
-    P --> J
+stateDiagram-v2
+    [*] --> WaitLink
+    WaitLink --> Init: transport connected
+    Init --> Polling: 0100 answered with 4100
+    Init --> WaitLink: no 4100 (wait 2.0 s)
+    Polling --> Polling: valid 010C sample
+    Polling --> Recheck: no sample for 2.0 s
+    Recheck --> Polling: 4100
+    Recheck --> Recheck: vehicle silent (wait 2.0 s)
+    Recheck --> WaitLink: transport disconnected
+    Polling --> WaitLink: transport disconnected
+    WaitLink --> [*]: stop
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 9.0 Element Registry
+## 8.0 Related Documents
 
-```yaml
-modules:
-  - name: "gtach.comm.obd"
-    path: "src/gtach/comm/obd.py"
-    package: "gtach.comm"
+- [design-b1c2d3e4-component_comm_transport.md](design-b1c2d3e4-component_comm_transport.md)
+- [design-b8c9d0e1-component_display_manager.md](design-b8c9d0e1-component_display_manager.md) (consumer of samples and of the silent timestamp)
+- `closed/design-e5f6a7b8-component_comm_obd_protocol.md` (superseded; its §6.3 is §5.0 here)
+- Tests: `tests/test_engine_off_state.py`, `tests/test_obd_settle.py`, `tests/test_response_alignment.py`, `tests/test_comm_layer_defects.py`, `tests/test_medium_defects.py`
 
-classes:
-  - name: "OBDResponse"
-    module: "gtach.comm.obd"
-    base_classes: []
-  - name: "OBDProtocol"
-    module: "gtach.comm.obd"
-    base_classes: []
-
-functions:
-  - name: "_protocol_loop"
-    module: "gtach.comm.obd"
-    signature: "_protocol_loop(self) -> None"
-  - name: "_initialize_protocol"
-    module: "gtach.comm.obd"
-    signature: "_initialize_protocol(self) -> bool"
-  - name: "_request_rpm"
-    module: "gtach.comm.obd"
-    signature: "_request_rpm(self) -> Optional[OBDResponse]"
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## Version History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-03-24 | William Watson | Initial component design; transport abstraction replaces BluetoothManager |
+| Version | Date | Description |
+|---|---|---|
+| 1.0 | 2026-03-24 | Initial component design; transport abstraction replaces BluetoothManager |
+| 2.0 | 2026-11-13 | Merged design-e5f6a7b8 (vehicle silent state, its §6.3) into this document and retired it; rewritten against the source: status corrected, class constants, loop, initialisation with the pre-initialised path, PID check; links converted to GitHub slugs (proposal-f8d0064b WP4). |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.
