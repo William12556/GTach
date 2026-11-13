@@ -53,3 +53,4 @@ approvals:
   - { uuid: "b29cbd71", stage: "prompt", date: "2026-11-12T10:40:48Z", blobs: { "prompt/prompt-b29cbd71-engine-off-state.md": "a566366525c6caa135de118402bbc5692e413f61" } }
   - { uuid: "76ef5387", stage: "change", date: "2026-11-12T12:06:21Z", blobs: { "change/change-76ef5387-task-register-fixes.md": "9acc53091801739de14e603b80517c4ce6b95019" } }
   - { uuid: "76ef5387", stage: "prompt", date: "2026-11-12T12:06:23Z", blobs: { "prompt/prompt-76ef5387-task-register-fixes.md": "aa1706552e8e2172351289290bf0927aa09c4bf0" } }
+  - { uuid: "c41037ea", stage: "change", date: "2026-11-13T11:10:01Z", blobs: { "change/change-c41037ea-update-version-ordering.md": "491d5fbdc32de2b7db8fa4d4de21f376748f6ef9" } }
