@@ -9,7 +9,7 @@ Created: 2026 June 17
 **Name:** GTach
 **Description:** Retro-styled real-time RPM tachometer reading an ELM327 OBD-II Bluetooth adapter.
 
-**Technology stack:** Python 3.9+ | pygame (SDL2), pyserial, PyYAML, click; Pi extras: RPi.GPIO, gpiozero
+**Technology stack:** Python 3.9+ | pygame (SDL2), pyserial, PyYAML, psutil; CLI with argparse; Pi extras: RPi.GPIO, hyperpixel2r
 **Target platform:** Raspberry Pi Zero 2W with Pimoroni HyperPixel Round 480×480 (runtime, Linux only); Mac (Apple Silicon) as build and deploy host, not a runtime target
 
 ---
@@ -20,6 +20,7 @@ Created: 2026 June 17
 |---|---|
 | Install | `python3 -m venv venv && source venv/bin/activate && pip install -e .[dev]` |
 | Test | `pytest tests/` |
+| Type check | `python -m mypy src/` (mypy 1.20.x, Python 3.9 target) |
 | Lint | `flake8 src/`; format with `black src/ tests/` and `isort src/ tests/` |
 | Run (simulation) | `gtach --transport simbt --debug` (choices: tcp, serial, rfcomm, simtcp, simbt) |
 | Build | `./bin/build.sh` |
@@ -31,14 +32,14 @@ Created: 2026 June 17
 
 - PEP 8; black and isort (profile black), line length 88; type hints on all public interfaces
 - Google-style docstrings
-- Hardware dependencies (`RPi.GPIO`, `gpiozero`) imported conditionally (`try/except ImportError`); platform detection in `utils/platform.py`
+- Hardware dependencies (`RPi.GPIO`, `hyperpixel2r`) imported conditionally (`try/except ImportError`); platform detection in `utils/platform.py`
 - Shared state behind `threading.Lock`; unexpected exceptions logged with `logger.error(msg, exc_info=True)`
 
 ---
 
 ## 4.0 Repository Conventions
 
-**Branches:** `main` only; no feature branches in use.
+**Branches:** `main`; session branches with a pull request for cloud sessions.
 **Commits:** conventional commits (`feat:`, `fix:`, `docs:`, `chore:`); fixes cite the T-Doc UUID, e.g. `fix: … (6d30b912)`.
 
 ---
@@ -64,6 +65,7 @@ Created: 2026 June 17
 | 1.0 | 2026-09-23 | Project context filled in (GTach) |
 | 1.1 | 2026-09-23 | §1.0–§3.0: runtime/host roles, simulation run command and platform detection corrected |
 | 1.2 | 2026-09-29 | Governance path updated for the AI-G&O 11.0 layout |
+| 1.3 | 2026-11-13 | §1.0, §3.0: argparse, psutil and hyperpixel2r in place of click and gpiozero; §2.0: type check; §4.0: session branches (audit-bce0d69a M03) |
 
 ---
 

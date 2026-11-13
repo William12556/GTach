@@ -79,13 +79,22 @@ fi
 # ---------------------------------------------------------------------------
 # Release
 # ---------------------------------------------------------------------------
-echo "==> Creating release $TAG"
+# A version other than X.Y.Z (for example 1.0.0rc1) is published as a
+# pre-release and not as the latest release, so pi-install.sh, which
+# installs the latest release, does not pick it up (audit-bce0d69a M02).
+if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    RELEASE_KIND="--latest"
+else
+    RELEASE_KIND="--prerelease"
+fi
+
+echo "==> Creating release $TAG ($RELEASE_KIND)"
 
 gh release create "$TAG" \
     --target "$(git rev-parse HEAD)" \
     --title "$TAG" \
     --notes "GTach $TAG" \
-    --latest \
+    "$RELEASE_KIND" \
     "$WHEEL" \
     "$TARBALL"
 

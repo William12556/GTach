@@ -1,13 +1,15 @@
 # Design
 
-Design documents per P02.
+Design documents per governance P12.
 
 ## Naming Convention
 
-- Tier 1 Master: `design-0000-master_<project>.md`
-- Tier 2 Domain: `design-<uuid>-domain_<name>.md`
-- Tier 3 Component: `design-<uuid>-component_<domain>_<name>.md`
+- Tier 1 master: `design-gtach-master.md`
+- Tier 2 domain: `design-<uuid>-domain_<name>.md`
+- Tier 3 component: `design-<uuid>-component_<domain>_<name>.md`
+
+Retired and merged documents are in `closed/` and are not edited.
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

@@ -6,9 +6,9 @@ Created: 2026 August 14
 
 ## Table of Contents
 
-[1.0 Software Disclaimer](<#1.0 software disclaimer>)
-[2.0 Scope](<#2.0 scope>)
-[Version History](<#version history>)
+[1.0 Software Disclaimer](#10-software-disclaimer)
+[2.0 Scope](#20-scope)
+[Version History](#version-history)
 
 ---
 
@@ -22,7 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -39,7 +39,7 @@ This disclaimer supplements, and does not replace, the warranty and liability
 terms of the MIT License under which GTach is distributed. See the LICENSE
 file in the project root for the full license text.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -48,6 +48,7 @@ file in the project root for the full license text.
 | Version | Date       | Description      |
 |---------|------------|-------------------|
 | 1.0     | 2026-08-14 | Initial creation. |
+| 1.1     | 2026-11-13 | Internal links changed to GitHub heading slugs; the LICENSE file it refers to was added (audit-bce0d69a M01, L09). |
 
 ---
 

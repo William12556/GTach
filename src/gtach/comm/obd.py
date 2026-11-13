@@ -350,7 +350,8 @@ class OBDProtocol:
             if len(response) >= 8 and response.startswith("41"):
                 # Strip whitespace and non-hex characters (echo, \r\n, prompts)
                 hex_str = re.sub(r"[^0-9A-Fa-f]", "", response)
-                if len(hex_str) < 8:
+                # An odd digit count cannot be whole bytes (audit-bce0d69a L01).
+                if len(hex_str) < 8 or len(hex_str) % 2:
                     return None
                 data = bytes.fromhex(hex_str)
                 # Decode only a mode 01 reply for PID 0C (issue-907de6de).

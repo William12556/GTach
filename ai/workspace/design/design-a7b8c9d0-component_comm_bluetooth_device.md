@@ -2,17 +2,15 @@
 
 Created: 2025-12-29
 
----
-
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 Class Design](<#3.0 class design>)
-- [4.0 Methods and Properties](<#4.0 methods and properties>)
-- [5.0 Serialization](<#5.0 serialization>)
-- [6.0 Visual Documentation](<#6.0 visual documentation>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Interface](#30-interface)
+- [4.0 Serialisation](#40-serialisation)
+- [5.0 Visual Documentation](#50-visual-documentation)
+- [6.0 Related Documents](#60-related-documents)
+- [Version History](#version-history)
 
 ---
 
@@ -26,256 +24,121 @@ document_info:
   component: "BluetoothDevice"
   parent: "design-7d3e9f5a-domain_comm.md"
   source_file: "src/gtach/comm/models.py"
-  version: "1.0"
-  date: "2025-12-29"
+  version: "2.0"
+  date: "2026-11-13"
   author: "William Watson"
+  status: "Implemented"
 ```
 
-### 1.1 Parent Reference
+- **Domain design:** [design-7d3e9f5a-domain_comm.md](design-7d3e9f5a-domain_comm.md)
 
-- **Domain Design**: [design-7d3e9f5a-domain_comm.md](<design-7d3e9f5a-domain_comm.md>)
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 2.0 Component Overview
 
-### 2.1 Purpose
+`comm/models.py` defines the persisted device model of the Communication domain:
 
-BluetoothDevice is a data model representing a discovered or paired Bluetooth device with metadata for display, selection, and persistence.
+- `BluetoothDevice`, a dataclass with the identity of a paired adapter, stored by `DeviceStore`.
+- `DiscoveredDevice`, a structural `Protocol` for a device found during setup.
 
-### 2.2 Responsibilities
+A second class named `BluetoothDevice` exists in `display/setup_models.py`. It is the setup (discovery) model and carries signal strength, classification and pairing flags. `BluetoothDevice.from_discovered()` is the single conversion from the setup model to the persisted model; `DiscoveredDevice` lets `comm/models.py` accept the setup model without importing from the display package (issue-c9de5fb0).
 
-1. Store device identification (name, address)
-2. Track connection history (last_connected, connection_count)
-3. Store signal quality metrics
-4. Classify device type (ELM327, OBD, UNKNOWN)
-5. Support serialization for persistence
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 3.0 Class Design
-
-### 3.1 BluetoothDevice Dataclass
+## 3.0 Interface
 
 ```python
+class DiscoveredDevice(Protocol):
+    name: str
+    mac_address: str
+    device_type: str
+
 @dataclass
 class BluetoothDevice:
-    """Bluetooth device information container.
-    
-    Represents a discovered or paired BLE device with
-    metadata for display and connection management.
-    
-    Attributes:
-        name: Device advertised name
-        address: Bluetooth MAC address (normalized format)
-        last_connected: Timestamp of last successful connection
-        connection_count: Number of successful connections
-        signal_strength: RSSI value in dBm (negative)
-        device_type: Classification (ELM327, OBD, UNKNOWN)
-    """
     name: str
-    address: str
-    last_connected: Optional[datetime] = None
-    connection_count: int = 0
-    signal_strength: Optional[int] = None
-    device_type: DeviceType = DeviceType.UNKNOWN
+    mac_address: str
+    device_type: str = "UNKNOWN"
+    last_connected: Optional[datetime.datetime] = None
+
+    def to_dict(self) -> Dict[str, Any]: ...
+    @classmethod
+    def from_discovered(cls, device: DiscoveredDevice) -> "BluetoothDevice": ...
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "BluetoothDevice": ...
 ```
 
-### 3.2 DeviceType Enum
+| Field | Notes |
+|---|---|
+| `name` | Display name |
+| `mac_address` | Upper-cased in `__post_init__`; colons preserved |
+| `device_type` | `UNKNOWN` by default; set to `ELM327` or `OBD` in `__post_init__` when the name contains `ELM` or `OBD` |
+| `last_connected` | Optional; ISO 8601 in YAML |
 
-```python
-class DeviceType(Enum):
-    """Bluetooth device type classification."""
-    ELM327 = "ELM327"      # ELM327-based OBD adapter
-    OBD = "OBD"            # Generic OBD adapter
-    UNKNOWN = "UNKNOWN"    # Unclassified device
-```
-
-### 3.3 Address Format
-
-```python
-# Normalized address format: uppercase, no separators
-# Example: "AA11BB22CC33"
-
-# Accepted input formats (normalized on storage):
-# - "AA:11:BB:22:CC:33" (colon-separated)
-# - "AA-11-BB-22-CC-33" (hyphen-separated)
-# - "aa11bb22cc33" (lowercase, no separators)
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 4.0 Methods and Properties
+## 4.0 Serialisation
 
-### 4.1 Display Properties
+- `to_dict()` returns `name`, `mac_address`, `device_type`, and `last_connected` (ISO 8601) only when set.
+- `from_dict()` tolerates missing keys (`name` defaults to `"Unknown Device"`, `mac_address` to `""`, `device_type` to `"UNKNOWN"`). A `last_connected` value that is not an ISO 8601 string yields `None`.
+- `from_discovered()` carries `name`, `mac_address` and `device_type`; `last_connected` is unset.
 
-```python
-@property
-def display_name(self) -> str:
-    """Get display-friendly name.
-    
-    Returns name if available, otherwise formatted address.
-    """
-    return self.name if self.name else self.formatted_address
-
-@property
-def formatted_address(self) -> str:
-    """Get address in display format (XX:XX:XX:XX:XX:XX)."""
-    addr = self.address.upper()
-    return ':'.join(addr[i:i+2] for i in range(0, 12, 2))
-```
-
-### 4.2 Classification
-
-```python
-@classmethod
-def classify_device(cls, name: str) -> DeviceType:
-    """Classify device type from advertised name.
-    
-    Args:
-        name: Device advertised name
-    
-    Returns:
-        DeviceType based on name pattern matching
-    
-    Patterns:
-        ELM327: "ELM327", "OBD", "OBDII", "V-LINK"
-        OBD: "OBD" in name
-        UNKNOWN: No pattern match
-    """
-    name_upper = (name or "").upper()
-    if "ELM327" in name_upper or "V-LINK" in name_upper:
-        return DeviceType.ELM327
-    if "OBD" in name_upper:
-        return DeviceType.OBD
-    return DeviceType.UNKNOWN
-```
-
-### 4.3 Factory Methods
-
-```python
-@classmethod
-def from_bleak_device(cls, bleak_device, rssi: int = None) -> 'BluetoothDevice':
-    """Create from Bleak BLEDevice.
-    
-    Args:
-        bleak_device: Bleak BLEDevice instance
-        rssi: Signal strength (optional)
-    
-    Returns:
-        BluetoothDevice instance
-    """
-    return cls(
-        name=bleak_device.name or "Unknown",
-        address=bleak_device.address.replace(":", "").upper(),
-        signal_strength=rssi,
-        device_type=cls.classify_device(bleak_device.name)
-    )
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 5.0 Serialization
+## 5.0 Visual Documentation
 
-### 5.1 To Dictionary
-
-```python
-def to_dict(self) -> Dict[str, Any]:
-    """Serialize to dictionary for YAML storage.
-    
-    Returns:
-        Dictionary with all attributes
-    """
-    return {
-        'name': self.name,
-        'address': self.address,
-        'last_connected': self.last_connected.isoformat() if self.last_connected else None,
-        'connection_count': self.connection_count,
-        'signal_strength': self.signal_strength,
-        'device_type': self.device_type.value
-    }
-```
-
-### 5.2 From Dictionary
-
-```python
-@classmethod
-def from_dict(cls, data: Dict[str, Any]) -> 'BluetoothDevice':
-    """Deserialize from dictionary.
-    
-    Args:
-        data: Dictionary from YAML storage
-    
-    Returns:
-        BluetoothDevice instance
-    """
-    last_connected = None
-    if data.get('last_connected'):
-        last_connected = datetime.fromisoformat(data['last_connected'])
-    
-    return cls(
-        name=data.get('name', 'Unknown'),
-        address=data.get('address', ''),
-        last_connected=last_connected,
-        connection_count=data.get('connection_count', 0),
-        signal_strength=data.get('signal_strength'),
-        device_type=DeviceType(data.get('device_type', 'UNKNOWN'))
-    )
-```
-
-[Return to Table of Contents](<#table of contents>)
-
----
-
-## 6.0 Visual Documentation
-
-### 6.1 Class Diagram
+Purpose: the two device models and their conversion. Legend: dashed arrow is a structural (Protocol) match; solid arrow is a call.
 
 ```mermaid
 classDiagram
+    class DiscoveredDevice {
+        <<Protocol>>
+        name
+        mac_address
+        device_type
+    }
     class BluetoothDevice {
-        +str name
-        +str address
-        +datetime last_connected
-        +int connection_count
-        +int signal_strength
-        +DeviceType device_type
-        +display_name str
-        +formatted_address str
-        +to_dict() Dict
-        +from_dict(data) BluetoothDevice
-        +from_bleak_device(device) BluetoothDevice
-        +classify_device(name) DeviceType
+        name
+        mac_address
+        device_type
+        last_connected
+        +to_dict()
+        +from_dict(data)$
+        +from_discovered(device)$
     }
-    
-    class DeviceType {
-        <<enumeration>>
-        ELM327
-        OBD
-        UNKNOWN
-    }
-    
-    BluetoothDevice --> DeviceType
+    class SetupBluetoothDevice["display.setup_models.BluetoothDevice"]
+    SetupBluetoothDevice ..|> DiscoveredDevice
+    BluetoothDevice ..> DiscoveredDevice : from_discovered
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
+
+---
+
+## 6.0 Related Documents
+
+- [design-a6b7c8d9-component_comm_device_store.md](design-a6b7c8d9-component_comm_device_store.md)
+- [design-a3b4c5d6-component_display_setup_manager.md](design-a3b4c5d6-component_display_setup_manager.md)
+- Tests: `tests/test_bluetooth_device_conversion.py`
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## Version History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| Version | Date | Description |
+|---|---|---|
+| 1.0 | 2025-12-29 | Initial component design document |
+| 2.0 | 2026-11-13 | Rewritten against the source: four-field persisted model, `DiscoveredDevice` protocol and `from_discovered()`; BLE-era fields removed; links converted to GitHub slugs (proposal-f8d0064b WP4). |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.

@@ -15,8 +15,9 @@ install marker consumed by gtach-preflight.sh. No display dependencies.
 
 import logging
 import os
+import re
 import zipfile
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +25,49 @@ UPDATES_DIR = "/opt/gtach/updates"
 PENDING_MARKER = os.path.join(UPDATES_DIR, ".install-pending")
 
 
+# Normalised PEP 440 release with an optional pre-release segment, the
+# form importlib.metadata and wheel file names carry (issue-c41037ea).
+_VERSION_RE = re.compile(r"^(\d+(?:\.\d+)*)(?:(a|b|rc)(\d+))?$")
+
+# Pre-release phases order below the final release, which ranks 0.
+_PRE_RELEASE_RANK: Dict[str, int] = {"a": -3, "b": -2, "rc": -1}
+
+# Releases are padded to this many components, so 1.0 equals 1.0.0.
+_MIN_RELEASE_PARTS = 3
+
+
 def _parse_version_str(s: str) -> Optional[Tuple[int, ...]]:
+    """Build the order key of a version string.
+
+    Args:
+        s: A version such as '1.0.0' or '1.0.0rc1'.
+
+    Returns:
+        The release numbers padded to _MIN_RELEASE_PARTS, then the phase
+        rank and the pre-release number, (0, 0) for a final release; so
+        1.0.0rc1 orders below 1.0.0. None for any other form, including
+        development, post-release and local versions.
+    """
     try:
-        return tuple(int(p) for p in s.strip().split("."))
-    except (ValueError, AttributeError):
+        match = _VERSION_RE.match(s.strip())
+    except (AttributeError, TypeError):
         return None
+    if match is None:
+        return None
+    phase = match.group(2)
+    try:
+        release = tuple(int(part) for part in match.group(1).split("."))
+        number = 0 if phase is None else int(match.group(3))
+    except ValueError:
+        # int() refuses a digit string beyond the interpreter's limit.
+        return None
+    release += (0,) * (_MIN_RELEASE_PARTS - len(release))
+    rank = 0 if phase is None else _PRE_RELEASE_RANK[phase]
+    return release + (rank, number)
 
 
 def get_installed_version() -> Optional[Tuple[int, ...]]:
-    """Installed wheel version as an int tuple, or None."""
+    """Order key of the installed version (_parse_version_str), or None."""
     try:
         from importlib.metadata import version as _pkg_version
 
@@ -42,9 +77,9 @@ def get_installed_version() -> Optional[Tuple[int, ...]]:
 
 
 def parse_wheel_version(filename: str) -> Optional[Tuple[int, ...]]:
-    """Extract the version tuple from a wheel filename.
+    """Order key of the version in a wheel filename, or None.
 
-    e.g. 'gtach-0.2.61-py3-none-any.whl' -> (0, 2, 61).
+    e.g. 'gtach-0.2.61-py3-none-any.whl' -> the key of 0.2.61.
     """
     parts = filename.split("-")
     if len(parts) < 2:
@@ -70,6 +105,7 @@ def find_available_update() -> Optional[Tuple[str, str]]:
     try:
         installed = get_installed_version()
         if installed is None:
+            logger.warning("Installed version not recognised; update check skipped")
             return None
         if not os.path.isdir(UPDATES_DIR):
             return None
@@ -78,7 +114,10 @@ def find_available_update() -> Optional[Tuple[str, str]]:
             if not name.endswith(".whl"):
                 continue
             ver = parse_wheel_version(name)
-            if ver is None or ver <= installed:
+            if ver is None:
+                logger.debug(f"Skipping wheel with unrecognised version: {name}")
+                continue
+            if ver <= installed:
                 continue
             if not validate_wheel(os.path.join(UPDATES_DIR, name)):
                 logger.warning(f"Skipping invalid wheel: {name}")
