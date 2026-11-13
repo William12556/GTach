@@ -246,6 +246,7 @@ docs/         Technical documentation
 
 | Version | Date | Notes |
 |---|---|---|
+| 2.8 | 2026-11-13 | §4.2: full deploy reboots the Pi; §5.2: `error.log` and `stacks.log`; §6.1: `--config` default. `LICENSE` added. Version 1.0.0rc1; see `releases/RELEASE_NOTES_v1.0.0.md` |
 | 2.7 | 2026-11-03 | Table of Contents: converted to a bulleted list; all internal links changed from Obsidian syntax to GitHub heading slugs |
 | 2.6 | 2026-10-31 | Overview: added note on development under the AI-G&O framework |
 | 2.5 | 2026-10-28 | §2.1: added Case and Mount subsection with assembly image |
