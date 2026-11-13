@@ -2,17 +2,16 @@
 
 Created: 2025-12-29
 
----
-
 ## Table of Contents
 
-- [1.0 Document Information](<#1.0 document information>)
-- [2.0 Component Overview](<#2.0 component overview>)
-- [3.0 Class Design](<#3.0 class design>)
-- [4.0 Method Specifications](<#4.0 method specifications>)
-- [5.0 Dependency Definitions](<#5.0 dependency definitions>)
-- [6.0 Visual Documentation](<#6.0 visual documentation>)
-- [Version History](<#version history>)
+- [1.0 Document Information](#10-document-information)
+- [2.0 Component Overview](#20-component-overview)
+- [3.0 Elements](#30-elements)
+- [4.0 Behaviour](#40-behaviour)
+- [5.0 Error Handling](#50-error-handling)
+- [6.0 Visual Documentation](#60-visual-documentation)
+- [7.0 Related Documents](#70-related-documents)
+- [Version History](#version-history)
 
 ---
 
@@ -26,258 +25,140 @@ document_info:
   component: "DependencyValidator"
   parent: "design-9a1f3c7e-domain_utils.md"
   source_file: "src/gtach/utils/dependencies.py"
-  version: "1.0"
-  date: "2025-12-29"
+  version: "2.0"
+  date: "2026-11-13"
   author: "William Watson"
+  status: "Implemented"
 ```
 
-### 1.1 Parent Reference
+- **Domain design:** [design-9a1f3c7e-domain_utils.md](design-9a1f3c7e-domain_utils.md)
 
-- **Domain Design**: [design-9a1f3c7e-domain_utils.md](<design-9a1f3c7e-domain_utils.md>)
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 2.0 Component Overview
 
-### 2.1 Purpose
+`DependencyValidator` checks that the modules GTach imports are available on the current platform and reports what is missing, with an install hint. It runs for `gtach --validate-dependencies`, which prints the report and exits.
 
-DependencyValidator checks runtime availability and version requirements for Python packages, providing validation reports and installation hints.
-
-### 2.2 Responsibilities
-
-1. Check package availability via importlib
-2. Verify minimum version requirements
-3. Generate validation reports
-4. Distinguish required vs optional packages
-5. Provide installation hints (pip commands)
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 3.0 Class Design
-
-### 3.1 DependencyValidator Class
+## 3.0 Elements
 
 ```python
-class DependencyValidator:
-    """Python package dependency checker."""
-```
+class DependencyType(Enum):  REQUIRED, OPTIONAL, PLATFORM_SPECIFIC, DEVELOPMENT
+class ValidationResult(Enum):  SUCCESS, WARNING, ERROR, FATAL
 
-### 3.2 Constructor
-
-```python
-def __init__(self, 
-             dependencies: Optional[List[Dependency]] = None) -> None:
-    """Initialize with dependency list.
-    
-    Args:
-        dependencies: List of Dependency specs (uses defaults if None)
-    """
-```
-
-### 3.3 Attributes
-
-| Attribute | Type | Purpose |
-|-----------|------|---------|
-| `dependencies` | `List[Dependency]` | Package specifications |
-| `_results` | `Dict[str, ValidationResult]` | Check results |
-
-### 3.4 Dependency Dataclass
-
-```python
 @dataclass
-class Dependency:
-    """Package dependency specification."""
-    name: str                        # Package name
-    import_name: Optional[str] = None  # Import name if different
-    min_version: Optional[str] = None  # Minimum version
-    required: bool = True            # Required vs optional
-    pip_name: Optional[str] = None   # pip install name if different
-```
-
-### 3.5 ValidationResult Dataclass
-
-```python
-@dataclass
-class ValidationResult:
-    """Validation result for a dependency."""
+class DependencyInfo:
     name: str
+    import_name: str
+    dependency_type: DependencyType
+    platforms: List[str] = []
+    version_check: Optional[...] = None
+    install_hint: str = ""
+    description: str = ""
+    alternatives: List[str] = []
+
+@dataclass
+class ValidationReport:
+    name: str
+    dependency_info: DependencyInfo
+    result: ValidationResult
     available: bool
     version: Optional[str] = None
-    meets_minimum: bool = True
-    required: bool = True
-    error: Optional[str] = None
+    error_message: Optional[str] = None
+    install_command: Optional[str] = None
+
+class DependencyValidator:
+    def __init__(self, debug: bool = False): ...
+    def validate_all(self) -> List[ValidationReport]: ...
+    def get_summary(self) -> Dict[str, Any]: ...
+    def print_report(self, show_successful: Optional[bool] = None) -> None: ...
+    def get_install_commands(self) -> List[str]: ...
+    def can_start_application(self) -> bool: ...
+
+def validate_dependencies(debug: bool = False) -> DependencyValidator: ...
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 4.0 Method Specifications
+## 4.0 Behaviour
 
-### 4.1 validate_all
+### 4.1 Checked dependencies
 
-```python
-def validate_all(self) -> Dict[str, ValidationResult]:
-    """Validate all dependencies.
-    
-    Returns:
-        Dict mapping package name to ValidationResult
-    """
-```
+| Dependency | Import | Type |
+|---|---|---|
+| Python standard library (`os`, `math`, `threading`, `time`, `logging`) | — | required |
+| PyGame | `pygame` | required |
+| PyYAML | `yaml` | required |
+| PySerial | `serial` | required |
+| psutil | `psutil` | required |
+| RPi.GPIO | `RPi.GPIO` | platform-specific (Raspberry Pi) |
+| HyperPixel2R | `hyperpixel2r` | platform-specific (Raspberry Pi) |
 
-### 4.2 validate_package
+### 4.2 Validation
 
-```python
-def validate_package(self, dep: Dependency) -> ValidationResult:
-    """Validate single package.
-    
-    Algorithm:
-        1. Try importlib.util.find_spec()
-        2. If not found: return unavailable result
-        3. Try to get version via pkg_resources or __version__
-        4. Compare against min_version if specified
-        5. Return result
-    """
-```
+- The platform is taken from `PlatformDetector` (`is_raspberry_pi()`), with an inline check of `/proc/cpuinfo` as a fallback, so that the validator and the application agree.
+- A platform-specific dependency is checked only on its platform.
+- Each dependency is imported; the result is `SUCCESS`, or a severity that depends on its type. A missing required dependency is `FATAL`.
+- `can_start_application()` is true when no report is `FATAL`.
+- The report also states whether the interpreter runs in a virtual environment.
 
-### 4.3 is_valid
-
-```python
-def is_valid(self) -> bool:
-    """Check if all required dependencies are satisfied.
-    
-    Returns:
-        True if all required packages available and meet version
-    """
-```
-
-### 4.4 get_missing
-
-```python
-def get_missing(self) -> List[str]:
-    """Get list of missing required packages."""
-```
-
-### 4.5 get_outdated
-
-```python
-def get_outdated(self) -> List[Tuple[str, str, str]]:
-    """Get outdated packages.
-    
-    Returns:
-        List of (name, current_version, required_version)
-    """
-```
-
-### 4.6 get_install_hints
-
-```python
-def get_install_hints(self) -> List[str]:
-    """Get pip install commands for missing/outdated.
-    
-    Returns:
-        List of pip install command strings
-    
-    Example:
-        ["pip install bleak>=0.20.0", "pip install pygame"]
-    """
-```
-
-### 4.7 get_report
-
-```python
-def get_report(self) -> str:
-    """Get formatted validation report.
-    
-    Returns:
-        Multi-line report string
-    """
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
-## 5.0 Dependency Definitions
+## 5.0 Error Handling
 
-### 5.1 Default Dependencies
+An import failure is recorded in the `ValidationReport` (`error_message`, `install_command`) and never propagates. Logger: `DependencyValidator`.
 
-```python
-DEFAULT_DEPENDENCIES = [
-    Dependency("pygame", min_version="2.0.0", required=True),
-    Dependency("bleak", min_version="0.20.0", required=True),
-    Dependency("pyyaml", import_name="yaml", required=False),
-]
-```
-
-### 5.2 Version Comparison
-
-```python
-def _compare_versions(self, current: str, required: str) -> bool:
-    """Compare version strings.
-    
-    Handles: "2.1.0", "2.1", "2"
-    Returns: True if current >= required
-    """
-```
-
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## 6.0 Visual Documentation
 
-### 6.1 Class Diagram
+Purpose: the validation flow. Legend: rectangles are steps, diamonds are decisions.
 
 ```mermaid
-classDiagram
-    class DependencyValidator {
-        -List~Dependency~ dependencies
-        -Dict _results
-        +validate_all() Dict
-        +validate_package(dep) ValidationResult
-        +is_valid() bool
-        +get_missing() List
-        +get_outdated() List
-        +get_install_hints() List
-        +get_report() str
-    }
-    
-    class Dependency {
-        +str name
-        +str import_name
-        +str min_version
-        +bool required
-        +str pip_name
-    }
-    
-    class ValidationResult {
-        +str name
-        +bool available
-        +str version
-        +bool meets_minimum
-        +bool required
-        +str error
-    }
-    
-    DependencyValidator *-- Dependency
-    DependencyValidator --> ValidationResult
+flowchart TD
+    A[validate_all] --> B[detect platform]
+    B --> C[for each dependency]
+    C --> D{applies to this platform?}
+    D -- no --> C
+    D -- yes --> E[try import]
+    E --> F{imported?}
+    F -- yes --> G[SUCCESS, record version]
+    F -- no --> H[severity by type, install hint]
+    G --> C
+    H --> C
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
+
+---
+
+## 7.0 Related Documents
+
+- [design-c5d6e7f8-component_utils_platform_detector.md](design-c5d6e7f8-component_utils_platform_detector.md)
+- Tests: `tests/test_lifecycle_logging_utils.py`, `tests/test_platform_detection.py`
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
 ## Version History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-12-29 | William Watson | Initial component design document |
+| Version | Date | Description |
+|---|---|---|
+| 1.0 | 2025-12-29 | Initial component design document |
+| 2.0 | 2026-11-13 | Rewritten against the source: current dependency list (pygame, PyYAML, pyserial, psutil; RPi.GPIO and hyperpixel2r on the Pi), platform taken from `PlatformDetector`; links converted to GitHub slugs (proposal-f8d0064b WP4). |
 
 ---
 
-Copyright (c) 2025 William Watson. This work is licensed under the MIT License.
+Copyright (c) 2026 William Watson. MIT License.
