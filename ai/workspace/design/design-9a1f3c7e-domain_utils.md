@@ -25,7 +25,7 @@ document_info:
   domain: "Utilities"
   parent: "design-gtach-master.md"
   source_path: "src/gtach/utils/"
-  version: "2.0"
+  version: "2.1"
   date: "2026-11-13"
   author: "William Watson"
   status: "Implemented"
@@ -104,11 +104,13 @@ Filesystem logic for the OPTIONS update screen; no display dependency.
 
 | Function | Purpose |
 |---|---|
-| `get_installed_version()` | Installed `gtach` version from `importlib.metadata`, as an int tuple |
-| `parse_wheel_version(filename)` | Version tuple from a wheel file name |
+| `get_installed_version()` | Order key of the installed `gtach` version from `importlib.metadata` |
+| `parse_wheel_version(filename)` | Order key of the version in a wheel file name |
 | `validate_wheel(path)` | Whether the file is a complete, readable zip |
 | `find_available_update()` | `(filename, version)` of the newest valid wheel in `/opt/gtach/updates` that is strictly newer than the installed version, or `None` |
 | `stage_pending(filename)` | Writes `/opt/gtach/updates/.install-pending`, which `bin/gtach-preflight.sh` consumes at the next service start |
+
+Versions are read in the normalised PEP 440 form `N(.N)*[{a,b,rc}N]`. The order key is the release padded to three components, followed by a phase rank (`a` −3, `b` −2, `rc` −1, final 0) and the pre-release number, so `1.0.0rc1` orders below `1.0.0` ([change-c41037ea](../change/closed/change-c41037ea-update-version-ordering.md)). Other forms are not recognised: an unrecognised installed version stops the check with a WARNING, and such a wheel is skipped.
 
 ### 4.4 reboot_device
 
@@ -197,6 +199,7 @@ flowchart LR
 | 1.1 | 2025-12-29 | Added Tier 3 component document cross-references |
 | 1.2 | 2026-03-13 | C1: removed retry_limit attribute. C3: fps_limit 60->30. C4: removed rpm_warning/rpm_danger; added rpm_max. OOS-05: removed SessionConfig section from config structure. |
 | 2.0 | 2026-11-13 | Refreshed against the source: module list with `home`, `waits`, `ack_state`, `updater`, `pi_reset` and `stack_dump`; single `config.yaml` under `gtach_home()`; links converted to GitHub slugs (proposal-f8d0064b WP4). |
+| 2.1 | 2026-11-13 | §4.3: version order key with pre-release support ([change-c41037ea](../change/closed/change-c41037ea-update-version-ordering.md)). |
 
 ---
 

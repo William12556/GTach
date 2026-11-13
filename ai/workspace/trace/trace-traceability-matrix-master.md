@@ -74,7 +74,7 @@ Created: 2025 December 27
 | `PlatformDetector` | `design-c5d6e7f8` | `src/gtach/utils/platform.py` | `test_platform_detection.py` |
 | `TerminalRestorer` | `design-d6e7f8a9` | `src/gtach/utils/terminal.py` | `test_lifecycle_logging_utils.py` |
 | `DependencyValidator` | `design-e7f8a9b0` | `src/gtach/utils/dependencies.py` | `test_lifecycle_logging_utils.py`, `test_platform_detection.py` |
-| `wait_for_event`, updater, `reboot_device`, stack dump, acknowledgement state | `design-9a1f3c7e` §4.0 | `src/gtach/utils/waits.py`, `updater.py`, `pi_reset.py`, `stack_dump.py`, `ack_state.py` | `test_monotonic_waits.py`, `test_lifecycle_logging_utils.py`, `test_pi_reset.py`, `test_stack_dump_handler.py` |
+| `wait_for_event`, updater, `reboot_device`, stack dump, acknowledgement state | `design-9a1f3c7e` §4.0 | `src/gtach/utils/waits.py`, `updater.py`, `pi_reset.py`, `stack_dump.py`, `ack_state.py` | `test_monotonic_waits.py`, `test_update_version_ordering.py`, `test_lifecycle_logging_utils.py`, `test_pi_reset.py`, `test_stack_dump_handler.py` |
 | Packaging and scripts | `design-gtach-master` §5.0 | `pyproject.toml`, `bin/` | `test_packaging_and_scripts.py`, `test_package_import.py` |
 
 Test paths without a directory are in `tests/`.
@@ -148,6 +148,8 @@ Triples and audits of run `f8d0064b`. Earlier work: see §1.0.
 
 | UUID | Type | Title | Design updated | Code | Test | Status |
 |---|---|---|---|---|---|---|
+| `bce0d69a` | Audit | Release-readiness audit | — | — | — | See `audit/` |
+| `c41037ea` | Issue, change, prompt | Update check orders pre-release versions (audit-bce0d69a H01) | `design-9a1f3c7e` §4.3 | `src/gtach/utils/updater.py` | `tests/test_update_version_ordering.py` | Closed, verified by unit tests |
 
 [Return to Table of Contents](#table-of-contents)
 

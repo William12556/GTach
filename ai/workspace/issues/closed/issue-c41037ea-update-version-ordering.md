@@ -17,7 +17,7 @@ issue_info:
   title: "The update check parses only purely numeric versions; with a release candidate installed or staged, 'Check for updates' finds nothing"
   date: "2026-11-13"
   reporter: "Claude Code session (proposal-f8d0064b), for William Watson"
-  status: "open"
+  status: "closed"
   severity: "high"
   type: "defect"
   iteration: 1
@@ -80,15 +80,15 @@ resolution:
   target_date: "2026-11-13"
   approach: "See change-c41037ea."
   change_ref: "change-c41037ea"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-13"
+  resolved_by: "change-c41037ea"
+  fix_description: "_parse_version_str returns a PEP 440 aware order key; find_available_update logs an unrecognised installed version (97aef4d, cfbf605)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-11-13"
+  verified_by: "Claude Code session under delegated approval (proposal-f8d0064b section 3.0)"
+  test_results: "pytest 806 passed (Python 3.13.18); new module 26 passed on Python 3.9.25; mypy clean with the 3.9 target. Review: REVISE, then SHIP."
+  closure_notes: "Verified by unit tests. The staged-update path from a release candidate on the device is listed in the owner's checklist of report-f8d0064b-v1-release-run."
 
 prevention:
   preventive_measures: "Unit tests over the version ordering, including the D1 version."
@@ -99,7 +99,7 @@ verification_enhanced:
     - "Reproduce from source. [DONE, 2026-11-13.]"
     - "After the fix: unit tests per change-c41037ea."
     - "Device (owner, after the run): with 1.0.0rc1 installed, stage a higher version, Check for updates, Install."
-  verification_results: ""
+  verification_results: "See report-c41037ea section 3.0."
 
 traceability:
   design_refs:
@@ -124,6 +124,12 @@ version_history:
     changes:
       - "Initial issue document."
 
+  - version: "1.1"
+    date: "2026-11-13"
+    author: "Claude Code session (proposal-f8d0064b)"
+    changes:
+      - "Resolved by change-c41037ea (97aef4d, cfbf605); verified by unit tests; closed and moved to issues/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -139,6 +145,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-13 | Initial issue document. Finding H01 of audit-bce0d69a. |
+| 1.1 | 2026-11-13 | Resolved (97aef4d, cfbf605), verified by unit tests; closed and moved to closed/. |
 
 ---
 

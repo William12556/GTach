@@ -17,7 +17,7 @@ change_info:
   title: "Read PEP 440 pre-release versions in the update check and order them below their final release"
   date: "2026-11-13"
   author: "Claude Code session (proposal-f8d0064b), for William Watson"
-  status: "approved"
+  status: "verified"
   priority: "high"
   iteration: 1
   coupled_docs:
@@ -138,15 +138,18 @@ implementation:
   deployment_notes: "None."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-11-13"
+  implemented_by: "Claude Code (97aef4d, cfbf605)"
+  verification_date: "2026-11-13"
+  verified_by: "Claude Code session under delegated approval (proposal-f8d0064b section 3.0)"
+  test_results: "pytest 806 passed; mypy clean; review subagent SHIP on cycle 2 (report-c41037ea)."
   issues_found: []
 
 traceability:
-  design_updates: []
+  design_updates:
+    - design_ref: "design-9a1f3c7e-domain_utils"
+      sections_updated:
+        - "4.3 Updater (v2.1)"
   related_changes: []
   related_issues: []
 
@@ -167,6 +170,12 @@ version_history:
     changes:
       - "Initial change document."
 
+  - version: "1.1"
+    date: "2026-11-13"
+    author: "Claude Code session (proposal-f8d0064b)"
+    changes:
+      - "Implemented (97aef4d); review cycle 1 correction (cfbf605): int() conversion failure returns None. Verified; closed and moved to change/closed/."
+
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
@@ -182,6 +191,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-13 | Initial change document. EDITS A and B. |
+| 1.1 | 2026-11-13 | Implemented (97aef4d, cfbf605), verified; closed and moved to closed/. |
 
 ---
 
