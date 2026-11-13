@@ -4,7 +4,7 @@
 
 ### Full deploy
 
-Builds the wheel, stops the service, transfers all deploy files, installs, and restarts.
+Builds the wheel, transfers all deploy files, stops the service, installs, and reboots the Pi.
 
 ```shell
 cd ~/Documents/GitHub/GTach && ./bin/deploy.sh
@@ -22,7 +22,7 @@ cd ~/Documents/GitHub/GTach && ./bin/deploy.sh --stage
 ### Transfer deploy files only (no build)
 
 ```shell
-cd ~/Documents/GitHub/GTach && scp bin/install.sh gtach.service bin/gtach-preflight.sh root@gtach.local:/opt/gtach/
+cd ~/Documents/GitHub/GTach && scp bin/install.sh bin/gtach.service bin/gtach-preflight.sh root@gtach.local:/opt/gtach/
 ```
 
 ---
@@ -39,6 +39,12 @@ cd ~/Documents/GitHub/GTach/log && scp root@gtach.local:/opt/gtach/start.log .
 
 ```shell
 cd ~/Documents/GitHub/GTach/log && scp root@gtach.local:/opt/gtach/debug.log .
+```
+
+### Error log (WARNING and above, always written)
+
+```shell
+cd ~/Documents/GitHub/GTach/log && scp root@gtach.local:/opt/gtach/error.log .
 ```
 
 ---
@@ -95,8 +101,8 @@ systemctl stop gtach
 cd /opt/gtach && /opt/gtach/venv/bin/gtach --transport simbt
 ```
 
-Log files are written to `/opt/gtach/start.log` and `/opt/gtach/debug.log` regardless
-of launch method. The `--debug` flag activates `debug.log` from startup; the OPTIONS
+Log files are written to `/opt/gtach/start.log`, `/opt/gtach/debug.log` and
+`/opt/gtach/error.log` (WARNING and above, always on) regardless of launch method. The `--debug` flag activates `debug.log` from startup; the OPTIONS
 screen debug toggle can activate it at runtime.
 
 ---

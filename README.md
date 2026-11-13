@@ -104,7 +104,7 @@ pip install -e .[dev]
 
 ### 4.2 Deploy to Pi
 
-Full deploy — build, transfer, install, restart service:
+Full deploy — build, transfer, install, reboot the Pi:
 
 ```bash
 ./bin/deploy.sh
@@ -175,9 +175,15 @@ journalctl -u gtach -f
 # Startup log — truncated at each boot
 tail -f /opt/gtach/start.log
 
-# Debug log — written when GTach is started with --debug
+# Debug log — written when GTach is started with --debug, or when
+# debug is switched on in the OPTIONS screen
 tail -f /opt/gtach/debug.log
+
+# Error log — WARNING and above, always written
+tail -f /opt/gtach/error.log
 ```
+
+`/opt/gtach/stacks.log` receives a dump of all threads on `kill -USR1 <pid>`, and fatal-error tracebacks while debug is on.
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -191,7 +197,7 @@ Manual invocation is for development and debug use. Normal operation uses the sy
 
 | Option | Description | Default |
 |---|---|---|
-| `--config PATH` | Path to configuration file | Auto-detected |
+| `--config PATH` | Path to configuration file | `$GTACH_HOME/config.yaml` (`/opt/gtach/config.yaml`) |
 | `--debug` | Enable debug logging to `/opt/gtach/debug.log` | false |
 | `--version` | Print version and exit | — |
 | `--validate-config` | Validate configuration and exit | false |
