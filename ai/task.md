@@ -13,6 +13,12 @@ outcome is recorded (a closed triple, or an explicit drop).
 | — | Existing `black`, `isort` and `flake8` findings in `tests/` (3 files to reformat, 1 import order, 5 × F401, 1 × E731); `src/` is clean | Deferred — after 1.0; out of scope of run f8d0064b (D7); one mechanical formatting change | `report-f8d0064b-run-log` §2.0 |
 | — | Validation hook (governance P00.18) is not provisioned: `.claude/settings.json` and `.claude/hooks/run-tests.sh` do not exist; the canonical hook assumes `tests/<component>/`, GTach tests are flat | Deferred — owner decision (D8): provision an adapted hook, or record a standing exemption. Progressive validation (P15.15) is run manually meanwhile | `proposal-f8d0064b` D8 |
 | — | `requirements-gtach-master.md` predates the source in places (macOS development mode, layout switching by swipe, BluetoothManager-era wording); the traceability matrix therefore has no requirement rows | Deferred — after 1.0; owner review of the requirements baseline (P11.6), then populate matrix §2.0 and §3.0 | `ai/workspace/trace/trace-traceability-matrix-master.md` §1.0 |
+| — | `src/devop.md`: stale notes inside `src/` (version 0.2.2, removed log files); not packaged | Deferred — after 1.0; owner decides: delete, or move to `docs/` | `audit-bce0d69a` L04 |
+| — | `display/manager.py`: three comments cite `issue-<pending>`; the long-press handler logs 'Double tap handling error' | Deferred — after 1.0; cosmetic `src/` change | `audit-bce0d69a` L06 |
+| — | Updates directory, probation marker and stack-dump default path are fixed under `/opt/gtach` and do not follow `GTACH_HOME` | Deferred — after 1.0; needs a matching change of `bin/gtach-preflight.sh` | `audit-bce0d69a` L07 |
+| — | No tests for `utils/ack_state.py`; updater covered for version ordering and staging only | Deferred — after 1.0 | `audit-bce0d69a` L08 |
+| — | `bin/build.sh` accepts only X.Y.Z at its version prompt (a pre-release is kept with Enter); README §3.1 'Updates' installs the head of `main`, not the latest release | Deferred — after 1.0 | `audit-bce0d69a` L09 |
+| — | `pyproject.toml`: `project.license` table and license classifier are deprecated by setuptools (builds unsupported after 2027-02-18); classifier `Development Status :: 4 - Beta` | Deferred — after 1.0 and before 2027-02-18: SPDX `license = "MIT"`, `setuptools>=77`; owner decides the status classifier at 1.0.0 | `audit-bce0d69a` L05, L10 |
 
 ---
 

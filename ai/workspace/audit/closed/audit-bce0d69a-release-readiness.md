@@ -20,15 +20,15 @@ Created: 2026 November 13
 - **Mode:** strategic (governance P02.9.1), static review and local execution. No device, display panel, Bluetooth adapter or vehicle was used.
 - **Authority:** `proposal-f8d0064b` §4.7 (WP7). Severity rule D11 applies.
 - **Audited commit:** `d232eb3` on branch `claude/gtach-v1-release-run-g0106d`.
-- **Result:** 13 findings. One high finding; it concerns the release-candidate version chosen by decision D1.
+- **Result:** 14 findings (13 in the first pass, one added in the follow-up pass). One high finding; it concerns the release-candidate version chosen by decision D1.
 
 | Severity | Count |
 |---|---|
 | Critical | 0 |
 | High | 1 |
 | Medium | 3 |
-| Low | 9 |
-| **Total** | **13** |
+| Low | 10 |
+| **Total** | **14** |
 
 - **H01:** `utils/updater.py` parses only purely numeric versions. With the version `1.0.0rc1` installed, the update check finds nothing, so a staged `1.0.0` wheel cannot be installed from the OPTIONS screen; a staged `1.0.0rc1` wheel is never offered to a `0.5.0` installation either.
 - **Classification:** each finding is marked *confirmed* (reproduced or evident from the files) or *inferred* (depends on behaviour not exercised here).
@@ -79,7 +79,7 @@ audit_info:
   title: "Release-readiness audit for the GTach v1.0.0 release candidate"
   date: "2026-11-13"
   mode: "strategic"
-  status: "in_progress"
+  status: "closed"
   auditor: "planner (Claude Code session, proposal-f8d0064b)"
 
 scope:
@@ -192,14 +192,22 @@ findings:
         head of main, not the latest release. DISCLAIMER.md uses
         angle-bracket anchors that do not resolve on GitHub.
 
+    - location: "pyproject.toml:18, 24"
+      description: >-
+        [L10] (confirmed, follow-up pass) python -m build with current
+        setuptools warns that 'project.license' as a TOML table and the
+        license classifier are deprecated, and that builds using them
+        will no longer be supported after 2027-02-18. The SPDX string
+        form needs setuptools 77 or newer in build-system.requires.
+
 metrics:
   items_audited: 86
-  findings_total: 13
+  findings_total: 14
   findings_by_severity:
     critical: 0
     high: 1
     medium: 3
-    low: 9
+    low: 10
 
 recommendations:
   - "H01: order versions by a PEP 440 aware key (triple c41037ea)."
@@ -230,6 +238,10 @@ version_history:
     date: "2026-11-13"
     changes:
       - "Initial audit report."
+  - version: "1.1"
+    date: "2026-11-13"
+    changes:
+      - "Dispositions recorded; follow-up pass; finding L10 added; closed."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -247,19 +259,20 @@ Severity rule D11: critical and high are fixed through a triple; medium and low 
 
 | Finding | Disposition | Record |
 |---|---|---|
-| H01 | Fixed | DISPOSITION-H01 |
-| M01 | Fixed (document) | DISPOSITION-M01 |
-| M02 | Fixed (`bin/`, exempt from the triple) | DISPOSITION-M02 |
-| M03 | Fixed (document) | DISPOSITION-M03 |
-| L01 | Fixed (P04.12 trivial exemption) | DISPOSITION-L01 |
-| L02 | Fixed (document) | DISPOSITION-L02 |
-| L03 | Fixed (document) | DISPOSITION-L03 |
+| H01 | Fixed | Triple `c41037ea` (`97aef4d`, `cfbf605`); 26 tests; review SHIP on cycle 2; closed |
+| M01 | Fixed (document) | `LICENSE` added (`55bdbd1`); present in the wheel (`dist-info/licenses/LICENSE`) and the sdist. The copyright line `2025-2026 William Watson` needs the owner's confirmation |
+| M02 | Fixed (`bin/`, exempt from the triple) | `bin/release.sh` passes `--prerelease` for a version that is not X.Y.Z (`55bdbd1`); `tests/test_release_script.py` |
+| M03 | Fixed (document) | `ai/context.md` v1.3 (`55bdbd1`) |
+| L01 | Fixed (P04.12 trivial exemption) | `b2077e6`; `tests/test_rpm_reply_decoding.py` |
+| L02 | Fixed (document) | `README.md` §4.2, §5.2, §6.1 (`55bdbd1`) |
+| L03 | Fixed (document) | `docs/GTach_cli_cmds.md` (`55bdbd1`) |
 | L04 | Deferred — after 1.0; owner decides whether to delete or move the file | `ai/task.md` |
-| L05 | `build` removed from `build-system.requires` (fixed); classifier left for the owner at 1.0.0 | DISPOSITION-L05 |
+| L05 | `build` removed from `build-system.requires` (fixed); classifier left for the owner at 1.0.0 | `55bdbd1`; `python -m build` succeeds |
 | L06 | Deferred — after 1.0; cosmetic, in `src/` | `ai/task.md` |
 | L07 | Deferred — after 1.0; needs a matching change of `gtach-preflight.sh` | `ai/task.md` |
 | L08 | Deferred — after 1.0 (updater version ordering is covered by the H01 tests) | `ai/task.md` |
-| L09 | `DISCLAIMER.md` anchors fixed; `build.sh` prompt and README §3.1 deferred — after 1.0 | DISPOSITION-L09, `ai/task.md` |
+| L09 | `DISCLAIMER.md` anchors fixed; `build.sh` prompt and README §3.1 deferred — after 1.0 | `55bdbd1`, `ai/task.md` |
+| L10 | Deferred — after 1.0, before 2027-02-18 | `ai/task.md` |
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -296,7 +309,32 @@ Severity rule D11: critical and high are fixed through a triple; medium and low 
 
 ## 7.0 Closure
 
-Pending remediation and the follow-up pass.
+### 7.1 Follow-up pass (P02.8.2)
+
+Performed at commit `55bdbd1` after remediation, because remediation changed source code.
+
+| Finding | Check | Result |
+|---|---|---|
+| H01 | `_parse_version_str("1.0.0rc1") < _parse_version_str("1.0.0")`; `find_available_update` scenarios in `tests/test_update_version_ordering.py`; independent review | Closed |
+| L01 | `tests/test_rpm_reply_decoding.py` fails without the fix (2 of 5) and passes with it | Closed |
+| M01 | `LICENSE` in the repository root, in the wheel and in the sdist | Closed, subject to the owner's confirmation of the copyright line |
+| M02 | Release kind for six versions (`tests/test_release_script.py`); `bash -n bin/release.sh` | Closed; the script was not executed against GitHub |
+| M03, L02, L03, L09 (anchors) | Documents re-read against the source | Closed |
+| L05 | `python -m build` produces the sdist and the wheel | Closed (`build` requirement); classifier open for the owner |
+| New defects | Full suite 818 passed (Python 3.13.18); mypy clean (target 3.9); flake8 and black clean on the changed files. One new low finding, L10 (build deprecation warning) | Deferred |
+
+### 7.2 Closure record
+
+| Item | Record |
+|---|---|
+| Closure date | 2026-11-13 |
+| Approver | Claude Code session under the delegated approval of `proposal-f8d0064b` §3.0, for William Watson; the owner reviews the closure with the pull request |
+| Critical findings | None |
+| High findings | H01 resolved and verified (triple `c41037ea`, closed) |
+| Medium findings | M01, M02, M03 resolved |
+| Low findings | L01, L02, L03 resolved; L05 and L09 resolved in part; L04, L06, L07, L08, L10 and the remainders of L05 and L09 carried in `ai/task.md` as `Deferred — after 1.0` |
+| Final metrics | 14 findings; 9 resolved or resolved in part; 5 deferred; 0 open at critical or high |
+| Not verified | Device behaviour; see the owner's checklist in `report-f8d0064b-v1-release-run` |
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -307,6 +345,7 @@ Pending remediation and the follow-up pass.
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-13 | Initial audit report; 13 findings |
+| 1.1 | 2026-11-13 | Dispositions with commits; follow-up pass (§7.1); finding L10 added; closed and moved to `audit/closed/` |
 
 ---
 

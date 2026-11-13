@@ -148,7 +148,7 @@ Triples and audits of run `f8d0064b`. Earlier work: see §1.0.
 
 | UUID | Type | Title | Design updated | Code | Test | Status |
 |---|---|---|---|---|---|---|
-| `bce0d69a` | Audit | Release-readiness audit | — | — | — | See `audit/` |
+| `bce0d69a` | Audit | Release-readiness audit; 14 findings; remediation `c41037ea`, `b2077e6` (P04.12), `55bdbd1` | `design-9a1f3c7e` §4.3 | `src/gtach/utils/updater.py`, `src/gtach/comm/obd.py`, `bin/release.sh` | `test_update_version_ordering.py`, `test_rpm_reply_decoding.py`, `test_release_script.py` | Closed (`audit/closed/`) |
 | `c41037ea` | Issue, change, prompt | Update check orders pre-release versions (audit-bce0d69a H01) | `design-9a1f3c7e` §4.3 | `src/gtach/utils/updater.py` | `tests/test_update_version_ordering.py` | Closed, verified by unit tests |
 
 [Return to Table of Contents](#table-of-contents)

@@ -48,8 +48,11 @@ Measured 2026-11-13 at commit `2f32b45`, branch `claude/gtach-v1-release-run-g01
 | WP2 | Rows `821919ce`, `9ed1c77e` | Done | `874df8e` | Explicit drop (D6). Both triples were already closed and not implemented; both withdrawal conditions are met (frames complete inside budget). Re-evaluation needs on-device frame times and a new issue |
 | WP3 | setuptools and `pkg_resources` | Done | `874df8e` | No guard needed; row dropped. Evidence in §4.0 |
 | WP5 | Stuck Bluetooth recovery | Done | `874df8e` | Row kept, Status `Deferred — after 1.0` (D3) |
-| WP4 | Design documents | Done | (WP4 commits) | Retired 4 (`d4e5f6a7`, `c3d4e5f6`, `g1h2i3j4`, `e1f2a3b4`); merged 2 pairs (`f6a7b8c9` into `a6b7c8d9`; `e5f6a7b8` into `f5a6b7c8`, carrying its §6.3); 19 documents rewritten or refreshed against the source, including the four status-line documents, which had drifted beyond the status line; `b4c5d6e7` and `f8a9b0c1` link conversion only; `a3b4c5d6` unchanged. Traceability matrix v2.0. `report-71ab3751-design-review` moved to `report/closed/`; row removed. Three rows added to `ai/task.md` (D7, D8, requirements review) |
-| WP7 | Release-readiness audit | Pending | | |
+| WP4 | Design documents | Done | `efc785e`, `91e8033`, `d232eb3` | Retired 4 (`d4e5f6a7`, `c3d4e5f6`, `g1h2i3j4`, `e1f2a3b4`); merged 2 pairs (`f6a7b8c9` into `a6b7c8d9`; `e5f6a7b8` into `f5a6b7c8`, carrying its §6.3); 19 documents rewritten or refreshed against the source, including the four status-line documents, which had drifted beyond the status line; `b4c5d6e7` and `f8a9b0c1` link conversion only; `a3b4c5d6` unchanged. Traceability matrix v2.0. `report-71ab3751-design-review` moved to `report/closed/`; row removed. Three rows added to `ai/task.md` (D7, D8, requirements review) |
+| WP7 | Release-readiness audit `bce0d69a` | Done | `55e6f5d`, closure commit | 14 findings: 0 critical, 1 high, 3 medium, 10 low. Follow-up pass done; audit closed and moved to `audit/closed/` |
+| WP7-T1 | Triple `c41037ea` — update check orders pre-release versions (H01) | Done | `206fb25`, `97aef4d`, `cfbf605`, `d0dac7c` | Review: REVISE (cycle 1), SHIP (cycle 2). Approvals `686b945`, `322c990`, `26f7ea6`. Closed |
+| WP7-T2 | Trivial change P04.12 — odd hex digit count in the 010C reply (L01) | Done | `b2077e6` | Regression test added |
+| WP7-D | Document and `bin/` remediation (M01, M02, M03, L02, L03, L05, L09) | Done | `55bdbd1` | `LICENSE` added: copyright line needs the owner's confirmation |
 | WP8 | Release preparation | Pending | | |
 | Final | Final report and pull request | Pending | | |
 
@@ -62,6 +65,7 @@ Measured 2026-11-13 at commit `2f32b45`, branch `claude/gtach-v1-release-run-g01
 - WP1: mypy 1.20 and newer require Python 3.10 to run, so the marker leaves a Python 3.9 development interpreter without mypy. The check is run from a 3.10 or newer interpreter against the 3.9 target.
 - WP3: `pygame/pkgdata.py` imports `pkg_resources` inside `try/except ImportError` and falls back to its own stubs, so a missing `pkg_resources` does not break `import pygame`. Verified with pygame 2.6.1: (a) Python 3.9.25 venv with setuptools 82.0.1 (`pkg_resources` absent): `import pygame`, `pygame.init()` and `pygame.font.Font(None, 20)` succeed; (b) Python 3.13 venv with no setuptools: the same, with warnings as errors, and the full suite passes. `bin/install.sh` and `bin/pi-install.sh` create the venv with `python3 -m venv` and never upgrade setuptools; the version that Debian 11 bundles was not measured (no device access) and does not matter given (a) and (b). `src/gtach/` does not use `pkg_resources`.
 - WP4: each refreshed design was written after reading the corresponding source module; the body of every retired and merged document was read first. Layout coordinates and font sizes were copied from the source as constants and not re-derived. Not verified: Mermaid rendering on GitHub (no renderer in this environment); internal links were checked by script (25 files, 0 broken).
+- WP7: suite after remediation 818 passed (Python 3.13.18); mypy 1.20.2 clean with the 3.9 target; flake8 and black clean on the changed files. Deferred findings are rows in `ai/task.md`.
 - WP4 defect candidates noted for WP7: `utils/updater.py` cannot parse a pre-release version such as `1.0.0rc1` (D1), which makes the update check return nothing while a release candidate is installed.
 
 [Return to Table of Contents](#table-of-contents)
@@ -75,6 +79,7 @@ Measured 2026-11-13 at commit `2f32b45`, branch `claude/gtach-v1-release-run-g01
 | 1.0 | 2026-11-13 | WP0 and WP1 |
 | 1.1 | 2026-11-13 | WP2, WP3 and WP5 |
 | 1.2 | 2026-11-13 | WP4 |
+| 1.3 | 2026-11-13 | WP7 |
 
 ---
 
