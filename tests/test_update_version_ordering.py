@@ -77,7 +77,19 @@ class TestOrderKey:
 
     @pytest.mark.parametrize(
         "text",
-        ["", "abc", "1.0.0.dev1", "1.0.0+local", "1.0.0-rc.1", "1..0", "1.0.0rc", None],
+        [
+            "",
+            "abc",
+            "1.0.0.dev1",
+            "1.0.0+local",
+            "1.0.0-rc.1",
+            "1..0",
+            "1.0.0rc",
+            None,
+            5,
+            "9" * 5000,
+            "1.0.0rc" + "9" * 5000,
+        ],
     )
     def test_unsupported_forms_give_none(self, text):
         assert updater._parse_version_str(text) is None
@@ -128,11 +140,13 @@ class TestFindAvailableUpdate:
         _stage(updates_dir, "1.0.0")
         with caplog.at_level(logging.WARNING, logger=updater.logger.name):
             assert updater.find_available_update() is None
-        assert any(
-            record.levelno == logging.WARNING
-            and "Installed version not recognised" in record.getMessage()
+        warnings = [
+            record
             for record in caplog.records
-        )
+            if record.levelno == logging.WARNING
+            and "Installed version not recognised" in record.getMessage()
+        ]
+        assert len(warnings) == 1
 
     def test_wheel_with_unrecognised_version_is_skipped(
         self, updates_dir, monkeypatch, caplog

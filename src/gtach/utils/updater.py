@@ -54,12 +54,16 @@ def _parse_version_str(s: str) -> Optional[Tuple[int, ...]]:
         return None
     if match is None:
         return None
-    release = tuple(int(part) for part in match.group(1).split("."))
-    release += (0,) * (_MIN_RELEASE_PARTS - len(release))
     phase = match.group(2)
-    if phase is None:
-        return release + (0, 0)
-    return release + (_PRE_RELEASE_RANK[phase], int(match.group(3)))
+    try:
+        release = tuple(int(part) for part in match.group(1).split("."))
+        number = 0 if phase is None else int(match.group(3))
+    except ValueError:
+        # int() refuses a digit string beyond the interpreter's limit.
+        return None
+    release += (0,) * (_MIN_RELEASE_PARTS - len(release))
+    rank = 0 if phase is None else _PRE_RELEASE_RANK[phase]
+    return release + (rank, number)
 
 
 def get_installed_version() -> Optional[Tuple[int, ...]]:
