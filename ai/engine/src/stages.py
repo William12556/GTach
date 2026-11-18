@@ -93,6 +93,10 @@ def is_git_repository(project_root: str) -> bool:
         return False
 
 
+# change-f68d51c2 (audit-9377f9b9-followup F-01, F-02): invalid YAML, a
+# scalar the constructor cannot convert, and nesting too deep
+_YAML_ERRORS = (yaml.YAMLError, ValueError, TypeError, OverflowError, RecursionError)
+
 Approvals = dict  # (uuid, stage) -> {document name: blob hash}, or None when unbound
 
 
@@ -104,7 +108,7 @@ def parse_approvals(text: str) -> Approvals:
     """
     try:
         data = yaml.safe_load(text) or {}
-    except yaml.YAMLError:
+    except _YAML_ERRORS:  # change-f68d51c2 (audit-9377f9b9-followup F-01, F-02): fail closed
         return {}
     entries = data.get("approvals") if isinstance(data, dict) else None
     out: Approvals = {}
@@ -125,7 +129,9 @@ def committed_approvals(project_root: str) -> Approvals:
     """Approvals in git HEAD. Raises NotAGitRepository outside a git working tree."""
     if not is_git_repository(project_root):
         raise NotAGitRepository(f"{project_root} is not a git repository; approvals cannot be read")
-    proc = _git(project_root, "show", f"HEAD:{APPROVALS_FILE}")
+    # change-4b0a5592 (audit-caab2052 L-06): './' resolves the path from the
+    # -C directory, so a project nested in a larger repository is read.
+    proc = _git(project_root, "show", f"HEAD:./{APPROVALS_FILE}")
     return parse_approvals(proc.stdout) if proc.returncode == 0 else {}
 
 
@@ -179,7 +185,7 @@ def _status(path: str, field_path: str) -> str | None:
     for block in blocks:
         try:
             doc = yaml.safe_load(block)
-        except yaml.YAMLError:
+        except _YAML_ERRORS:  # change-f68d51c2 (audit-9377f9b9-followup F-01, F-02)
             continue
         value = doc
         for key in field_path.split("."):
@@ -189,8 +195,15 @@ def _status(path: str, field_path: str) -> str | None:
     return None
 
 
-def _documents(project_root: str, manifest) -> dict[str, list[Document]]:
-    """Every evidence document, grouped by UUID."""
+def _documents(project_root: str, manifest,
+               skipped: list[str] | None = None) -> dict[str, list[Document]]:
+    """
+    Every evidence document, grouped by UUID.
+
+    change-d4f527e7 (audit-4b0a5592 F-04): a match that is not a regular file
+    (a directory, a FIFO, a socket, a dangling symlink) is not listed and is
+    never opened; its project-relative path is appended to skipped when given.
+    """
     found: dict[str, list[Document]] = {}
     pattern_re = {}
     for st in manifest.stages:
@@ -204,6 +217,10 @@ def _documents(project_root: str, manifest) -> dict[str, list[Document]]:
             for path in sorted(glob.glob(os.path.join(folder, f"{ev['prefix']}-*.md"))):
                 m = pattern_re[st.id].fullmatch(os.path.basename(path))
                 if not m:
+                    continue
+                if not os.path.isfile(path):  # stat only; a FIFO is not opened
+                    if skipped is not None:
+                        skipped.append(os.path.relpath(path, project_root))
                     continue
                 status = _status(path, ev["status_field"]) if ev.get("status_field") else None
                 found.setdefault(m.group(1), []).append(
@@ -293,10 +310,14 @@ def scan(project_root: str, manifest) -> Report:
             warnings.append(f"uncommitted changes to {APPROVALS_FILE} are ignored; "
                             f"record approvals with ai/engine/src/approve.py")
     except NotAGitRepository as e:
-        approvals = set()
+        approvals = {}  # change-bae631c7 (audit-caab2052 L-16): the declared type
         warnings.append(str(e))
     items: dict[str, WorkItem] = {}
-    for uuid, docs in _documents(project_root, manifest).items():
+    skipped: list[str] = []
+    documents = _documents(project_root, manifest, skipped)
+    # change-d4f527e7 (audit-4b0a5592 F-04): reported, not evaluated
+    warnings.extend(f"{path}: not a regular file; ignored" for path in skipped)
+    for uuid, docs in documents.items():
         item = WorkItem(uuid=uuid, documents=docs)
         _evaluate(item, manifest, approvals)
         _flag_stale_approvals(project_root, item, manifest, approvals)
@@ -320,13 +341,48 @@ def _flag_stale_approvals(project_root: str, item: WorkItem, manifest, approvals
     item.missing = stale + item.missing
 
 
-def is_tracked_task(project_root: str, task_path: str | None) -> bool:
-    """A T03 prompt file inside ai/workspace/ is a tracked work item."""
-    if not task_path or not os.path.isfile(task_path):
+def _in_workspace(project_root: str, path: str) -> bool:
+    """
+    change-d4f527e7 (audit-4b0a5592 F-01, F-02): True when path, or one of its
+    ancestors, is the project's ai/workspace/ directory by file identity
+    (os.path.samestat). Identity holds whatever the letter case on a
+    case-insensitive file system and through symlinked directories; a sibling
+    such as ai/workspace-x/ is a different directory.
+    """
+    try:
+        workspace = os.stat(os.path.join(project_root, WORKSPACE))
+    except OSError:
         return False
-    # L-01: symlinks resolved, as engine-mcp does.
-    workspace = os.path.realpath(os.path.join(project_root, WORKSPACE))
-    return os.path.realpath(task_path).startswith(workspace + os.sep)
+    current = path
+    while True:
+        try:
+            if os.path.samestat(os.stat(current), workspace):
+                return True
+        except OSError:
+            pass
+        parent = os.path.dirname(current)
+        if parent == current:
+            return False
+        current = parent
+
+
+def is_tracked_task(project_root: str, task_path: str | None) -> bool:
+    """
+    A task path that exists and lies at ai/workspace/ or inside it, as given
+    or as resolved, is tracked, whatever its name or file type (regular file,
+    directory, FIFO or any other). The pre-run check then refuses it unless
+    it is the approved prompt of its work item.
+    """
+    # change-4b0a5592 (audit-caab2052 L-04; audit-14e05e35 F5-01): tracked by
+    # location only; any existing file type counts.
+    if not task_path or not os.path.exists(task_path):
+        return False
+    # change-d4f527e7 (audit-4b0a5592 F-01, F-02): containment by file
+    # identity, for the path as given and as resolved (L-01). A symlink in
+    # ai/workspace/ that points outside is tracked; task_document_error then
+    # refuses it.
+    return (_in_workspace(project_root, os.path.abspath(task_path))
+            or _in_workspace(project_root, os.path.realpath(task_path)))
 
 
 def task_stage(manifest):
@@ -353,6 +409,11 @@ def task_document_error(project_root: str, manifest, task_path: str) -> str | No
                f"run the {st.id} from {WORKSPACE}/{ev['folder']}/{ev['prefix']}-<uuid>-<name>.md")
     m = re.fullmatch(rf"{re.escape(ev['prefix'])}-([0-9a-f]{{8}})-.+\.md", os.path.basename(task_path))
     if not m:
+        return refusal
+    # change-d4f527e7 (audit-4b0a5592 F-01): a task that resolves outside
+    # ai/workspace/ is not a document of the work item, although the link
+    # itself is listed by the scan.
+    if not _in_workspace(project_root, os.path.realpath(task_path)):
         return refusal
     docs = _documents(project_root, manifest).get(m.group(1), [])
     candidates = {os.path.realpath(os.path.join(project_root, d.path))

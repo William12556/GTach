@@ -8,7 +8,7 @@ Note: connect() and close() must be awaited in the same task to ensure
 proper AsyncExitStack teardown without anyio cancel-scope errors.
 """
 
-import uuid
+import logging
 from contextlib import AsyncExitStack
 from datetime import timedelta
 from typing import Any
@@ -47,6 +47,7 @@ class MCPClient:
         All stdio_client and ClientSession contexts are entered via the instance
         AsyncExitStack. Call close() in the same task to tear down cleanly.
         """
+        log = logging.getLogger("engine")
         for name, cfg in self._servers.items():
             params = StdioServerParameters(
                 command=cfg["command"],
@@ -67,14 +68,26 @@ class MCPClient:
                 self._sessions[name] = session
                 response = await session.list_tools()
                 for tool in response.tools:
+                    # change-bae631c7 (audit-caab2052 L-13): a tool name
+                    # offered by two servers is reported; the server
+                    # connected last keeps it, as before.
+                    previous = self._tools.get(tool.name)
+                    if previous is not None and previous["server"] != name:
+                        message = (f"tool '{tool.name}' is offered by '{previous['server']}' "
+                                   f"and '{name}'; using '{name}'")
+                        print(f"[engine] Warning: {message}")
+                        log.warning("MCP: %s", message)
                     self._tools[tool.name] = {
                         "server": name,
                         "description": tool.description or "",
                         "input_schema": tool.inputSchema or {},
                     }
                 print(f"[engine] Connected: {name} ({len(response.tools)} tools)")
+                log.info("MCP: Connected: %s (%d tools)", name, len(response.tools))
             except Exception as e:
                 print(f"[engine] Warning: failed to connect to '{name}': {e}")
+                # change-bae631c7 (audit-caab2052 L-13): also in the engine log
+                log.warning("MCP: failed to connect to '%s': %s", name, e)
 
     def _is_readonly_tool(self, name: str) -> bool:
         """Return True for a read-only tool (scope.is_readonly_tool)."""

@@ -6,18 +6,18 @@ Created: 2026 April 27
 
 ## Table of Contents
 
-[1.0 Purpose](#10-purpose)
-[2.0 Architecture](#20-architecture)
-[2.1 Worker/Reviewer Profiles](#21-workerreviewer-profiles)
-[2.2 Monitoring Tools](#22-monitoring-tools)
-[3.0 Responsibilities](#30-responsibilities)
-[4.0 Workflow](#40-workflow)
-[4.1 Audit Modes](#41-audit-modes)
-[5.0 Protocol Reference](#50-protocol-reference)
-[6.0 Document Conventions](#60-document-conventions)
-[7.0 Constraints](#70-constraints)
-[8.0 Templates](#80-templates)
-[Version History](#version-history)
+- [1.0 Purpose](#10-purpose)
+- [2.0 Architecture](#20-architecture)
+- [2.1 Worker/Reviewer Profiles](#21-workerreviewer-profiles)
+- [2.2 Monitoring Tools](#22-monitoring-tools)
+- [3.0 Responsibilities](#30-responsibilities)
+- [4.0 Workflow](#40-workflow)
+- [4.1 Audit Modes](#41-audit-modes)
+- [5.0 Protocol Reference](#50-protocol-reference)
+- [6.0 Document Conventions](#60-document-conventions)
+- [7.0 Constraints](#70-constraints)
+- [8.0 Templates](#80-templates)
+- [Version History](#version-history)
 
 ---
 
@@ -335,6 +335,7 @@ any document.
 | 0.18 | 2026-10-01 | §2.0 three agent roles replace the two-domain table; §2.1 heading; context file wording; §4.0 approvals recorded with approve.py (audit-14e05e35 M-03, change-82dbf16a, L-15) |
 | 0.19 | 2026-10-23 | Synced with governance v12.4: §3.0 and §6.1 task register holds all open work with a Status keyword (P00.20) |
 | 0.20 | 2026-10-23 | Overwatch command path: ai/src/overwatch.py → ai/webui/src/overwatch.py (change-14cf601f) |
+| 0.21 | 2026-11-14 | Layout conformance with README.md v4.5: Table of Contents formatted as a bulleted list (dev/task.md work item 7a) |
 
 ---
 

@@ -30,7 +30,9 @@ import html
 import json
 import os
 import re
+import stat
 import sys
+import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -136,13 +138,20 @@ class EngineState:
     """engine runtime state derived from ai/state/ state files."""
 
     status: str = "idle"
-    """idle | running | ship | blocked"""
+    """idle | running | ship | blocked | ended | unknown"""
     iteration: Optional[int] = None
     """Current iteration number from iteration.txt, if available."""
     blocked_detail: Optional[str] = None
     """Content of BLOCKED.md when status is blocked."""
     task_ref: Optional[str] = None
-    """Leading content of task.md (first non-empty line)."""
+    """Basename of the run record's task file, 'text task' for a run record
+    without one, else None (change-b8a6c445, audit-caab2052 M-04)."""
+    task_file: Optional[str] = None
+    """task_file from a valid run record (run.json), if a string."""
+    rc: Optional[int] = None
+    """Exit code from a valid run record, if an integer."""
+    has_run_record: bool = False
+    """True if the state directory held a valid run record (run.json)."""
 
 
 @dataclass
@@ -376,6 +385,78 @@ def validate_project(paths: ProjectPaths) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _pid_alive(pid: int) -> bool:
+    """Return True if a process with *pid* exists (change-b8a6c445, audit-caab2052 M-04).
+
+    os.kill(pid, 0) sends no signal; it only checks the process exists.
+    PermissionError means the process exists under another user. A pid of
+    0 or below names a process group, not a process, and a pid outside the
+    platform's range raises OverflowError; both are treated as not alive.
+    """
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except (OSError, OverflowError):
+        return False
+    return True
+
+
+def _same_file(a: str, b: str) -> bool:
+    """Return True if *a* and *b* name the same existing file (change-86c958dd, audit-b8a6c445 F-04).
+
+    os.path.samefile compares file identity, so letter case on a
+    case-insensitive volume and symlinks do not matter. A missing file or an
+    invalid path compares as not the same file.
+    """
+    try:
+        return os.path.samefile(a, b)
+    except (OSError, ValueError):
+        return False
+
+
+def _write_text_atomic(path: Path, content: str) -> None:
+    """Write content as UTF-8 to a temporary file and move it into place.
+
+    change-d4f527e7 (audit-caab2052 L-10): a reader (the browser, the planner)
+    sees the previous file or the new one, never a partial file. A symlink at
+    path is written through, as before. On any failure the temporary file is
+    removed and the exception re-raised for the caller's own handling.
+    """
+    target = Path(os.path.realpath(path))
+    # change-f68d51c2 (audit-d4f527e7 F-01): the temporary file is created
+    # exclusively with mkstemp, never at a predictable name; its mode is that
+    # of an existing regular file at target, else 0o666 & ~umask.
+    fd, tmp_name = tempfile.mkstemp(dir=str(target.parent),
+                                    prefix=f".{target.name}.", suffix=".tmp")
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        try:
+            st = os.lstat(target)
+        except OSError:
+            st = None
+        if st is not None and stat.S_ISREG(st.st_mode):
+            mode = stat.S_IMODE(st.st_mode)
+        else:
+            umask = os.umask(0)
+            os.umask(umask)
+            mode = 0o666 & ~umask
+        os.chmod(tmp_path, mode)
+        os.replace(tmp_path, target)
+    except BaseException:
+        try:
+            tmp_path.unlink()
+        except OSError:
+            pass
+        raise
+
+
 class Scanner:
     """Produce a Snapshot from the project filesystem.
 
@@ -400,9 +481,22 @@ class Scanner:
             dirpath = self.paths.workspace / dirname
             if not dirpath.exists():
                 continue
+            # change-b8a6c445 (audit-caab2052 L-07): class directories nested
+            # inside this one (test/result inside test) are scanned for their
+            # own class only.
+            own_parts = Path(dirname).parts
+            nested = [
+                self.paths.workspace / other
+                for other in CLASS_DIRS.values()
+                if other != dirname and Path(other).parts[:len(own_parts)] == own_parts
+            ]
             for filepath in sorted(dirpath.rglob("*.md")):
+                if any(filepath.is_relative_to(n) for n in nested):
+                    continue
                 # Exclude closed/ subtrees and README files
-                if "closed" in filepath.parts:
+                # change-b8a6c445 (audit-caab2052 L-08): only path parts
+                # inside ai/workspace/ are tested for closed/.
+                if "closed" in filepath.relative_to(self.paths.workspace).parts:
                     continue
                 if filepath.name.upper() == "README.MD":
                     continue
@@ -445,8 +539,19 @@ class Scanner:
     def _read_engine_state(self) -> EngineState:
         """Read ai/state/ state files; return idle EngineState when absent.
 
-        Precedence: BLOCKED.md → blocked; .complete → ship;
-        task.md present → running; otherwise → idle (NFR-05).
+        change-b8a6c445 (audit-caab2052 M-04): the engine's run record
+        (run.json) decides whether a run is live. Precedence, first match
+        wins: valid record with ended null and a live pid → running;
+        BLOCKED.md → blocked; .complete → ship; valid record otherwise →
+        ended; invalid record, or task.md without run.json → unknown;
+        otherwise → idle (NFR-05).
+
+        change-86c958dd (audit-b8a6c445 F-02): with a valid record that is
+        not live, BLOCKED.md and .complete count only when the marker's
+        mtime is not earlier than the record's started time (whole
+        seconds); an older marker gives ended. When started is absent or
+        cannot be parsed, or no valid record exists, the precedence above
+        is unchanged.
         """
         state_dir = self.paths.engine_state
         if not state_dir.is_dir():
@@ -461,14 +566,52 @@ class Scanner:
 
         blocked_content = _read("BLOCKED.md")
         complete_content = _read(".complete")
-        task_content = _read("task.md")
+        task_present = (state_dir / "task.md").exists()
 
-        if blocked_content is not None:
-            status = "blocked"
-        elif complete_content is not None:
-            status = "ship"
-        elif task_content is not None:
+        # change-b8a6c445 (audit-caab2052 M-04): run record
+        record_present = (state_dir / "run.json").exists()
+        record: Optional[dict] = None
+        if record_present:
+            try:
+                data = json.loads((state_dir / "run.json").read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                data = None
+            if (
+                isinstance(data, dict)
+                and isinstance(data.get("pid"), int)
+                and not isinstance(data.get("pid"), bool)
+                and (data.get("ended") is None or isinstance(data.get("ended"), str))
+            ):
+                record = data
+        live = record is not None and record.get("ended") is None and _pid_alive(record["pid"])
+
+        # change-86c958dd (audit-b8a6c445 F-02): a marker older than the
+        # record's start belongs to an earlier run. started_ts None: no check.
+        started_ts: Optional[int] = None
+        if record is not None and not live:
+            try:
+                started_ts = int(datetime.datetime.fromisoformat(record["started"]).timestamp())
+            except (KeyError, TypeError, ValueError, OverflowError, OSError):
+                started_ts = None
+
+        def _current(name: str) -> bool:
+            if started_ts is None:
+                return True
+            try:
+                return int((state_dir / name).stat().st_mtime) >= started_ts
+            except OSError:
+                return True
+
+        if live:
             status = "running"
+        elif blocked_content is not None and _current("BLOCKED.md"):
+            status = "blocked"
+        elif complete_content is not None and _current(".complete"):
+            status = "ship"
+        elif record is not None:
+            status = "ended"
+        elif record_present or task_present:
+            status = "unknown"
         else:
             status = "idle"
 
@@ -480,19 +623,26 @@ class Scanner:
             except ValueError:
                 pass
 
+        task_file: Optional[str] = None
+        rc: Optional[int] = None
         task_ref: Optional[str] = None
-        if task_content:
-            for line in task_content.splitlines():
-                stripped = line.strip()
-                if stripped:
-                    task_ref = stripped[:160]
-                    break
+        if record is not None:
+            if isinstance(record.get("task_file"), str):
+                task_file = record["task_file"]
+            if isinstance(record.get("rc"), int) and not isinstance(record.get("rc"), bool):
+                rc = record["rc"]
+            task_ref = os.path.basename(task_file) if task_file else "text task"
 
         return EngineState(
             status=status,
             iteration=iteration,
-            blocked_detail=blocked_content,
+            # change-d4f527e7 (audit-86c958dd F-01): an earlier run's BLOCKED.md
+            # is not shown while the status is ended or running.
+            blocked_detail=blocked_content if status == "blocked" else None,
             task_ref=task_ref,
+            task_file=task_file,
+            rc=rc,
+            has_run_record=record is not None,
         )
 
     def _read_budget(self) -> BudgetState:
@@ -562,7 +712,7 @@ class PhaseInference:
 
         Precedence (first match wins):
           1. engine running                           → Loop execution
-          2. Open prompt + engine idle/ship           → Awaiting prompt execution
+          2. Open prompt + engine idle/ship/ended     → Awaiting prompt execution
           3. Open change + issue, no prompt        → Change cycle
           4. Open issue, no change                 → Issue raised
           5. Open test or result                   → Test phase
@@ -574,7 +724,8 @@ class PhaseInference:
 
         if eng.status == "running":
             return "Loop execution"
-        if "prompt" in open_classes and eng.status in ("idle", "ship"):
+        # change-b8a6c445 (audit-caab2052 M-04): an ended run awaits the next one
+        if "prompt" in open_classes and eng.status in ("idle", "ship", "ended"):
             return "Awaiting prompt execution"
         if "change" in open_classes and "issue" in open_classes and "prompt" not in open_classes:
             return "Change cycle"
@@ -699,20 +850,24 @@ class ComplianceEngine:
                     document=None,
                 ))
 
-        # FR-02-06: task.md content not matching any open prompt → WARNING
-        if eng.task_ref:
+        # FR-02-06: engine run task not an open prompt → WARNING
+        # change-b8a6c445 (audit-caab2052 M-05): compares the run record's
+        # task_file with the open prompts.
+        # change-86c958dd (audit-b8a6c445 F-03): evaluated only while the
+        # engine is running, not for ended or stale run records.
+        if eng.status == "running":
             open_prompts = [d for d in docs if d.cls == "prompt" and not d.is_master]
             if open_prompts:
-                matched = any(
-                    (doc.uuid and doc.uuid in eng.task_ref)
-                    or os.path.basename(doc.path) in eng.task_ref
+                # change-86c958dd (audit-b8a6c445 F-04): file identity, not path text
+                matched = eng.task_file is not None and any(
+                    _same_file(eng.task_file, doc.path)
                     for doc in open_prompts
                 )
                 if not matched:
                     alerts.append(Alert(
                         severity="warning",
                         code="FR-02-06",
-                        message="engine task.md does not reference any open prompt document",
+                        message="engine run task is not an open prompt document",
                         document=None,
                     ))
 
@@ -825,7 +980,7 @@ class ComplianceEngine:
 class AlertWriter:
     """Render alert summaries and write to dashboard-alerts.md.
 
-    dashboard-alerts.md is one of two permitted write targets (CON-07 /
+    dashboard-alerts.md is one of two permitted write targets (CON-01 /
     NFR-01, design §3.1 clarification). Each call to write() overwrites the
     file; no appending (FR-04-04).
     """
@@ -846,6 +1001,9 @@ class AlertWriter:
         budget = snapshot.budget
 
         engine_str = eng.status.upper()
+        # change-b8a6c445 (audit-caab2052 M-04): exit code of an ended run
+        if eng.status == "ended" and eng.rc is not None:
+            engine_str = f"ENDED rc={eng.rc}"
         if eng.iteration is not None:
             engine_str += f" [iteration {eng.iteration}]"
 
@@ -853,7 +1011,7 @@ class AlertWriter:
         warnings = [a for a in snapshot.alerts if a.severity == "warning"]
 
         lines: list[str] = [
-            f"# govwatch alerts — {project_name}",
+            f"# Overwatch alerts — {project_name}",  # change-b8a6c445 (audit-caab2052 L-15)
             "",
             f"Scan: {ts}",
             f"Phase: {snapshot.phase}",
@@ -887,7 +1045,7 @@ class AlertWriter:
         """
         content = self.payload(snapshot)
         try:
-            self.paths.alerts_file.write_text(content, encoding="utf-8")
+            _write_text_atomic(self.paths.alerts_file, content)
             return None
         except Exception as exc:  # noqa: BLE001
             return f"dashboard-alerts.md write failed: {exc}"
@@ -981,7 +1139,7 @@ class HtmlRenderer:
     .severity-ok       { color: #5ed18a; }
     .status-blocked, .status-abort { color: #ff6b6b; }
     .status-running, .status-ok, .status-ship { color: #5ed18a; }
-    .status-warn { color: #ffc857; }
+    .status-warn, .status-ended { color: #ffc857; }
     .status-idle, .status-unknown { color: #9aa4b2; }
     footer { margin-top: 1.5rem; color: #7d8794; font-size: 0.8rem; }
     """
@@ -1068,7 +1226,7 @@ class HtmlRenderer:
         target = Path(root) / self.OUTPUT_NAME
         try:
             content = self.render(snapshot)
-            target.write_text(content, encoding="utf-8")
+            _write_text_atomic(target, content)
         except Exception as exc:  # noqa: BLE001 — must not end the loop
             print(f"overwatch: {self.OUTPUT_NAME} write failed ({target}): {exc}",
                   file=sys.stderr)

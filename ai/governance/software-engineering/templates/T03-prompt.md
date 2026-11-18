@@ -154,6 +154,8 @@ tactical_brief: ""
 notes: ""
 ```
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
 ## Schema
@@ -527,6 +529,8 @@ properties:
     type: string
 ```
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
 ## Version History
@@ -549,6 +553,7 @@ properties:
 | 1.13 | 2026-09-29 | target_profile enum: ael added as deprecated legacy value so closed prompts validate (audit-5bcd46ad L-06) |
 | 1.14 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 | 1.15 | 2026-10-01 | Header comment: worker/reviewer compound (audit-14e05e35 L-05, change-82dbf16a) |
+| 1.16 | 2026-11-14 | Layout conformance with README.md v4.5: Return to Table of Contents links added (dev/task.md work item 7a) |
 
 ---
 

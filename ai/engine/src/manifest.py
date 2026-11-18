@@ -125,6 +125,13 @@ def load_manifest(path: str) -> Manifest:
         raise ManifestError(f"{path}: cannot be read: {e}") from e
     except yaml.YAMLError as e:
         raise ManifestError(f"{path}: invalid YAML: {e}") from e
+    except RecursionError as e:  # change-9377f9b9 (audit-e4428fd5 F-01)
+        raise ManifestError(f"{path}: invalid YAML: nesting too deep") from e
+    except (ValueError, TypeError, OverflowError) as e:
+        # change-f68d51c2 (audit-9377f9b9-followup F-01): a scalar the
+        # constructor cannot convert (an invalid date, for one)
+        first = (str(e).splitlines() or [type(e).__name__])[0]
+        raise ManifestError(f"{path}: invalid YAML: {first}") from e
     if not isinstance(data, dict):
         raise ManifestError(f"{path}: must be a mapping")
 
@@ -185,6 +192,9 @@ def load_manifest(path: str) -> Manifest:
         if not isinstance(st_gates, list):
             raise _err(path, f"{where}.gates", "must be a list")
         for g in st_gates:
+            # change-e4428fd5 (audit-caab2052 L-11): type check before the membership test
+            if not isinstance(g, str):
+                raise _err(path, f"{where}.gates", "entries must be strings")
             if g not in BUILT_IN_GATES and g not in gates:
                 raise _err(path, f"{where}.gates", f"gate '{g}' is neither built in nor declared under gates")
         if st["owner"] == "loop" and "reviewer" not in st_gates:

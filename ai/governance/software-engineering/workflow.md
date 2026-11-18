@@ -6,8 +6,8 @@ Created: 2026 March 29
 
 ## Table of Contents
 
-[1.0 Execution Flowchart](#10-execution-flowchart)
-[Version History](#version-history)
+- [1.0 Execution Flowchart](#10-execution-flowchart)
+- [Version History](#version-history)
 
 ---
 
@@ -115,6 +115,7 @@ flowchart TD
 | 1.3     | 2026-07-08 | Replaced retired budget.py nodes (Budget_Init, Budget_Run, Budget_Run2) with config.yaml setup (Config_Init) and direct omlx_model_status resolution checks (Budget_Check, Budget_Check2), reflecting orchestrator.py's own tiered context-window resolver (change-d42e64a9) |
 | 1.4 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 | 1.5 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 1.6 | 2026-11-14 | Layout conformance with README.md v4.5: Table of Contents formatted as a bulleted list (dev/task.md work item 7a) |
 
 ---
 

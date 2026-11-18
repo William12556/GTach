@@ -45,6 +45,7 @@ State files reside in `ai/state/` (configured via `loop.state_dir` in `config.ya
 | `.complete` | Orchestrator | Completion marker (see §5.0 for content variants) |
 | `BLOCKED.md` | Worker | Unrecoverable failure details; seeds T06 issue |
 | `context-budget.md` | Orchestrator | Context window sizing report for planner |
+| `run.json` | Orchestrator | Run record: mode, task file, pid, start and end time, exit code. Written at start and again at the end of every run after logging starts; Overwatch derives the engine status from it (change-b8a6c445). When the run ends with an exception, `rc` is null and `error` names the exception type (change-86c958dd); an interrupt (Ctrl-C) is recorded as `CancelledError` |
 | `engine_<timestamp>.LOG` | Orchestrator | Full debug log; preserved across reset |
 
 The worker may write `work-summary.txt`, `work-complete.txt` and `BLOCKED.md` only; writes to the other engine files are refused (change-82dbf16a).
@@ -59,7 +60,7 @@ The worker may write `work-summary.txt`, `work-complete.txt` and `BLOCKED.md` on
 
 ### 2.3 Reset behaviour
 
-`--mode reset` removes all standard state files except `engine_*.LOG` and `context-budget.md`. Audit files (`audit-index.md`, `audit-report.md`, `audit-uml.md`) are also preserved — archive them to `ai/workspace/audit/` before resetting.
+`--mode reset` removes all standard state files except `engine_*.LOG` and `context-budget.md`. Audit files (`audit-index.md`, `audit-report.md`, `audit-uml.md`) are also preserved — archive them to `ai/workspace/audit/` before resetting. After an audit run ends with SHIP the engine copies the index and the report there itself, as `audit-<uuid>-index.md` and `audit-<uuid>-report.md`; when an archive for that UUID exists, the new pair takes the suffix `-2`, `-3`, … and nothing is overwritten (change-d4f527e7).
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -76,7 +77,7 @@ omlx:
   api_key: "local"                        # oMLX bearer token
   default_model: "<worker-model-id>"     # worker/base model ID as reported by /v1/models
   reviewer_model: "<reviewer-model-id>"  # optional; reviewer-phase model (falls back to default_model)
-  request_timeout_seconds: 300           # optional; bound on one model request (default 300)
+  request_timeout_seconds: 300           # optional; bound on one model request (default 300, maximum 86400)
 
 # MCP server definitions
 mcp_servers:
@@ -101,7 +102,7 @@ loop:
   max_iterations: 5         # outer loop cycles (work+review pairs)
   phase_max_iterations: 20  # inner tool-call iterations per phase
   mcp_error_threshold: 3    # consecutive MCP errors before BLOCKED
-  mcp_timeout_seconds: 120  # optional; bound on one MCP request (default 120)
+  mcp_timeout_seconds: 120  # optional; bound on one MCP request (default 120, maximum 86400)
   max_tool_calls_per_iteration: 10  # tool call cap per inner iteration
   preflight_check: false    # evaluate success criteria before first worker pass
   state_dir: "ai/state"   # state directory path (relative to project root)
@@ -114,10 +115,10 @@ execution:
 
 # Context budget
 context:
-  context_window: null    # null = try live oMLX query, then per-model override below
+  context_window: null    # null = per-model entry below, else try the live oMLX query
   budget_warn_pct: 0.80   # warn at this fraction of context window
   budget_abort_pct: 0.95  # abort phase at this fraction
-  model_context_windows:  # tier-3 per-model overrides (used when the live query returns null)
+  model_context_windows:  # tier-2 per-model entries (used before the live oMLX query)
     "<worker-model-id>": 262144
     "<reviewer-model-id>": 131072
 ```
@@ -128,7 +129,11 @@ context:
 
 For audit runs, set `max_iterations` to at least the number of items in `audit-index.md`.
 
-**Timeouts (change-711a57d5):** `request_timeout_seconds` (in the `omlx:` block or in a `providers.<name>` block) bounds one model request; the engine makes up to 3 attempts per request, and the SDK does not retry on its own. HTTP 400, 401 and 403 are not retried. `loop.mcp_timeout_seconds` bounds one MCP request; a timeout reaches the worker as a tool error. If long local prefills on oMLX end in timeouts, raise `request_timeout_seconds` for that provider. Both timeouts must be positive finite numbers; `.nan` and `.inf` are refused (change-5e8aea4f).
+**Timeouts (change-711a57d5):** `request_timeout_seconds` (in the `omlx:` block or in a `providers.<name>` block) bounds one model request; the engine makes up to 3 attempts per request, and the SDK does not retry on its own. HTTP 400, 401, 403 and 404 are not retried (404 since change-86c958dd). `loop.mcp_timeout_seconds` bounds one MCP request; a timeout reaches the worker as a tool error. If long local prefills on oMLX end in timeouts, raise `request_timeout_seconds` for that provider. Both timeouts must be positive numbers of at most 86400 seconds (one day); `.nan`, `.inf` and larger values are refused, and the run stops before any state is written (change-5e8aea4f; change-b8c75bac).
+
+**Configuration errors (change-b8c75bac):** the engine checks `ai/config.yaml` before it writes any state. The run ends with exit 1 and `configuration error (<file>): <field>: <reason>` when the file cannot be read, is not valid YAML or its top level is not a mapping; when the `loop:` block or `loop.state_dir` is missing; when `loop.max_iterations` is not a positive integer and `--max-iterations` is not given; when a timeout is invalid; when an `anthropic` provider's `max_tokens` is not a positive integer; or when a `gates.<name>.timeout_seconds` override is not a positive number. An empty `timeout_seconds:` in a gate override is refused; omit the key to use the manifest value. Since change-bae631c7 the same check covers YAML nested too deeply to load (`invalid YAML: nesting too deep`) and `context.model_context_windows`: an empty (null) block is accepted, any other value that is not a mapping is refused, and each entry must be a positive integer (`context.model_context_windows.<model>: must be a positive integer`). Since change-f68d51c2, an empty (null) `context:` or `execution:` block is read as empty, and any other value that is not a mapping is refused (`context: must be a mapping`, `execution: must be a mapping`). An unquoted value that YAML cannot convert, such as the date `2026-11-31`, is reported as invalid YAML.
+
+**MCP servers in the log (change-bae631c7):** the engine log records each MCP server connection, a server that failed to connect (the run continues without it) and a tool name offered by two servers (the server connected last keeps the name). The console shows the same lines. Console lines of the engine begin with `[engine]`.
 
 **Keys in error text (change-5e8aea4f):** in error text from a model request or the readiness check, a key from `api_key_env` or `api_key_keychain` appears as `API-KEY-REDACTED` in the run log, the console and `BLOCKED.md`, even when an endpoint echoes it back. Literal keys for `omlx` or a local `base_url` are not secrets and are shown unchanged.
 
@@ -183,7 +188,7 @@ python ai/engine/src/orchestrator.py --mode reset
 | Condition | `.complete` content | Action for planner |
 |---|---|---|
 | Reviewer issued SHIP | `COMPLETE: iteration N` | Review `work-summary.txt`; proceed to P15 test |
-| Duration limit reached | `DURATION_LIMIT: iteration N` | Review `audit-report.md`; archive and reset |
+| Duration limit reached (`--duration`) | Not written; `.timeout` holds `TIMEOUT: iteration N`; exit code 2 | Review `audit-report.md`; archive and reset |
 | BLOCKED | Not written | Read `BLOCKED.md`; create T06 issue via P03 |
 | `max_iterations` exhausted | Not written | Review partial state; extend or retry |
 | Context budget abort | Not written | Reduce `tactical_brief`; run `--mode reset`; retry |
@@ -192,13 +197,13 @@ python ai/engine/src/orchestrator.py --mode reset
 
 The `engine end rc=N` line is always written to the `.LOG` file on any clean exit. `.complete`, `review-result.txt`, `review-feedback.txt` and `awaiting-approval.md` are cleared after the gates and before every review phase, also when a gate cannot run and whatever their type (file, symlink, directory), so only the engine's SHIP path leaves `.complete`. An entry that cannot be removed ends the run BLOCKED naming it; `--mode reset` then returns 1. `engine_status` reports `shipped` only for a regular `.complete` file. Gate commands run worker-written code with the operator's permissions (design DI-06): confirm a SHIP reported by `engine_status` with `SHIPPED` and `engine end rc=0` in the log. If this line is absent from the log, the process terminated abnormally.
 
-**Stage tracking and approvals (change-ee5357ec).** A T03 prompt inside `ai/workspace/` is a tracked work item. The engine derives its stage from its documents and from the approvals committed in `ai/approvals.yaml`. Before a `loop` or `worker` run it checks every earlier stage on the work item's path (SE: issue, change, prompt); when evidence or an approval is missing it lists what is missing and exits with code 3, before any state change. Record an approval from the project root:
+**Stage tracking and approvals (change-ee5357ec).** A task path inside `ai/workspace/` is tracked, whatever its name or file type (change-4b0a5592); the approved T03 prompt of a work item is the only one that runs. The engine derives its stage from its documents and from the approvals committed in `ai/approvals.yaml`. Before a `loop` or `worker` run it checks every earlier stage on the work item's path (SE: issue, change, prompt); when evidence or an approval is missing it lists what is missing and exits with code 3, before any state change. Record an approval from the project root:
 
 ```bash
 python ai/engine/src/approve.py <uuid> <stage>   # e.g. approve.py 1a2b3c4d prompt
 ```
 
-The command appends the entry and commits `ai/approvals.yaml` alone. Uncommitted edits to the file are ignored. The entry records the git blob hash of each document of the approved stage, keyed by its path under `ai/workspace/` (change-82dbf16a). When a document of an approved stage is edited, or another document with the same UUID is added, the pre-run check reports that the approval no longer matches; review the documents and run `approve.py` again. Record an approval after the document is final, including its status field. The task passed to the engine must be the approved prompt itself: one of the work item's active documents in `ai/workspace/prompt/` as `stages.py` lists them, named by its own file name (no symlink under another work item's name). The engine reads the task file once, before the check, and runs exactly those bytes; they must equal the approved content, so an edit made during start-up cannot reach the run. A tracked task that cannot be read is refused (exit 3). Any other file for a tracked work item is refused (exit 3; engine-mcp refuses it before starting). Free-text tasks and prompt files outside `ai/workspace/` are not tracked.
+The command appends the entry and commits `ai/approvals.yaml` alone. The engine ignores uncommitted edits to the file; `approve.py` commits the working file as it is, including any hand edits present before the call. If `git add` or `git commit` fails (for example a pre-commit hook), the command exits 1 with git's output, restores the file to its content before the call and resets its index entry to HEAD; run it again once the cause is fixed. Approvals are read from the project directory, so a project in a subdirectory of a repository works (change-4b0a5592). The entry records the git blob hash of each document of the approved stage, keyed by its path under `ai/workspace/` (change-82dbf16a). When a document of an approved stage is edited, or another document with the same UUID is added, the pre-run check reports that the approval no longer matches; review the documents and run `approve.py` again. Record an approval after the document is final, including its status field. The task passed to the engine must be the approved prompt itself: one of the work item's active documents in `ai/workspace/prompt/` as `stages.py` lists them, named by its own file name (no symlink under another work item's name). The engine reads the task file once, before the check, and runs exactly those bytes; they must equal the approved content, so an edit made during start-up cannot reach the run. A tracked task that cannot be read is refused (exit 3). Any other path in `ai/workspace/`, including a prompt not named `prompt-<uuid>-<name>.md`, a directory or a FIFO, is refused (exit 3; engine-mcp refuses it before starting). A broken symlink exits 1 (`task file not found`). Since change-d4f527e7 a symlink in `ai/workspace/` that resolves outside it is tracked and refused (exit 3), and a path that spells `ai/workspace` in another letter case on a case-insensitive file system such as default APFS is tracked; another spelling of the approved prompt's path is expected to be refused (not yet confirmed on macOS; audit-4b0a5592 F-01, F-02). The same holds for a task below a symlinked directory in `ai/workspace/` that leads outside it. An entry in `ai/workspace/` with a document name that is not a regular file is ignored by the scan and listed as a warning by `stages.py` and `work_status` (`<path>: not a regular file; ignored`). Pass the approved prompt by its own path. Free-text tasks and prompt files outside `ai/workspace/` are not tracked.
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -237,7 +242,7 @@ Remediation: reduce brief size, run `--mode reset`, retry.
 
 ### 6.5 Devstral context window
 
-Devstral Small 2 (2512) reports `max_context_window: 393216` via oMLX, but that figure is an unvalidated RoPE-scaling ceiling; the vendor-validated value is 262144. The orchestrator resolves the window through the four-tier chain (live oMLX query, then the per-model `context.model_context_windows` override) — `models_dir` and on-disk `config.json` reading were retired (change-d42e64a9). This project forces 262144 for the Devstral worker and 131072 for the Magistral reviewer via `model_context_windows`. Magistral does not expose a live `max_context_window`, so its override is required. For audit runs with per-iteration bounded context, this window is rarely a practical constraint.
+Devstral Small 2 (2512) reports `max_context_window: 393216` via oMLX, but that figure is an unvalidated RoPE-scaling ceiling; the vendor-validated value is 262144. The orchestrator resolves the window through the four-tier chain (global `context.context_window`, then the per-model `context.model_context_windows` entry, then the live oMLX query; change-86c958dd) — `models_dir` and on-disk `config.json` reading were retired (change-d42e64a9). This project forces 262144 for the Devstral worker and 131072 for the Magistral reviewer via `model_context_windows`. Magistral does not expose a live `max_context_window`, so its override is required. For audit runs with per-iteration bounded context, this window is rarely a practical constraint.
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -256,7 +261,7 @@ Recipes are YAML files. The `instructions` field is injected as the system promp
 
 The governance model's `manifest.yaml` maps each run type (`loop`, `audit`) to a recipe pair. A recipe path resolves against the model folder first (`ai/governance/<model>/`), then `ai/engine/recipes/`. The loop recipes are in `ai/engine/recipes/`; the SE audit recipes are in `ai/governance/software-engineering/recipes/`. The orchestrator selects the `audit` run type when `audit-index.md` is present in the state directory, otherwise `loop`.
 
-Gates: the loop stage's gates come from the manifest (SE: `syntax`, `pytest`, `reviewer`). Each result is logged as `gate=<name> type=<type> result=<result>`. A failing command gate overrides SHIP. A command gate that cannot run (`UNCHECKED`, for example a wrong `gates.python`) ends the run BLOCKED and `BLOCKED.md` names the gate. A gate with nothing to check is not applicable and is listed in `awaiting-approval.md` (change-82dbf16a). Override a command gate or the interpreter for `{python}` under `gates:` in `ai/config.yaml` (see the template). After SHIP the engine writes `awaiting-approval.md`; for a T03 prompt task that ends BLOCKED, `BLOCKED.md` names the stage to return to (change-e58fd295).
+Gates: the loop stage's gates come from the manifest (SE: `syntax`, `pytest`, `reviewer`). Each result is logged as `gate=<name> type=<type> result=<result>`. A failing command gate overrides SHIP, and so does a syntax FAIL. The syntax gate compiles only files inside the project, with its bytecode in a temporary directory, not beside the file. When `tests/` exists and the gate has a target, the pytest gate also runs `pytest --collect-only -q tests`, so a module there that fails on import fails the gate. This step uses `gates.python` (or the engine's interpreter), not a custom gate command, so that interpreter must provide pytest and the project's dependencies. The edit-failure, post-write and preflight compile checks also keep their bytecode out of the project, and the preflight check marks a path outside the project UNCHECKED (change-a5bd4fe1). A command gate that cannot run (`UNCHECKED`, for example a wrong `gates.python`) ends the run BLOCKED and `BLOCKED.md` names the gate. A gate with nothing to check is not applicable and is listed in `awaiting-approval.md` (change-82dbf16a). Override a command gate or the interpreter for `{python}` under `gates:` in `ai/config.yaml` (see the template). After SHIP the engine writes `awaiting-approval.md`; for a T03 prompt task that ends BLOCKED, `BLOCKED.md` names the stage to return to (change-e58fd295).
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -325,7 +330,7 @@ curl -s http://localhost:8000/v1/models -H "Authorization: Bearer local"
 
 **Remediation:** If the file is a genuine deliverable, add it to `deliverable.files` in the prompt and rerun. Directory creation on the way to a declared file is allowed. The reviewer receives the deliverables as absolute paths in a `[DELIVERABLES]` block.
 
-Related refusals (change-82dbf16a): `write refused: … is or contains an engine signal file` (the worker targeted an engine-owned state file, or a directory holding one; compared case-insensitively); `write refused: tool '…' was called without a recognised path argument`; `tool refused tool=… reason=…` in the log (a tool not offered to the phase, or any write tool in the review phase). Paths are compared after symlink resolution.
+Related refusals (change-82dbf16a): `write refused: … is or contains an engine signal file` (the worker targeted an engine-owned state file, or a directory holding one; compared case-insensitively); `write refused: tool '…' was called without a recognised path argument`; `tool refused tool=… reason=…` in the log (a tool not offered to the phase, or any write tool in the review phase). Paths are compared after symlink resolution. `write refused: path '…' cannot be resolved` (for example a path containing a NUL character). A tool whose name the engine does not recognise as read-only is treated as a write tool: it is checked against the scope and not offered to the reviewer. Read-only names start with `read`, `list`, `grep`, `search`, `stat`, `get_file_info`, `find`, `head`, `tail`, `cat`, `diff` or `count` and contain no write verb (change-a5bd4fe1). Write verbs are matched in any letter case and include `append`, `copy`, `truncate`, `save`, `update`, `upload`, `set`, `put` and `insert`, so `searchAndReplace` or `read_and_append` is a write tool (change-b8c75bac). Verbs match anywhere in the name, so a read tool of another MCP server such as `list_datasets` or `read_output` is also treated as a write tool: it is not offered to the reviewer, and without a path argument the worker's call is refused (audit-b8c75bac F-01).
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -358,6 +363,20 @@ Related refusals (change-82dbf16a): `write refused: … is or contains an engine
 | 1.20 | 2026-11-03 | Internal links changed from Obsidian anchor syntax to GitHub heading anchors; Table of Contents formatted as a bulleted list |
 | 1.21 | 2026-11-04 | §3.0: retry wording corrected to 3 attempts (audit-711a57d5 F-06) |
 | 1.22 | 2026-11-04 | §3.0: finite timeouts; API key redaction in error text (change-5e8aea4f) |
+| 1.23 | 2026-11-05 | §2.1: `run.json` run record (change-b8a6c445) |
+| 1.24 | 2026-11-05 | §7.0: syntax FAIL overrides SHIP, syntax gate bytecode and project paths, pytest collection-only pass; §8.7: unresolvable paths, fail-closed tool classification (change-a5bd4fe1) |
+| 1.25 | 2026-11-05 | §7.0: collection pass conditions and interpreter; bytecode and project paths at the other compile checks (audit-a5bd4fe1 F-03, F-05) |
+| 1.26 | 2026-11-06 | §3.0: maximum timeout of 86400 seconds (change-b8c75bac) |
+| 1.27 | 2026-11-06 | §3.0: configuration errors; §8.7: write verbs in any letter case (change-b8c75bac) |
+| 1.28 | 2026-11-06 | §8.7: write verbs match as substrings (audit-b8c75bac F-01) |
+| 1.29 | 2026-11-06 | §2.1: `run.json` error field; §3.0: HTTP 404 not retried, per-model entry before the live query; §6.5: tier order (change-86c958dd) |
+| 1.30 | 2026-11-06 | §2.1: an interrupt is recorded as `CancelledError` (audit-86c958dd F-04) |
+| 1.31 | 2026-11-07 | §5.0: tracking by location whatever the name or file type; `approve.py` restores the file after a failed commit; nested projects (change-4b0a5592) |
+| 1.32 | 2026-11-07 | §5.0: `approve.py` commits the working file as it is; untracked symlink and letter-case exceptions (audit-4b0a5592 F-01, F-02, F-08, F-09) |
+| 1.33 | 2026-11-14 | §3.0: configuration checks for deeply nested YAML and `context.model_context_windows`; MCP connection, failure and duplicate-tool lines in the engine log; console lines begin with `[engine]` (change-bae631c7) |
+| 1.34 | 2026-11-14 | §2.0: audit archive names; §5.0: tracking by file identity, outward symlink refused, non-regular entries ignored with a warning (change-d4f527e7) |
+| 1.35 | 2026-11-14 | §5.0: a duration-limit exit writes `.timeout` and returns exit code 2; it does not write `.complete` (change-541f5c58) |
+| 1.36 | 2026-11-18 | §3.0: null and non-mapping `context:` and `execution:` blocks; unconvertible YAML values (change-f68d51c2) |
 
 ---
 

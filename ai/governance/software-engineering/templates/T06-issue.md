@@ -126,8 +126,10 @@ version_history:
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
-  schema_type: "t03_issue"
+  schema_type: "issue"
 ```
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -415,8 +417,10 @@ properties:
       schema_type:
         type: string
         enum:
-          - t03_issue
+          - issue
 ```
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -428,6 +432,8 @@ properties:
 | 1.1     | 2025-12-12 | UUID pattern migration: Replaced NNNN sequence numbering with 8-character UUID format (^[0-9a-f]{8}$) in all fields |
 | 1.2     | 2026-03-14 | Added `enhancement` and `requirement_change` to `issue_info.type` enum; added `requirement_change` to `source.origin` enum to support enhancement and requirements-change workflows via P03 |
 | 1.3     | 2026-06-16 | Standardised copyright line format (template metadata default and document footer) |
+| 1.4     | 2026-11-07 | change-e4428fd5: schema_type class word |
+| 1.5 | 2026-11-14 | Layout conformance with README.md v4.5: Return to Table of Contents links added (dev/task.md work item 7a) |
 
 ---
 

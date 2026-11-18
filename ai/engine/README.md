@@ -135,15 +135,15 @@ execution:
   strict_tactical_brief: false   # true + engine profile: fail fast on missing brief
 
 context:
-  context_window: null           # null = try live oMLX query, then per-model override below
+  context_window: null           # null = per-model entry below, else try the live oMLX query
   budget_warn_pct: 0.80
   budget_abort_pct: 0.95
-  model_context_windows:         # per-model overrides, used when the live query returns null
+  model_context_windows:         # per-model entries, used before the live oMLX query
     "<worker-model-name>": 262144
     "<reviewer-model-name>": 131072
 ```
 
-`orchestrator.py` is the sole context-window resolver: an explicit `context.context_window` override, else a live oMLX admin-API query, else the per-model `context.model_context_windows` entry, else unresolved. If a model's live query returns null (as some models do), set its entry in `model_context_windows` explicitly.
+`orchestrator.py` is the sole context-window resolver: an explicit `context.context_window` override, else the per-model `context.model_context_windows` entry, else a live oMLX admin-API query, else unresolved (change-86c958dd). Set an entry for every API model and for any oMLX model whose live value should not be used.
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -244,6 +244,7 @@ The tests use stub model and MCP clients; no oMLX endpoint is required.
 | 2.11 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 | 2.12 | 2026-10-01 | §2.0 heading: Worker/Reviewer Profiles (audit-14e05e35 M-03, change-82dbf16a) |
 | 2.13 | 2026-10-14 | §1.0, §2.0, §4.0: per-role providers (oMLX, Mistral API, Anthropic API) replace the oMLX-only wording; API key sources (change-53c6f252, change-7d953510) |
+| 2.14 | 2026-11-06 | §6.0: context-window order, per-model entry before the live query (change-86c958dd) |
 
 ---
 

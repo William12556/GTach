@@ -17,9 +17,12 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import locale
 import os
+import stat
 import subprocess
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import stages as ST  # noqa: E402
@@ -28,6 +31,43 @@ from manifest import ManifestError, load_manifest, locate_manifest  # noqa: E402
 HEADER = ("# Operator approvals (design-14e05e35 §8.2). Written by ai/engine/src/approve.py.\n"
           "# Only committed entries count. Do not edit by hand.\n"
           "approvals:\n")
+
+
+def _write_atomic(path: str, data: bytes) -> None:
+    """
+    change-d4f527e7 (audit-caab2052 L-10): write data to a temporary file
+    beside the file and move it into place with os.replace, so a reader sees
+    the previous content or the new content. A symlink at path is written
+    through, as before. On any failure the temporary file is removed and the
+    exception re-raised.
+    """
+    target = os.path.realpath(path)
+    # change-f68d51c2 (audit-d4f527e7 F-01): the temporary file is created
+    # exclusively with mkstemp, never at a predictable name; its mode is that
+    # of an existing regular file at target, else 0o666 & ~umask.
+    fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(target),
+                                    prefix=f".{os.path.basename(target)}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as fh:
+            fh.write(data)
+        try:
+            st = os.lstat(target)
+        except OSError:
+            st = None
+        if st is not None and stat.S_ISREG(st.st_mode):
+            mode = stat.S_IMODE(st.st_mode)
+        else:
+            umask = os.umask(0)
+            os.umask(umask)
+            mode = 0o666 & ~umask
+        os.chmod(tmp_path, mode)
+        os.replace(tmp_path, target)
+    except BaseException:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def approve(project_root: str, uuid: str, stage: str, manifest=None,
@@ -64,7 +104,12 @@ def approve(project_root: str, uuid: str, stage: str, manifest=None,
     blob_map = ", ".join(f'"{n}": "{h}"' for n, h in sorted(blobs.items()))
     entry = (f'  - {{ uuid: "{uuid}", stage: "{stage}", date: "{stamp}", '
              f'blobs: {{ {blob_map} }} }}\n')
+    # change-4b0a5592 (audit-caab2052 L-05): the file as it was before the
+    # call, restored if git add or git commit fails.
+    prior: bytes | None = None
     if os.path.exists(path):
+        with open(path, "rb") as fh:
+            prior = fh.read()
         with open(path) as fh:
             current = fh.read()
         if "approvals:" not in current:
@@ -74,15 +119,42 @@ def approve(project_root: str, uuid: str, stage: str, manifest=None,
         content = current + entry
     else:
         content = HEADER + entry
-    with open(path, "w") as fh:
-        fh.write(content)
+    # Encoded as the text-mode read above decodes (the locale's encoding).
+    _write_atomic(path, content.encode(locale.getpreferredencoding(False)))
 
     rel = ST.APPROVALS_FILE
     for cmd in (["git", "-C", project_root, "add", "--", rel],
                 ["git", "-C", project_root, "commit", "-q", "-m", f"approve: {uuid} {stage}", "--", rel]):
         proc = subprocess.run(cmd, capture_output=True, text=True)
         if proc.returncode != 0:
-            return 1, f"git failed ({' '.join(cmd[3:5])}): {proc.stderr.strip() or proc.stdout.strip()}"
+            # change-4b0a5592 (audit-caab2052 L-05): never an empty detail;
+            # the file and its index entry are left as they were.
+            detail = (proc.stderr.strip() or proc.stdout.strip()
+                      or f"exit code {proc.returncode}")
+            message = f"git failed ({' '.join(cmd[3:5])}): {detail}"
+            # Write the prior bytes back, or remove the file the call created;
+            # then reset its index entry to HEAD, or drop it when there is no HEAD.
+            reasons: list[str] = []
+            try:
+                if prior is None:
+                    if os.path.lexists(path):
+                        os.remove(path)
+                else:
+                    _write_atomic(path, prior)
+            except OSError as e:
+                reasons.append(str(e))
+            reset = subprocess.run(["git", "-C", project_root, "reset", "-q", "--", rel],
+                                   capture_output=True, text=True)
+            if reset.returncode != 0:  # no HEAD
+                reset = subprocess.run(["git", "-C", project_root, "rm", "-q", "--cached",
+                                        "--ignore-unmatch", "--", rel],
+                                       capture_output=True, text=True)
+                if reset.returncode != 0:
+                    reasons.append(reset.stderr.strip() or reset.stdout.strip()
+                                   or f"git rm exit code {reset.returncode}")
+            if reasons:
+                message += f"; {rel} could not be restored: {'; '.join(reasons)}"
+            return 1, message
     item = ST.scan(project_root, manifest).work_items[uuid]
     status = (f"current stage: {item.current_stage}" if item.current_stage
               else "all stages complete")

@@ -104,8 +104,10 @@ version_history:
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
   template_version: "1.0"
-  schema_type: "t07_requirements"
+  schema_type: "requirements"
 ```
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -371,8 +373,10 @@ properties:
       schema_type:
         type: string
         enum:
-          - t07_requirements
+          - requirements
 ```
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -383,6 +387,8 @@ properties:
 | 1.0     | 2025-12-13 | Initial creation for P10 Requirements protocol |
 | 1.1     | 2026-03-12 | Added naming_conventions section for early capture of element naming rules |
 | 1.2     | 2026-06-16 | Standardised copyright line format (template metadata default and document footer) |
+| 1.3     | 2026-11-07 | change-e4428fd5: schema_type class word |
+| 1.4 | 2026-11-14 | Layout conformance with README.md v4.5: Return to Table of Contents links added (dev/task.md work item 7a) |
 
 ---
 

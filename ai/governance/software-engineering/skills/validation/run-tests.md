@@ -6,12 +6,12 @@ Created: 2026 July 17
 
 ## Table of Contents
 
-[1.0 Purpose](#10-purpose)
-[2.0 Installation](#20-installation)
-[3.0 Hook Configuration](#30-hook-configuration)
-[4.0 Hook Script](#40-hook-script)
-[5.0 Scope and Limitations](#50-scope-and-limitations)
-[Version History](#version-history)
+- [1.0 Purpose](#10-purpose)
+- [2.0 Installation](#20-installation)
+- [3.0 Hook Configuration](#30-hook-configuration)
+- [4.0 Hook Script](#40-hook-script)
+- [5.0 Scope and Limitations](#50-scope-and-limitations)
+- [Version History](#version-history)
 
 ---
 
@@ -125,6 +125,7 @@ exit 0
 | 1.1 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
 | 1.2 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 | 1.3 | 2026-10-01 | Terminology: worker/reviewer execution host (audit-14e05e35 M-03, change-82dbf16a) |
+| 1.4 | 2026-11-14 | Layout conformance with README.md v4.5: Table of Contents formatted as a bulleted list (dev/task.md work item 7a) |
 
 ---
 

@@ -140,6 +140,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - `review-feedback.txt`: Feedback for the next iteration, from the reviewer's final response or a gate
       - `.complete`: Success marker
       - `BLOCKED.md`: Failure details
+      - `run.json`: Run record (mode, task file, pid, start, end, exit code), written by the engine at start and end
     - Boundary Conditions:
       - MAX_ITERATIONS: Configurable per task (default 10-50)
       - TOKEN_BUDGET: Aggregate token limit
@@ -181,7 +182,7 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Issue: Resolved and verified, corresponding change implemented and tested
       - Change: Implemented, tested, design updated, human accepted
       - Prompt: Code generated successfully, human confirmed
-      - Test: Executed with passing results, result document created
+      - Test: Executed with passing results, result document created; or status `superseded` when the code it covers was removed
       - Result: Tests passed, no issues created, acceptance confirmed
       - Audit: Per P02.8 Audit Closure (P02.8.1 criteria, P02.8.2 process)
     - P00.14.4 Archival Procedure
@@ -314,6 +315,7 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Milestone-based: Upon completion of major development phases
     - Human-requested: Ad-hoc audits when compliance concerns arise
     - Baseline: After initial code generation before production deployment
+    - Verification: After implementation of a change that altered source code (P02.10.1)
     - Mode selection: Human-requested audits resolve to one of two modes — strategic (Planner) or tactical (engine audit loop) — per P02.9
   - P02.3 Audit Scope
     - Protocol compliance: All protocols
@@ -325,7 +327,7 @@ python ai/engine/src/orchestrator.py --mode loop \
   - P02.4 Audit Procedure
     - P02.4.1 Strategic-led (frontier reasoning)
       - Planner: Conducts systematic review of source code against governance requirements
-      - Planner: Documents findings with severity classification (critical, high, medium, low)
+      - Planner: Documents findings with severity classification (critical, high, medium, low, info)
       - Planner: Provides evidence for each finding (file paths, line numbers, specific violations)
       - Planner: Calculates compliance metrics (percentage, deficiency counts by severity)
     - P02.4.2 Tactical-led (engine audit loop)
@@ -354,6 +356,7 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Planner: References source code audit report in issue documents
     - Planner: Issue resolution follows standard P03 → P04 → implementation workflow
     - Planner: Tracks remediation progress in audit report updates
+    - Planner: Disposes of medium, low and info findings per P02.11
   - P02.7 Audit Trail
     - Planner: Maintains chronological audit history
     - Planner: Links related audits (initial → follow-up → closure)
@@ -365,8 +368,8 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Completion documented in audit report
       - Human approval obtained
     - P02.8.2 Closure Process
-      - Planner: Conducts follow-up audit after remediation completed, when remediation changed source code
-      - Human: May waive the follow-up audit when remediation changed documents only; waiver recorded in the audit report closure block
+      - Planner: Conducts a verification audit (P02.10.1) after remediation completed, when remediation changed source code
+      - Human: May waive the verification audit when remediation changed documents only; waiver recorded in the audit report closure block
       - Planner: Verifies all closure criteria satisfied
       - Planner: Documents closure status with final compliance metrics
       - Planner: Records closure date and approver
@@ -397,6 +400,33 @@ python ai/engine/src/orchestrator.py --mode loop \
       - Flag: orchestrator selects audit recipes automatically when audit-index.md is present in the state directory
       - Procedure: ai/governance/software-engineering/doc/guide-audit-loop.md
     - Both modes terminate at audit-<uuid>-<name>.md (T08) and feed remediation via P02.6 (P03)
+
+  - P02.10 Audit Classes
+    - The class states the purpose and depth of an audit; it is independent of the mode (P02.9), which states the actor
+    - T08 field audit_info.class records the class
+    - P02.10.1 Verification audit
+      - Purpose: confirm that one change meets its acceptance criteria and introduces no regression
+      - Trigger: after implementation of a change that altered source code (P02.8.2)
+      - Scope: the change's acceptance criteria and test cases; the mutations the change defines; the full test suite; commit scope against the change's affected components
+      - Excluded: exploratory mutations; probes of code the change did not alter
+      - Findings: an unmet acceptance criterion; a regression; a defect introduced on lines the change altered
+      - Observations: a pre-existing defect noticed in passing is recorded in one line under observations; it is not a finding and creates no work
+    - P02.10.2 Ad-hoc audit
+      - Purpose: find defects at any depth
+      - Trigger: human request only; never automatic
+      - Scope: P02.3; exploratory probes and additional mutations permitted
+      - Findings: triaged per P02.11
+
+  - P02.11 Triage and Stop Conditions
+    - Disposition by severity:
+      - Critical, high: remediated before audit closure (P02.6, P02.8.1)
+      - Medium: remediated before the next release
+      - Security-relevant low: treated as medium
+      - Other low: recorded in the task register (P00.20) as deferred; remediated when the affected code changes for another reason, or in a release batch
+      - Info: recorded in the task register only when an action is recommended
+      - Surviving mutation (test gap): info
+    - Change stop condition: a change closes when its verification audit reports no unmet acceptance criterion, no regression and no introduced defect of medium severity or higher; an introduced low defect is disposed of per the low rows above
+    - Remediation rounds: at most one remediation round per change; findings remaining after that round are recorded in the task register and do not hold the change open
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -553,10 +583,9 @@ build/
 deprecated/
 ai/workspace/report/
 ai/workspace/ai/
-ai/workspace/proposal/
-ai/workspace/proposal/closed/
 ai/state/
 ai/dashboard-alerts.md
+ai-local/
 
 # Worker and Reviewer
 CLAUDE.local.md
@@ -612,7 +641,7 @@ test.txt
         │       │   └── closed/
         │       ├── issues/
         │       │   └── closed/
-        │       ├── proposal/         # (excluded from git)
+        │       ├── proposal/
         │       │   └── closed/
         │       ├── prompt/
         │       │   └── closed/
@@ -623,7 +652,7 @@ test.txt
         │       │   ├── closed/
         │       │   └── result/
         │       │       └── closed/
-        ├── ai-local/                 # Project files relocated from ai/ by propagation (see RELOCATED.md)
+        ├── ai-local/                 # Project files relocated from ai/ by propagation (see RELOCATED.md; excluded from git)
         ├── .claude/                  # Claude Code profiles only; most contents git-tracked (see P10.2 excludes)
         │   ├── settings.json         # Team-shared, git-tracked
         │   ├── hooks/                # Hook scripts (e.g. run-tests.sh), git-tracked
@@ -1274,6 +1303,12 @@ See [workflow.md](workflow.md).
 | 12.5 | 2026-10-23 | P10.6: framework source organised by component; ai/src/ replaced by ai/webui/ (Overwatch) and ai/core/ (reserved) (change-14cf601f). Non-breaking. |
 | 12.6 | 2026-11-03 | Internal links changed from Obsidian anchor syntax to GitHub heading anchors; Table of Contents formatted as a bulleted list. Non-breaking. |
 | 12.7 | 2026-11-04 | P00.10 cross-linking and P12.9: GitHub heading anchors replace Obsidian internal link syntax for all documents; anchor rule stated. Non-breaking. |
+| 12.8 | 2026-11-05 | P00.11 state files: `run.json` run record (change-b8a6c445). Non-breaking. |
+| 12.9 | 2026-11-07 | Appendix A.5: `schema_type` class words, numbered values accepted as aliases, class inferred from the root key for active documents; P00.14.3 and T04: test status `superseded` (change-e4428fd5). Non-breaking. |
+| 12.10 | 2026-11-07 | Appendix A.5: YAML that does not parse is reported (error, or warning for a closed record); `closed/` judged below the workspace directory (change-9377f9b9). Non-breaking. |
+| 12.11 | 2026-11-11 | P10.2 .gitignore: removed ai/workspace/proposal/ and ai/workspace/proposal/closed/; added ai-local/. P10.6 layout comments aligned: proposal/ no longer marked excluded; ai-local/ marked excluded from git. Non-breaking. |
+| 12.12 | 2026-11-14 | Appendix A.5: the template schemas describe new documents; numbered `schema_type` values are valid for the checkers only (report-7e96c15c F-01). Non-breaking. |
+| 12.13 | 2026-11-18 | P02.10 audit classes (verification, ad-hoc) and P02.11 triage and stop conditions; P02.2 verification trigger; P02.4.1 info severity; P02.6 disposition per P02.11; P02.8.2 follow-up audit replaced by the verification audit; T08 1.5: optional `class`, `observations` and `info` findings. Non-breaking. |
 
 ---
 [Return to Table of Contents](#table-of-contents)
@@ -1389,31 +1424,46 @@ citations are dotted and fully qualified: `<identifier>.<a>[.<b>]`.
 Reserved identifiers carry no content. A citation resolving to one is a
 defect, not a reference.
 
-### A.5 Unmigrated Namespace — `schema_type`
+### A.5 Retired Namespace — `schema_type`
 
-Template document schemas carry a numeric identifier in their `schema_type`
-field: `t01_design`, `t02_change`, `t03_issue` and so on. **These were not
-migrated and retain the retired numbering.** `T02-design.md` declares
-`schema_type: "t01_design"`.
+Since governance 12.9 (change-e4428fd5), `metadata.schema_type` holds the
+document's class word: `requirements`, `design`, `prompt`, `test`, `result`,
+`issue`, `change` or `audit`. Templates T01, T02 and T04 to T08 emit it. T03
+prompts carry no governance metadata.
 
-This is a recorded exception, not an oversight left standing. The numeric
-prefix cannot be migrated in isolation: `linter.py` keys its validation rules,
-enum constraints, identifier patterns and coupling paths on these strings, and
-every document in the frozen corpus carries them. Migrating the namespace would
-require either editing frozen documents or breaking their validation, and
-`CON-04` forecloses both.
+The numbered values are retired but stay valid, so no document needs editing.
+They are valid for `linter.py` and `protocol_checker.py` only. The JSON Schema
+in each template describes a new document and lists the class word alone; the
+checkers do not apply the template schemas to existing documents.
+`linter.py` and `protocol_checker.py` resolve a document's class in this order:
 
-| Field value | Template document |
-|---|---|
-| `t01_design` | `T02-design.md` |
-| `t02_change` | `T07-change.md` |
-| `t03_issue` | `T06-issue.md` |
-| `t04_prompt` | `T03-prompt.md` |
-| `t05_test` | `T04-test.md` |
-| `t06_result` | `T05-result.md` |
-| `t07_requirements` | `T01-requirements.md` |
-| `t08_audit` | `T08-audit.md` |
+1. A class word.
+2. A numbered value of either scheme, `t01_` to `t08_` followed by a class word,
+   as an alias for that class word (table below).
+3. With no `schema_type`, the class of its root key (`prompt_info`, `test_info`,
+   `result_info`, `issue_info`, `change_info`, `audit_info`), but only for a
+   document outside `closed/` whose file name prefix is that class. A closed
+   document without `schema_type` is not validated, as before 12.9.
+4. Any other value gives a warning naming the value.
 
-The durable remedy is to retire the numeric prefix in favour of the class word,
-which is scheme-independent — the same correction this migration made to
-protocol citations. That is deferred to its own change.
+| Class word | Template | Retired scheme | Template scheme |
+|---|---|---|---|
+| `requirements` | `T01-requirements.md` | `t07_requirements` | `t01_requirements` |
+| `design` | `T02-design.md` | `t01_design` | `t02_design` |
+| `prompt` | `T03-prompt.md` | `t04_prompt` | `t03_prompt` |
+| `test` | `T04-test.md` | `t05_test` | `t04_test` |
+| `result` | `T05-result.md` | `t06_result` | `t05_result` |
+| `issue` | `T06-issue.md` | `t03_issue` | `t06_issue` |
+| `change` | `T07-change.md` | `t02_change` | `t07_change` |
+| `audit` | `T08-audit.md` | `t08_audit` | `t08_audit` |
+
+In `protocol_checker.py`, a prompt in `closed/` with `schema_type` that fails
+the self-containment check gives a warning marked `(closed record)`, not an
+error. A closed prompt without `schema_type` is not checked. Every other check
+keeps its severity in `closed/`.
+
+In `linter.py`, a first YAML block that does not parse, or nests too deeply,
+gives `YAML block does not parse: <problem>`: an error, or a warning marked
+`(closed record)` for a document in `closed/`; `protocol_checker.py` skips the
+document. Both here and in item 3, `closed/` is judged on the path below the
+workspace directory (change-9377f9b9).

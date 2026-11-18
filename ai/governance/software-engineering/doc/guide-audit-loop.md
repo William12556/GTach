@@ -6,18 +6,15 @@ Created: 2026 June 02
 
 ## Table of Contents
 
-[1.0 Purpose](#10-purpose)
-[2.0 Pre-Audit Steps](#20-pre-audit-steps)
-[2.1 Generate the UML Map](#21-generate-the-uml-map)
-[2.2 Generate audit-index.md](#22-generate-audit-indexmd)
-[2.3 Configure config.yaml](#23-configure-configyaml)
-[3.0 Author the T03 Brief](#30-author-the-t03-brief)
-[4.0 Launch](#40-launch)
-[5.0 Monitoring](#50-monitoring)
-[6.0 Interpreting audit-report.md](#60-interpreting-audit-reportmd)
-[7.0 Post-Run Workflow](#70-post-run-workflow)
-[8.0 Termination Reference](#80-termination-reference)
-[Version History](#version-history)
+- [1.0 Purpose](#10-purpose)
+- [2.0 Pre-Audit Steps](#20-pre-audit-steps)
+- [3.0 Author the T03 Brief](#30-author-the-t03-brief)
+- [4.0 Launch](#40-launch)
+- [5.0 Monitoring](#50-monitoring)
+- [6.0 Interpreting audit-report.md](#60-interpreting-audit-reportmd)
+- [7.0 Post-Run Workflow](#70-post-run-workflow)
+- [8.0 Termination Reference](#80-termination-reference)
+- [Version History](#version-history)
 
 ---
 
@@ -35,7 +32,7 @@ The planner performs all preparation steps before launching the engine. These st
 
 ### 2.1 Generate the UML Map
 
-The planner reads the target `src/` tree using the Filesystem MCP and mcp-grep, then produces a Mermaid class diagram covering modules, classes, and key functions. This is saved as `ai/state/audit-uml.md`.
+The planner reads the target `src/` tree using the Filesystem MCP and mcp-ripgrep, then produces a Mermaid class diagram covering modules, classes, and key functions. This is saved as `ai/state/audit-uml.md`.
 
 The UML serves two purposes:
 - Orients the worker each iteration without requiring it to re-traverse the codebase
@@ -43,7 +40,7 @@ The UML serves two purposes:
 
 Minimum content for `audit-uml.md`:
 
-```markdown
+````markdown
 # Codebase UML — <project name>
 
 Generated: <date>
@@ -63,8 +60,7 @@ classDiagram
 
 - `src/module_a.py` — <brief description>
 - `src/module_b.py` — <brief description>
-```
-```
+````
 
 Present `audit-uml.md` to the human for review before proceeding.
 
@@ -84,7 +80,7 @@ Format — one item per line, unchecked:
 - [ ] src/mcp_client.py :: MCPClient.connect
 - [ ] src/mcp_client.py :: MCPClient.call_tool
 - [ ] src/parser.py :: parse_tool_calls
-- [ ] src/budget.py :: resolve_context_window
+- [ ] src/orchestrator.py :: resolve_context_window
 ```
 
 Order items from most complex to least. Present the index to the human for review before proceeding.
@@ -262,8 +258,11 @@ mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 | 1.1 | 2026-06-14 | Relocated paths under ai/: state → ai/state/ralph/, workspace/audit → ai/workspace/audit, workspace/prompt → ai/workspace/prompt |
 | 1.2 | 2026-06-16 | Updated §7.5 cross-reference: P08 §1.9.7 → §1.9.8, following governance.md merge of duplicate Audit Closure sections |
 | 1.3 | 2026-06-28 | Noted automatic recipe selection on audit-index.md presence (§1.0); corrected §8.0 duration-limit row to `.ralph-timeout` / exit code 2 |
-| 1.4 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
-| 1.5 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 1.4 | 2026-07-16 | §2.1: mcp-grep → mcp-ripgrep. §2.2: example checklist item src/budget.py → src/orchestrator.py (resolve_context_window moved into orchestrator.py; budget.py retired) |
+| 1.5 | 2026-09-25 | change-5bcd46ad: layout and terminology migration (engine and governance paths; AEL → engine, Ralph Loop → loop, ael-mcp → engine-mcp) |
+| 1.6 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
+| 1.7 | 2026-11-14 | §2.1: the `audit-uml.md` example uses a four-backtick outer fence, so the nested Mermaid fence no longer ends it (report-0419b48d). The copy in `ai/governance/software-engineering/doc/` aligned with `docs/guide-audit-loop.md` (it lacked the 1.4 edit of 2026-07-16) |
+| 1.8 | 2026-11-14 | Layout conformance with README.md v4.5: Table of Contents formatted as a bulleted list; Table of Contents lists the H2 sections only (dev/task.md work item 7a) |
 
 ---
 

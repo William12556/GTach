@@ -6,9 +6,9 @@ Created: 2026 October 23
 
 ## Table of Contents
 
-[1.0 Purpose](#10-purpose)
-[2.0 Rules](#20-rules)
-[Version History](#version-history)
+- [1.0 Purpose](#10-purpose)
+- [2.0 Rules](#20-rules)
+- [Version History](#version-history)
 
 ---
 
@@ -34,6 +34,7 @@ Created: 2026 October 23
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-10-23 | Initial document: folder reserved (change-14cf601f) |
+| 1.1 | 2026-11-14 | Layout conformance with README.md v4.5: Table of Contents formatted as a bulleted list (dev/task.md work item 7a) |
 
 ---
 

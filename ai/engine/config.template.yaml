@@ -29,7 +29,7 @@ omlx:
 #     base_url: "https://api.mistral.ai/v1"
 #     api_key_env: MISTRAL_API_KEY     # optional when api_key_keychain is set
 #     api_key_keychain: ai-go-mistral  # macOS Keychain service name
-#     request_timeout_seconds: 300   # bound on one model request; any provider or the omlx: block (change-711a57d5)
+#     request_timeout_seconds: 300   # bound on one model request, maximum 86400; any provider or the omlx: block (change-711a57d5, change-b8c75bac)
 #   anthropic:
 #     kind: anthropic
 #     api_key_env: ANTHROPIC_API_KEY
@@ -85,7 +85,7 @@ loop:
   max_iterations: 5         # Loop outer iterations (work+review cycles)
   phase_max_iterations: 20  # Inner tool-call iterations per phase
   mcp_error_threshold: 3    # Write BLOCKED.md after this many consecutive MCP errors per phase
-  mcp_timeout_seconds: 120  # Bound on one MCP request (initialize, list_tools, call_tool) (change-711a57d5)
+  mcp_timeout_seconds: 120  # Bound on one MCP request (initialize, list_tools, call_tool), maximum 86400 (change-711a57d5, change-b8c75bac)
   max_tool_calls_per_iteration: 10  # Truncate tool calls per iteration beyond this count
   preflight_check: false             # Evaluate success criteria before first worker iteration
   phase_duration_minutes: 30         # F28: soft cap on a single phase's wall-clock cost during audit-run refinement
@@ -113,14 +113,14 @@ execution:
   strict_tactical_brief: false
 
 # Context budget
-# context_window: null attempts a live query to the oMLX admin API, then falls
-# back to model_context_windows per-model overrides.
+# context_window: null uses the model_context_windows per-model entry first; with
+# no entry for the model it tries a live query to the oMLX admin API.
 # Set explicitly to override all tiers (e.g. when model is remote and admin API unavailable).
 context:
-  context_window: null      # tokens; null = try live oMLX query, then per-model override
+  context_window: null      # tokens; null = per-model entry, else try live oMLX query
   budget_warn_pct: 0.80     # print warning at this fraction of context window
   budget_abort_pct: 0.95    # abort phase at this fraction
-  # Per-model context window overrides (tier 3 fallback when live query returns null)
+  # Per-model context window overrides (tier 2: used first, before the live oMLX query)
   model_context_windows:
     "North-Mini-Code-1.0-6bit": 262144
     "mistralai_Devstral-Small-2-24B-Instruct-2512-MLX-8Bit": 262144   # vendor-validated; overrides unvalidated live 393216 RoPE ceiling

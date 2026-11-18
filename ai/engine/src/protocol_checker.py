@@ -11,7 +11,7 @@ Checks (require a complete workspace; multi-document):
 
 Usage:
     python protocol_checker.py <workspace_dir>
-    python -m pytest tests/test_protocol.py -v
+    python -m pytest tests/engine/test_protocol_checker.py -v
 
 Exit codes:
     0  — no errors (warnings may be present)
@@ -25,53 +25,57 @@ import sys
 
 # Shared utilities from Layer 1 linter
 sys.path.insert(0, os.path.dirname(__file__))
-from linter import Finding, _extract_yaml, _get, MASTER_RE, NORMAL_RE
+from linter import Finding, _extract_yaml, _get, resolve_class, MASTER_RE, NORMAL_RE
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
+# Tables are keyed by class word, as resolved by linter.resolve_class
+# (change-e4428fd5, audit-caab2052 M-03).
+
 # Terminal status values that satisfy closure criteria (P00.14.3)
 _TERMINAL_STATUS: dict[str, frozenset] = {
-    "t02_change": frozenset({"verified"}),
-    "t03_issue":  frozenset({"closed"}),
-    "t04_prompt": frozenset({}),          # prompts have no terminal status field
-    "t05_test":   frozenset({"passed"}),
-    "t06_result": frozenset({"passed"}),
+    "change": frozenset({"verified"}),
+    "issue":  frozenset({"closed"}),
+    "prompt": frozenset({}),          # prompts have no terminal status field
+    # change-e4428fd5 (GTach observation 2026-10-08): superseded is terminal
+    "test":   frozenset({"passed", "superseded"}),
+    "result": frozenset({"passed"}),
 }
 
-# Status field path per schema_type
+# Status field path per class
 _STATUS_FIELD: dict[str, str] = {
-    "t02_change": "change_info.status",
-    "t03_issue":  "issue_info.status",
-    "t05_test":   "test_info.status",
-    "t06_result": "result_info.status",
+    "change": "change_info.status",
+    "issue":  "issue_info.status",
+    "test":   "test_info.status",
+    "result": "result_info.status",
 }
 
-# ID field path per schema_type (mirrored from linter for clarity)
+# ID field path per class (mirrored from linter for clarity)
 _ID_FIELD: dict[str, str] = {
-    "t02_change": "change_info.id",
-    "t03_issue":  "issue_info.id",
-    "t04_prompt": "prompt_info.id",
-    "t05_test":   "test_info.id",
-    "t06_result": "result_info.id",
+    "change": "change_info.id",
+    "issue":  "issue_info.id",
+    "prompt": "prompt_info.id",
+    "test":   "test_info.id",
+    "result": "result_info.id",
 }
 
-# Outgoing coupling reference per schema_type: (ref_field, back_ref_field_on_target)
+# Outgoing coupling reference per class: (ref_field, back_ref_field_on_target)
 # ref_field:             path in source doc pointing to target doc id
 # back_ref_field:        path in target doc that should point back to source
 _COUPLING_PAIRS: dict[str, tuple[str, str]] = {
-    "t02_change": (
+    "change": (
         "change_info.coupled_docs.issue_ref",     # change → issue
         "issue_info.coupled_docs.change_ref",     # issue → change (back)
     ),
-    "t04_prompt": (
+    "prompt": (
         "prompt_info.coupled_docs.change_ref",    # prompt → change
         "change_info.coupled_docs.prompt_ref",    # change → prompt (back) [optional field]
     ),
-    "t05_test": (
+    "test": (
         "test_info.coupled_docs.prompt_ref",      # test → prompt
         "prompt_info.coupled_docs.test_ref",      # prompt → test (back) [optional field]
     ),
-    "t06_result": (
+    "result": (
         "result_info.coupled_docs.test_ref",      # result → test
         "test_info.coupled_docs.result_ref",      # test → result (back)
     ),
@@ -81,8 +85,13 @@ _COUPLING_PAIRS: dict[str, tuple[str, str]] = {
 _UUID_RE = re.compile(r"-([0-9a-f]{8})$")
 
 
-def _uuid_from_id(doc_id: str) -> str | None:
-    """Extract the 8-char UUID suffix from a document ID string."""
+def _uuid_from_id(doc_id: object) -> str | None:
+    """Extract the 8-char UUID suffix from a document ID string.
+
+    change-e4428fd5 (audit-caab2052 L-11): None for a value that is not a str.
+    """
+    if not isinstance(doc_id, str):
+        return None
     m = _UUID_RE.search(doc_id)
     return m.group(1) if m else None
 
@@ -96,7 +105,11 @@ def _doc_type_from_id(doc_id: str) -> str | None:
 # ── Document loading ──────────────────────────────────────────────────────────
 
 class WorkspaceDoc:
-    """Parsed governance document with path, data, schema_type, and ID."""
+    """Parsed governance document with path, data, schema_type, and ID.
+
+    schema_type holds the class word resolved by linter.resolve_class
+    (change-e4428fd5).
+    """
     __slots__ = ("path", "data", "schema_type", "doc_id", "in_closed")
 
     def __init__(self, path: str, data: dict, schema_type: str,
@@ -112,6 +125,16 @@ def load_workspace(workspace_dir: str) -> tuple[list[WorkspaceDoc], list[Finding
     """
     Walk workspace_dir, parse all governance markdown documents.
     Returns (docs, parse_warnings).
+
+    change-e4428fd5 (audit-caab2052 M-03, L-11): the class is resolved by
+    linter.resolve_class; a document whose YAML top level is not a mapping,
+    whose class is None or whose id is not a string is skipped without a
+    finding (linter reports it). change-e4428fd5 amendment 1: the path is
+    passed to resolve_class, so a document without schema_type is inferred
+    only outside closed/ and when its file name class matches.
+    change-9377f9b9: the path passed is relative to workspace_dir; a first
+    YAML block that does not parse or nests too deeply is skipped
+    without an exception (linter reports it).
     """
     docs: list[WorkspaceDoc] = []
     warnings: list[Finding]  = []
@@ -126,16 +149,20 @@ def load_workspace(workspace_dir: str) -> tuple[list[WorkspaceDoc], list[Finding
             path = os.path.join(root, fname)
             content = open(path, encoding="utf-8", errors="replace").read()
             data = _extract_yaml(content)
-            if data is None:
+            if not isinstance(data, dict):
                 continue
-            schema_type = _get(data, "metadata.schema_type")
-            if not schema_type or schema_type not in _ID_FIELD:
+            # change-e4428fd5 amendment 1: path limits root-key inference;
+            # change-9377f9b9 (report-e4428fd5 §8.6 item 2): path relative
+            # to the workspace, so a directory named closed above it is ignored
+            doc_class, _message = resolve_class(
+                data, os.path.relpath(path, workspace_dir))
+            if doc_class is None or doc_class not in _ID_FIELD:
                 continue
-            doc_id = _get(data, _ID_FIELD[schema_type])
-            if not doc_id:
+            doc_id = _get(data, _ID_FIELD[doc_class])
+            if not isinstance(doc_id, str) or not doc_id:
                 continue
-            docs.append(WorkspaceDoc(path, data, schema_type,
-                                     str(doc_id), in_closed))
+            docs.append(WorkspaceDoc(path, data, doc_class,
+                                     doc_id, in_closed))
 
     return docs, warnings
 
@@ -150,14 +177,14 @@ def check_uuid_chain(docs: list[WorkspaceDoc]) -> list[Finding]:
     All documents in a workflow chain must share the same 8-char UUID.
     """
     findings: list[Finding] = []
-    by_id = {d.doc_id: d for d in docs}
 
     for doc in docs:
         if doc.schema_type not in _COUPLING_PAIRS:
             continue
         ref_field, _ = _COUPLING_PAIRS[doc.schema_type]
         ref_val = _get(doc.data, ref_field)
-        if not ref_val:
+        # change-e4428fd5 (audit-caab2052 L-11): non-str reference skipped (linter reports it)
+        if not ref_val or not isinstance(ref_val, str):
             continue
 
         src_uuid = _uuid_from_id(doc.doc_id)
@@ -185,14 +212,15 @@ def check_bidirectional(docs: list[WorkspaceDoc]) -> list[Finding]:
     by_id = {d.doc_id: d for d in docs}
 
     # Back-reference is mandatory only for the change↔issue pair (P04.2)
-    MANDATORY_BACK = {"t02_change"}
+    MANDATORY_BACK = {"change"}  # change-e4428fd5: class word
 
     for doc in docs:
         if doc.schema_type not in _COUPLING_PAIRS:
             continue
         ref_field, back_field = _COUPLING_PAIRS[doc.schema_type]
         ref_val = _get(doc.data, ref_field)
-        if not ref_val:
+        # change-e4428fd5 (audit-caab2052 L-11): non-str reference skipped (linter reports it)
+        if not ref_val or not isinstance(ref_val, str):
             continue
 
         target = by_id.get(ref_val)
@@ -229,7 +257,8 @@ def check_one_to_one(docs: list[WorkspaceDoc]) -> list[Finding]:
             continue
         ref_field, _ = _COUPLING_PAIRS[doc.schema_type]
         ref_val = _get(doc.data, ref_field)
-        if not ref_val:
+        # change-e4428fd5 (audit-caab2052 L-11): non-str reference skipped (linter reports it)
+        if not ref_val or not isinstance(ref_val, str):
             continue
         # Key = (schema_type, ref_val) — track per coupling type
         key = f"{doc.schema_type}:{ref_val}"
@@ -258,12 +287,16 @@ def check_status_consistency(docs: list[WorkspaceDoc]) -> list[Finding]:
     by_id = {d.doc_id: d for d in docs}
 
     for doc in docs:
-        if doc.schema_type != "t02_change":
+        if doc.schema_type != "change":  # change-e4428fd5: class word
             continue
 
         change_status = _get(doc.data, "change_info.status")
         issue_ref     = _get(doc.data, "change_info.coupled_docs.issue_ref")
-        if not issue_ref:
+        # change-e4428fd5 (audit-caab2052 L-11): a reference or status that
+        # is not a str is skipped (linter reports it)
+        if not issue_ref or not isinstance(issue_ref, str):
+            continue
+        if change_status is not None and not isinstance(change_status, str):
             continue
 
         issue_doc = by_id.get(issue_ref)
@@ -271,6 +304,8 @@ def check_status_consistency(docs: list[WorkspaceDoc]) -> list[Finding]:
             continue
 
         issue_status = _get(issue_doc.data, "issue_info.status")
+        if issue_status is not None and not isinstance(issue_status, str):
+            continue
 
         # Rule: resolved issue → change must be implemented/verified
         if issue_status == "resolved" and change_status not in (
@@ -310,6 +345,10 @@ def check_lifecycle_placement(docs: list[WorkspaceDoc]) -> list[Finding]:
             continue
         terminal = _TERMINAL_STATUS.get(doc.schema_type, frozenset())
         status   = _get(doc.data, status_field)
+        # change-e4428fd5 (audit-caab2052 L-11): a status that is not a str
+        # is skipped (linter reports it)
+        if status is not None and not isinstance(status, str):
+            continue
 
         if doc.in_closed and status not in terminal:
             findings.append(Finding("ERROR", doc.path, "lifecycle",
@@ -332,27 +371,34 @@ def check_prompt_self_contained(docs: list[WorkspaceDoc]) -> list[Finding]:
       - specification.description must be non-empty
       - design.components must contain at least one entry
       - deliverable.files must contain at least one entry
+
+    change-e4428fd5 (operator decision 2026-11-07): for a prompt in a
+    closed/ directory the findings are WARN and end with ' (closed record)'.
     """
     findings: list[Finding] = []
 
     for doc in docs:
-        if doc.schema_type != "t04_prompt":
+        if doc.schema_type != "prompt":  # change-e4428fd5: class word
             continue
+
+        sev    = "WARN" if doc.in_closed else "ERROR"
+        suffix = " (closed record)" if doc.in_closed else ""
 
         spec_desc = _get(doc.data, "specification.description")
         if not spec_desc or not str(spec_desc).strip():
-            findings.append(Finding("ERROR", doc.path, "prompt_self_contained",
-                "specification.description is empty — prompt is not self-contained"))
+            findings.append(Finding(sev, doc.path, "prompt_self_contained",
+                "specification.description is empty — prompt is not self-contained"
+                + suffix))
 
         components = _get(doc.data, "design.components")
         if not components or not isinstance(components, list) or len(components) == 0:
-            findings.append(Finding("ERROR", doc.path, "prompt_self_contained",
-                "design.components is empty — prompt is not self-contained"))
+            findings.append(Finding(sev, doc.path, "prompt_self_contained",
+                "design.components is empty — prompt is not self-contained" + suffix))
 
         files = _get(doc.data, "deliverable.files")
         if not files or not isinstance(files, list) or len(files) == 0:
-            findings.append(Finding("ERROR", doc.path, "prompt_self_contained",
-                "deliverable.files is empty — no output target specified"))
+            findings.append(Finding(sev, doc.path, "prompt_self_contained",
+                "deliverable.files is empty — no output target specified" + suffix))
 
     return findings
 

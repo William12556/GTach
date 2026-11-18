@@ -45,8 +45,10 @@ import math
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 
@@ -59,7 +61,8 @@ from typing import Any, Callable
 sys.path.insert(0, os.path.dirname(__file__))
 from mcp_client import MCPClient
 from providers import (ConfigError, ProviderError, as_provider, build_role_bindings,
-                       query_omlx_context_window as _query_omlx_context_window)
+                       query_omlx_context_window as _query_omlx_context_window,
+                       validate_timeout)
 import gates as G
 import scope as S
 import stages as ST
@@ -69,7 +72,6 @@ from scope import is_write_tool, written_targets as _written_targets
 from rich.console import Console
 from rich.markup import escape
 from rich.panel import Panel
-from rich.rule import Rule
 
 console = Console(highlight=False)
 
@@ -103,7 +105,8 @@ _COMPLETION_MAX_RETRIES = 3
 _COMPLETION_INITIAL_BACKOFF = 2.0  # seconds
 _COMPLETION_BACKOFF_MULTIPLIER = 2.0
 # change-711a57d5 (audit-14e05e35 L-09): client errors a retry cannot fix
-_NON_RETRYABLE_STATUS = frozenset({400, 401, 403})
+# change-86c958dd (live check P-01): 404 (unknown model) added
+_NON_RETRYABLE_STATUS = frozenset({400, 401, 403, 404})
 
 # change-711a57d5 (audit-caab2052 L-03): bound on grep and py_compile subprocesses
 _SUBPROCESS_TIMEOUT_SECONDS = 30
@@ -273,21 +276,33 @@ def _validate_audit_report_write(tool_name: str, arguments: dict, state_dir: str
 
     Returns None if safe (not a write tool, not this file, file absent/empty,
     or existing content is preserved in the new content). Returns an error
-    message string otherwise.
+    message string otherwise. Never raises for any argument shape: non-string
+    paths are ignored and a non-string content counts as empty
+    (change-b8c75bac, audit-5e8aea4f F-01).
     """
     if tool_name not in ("write", "write_file", "create_file", "create"):
         return None
+
+    def _content(obj: dict) -> str:
+        value = obj.get("content")
+        return value if isinstance(value, str) else ""
+
     # change-c37198be (D3): filesystem-mcp 2.x `create` batches files[{path, content}].
-    writes = [(arguments.get("path") or arguments.get("file_path") or "", arguments.get("content"))]
-    writes += [(f.get("path") or f.get("file_path") or "", f.get("content"))
-               for f in arguments.get("files") or [] if isinstance(f, dict)]
+    # change-b8c75bac (audit-5e8aea4f F-01): string paths only (scope.path_values);
+    # files is read only when it is a list.
+    writes = [(p, _content(arguments)) for p in S.path_values(arguments, ("path", "file_path"))]
+    files = arguments.get("files")
+    if isinstance(files, list):
+        for f in files:
+            if isinstance(f, dict):
+                writes += [(p, _content(f)) for p in S.path_values(f, ("path", "file_path"))]
     report_path = os.path.join(state_dir, "audit-report.md")
     if not os.path.exists(report_path):
         return None
     existing = open(report_path).read().strip()
     if not existing:
         return None
-    if all(os.path.basename(t) != "audit-report.md" or existing in (c or "").strip()
+    if all(os.path.basename(t) != "audit-report.md" or existing in c.strip()
            for t, c in writes):
         return None
     return (
@@ -397,6 +412,9 @@ def _strip_verdict(text: str) -> str:
     return tokens[1].strip() if len(tokens) > 1 else ""
 
 
+# change-b8a6c445 (audit-caab2052 M-04, M-05): engine-written run record
+_RUN_RECORD = "run.json"
+
 # State files cleared by reset (logs and context report excluded)
 _RESET_FILES = [
     "task.md",
@@ -410,6 +428,7 @@ _RESET_FILES = [
     "BLOCKED.md",
     "audit-index.md",
     "audit-report.md",
+    _RUN_RECORD,  # change-b8a6c445 (audit-caab2052 M-04, M-05)
 ]
 
 
@@ -501,8 +520,8 @@ async def _completion_with_retry(
                 "completion call failed (attempt %d/%d): %s",
                 attempt, max_retries, err_text,
             )
-            # change-711a57d5 (audit-14e05e35 L-09): HTTP 400/401/403 end BLOCKED
-            # at once; a retry cannot succeed.
+            # change-711a57d5 (audit-14e05e35 L-09): HTTP 400, 401, 403 and 404
+            # (404 since change-86c958dd) end BLOCKED at once; a retry cannot succeed.
             _status = getattr(e, "status_code", None)
             if _status in _NON_RETRYABLE_STATUS:
                 tb = _redact(provider, traceback.format_exc())
@@ -515,15 +534,15 @@ async def _completion_with_retry(
                 )
                 write_state(state_dir, "BLOCKED.md", blocked_msg)
                 console.print(
-                    f"[red][engine] BLOCKED: completion call failed with HTTP {_status} "
+                    f"[red]\\[engine] BLOCKED: completion call failed with HTTP {_status} "
                     f"(not retried)[/red]"
                 )
                 raise RuntimeError(f"Completion call failed: {err_text}") from e
             if attempt < max_retries:
                 console.print(
-                    f"[yellow][engine] completion error (attempt {attempt}/{max_retries}), "
-                    f"retrying in {backoff:.1f}s: {err_text}[/yellow]"
-                )
+                    f"[yellow]\\[engine] completion error (attempt {attempt}/{max_retries}), "
+                    f"retrying in {backoff:.1f}s: {escape(err_text)}[/yellow]"
+                )  # change-f68d51c2 (audit-bae631c7 F-02): provider text escaped
                 await asyncio.sleep(backoff)
                 backoff *= backoff_multiplier
             else:
@@ -538,7 +557,7 @@ async def _completion_with_retry(
                 )
                 write_state(state_dir, "BLOCKED.md", blocked_msg)
                 console.print(
-                    f"[red][engine] BLOCKED: completion call failed after {max_retries} attempts[/red]"
+                    f"[red]\\[engine] BLOCKED: completion call failed after {max_retries} attempts[/red]"
                 )
                 raise RuntimeError(f"Completion call failed: {err_text}") from last_error
 
@@ -546,13 +565,20 @@ async def _completion_with_retry(
     raise RuntimeError("Unexpected: completion retry loop exited without return or raise")
 
 
-def _archive_audit_artifacts(state_dir: str, task_path: str | None, log: logging.Logger) -> None:
+def _archive_audit_artifacts(state_dir: str, task_path: str | None, log: logging.Logger,
+                             project_root: str | None = None) -> None:
     """
     Copy audit-index.md and audit-report.md from state_dir to ai/workspace/audit/
     with canonical naming: audit-<uuid>-index.md and audit-<uuid>-report.md.
     Called after a successful audit loop SHIP. No-op if audit-report.md is absent.
     UUID is extracted from the task file path basename (first 8-hex substring).
     Falls back to yyyymmdd timestamp if UUID cannot be determined.
+
+    change-d4f527e7 (audit-caab2052 L-14): the folder lies below project_root
+    (default: the working directory), and an existing archive is never
+    replaced: a later archive of the same work item is named
+    audit-<uuid>-index-<n>.md and audit-<uuid>-report-<n>.md with the smallest
+    n >= 2 for which neither name exists.
     """
     report_src = os.path.join(state_dir, "audit-report.md")
     if not os.path.exists(report_src):
@@ -568,29 +594,134 @@ def _archive_audit_artifacts(state_dir: str, task_path: str | None, log: logging
         uid = datetime.datetime.now().strftime("%Y%m%d")
         log.warning("archive audit: UUID not found in task path — using date fallback: %s", uid)
 
-    output_dir = os.path.join(os.getcwd(), "ai", "workspace", "audit")
+    output_dir = os.path.join(project_root or os.getcwd(), "ai", "workspace", "audit")
     os.makedirs(output_dir, exist_ok=True)
+
+    def _names(n: int) -> dict[str, str]:
+        tail = "" if n == 1 else f"-{n}"
+        return {suffix: os.path.join(output_dir, f"audit-{uid}-{suffix}{tail}.md")
+                for suffix in ("index", "report")}
+
+    n = 1
+    while any(os.path.lexists(p) for p in _names(n).values()):
+        n += 1
+    targets = _names(n)
+    if n > 1:
+        log.warning("archive audit: an archive for %s exists — writing %s",
+                    uid, os.path.basename(targets["report"]))
 
     archived = 0
     for src, suffix in [(index_src, "index"), (report_src, "report")]:
         if os.path.exists(src):
-            dst = os.path.join(output_dir, f"audit-{uid}-{suffix}.md")
+            dst = targets[suffix]
             shutil.copy2(src, dst)
             archived += 1
             log.info("archive audit: %s -> %s", src, dst)
-            console.print(f"[green][engine] audit archived: {escape(dst)}[/green]")
+            console.print(f"[green]\\[engine] audit archived: {escape(dst)}[/green]")
         else:
             log.warning("archive audit: %s not found — skipping", src)
 
     if archived:
         console.print(
-            f"[green][engine] {archived} audit artifact(s) archived to {escape(output_dir)}[/green]"
+            f"[green]\\[engine] {archived} audit artifact(s) archived to {escape(output_dir)}[/green]"
         )
 
 
+# change-f68d51c2 (audit-9377f9b9-followup F-01, F-02): exceptions PyYAML's
+# constructors raise for scalars they cannot convert (an invalid date, for one)
+_YAML_VALUE_ERRORS = (ValueError, TypeError, OverflowError)
+
+
+def _first_line(e: BaseException) -> str:
+    """Return the first line of str(e) (change-f68d51c2)."""
+    return str(e).splitlines()[0] if str(e) else type(e).__name__
+
+
 def load_yaml(path: str) -> dict:
+    """
+    Load a recipe file.
+
+    change-f68d51c2 (audit-9377f9b9-followup F-01, F-02): invalid YAML,
+    including a scalar the constructor cannot convert and nesting too deep,
+    raises ConfigError naming the path. A file that cannot be read raises
+    OSError, as before.
+    """
     with open(path) as f:
-        return yaml.safe_load(f)
+        try:
+            return yaml.safe_load(f)
+        except (yaml.YAMLError, *_YAML_VALUE_ERRORS) as e:
+            raise ConfigError(f"{path}: invalid YAML: {_first_line(e)}") from None
+        except RecursionError:
+            raise ConfigError(f"{path}: invalid YAML: nesting too deep") from None
+
+
+def _load_config(path: str) -> dict:
+    """
+    Load ai/config.yaml (change-b8c75bac, audit-14e05e35 L-08; NFR-04).
+
+    Raises ConfigError for a file that cannot be read, invalid YAML (with the
+    line when the parser reports one) or a top level that is not a mapping.
+    Recipe files keep load_yaml.
+    """
+    try:
+        with open(path, "rb") as f:
+            config = yaml.safe_load(f)
+    except OSError as e:
+        raise ConfigError(f"cannot read file: {e.strerror or e}") from None
+    except yaml.MarkedYAMLError as e:
+        if e.problem_mark is None:
+            raise ConfigError("invalid YAML") from None
+        raise ConfigError(f"invalid YAML: {e.problem} at line {e.problem_mark.line + 1}") from None
+    except yaml.YAMLError:
+        raise ConfigError("invalid YAML") from None
+    except RecursionError:
+        # change-bae631c7 (audit-b8c75bac F-05): deeply nested YAML
+        raise ConfigError("invalid YAML: nesting too deep") from None
+    except _YAML_VALUE_ERRORS as e:
+        # change-f68d51c2 (audit-9377f9b9-followup F-01): a scalar the
+        # constructor cannot convert (an invalid date, for one)
+        raise ConfigError(f"invalid YAML: {_first_line(e)}") from None
+    if not isinstance(config, dict):
+        raise ConfigError("top level must be a mapping")
+    return config
+
+
+def _check_config_blocks(config: dict) -> None:
+    """
+    Check the context: and execution: blocks (change-f68d51c2, audit-bae631c7 F-03).
+
+    A null block is replaced by {} in config; any other value that is not a
+    mapping raises ConfigError. Called before any state is written (NFR-04).
+    """
+    for key in ("context", "execution"):
+        value = config.get(key)
+        if value is None:
+            if key in config:
+                config[key] = {}
+        elif not isinstance(value, dict):
+            raise ConfigError(f"{key}: must be a mapping")
+
+
+def _validate_context_windows(config: dict) -> None:
+    """
+    Check context.model_context_windows (change-bae631c7, audit-86c958dd F-02).
+
+    A null mapping is treated as empty. Raises ConfigError for a value that is
+    not a mapping, or for an entry that is not a positive integer (bool
+    excluded). Called before any state is written (NFR-04).
+    """
+    ctx_cfg = config.get("context")
+    if not isinstance(ctx_cfg, dict):
+        return
+    windows = ctx_cfg.get("model_context_windows")
+    if windows is None:
+        return
+    if not isinstance(windows, dict):
+        raise ConfigError("context.model_context_windows: must be a mapping")
+    for model_name, value in windows.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ConfigError(
+                f"context.model_context_windows.{model_name}: must be a positive integer")
 
 
 def _substitute_project_root(config: dict) -> dict:
@@ -643,10 +774,86 @@ def read_state(state_dir: str, filename: str) -> str:
     return open(path).read().strip() if os.path.exists(path) else ""
 
 
+def _keep_mode(tmp_path: str, path: str) -> None:
+    """
+    Set the permission bits of the temporary file before it replaces path.
+
+    change-f68d51c2 (audit-d4f527e7 F-01): the bits of an existing regular
+    file at path (os.lstat; a symlink or any other type counts as absent),
+    else 0o666 masked by the process umask, the mode open() gave a new file.
+    mkstemp creates the temporary file with 0o600, so the mode is always set.
+    """
+    try:
+        st = os.lstat(path)
+    except OSError:
+        st = None
+    if st is not None and stat.S_ISREG(st.st_mode):
+        mode = stat.S_IMODE(st.st_mode)
+    else:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
+    os.chmod(tmp_path, mode)
+
+
+def _write_atomic(path: str, content: str) -> None:
+    """
+    change-d4f527e7 (audit-caab2052 L-10): write content to a temporary file
+    beside path and move it into place with os.replace, so a reader sees the
+    previous content or the new content, never a partial file. The name itself
+    is replaced; a symlink at path is not followed. An existing regular file
+    keeps its permission bits. On any failure the temporary file is removed
+    and the exception re-raised.
+
+    change-f68d51c2 (audit-d4f527e7 F-01): the temporary file is created
+    exclusively with tempfile.mkstemp, so an entry planted at a predictable
+    name is never followed or reused; a new file gets 0o666 & ~umask.
+    """
+    # change-f68d51c2 (audit-d4f527e7 F-01): exclusive, unpredictable temporary name
+    fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(path) or ".",
+                                    prefix=f".{os.path.basename(path)}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write(content)
+        _keep_mode(tmp_path, path)
+        os.replace(tmp_path, path)
+    except BaseException:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
 def write_state(state_dir: str, filename: str, content: str) -> None:
     os.makedirs(state_dir, exist_ok=True)
-    with open(os.path.join(state_dir, filename), "w") as f:
-        f.write(content)
+    _write_atomic(os.path.join(state_dir, filename), content)
+
+
+def _write_run_record(state_dir: str, record: dict) -> None:
+    """
+    change-b8a6c445 (audit-caab2052 M-04, M-05): write the run record atomically.
+
+    The record is written to a temporary file in state_dir and moved over
+    run.json with os.replace, so a reader sees the previous record or the new
+    one, never a partial file. On any failure the temporary file is removed
+    and the exception re-raised; main_async catches it.
+    """
+    tmp_path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=state_dir,
+                                         prefix=".run.json.", suffix=".tmp",
+                                         delete=False) as fh:
+            tmp_path = fh.name
+            fh.write(json.dumps(record, indent=2) + "\n")
+        os.replace(tmp_path, os.path.join(state_dir, _RUN_RECORD))
+    except BaseException:
+        if tmp_path is not None:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        raise
 
 
 def reset_state(state_dir: str) -> int:
@@ -662,8 +869,8 @@ def reset_state(state_dir: str) -> int:
     engine-mcp's reset_engine as a spurious error on any project that had not yet run.
     """
     if not os.path.isdir(state_dir):
-        console.print(f"[yellow][engine] reset: state directory not present: {state_dir}[/yellow]")
-        console.print("[green][engine] reset: nothing to clear[/green]")
+        console.print(f"[yellow]\\[engine] reset: state directory not present: {state_dir}[/yellow]")
+        console.print("[green]\\[engine] reset: nothing to clear[/green]")
         return 0
     removed, failed = [], []
     for name in _RESET_FILES:
@@ -671,14 +878,14 @@ def reset_state(state_dir: str) -> int:
         if os.path.lexists(path):  # change-82dbf16a iteration 5 (F4-01): symlinks and directories too
             (removed if _remove_state_path(path) else failed).append(name)
     if failed:
-        console.print(f"[red][engine] reset: could not remove: {escape(', '.join(failed))}[/red]")
+        console.print(f"[red]\\[engine] reset: could not remove: {escape(', '.join(failed))}[/red]")
         return 1
     if removed:
-        console.print(f"[green][engine] reset: removed {len(removed)} state file(s)[/green]")
+        console.print(f"[green]\\[engine] reset: removed {len(removed)} state file(s)[/green]")
         for name in removed:
             console.print(f"[dim]  {name}[/dim]")
     else:
-        console.print("[yellow][engine] reset: state directory already clean[/yellow]")
+        console.print("[yellow]\\[engine] reset: state directory already clean[/yellow]")
     return 0
 
 
@@ -692,15 +899,18 @@ def resolve_context_window(model_name: str, config: dict,
     Resolve the model context window in tokens using a four-tier chain.
 
     Tier 1: config['context']['context_window'] if not null (explicit global override)
-    Tier 2: Live query (oMLX admin endpoint for settings.max_context_window)
-    Tier 3: config['context']['model_context_windows'][model_name] if present
+    Tier 2: config['context']['model_context_windows'][model_name] if present
+    Tier 3: Live query (oMLX admin endpoint for settings.max_context_window)
     Tier 4: Return None (context window unknown)
+
+    change-86c958dd (operator decision 2026-11-05): the per-model entry is
+    used before the live query.
 
     Args:
         model_name: The model id bound to the role being resolved (FR-04-05)
         config: The parsed config.yaml contents
         live_query: The role provider's live_context_window, or None to skip
-            tier 2. Omitted: query the legacy omlx.base_url, as before.
+            tier 3. Omitted: query the legacy omlx.base_url, as before.
 
     Returns:
         Context window size in tokens, or None if unresolved at every tier.
@@ -716,26 +926,28 @@ def resolve_context_window(model_name: str, config: dict,
         return int(override)
     tiers_tried.append("tier 1 (global override): null")
 
-    # Tier 2: Live query (oMLX only)
+    # change-86c958dd (operator decision 2026-11-05): per-model entry before the live query
+    # Tier 2: Per-model override from config
+    # change-bae631c7 (report-86c958dd §6.0): a null mapping is treated as empty
+    model_overrides = ctx_cfg.get("model_context_windows") or {}
+    if model_name in model_overrides:
+        ctx = model_overrides[model_name]
+        log.info("context window: %d (tier 2: config per-model override for '%s')", ctx, model_name)
+        return int(ctx)
+    tiers_tried.append(f"tier 2 (per-model override): no entry for '{model_name}'")
+
+    # Tier 3: Live query (oMLX only)
     if live_query is _LEGACY_LIVE_QUERY:
         base_url = (config.get("omlx") or {}).get("base_url", "")
         live_query = (lambda m: _query_omlx_context_window(m, base_url)) if base_url else None
     if live_query is not None:
         live_ctx = live_query(model_name)
         if live_ctx is not None:
-            log.info("context window: %d (tier 2: live oMLX admin query)", live_ctx)
+            log.info("context window: %d (tier 3: live oMLX admin query)", live_ctx)
             return live_ctx
-        tiers_tried.append("tier 2 (live oMLX query): null or failed")
+        tiers_tried.append("tier 3 (live oMLX query): null or failed")
     else:
-        tiers_tried.append("tier 2 (live query): not available for this provider")
-
-    # Tier 3: Per-model override from config
-    model_overrides = ctx_cfg.get("model_context_windows", {})
-    if model_name in model_overrides:
-        ctx = model_overrides[model_name]
-        log.info("context window: %d (tier 3: config per-model override for '%s')", ctx, model_name)
-        return int(ctx)
-    tiers_tried.append(f"tier 3 (per-model override): no entry for '{model_name}'")
+        tiers_tried.append("tier 3 (live query): not available for this provider")
 
     # Tier 4: Unresolved
     log.warning(
@@ -924,10 +1136,10 @@ def archive_prior_logs(state_dir: str, archive_dir: str | None) -> int:
             shutil.copy2(src, dst)
             copied += 1
         except Exception as exc:
-            console.print(f"[yellow][engine] log archive: could not copy {escape(name)}: {escape(str(exc))}[/yellow]")
+            console.print(f"[yellow]\\[engine] log archive: could not copy {escape(name)}: {escape(str(exc))}[/yellow]")
 
     if copied:
-        console.print(f"[dim][engine] log archive: {copied} prior log(s) -> {escape(archive_dir)}[/dim]")
+        console.print(f"[dim]\\[engine] log archive: {copied} prior log(s) -> {escape(archive_dir)}[/dim]")
     return copied
 
 
@@ -1195,8 +1407,8 @@ async def run_phase(
 
     label = f"{phase_label} " if phase_label else ""
     console.rule(f"[blue]{label or 'engine'} — {escape(model)}[/blue]", style="blue")
-    console.print(f"[blue][engine] tools:  {len(tools)}[/blue]")
-    console.print(f"[blue][engine] task:   {escape(task[:80])}{'...' if len(task) > 80 else ''}[/blue]")
+    console.print(f"[blue]\\[engine] tools:  {len(tools)}[/blue]")
+    console.print(f"[blue]\\[engine] task:   {escape(task[:80])}{'...' if len(task) > 80 else ''}[/blue]")
     log.info("phase start phase=%s model=%s tools=%d task=%s", phase_label or "?", model, len(tools), task)
 
     _phase_start = time.monotonic()  # F28: phase wall-clock cap
@@ -1212,12 +1424,14 @@ async def run_phase(
         # the reviewer issues REVISE, and the next loop iteration retries it
         # under a fresh cap rather than aborting the entire run.
         if phase_duration_seconds is not None and (time.monotonic() - _phase_start) > phase_duration_seconds:
-            console.print(f"\n[yellow][engine] phase wall-clock cap ({phase_duration_seconds/60:.0f} min) reached[/yellow]")
+            console.print(f"\n[yellow]\\[engine] phase wall-clock cap ({phase_duration_seconds/60:.0f} min) reached[/yellow]")
             log.warning("phase wall-clock cap (%.0fs) reached at iteration %d", phase_duration_seconds, iteration)
             # change-a2f9c4d1: persist a deliverable manifest before returning
             if is_worker_phase:
                 _synthesize_work_summary(state_dir, _written_paths, "wall-clock cap reached", log)
-            return 0, "", set(_read_counts.keys()) if not is_worker_phase else set()
+            # change-b8c75bac (d7f4a1c8 P08 review): normalised as at the other exits
+            _read_paths = {os.path.abspath(p) for p in _read_counts.keys()} if not is_worker_phase else set()
+            return 0, "", _read_paths
 
         # Context budget check before API call
         if context_window is not None:
@@ -1225,7 +1439,6 @@ async def run_phase(
             status, fraction = check_context_budget(
                 estimated, context_window, budget_warn_pct, budget_abort_pct
             )
-            pct_str = f"{fraction*100:.1f}%"
             if status == "abort":
                 console.print(_ctx_bar(estimated, context_window, status))
                 console.print("[red]  budget exceeded — aborting phase[/red]")
@@ -1284,7 +1497,7 @@ async def run_phase(
                 "iteration %d: %d tool calls exceeds cap %d — truncating",
                 iteration, len(tool_calls), max_tool_calls_per_iter,
             )
-            console.print(f"[yellow][engine] tool call cap ({max_tool_calls_per_iter}) exceeded "
+            console.print(f"[yellow]\\[engine] tool call cap ({max_tool_calls_per_iter}) exceeded "
                           f"({len(tool_calls)} calls) — truncating[/yellow]")
             tool_calls = tool_calls[:max_tool_calls_per_iter]
 
@@ -1317,7 +1530,7 @@ async def run_phase(
                 )
                 write_state(state_dir, "BLOCKED.md", blocked_msg)
                 log.error("BLOCKED: worker final response contains unparsed tool markers")
-                console.print("[red][engine] BLOCKED: worker final response malformed[/red]")
+                console.print("[red]\\[engine] BLOCKED: worker final response malformed[/red]")
                 return 1, "", set()
             console.print(Panel(escape(content), title="[green]response[/green]", border_style="green"))
             # F13: only worker phase writes work-summary.txt; review phase preserves it
@@ -1345,7 +1558,7 @@ async def run_phase(
                 _args_msg = (f"arguments for tool '{tc['name']}' must be a JSON object "
                              f"of named arguments, got {_arg_type}")
                 log.warning("malformed tool arguments tool=%s type=%s", tc["name"], _arg_type)
-                console.print(f"[red][engine] malformed tool arguments: {escape(tc['name'])}[/red]")
+                console.print(f"[red]\\[engine] malformed tool arguments: {escape(tc['name'])}[/red]")
                 result = f"Error: {_args_msg}"
                 _scope_err = _args_msg
                 _report_err = None
@@ -1367,16 +1580,16 @@ async def run_phase(
                 _report_err = (_validate_audit_report_write(tc["name"], tc["arguments"], state_dir)
                                if not _refusal else None)
                 if _refusal:
-                    console.print(f"[red][engine] tool refused: {escape(_refusal[:200])}[/red]")
+                    console.print(f"[red]\\[engine] tool refused: {escape(_refusal[:200])}[/red]")
                     result = f"Error: {_refusal}"
                     _scope_err = _refusal
                 elif _scope_err:
                     log.warning("scope violation: %s", _scope_err)
-                    console.print(f"[red][engine] scope violation: {escape(_scope_err[:200])}[/red]")
+                    console.print(f"[red]\\[engine] scope violation: {escape(_scope_err[:200])}[/red]")
                     result = f"Error: {_scope_err}"
                 elif _report_err:
                     log.warning("audit-report.md overwrite blocked: %s", _report_err)
-                    console.print(f"[red][engine] audit-report.md overwrite blocked[/red]")
+                    console.print("[red]\\[engine] audit-report.md overwrite blocked[/red]")
                     result = _report_err
                 else:
                     result = await mcp.call_tool(tc["name"], tc["arguments"])
@@ -1461,7 +1674,7 @@ async def run_phase(
                     write_state(state_dir, "BLOCKED.md", blocked_msg)
                     log.error("BLOCKED: repeated identical failed call (%d attempts)", _fail_n)
                     console.print(
-                        f"[red][engine] BLOCKED: repeated identical failed call "
+                        f"[red]\\[engine] BLOCKED: repeated identical failed call "
                         f"({_fail_n} attempts)[/red]"
                     )
                     return 1, "", set()
@@ -1475,9 +1688,12 @@ async def run_phase(
 
             # P1c: edit pattern-not-found — targeted file-read instruction
             # change-711a57d5 (M-01): not for a call with malformed arguments.
+            # change-b8c75bac (audit-a5bd4fe1 F-01): only for a dispatched call;
+            # a refusal echoes the worker's path, which can carry the marker.
             _edit_pattern_failed = (
                 tc["name"] in ("edit", "edit_file")
                 and isinstance(tc["arguments"], dict)
+                and not _scope_err and not _report_err
                 and any(s in result for s in _EDIT_PATTERN_ERRORS)
             )
             if _edit_pattern_failed:
@@ -1487,7 +1703,7 @@ async def run_phase(
                     _ep_path = ""
                 log.warning("edit pattern mismatch tool=%s path=%s", tc["name"], _ep_path)
                 console.print(
-                    f"[yellow][engine] edit pattern mismatch: {escape(tc['name'])}: "
+                    f"[yellow]\\[engine] edit pattern mismatch: {escape(tc['name'])}: "
                     f"{escape(result[:200])}[/yellow]"
                 )
                 _ep_msg = (
@@ -1498,15 +1714,16 @@ async def run_phase(
                 )
                 if _ep_path and _ep_path.endswith(".py"):
                     # change-711a57d5 (audit-caab2052 L-03): bounded; on timeout
-                    # the syntax addition is skipped.
+                    # the syntax addition is skipped. change-a5bd4fe1
+                    # (audit-caab2052 L-12): temporary bytecode cache.
                     try:
-                        _ep_proc = subprocess.run(
-                            [sys.executable, "-m", "py_compile", _ep_path],
-                            capture_output=True,
-                            text=True,
-                            timeout=_SUBPROCESS_TIMEOUT_SECONDS,
-                        )
+                        _ep_proc = G.compile_file(_ep_path, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
                     except subprocess.TimeoutExpired:
+                        _ep_proc = None
+                    except Exception as exc:
+                        # change-b8c75bac (audit-a5bd4fe1 F-01): as a timeout
+                        log.warning("%s check: compile of %s failed (%s); not checked",
+                                    "edit-failure", _ep_path, type(exc).__name__)
                         _ep_proc = None
                     if _ep_proc is not None and _ep_proc.returncode != 0:
                         _ep_msg += (
@@ -1531,7 +1748,7 @@ async def run_phase(
             elif _is_mcp_error(result):
                 mcp_error_count += 1
                 console.print(
-                    f"[red][engine] MCP error "
+                    f"[red]\\[engine] MCP error "
                     f"({mcp_error_count}/{mcp_error_threshold}): "
                     f"{escape(tc['name'])}: {escape(result[:200])}[/red]"
                 )
@@ -1560,7 +1777,7 @@ async def run_phase(
                         "BLOCKED: MCP error threshold %d reached", mcp_error_threshold
                     )
                     console.print(
-                        f"[red][engine] BLOCKED: MCP error threshold "
+                        f"[red]\\[engine] BLOCKED: MCP error threshold "
                         f"({mcp_error_threshold}) reached[/red]"
                     )
                     return 1, "", set()
@@ -1573,21 +1790,22 @@ async def run_phase(
                 for _py_path in _py_paths:
                     if _py_path.endswith(".py") and os.path.isfile(_py_path):
                         # change-711a57d5 (audit-caab2052 L-03): bounded; on
-                        # timeout the file counts as not checked.
+                        # timeout the file counts as not checked. change-a5bd4fe1
+                        # (audit-caab2052 L-12): temporary bytecode cache.
                         try:
-                            proc = subprocess.run(
-                                [sys.executable, "-m", "py_compile", _py_path],
-                                capture_output=True,
-                                text=True,
-                                timeout=_SUBPROCESS_TIMEOUT_SECONDS,
-                            )
+                            proc = G.compile_file(_py_path, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
                         except subprocess.TimeoutExpired:
+                            continue
+                        except Exception as exc:
+                            # change-b8c75bac (audit-a5bd4fe1 F-01): as a timeout
+                            log.warning("%s check: compile of %s failed (%s); not checked",
+                                        "post-write", _py_path, type(exc).__name__)
                             continue
                         if proc.returncode != 0:
                             err = proc.stderr.strip()
                             log.warning("syntax error in %s: %s", _py_path, err)
                             console.print(
-                                f"[red][engine] syntax error: {escape(_py_path)}: "
+                                f"[red]\\[engine] syntax error: {escape(_py_path)}: "
                                 f"{escape(err[:200])}[/red]"
                             )
                             _corrective += (
@@ -1606,14 +1824,14 @@ async def run_phase(
         if os.path.exists(os.path.join(state_dir, "work-complete.txt")):
             log.info("work-complete.txt detected — phase complete")
             console.print()
-            console.print("[green][engine] work-complete detected[/green]")
+            console.print("[green]\\[engine] work-complete detected[/green]")
             # change-a2f9c4d1: persist a deliverable manifest before returning
             if is_worker_phase:
                 _synthesize_work_summary(state_dir, _written_paths, "work-complete signal", log)
             _read_paths = {os.path.abspath(p) for p in _read_counts.keys()} if not is_worker_phase else set()
             return 0, "", _read_paths
 
-    console.print(f"\n[red][engine] max iterations ({max_iterations}) reached[/red]")
+    console.print(f"\n[red]\\[engine] max iterations ({max_iterations}) reached[/red]")
     log.warning("max iterations %d reached", max_iterations)
     _read_paths = {os.path.abspath(p) for p in _read_counts.keys()} if not is_worker_phase else set()
     # change-a2f9c4d1: iteration exhaustion is a budget boundary, not a failure.
@@ -1703,13 +1921,17 @@ def run_preflight_check(task: str, log: logging.Logger) -> str:
         )
         if syntax_match:
             path = syntax_match.group(1)
+            # change-a5bd4fe1 (audit-caab2052 L-12): project paths only.
+            _cwd = os.path.realpath(os.getcwd())
+            _real_path = os.path.realpath(os.path.abspath(path))
+            if _real_path != _cwd and not _real_path.startswith(_cwd.rstrip(os.sep) + os.sep):
+                lines.append(f"  [{i}] UNCHECKED  {criterion} (outside the project)")
+                unchecked += 1
+                continue
             try:
                 # change-711a57d5 (L-03): bounded; a timeout is UNCHECKED below.
-                proc = subprocess.run(
-                    [sys.executable, "-m", "py_compile", path],
-                    capture_output=True, text=True,
-                    timeout=_SUBPROCESS_TIMEOUT_SECONDS,
-                )
+                # change-a5bd4fe1 (audit-caab2052 L-12): temporary bytecode cache.
+                proc = G.compile_file(path, timeout=_SUBPROCESS_TIMEOUT_SECONDS)
                 if proc.returncode == 0:
                     lines.append(f"  [{i}] SATISFIED  {criterion}")
                     satisfied += 1
@@ -1757,22 +1979,24 @@ def run_preflight_check(task: str, log: logging.Logger) -> str:
     log.info("preflight: %d criteria, %d satisfied, %d remaining, %d unchecked",
              len(criteria), satisfied, remaining, unchecked)
     console.print(
-        f"[dim][engine] pre-flight: {len(criteria)} criteria — "
+        f"[dim]\\[engine] pre-flight: {len(criteria)} criteria — "
         f"{satisfied} satisfied, {remaining} remaining, {unchecked} unchecked[/dim]"
     )
     return summary
 
 
-def _run_syntax_gate(state_dir: str, log: logging.Logger) -> str:
+def _run_syntax_gate(state_dir: str, log: logging.Logger, project_root: str = "") -> str:
     """
     F6: Built-in syntax gate (gates.syntax_check). Returns a [SYNTAX GATE]
     block for the reviewer task, or '' when no .py deliverable exists.
+    change-a5bd4fe1 (audit-caab2052 L-12): paths outside project_root (the
+    working directory when empty) are not checked.
     """
-    block, count = G.syntax_check(state_dir, log)
+    block, count = G.syntax_check(state_dir, log, project_root or None)
     if block:
         status = G.gate_status(block)
         style = "dim" if status == "PASS" else "yellow"
-        console.print(f"[{style}][engine] syntax gate: {status} ({count} files)[/{style}]")
+        console.print(f"[{style}]\\[engine] syntax gate: {status} ({count} files)[/{style}]")
     return block
 
 
@@ -1786,7 +2010,9 @@ def _run_pytest_gate(state_dir: str, log: logging.Logger, project_root: str,
     interpreter. Returns a [TEST GATE] block, or '' when no target resolves.
     PASS: exit 0; FAIL: tests failed; UNCHECKED: pytest could not run. In
     run_loop FAIL overrides SHIP and UNCHECKED ends the run BLOCKED
-    (change-82dbf16a).
+    (change-82dbf16a). change-a5bd4fe1 (operator decision 2026-11-05): with a
+    tests/ directory the gate adds a collection-only pass over it
+    (gates.add_collection_pass); the status is the worse of the two steps.
     """
     deliverables = _extract_deliverables(state_dir, log)
     if not deliverables:
@@ -1798,13 +2024,15 @@ def _run_pytest_gate(state_dir: str, log: logging.Logger, project_root: str,
         return ""
     log.info("pytest gate: running pytest on %d target(s): %s", len(targets), targets)
     block = G.run_command_gate(G.PYTEST_GATE, spec or {}, targets, project_root, log)
+    # change-a5bd4fe1 (operator decision 2026-11-05): collection-only pass.
+    block = G.add_collection_pass(block, spec or {}, project_root, log)
     status = G.gate_status(block)
     if status == "PASS":
         log.info("pytest gate: %d target(s), status=%s", len(targets), status)
-        console.print(f"[dim][engine] pytest gate: {status} ({len(targets)} targets)[/dim]")
+        console.print(f"[dim]\\[engine] pytest gate: {status} ({len(targets)} targets)[/dim]")
     else:
         log.warning("pytest gate: %d target(s), status=%s", len(targets), status)
-        console.print(f"[yellow][engine] pytest gate: {status} ({len(targets)} targets)[/yellow]")
+        console.print(f"[yellow]\\[engine] pytest gate: {status} ({len(targets)} targets)[/yellow]")
     return block
 
 
@@ -1821,7 +2049,7 @@ def _run_command_gate(name: str, spec: dict, state_dir: str, log: logging.Logger
     block = G.run_command_gate(name, spec, targets, project_root, log)
     status = G.gate_status(block)
     style = "dim" if status == "PASS" else "yellow"
-    console.print(f"[{style}][engine] {escape(name)} gate: {status}[/{style}]")
+    console.print(f"[{style}]\\[engine] {escape(name)} gate: {status}[/{style}]")
     return block
 
 
@@ -2028,11 +2256,12 @@ async def run_loop(
                 "work-complete.txt", "work-summary.txt", ".complete", ".timeout",
                 "awaiting-approval.md")
     if _not_cleared:  # change-82dbf16a iteration 5 (F4-01)
+        # change-d4f527e7: logged before BLOCKED.md is written
+        log.error("BLOCKED: state files could not be removed: %s", ", ".join(_not_cleared))
         write_state(state_dir, "BLOCKED.md",
                     "# BLOCKED\n\nState files could not be removed at loop start: "
                     f"{', '.join(_not_cleared)}. Remove them by hand.\n")
-        log.error("BLOCKED: state files could not be removed: %s", ", ".join(_not_cleared))
-        console.print(f"[red][engine] BLOCKED: state files could not be removed: "
+        console.print(f"[red]\\[engine] BLOCKED: state files could not be removed: "
                       f"{escape(', '.join(_not_cleared))}[/red]")
         return 1
 
@@ -2055,7 +2284,7 @@ async def run_loop(
         i += 1
         # F10: Duration-limit exit returns distinct code and writes .timeout
         if deadline and time.monotonic() > deadline:
-            console.print("[yellow][engine] duration limit reached — exiting[/yellow]")
+            console.print("[yellow]\\[engine] duration limit reached — exiting[/yellow]")
             log.info("duration limit reached at loop iteration %d", i)
             write_state(state_dir, ".timeout", f"TIMEOUT: iteration {i}")
             return 2  # Distinct non-zero code for timeout
@@ -2072,13 +2301,14 @@ async def run_loop(
             if not sys.stdin.isatty():
                 log.info("max iterations reached, stdin is not a terminal — declining to continue")
                 console.print(
-                    f"[yellow][engine] Continue for another {max_iterations} iteration(s)? "
-                    f"[y/N]: N (non-interactive)[/yellow]"
-                )
+                    f"[yellow]\\[engine] Continue for another {max_iterations} iteration(s)? "
+                    f"\\[y/N]: N (non-interactive)[/yellow]"
+                )  # change-f68d51c2 (audit-bae631c7 F-01): '[y/N]' escaped
                 answer = "n"
             else:
                 try:
-                    console.print(f"[yellow][engine] Continue for another {max_iterations} iteration(s)? [y/N]: [/yellow]", end="")
+                    console.print(f"[yellow]\\[engine] Continue for another {max_iterations} iteration(s)? \\[y/N]: [/yellow]", end="")
+                    # change-f68d51c2 (audit-bae631c7 F-01): '[y/N]' escaped above
                     answer = input().strip().lower()
                 except (EOFError, KeyboardInterrupt):
                     answer = "n"
@@ -2139,7 +2369,7 @@ async def run_loop(
         if _scope_error:
             log.warning("audit scope lock: %s", _scope_error)
             console.print(
-                "[yellow][engine] audit scope lock: item count changed "
+                "[yellow]\\[engine] audit scope lock: item count changed "
                 "\u2014 injecting corrective feedback[/yellow]"
             )
             write_state(state_dir, "review-feedback.txt", _scope_error)
@@ -2150,7 +2380,8 @@ async def run_loop(
 
         # F6: syntax gate; F6b and change-e58fd295: declared command gates.
         # Results are injected into the reviewer task.
-        _syntax_result = _run_syntax_gate(state_dir, log) if "syntax" in gate_list else ""
+        _syntax_result = (_run_syntax_gate(state_dir, log, project_root)  # change-a5bd4fe1 (L-12)
+                          if "syntax" in gate_list else "")
         if "syntax" in gate_list:
             _log_gate(log, "syntax", "built_in", G.gate_status(_syntax_result))
         _command_results: list[tuple[str, str]] = []
@@ -2180,11 +2411,12 @@ async def run_loop(
         _not_cleared = clear_state(state_dir, "work-complete.txt", "review-feedback.txt",
                                    "review-result.txt", ".complete", "awaiting-approval.md")
         if _not_cleared:  # change-82dbf16a iteration 5 (F4-01)
+            # change-d4f527e7: logged before BLOCKED.md is written
+            log.error("BLOCKED: state files could not be removed: %s", ", ".join(_not_cleared))
             write_state(state_dir, "BLOCKED.md",
                         "# BLOCKED\n\nState files could not be removed after the gates: "
                         f"{', '.join(_not_cleared)}. Remove them by hand.\n")
-            log.error("BLOCKED: state files could not be removed: %s", ", ".join(_not_cleared))
-            console.print(f"[red][engine] BLOCKED: state files could not be removed: "
+            console.print(f"[red]\\[engine] BLOCKED: state files could not be removed: "
                           f"{escape(', '.join(_not_cleared))}[/red]")
             return 1
 
@@ -2202,7 +2434,7 @@ async def run_loop(
                         "gates.python in ai/config.yaml.\n\n"
                         + "\n".join(_res for _, _res in _not_run))
             log.error("BLOCKED: gate could not run: %s", _names)
-            console.print(f"[red][engine] BLOCKED: gate could not run: {escape(_names)}[/red]")
+            console.print(f"[red]\\[engine] BLOCKED: gate could not run: {escape(_names)}[/red]")
             return 1
 
         # F16: Prepend [ENGINE RUNTIME CONTEXT] to review_task for consistent framing
@@ -2277,7 +2509,7 @@ async def run_loop(
             if _gate_scope_err:
                 log.warning("audit SHIP gate: scope violation — %s", _gate_scope_err)
                 console.print(
-                    "[yellow][engine] audit SHIP gate: scope violation "
+                    "[yellow]\\[engine] audit SHIP gate: scope violation "
                     "— overriding SHIP to REVISE[/yellow]"
                 )
                 write_state(state_dir, "review-feedback.txt", _gate_scope_err)
@@ -2289,7 +2521,7 @@ async def run_loop(
                         _unchecked,
                     )
                     console.print(
-                        f"[yellow][engine] audit SHIP gate: {_unchecked} unchecked item(s) remain "
+                        f"[yellow]\\[engine] audit SHIP gate: {_unchecked} unchecked item(s) remain "
                         f"— overriding SHIP to REVISE[/yellow]"
                     )
                     write_state(
@@ -2313,7 +2545,7 @@ async def run_loop(
                                     len(_unread),
                                 )
                                 console.print(
-                                    f"[yellow][engine] read-evidence SHIP gate: {len(_unread)} unread deliverable(s) "
+                                    f"[yellow]\\[engine] read-evidence SHIP gate: {len(_unread)} unread deliverable(s) "
                                     f"— overriding SHIP to REVISE[/yellow]"
                                 )
                                 _unread_list = "\n".join(f"  - {p}" for p in sorted(_unread))
@@ -2325,6 +2557,19 @@ async def run_loop(
                                 )
                         else:
                             log.debug("read-evidence SHIP gate: no deliverables — gate is no-op")
+
+                        # change-a5bd4fe1 (audit-caab2052 OQ-01; FR-03-04 v1.8):
+                        # a syntax gate FAIL overrides SHIP.
+                        if (_read_gate_pass and "syntax" in gate_list
+                                and G.gate_status(_syntax_result) == "FAIL"):
+                            _read_gate_pass = False
+                            log.warning("syntax SHIP gate: FAIL — overriding SHIP")
+                            console.print(
+                                "[yellow]\\[engine] syntax SHIP gate: FAIL "
+                                "— overriding SHIP to REVISE[/yellow]"
+                            )
+                            write_state(state_dir, "review-feedback.txt",
+                                        f"Syntax gate failed.\n\n{_syntax_result}")
 
                         # Command SHIP gates: non-audit (loop) path only.
                         # Override SHIP to REVISE if any command gate reported FAIL
@@ -2338,7 +2583,7 @@ async def run_loop(
                             if _g == G.PYTEST_GATE:
                                 log.warning("pytest SHIP gate: test failures detected — overriding SHIP")
                                 console.print(
-                                    "[yellow][engine] pytest SHIP gate: test failures detected "
+                                    "[yellow]\\[engine] pytest SHIP gate: test failures detected "
                                     "— overriding SHIP to REVISE[/yellow]"
                                 )
                                 write_state(
@@ -2348,7 +2593,7 @@ async def run_loop(
                             else:
                                 log.warning("%s SHIP gate: FAIL — overriding SHIP", _g)
                                 console.print(
-                                    f"[yellow][engine] {escape(_g)} SHIP gate: FAIL "
+                                    f"[yellow]\\[engine] {escape(_g)} SHIP gate: FAIL "
                                     f"— overriding SHIP to REVISE[/yellow]"
                                 )
                                 write_state(state_dir, "review-feedback.txt",
@@ -2385,7 +2630,7 @@ async def run_loop(
                 write_state(state_dir, "BLOCKED.md", blocked_msg)
                 log.error("BLOCKED: stall detected — %d consecutive identical feedbacks", stall_threshold)
                 console.print(
-                    f"[red][engine] BLOCKED: stall detected — {stall_threshold} consecutive identical feedbacks[/red]"
+                    f"[red]\\[engine] BLOCKED: stall detected — {stall_threshold} consecutive identical feedbacks[/red]"
                 )
                 return 1
         else:
@@ -2418,6 +2663,13 @@ def _resolve_gate_specs(manifest, config: dict) -> dict[str, dict]:
         override = gcfg.get(name) or {}
         if not isinstance(override, dict):
             raise ConfigError(f"gates.{name}: must be a mapping")
+        # change-b8c75bac (audit-14e05e35 L-08; NFR-04): the ai/config.yaml
+        # override is checked here; manifest values are checked in manifest.py.
+        if "timeout_seconds" in override:
+            _gt = override["timeout_seconds"]
+            if (isinstance(_gt, bool) or not isinstance(_gt, (int, float))
+                    or (isinstance(_gt, float) and not math.isfinite(_gt)) or _gt <= 0):
+                raise ConfigError(f"gates.{name}.timeout_seconds: must be a positive number")
         specs[name] = {
             "command": override.get("command") or g["command"],
             "timeout_seconds": override.get("timeout_seconds") or g.get("timeout_seconds", G.DEFAULT_TIMEOUT_SECONDS),
@@ -2461,7 +2713,7 @@ def _write_awaiting_approval(state_dir: str, manifest, loop_stage_id: str,
                 "The loop shipped. The engine does not pass human approval gates; "
                 "the operator reviews the result and records the approval.\n" + na)
     log.info("awaiting approval: work item=%s stage=%s", item, stage.id)
-    console.print(f"[blue][engine] awaiting operator approval: {escape(item)} → {escape(stage.id)}[/blue]")
+    console.print(f"[blue]\\[engine] awaiting operator approval: {escape(item)} → {escape(stage.id)}[/blue]")
 
 
 def _finish_run(mode: str, rc: int, state_dir: str, manifest, loop_stage, work_item: str | None,
@@ -2495,8 +2747,19 @@ def _annotate_blocked_return(state_dir: str, loop_stage, work_item: str | None,
 
 
 async def main_async(args: argparse.Namespace) -> int:
-    config    = load_yaml(args.config)
-    state_dir = os.path.abspath(config["loop"]["state_dir"])
+    # change-b8c75bac (audit-14e05e35 L-08; NFR-04): file, top level, loop and
+    # loop.state_dir are checked before the reset branch and any state change.
+    try:
+        config = _load_config(args.config)
+        if not isinstance(config.get("loop"), dict):
+            raise ConfigError("loop: required and must be a mapping")
+        _state_rel = config["loop"].get("state_dir")
+        if not isinstance(_state_rel, str) or not _state_rel:
+            raise ConfigError("loop.state_dir: required and must be a non-empty string")
+    except ConfigError as e:
+        console.print(f"[red]\\[engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
+        return 1
+    state_dir = os.path.abspath(_state_rel)
 
     # Reset mode — no model or MCP connection required
     if args.mode == "reset":
@@ -2506,20 +2769,20 @@ async def main_async(args: argparse.Namespace) -> int:
     # exists. Checked before any state change so a mistyped path cannot start
     # an unscoped run with the literal path as its task text.
     if args.task and not os.path.exists(args.task) and _looks_like_task_path(args.task):
-        console.print(f"[red][engine] error: task file not found: {escape(args.task)} (cwd {escape(os.getcwd())})[/red]")
+        console.print(f"[red]\\[engine] error: task file not found: {escape(args.task)} (cwd {escape(os.getcwd())})[/red]")
         return 1
 
     # Warn if a prior SHIP is present and not yet cleared
     if os.path.exists(os.path.join(state_dir, ".complete")):
-        console.print(f"[yellow][engine] warning: prior SHIP detected in {state_dir}[/yellow]")
-        console.print("[yellow][engine]          run --mode reset after human acceptance to clear[/yellow]")
+        console.print(f"[yellow]\\[engine] warning: prior SHIP detected in {state_dir}[/yellow]")
+        console.print("[yellow]\\[engine]          run --mode reset after human acceptance to clear[/yellow]")
 
     # change-53c6f252: role-to-model binding (FR-04-01, FR-04-08). Resolved
     # before any state change so a configuration error stops the run cleanly.
     try:
         bindings, _binding_records = _resolve_bindings_capturing(config, args)
     except ConfigError as e:
-        console.print(f"[red][engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
+        console.print(f"[red]\\[engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
         return 1
     worker_b, reviewer_b = bindings["worker"], bindings["reviewer"]
 
@@ -2527,12 +2790,12 @@ async def main_async(args: argparse.Namespace) -> int:
     try:
         manifest = load_manifest(locate_manifest())
     except ManifestError as e:
-        console.print(f"[red][engine] manifest error: {escape(str(e))}[/red]")
+        console.print(f"[red]\\[engine] manifest error: {escape(str(e))}[/red]")
         return 1
     try:
         gate_specs = _resolve_gate_specs(manifest, config)
     except ConfigError as e:
-        console.print(f"[red][engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
+        console.print(f"[red]\\[engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
         return 1
     loop_stage = manifest.loop_stage()
     work_item = _work_item_uuid(args.task)
@@ -2547,22 +2810,38 @@ async def main_async(args: argparse.Namespace) -> int:
     if args.task and os.path.isfile(args.task):
         with open(args.task, "rb") as _fh:
             _task_bytes = _fh.read()
-    _tracked = bool(work_item) and ST.is_tracked_task(os.getcwd(), args.task)
+    # change-4b0a5592 (audit-caab2052 L-04): any existing path in
+    # ai/workspace/ is tracked, with or without a work-item UUID in its name;
+    # one that is not the approved prompt is refused below (exit 3).
+    _tracked = ST.is_tracked_task(os.getcwd(), args.task)
     if args.mode in ("loop", "worker") and _tracked:
         # change-82dbf16a iteration 5 (audit F4-02): prerun_missing refuses a
         # tracked task whose content was not read.
-        _missing = ST.prerun_missing(os.getcwd(), manifest, work_item, args.task, _task_bytes)
+        _missing = ST.prerun_missing(os.getcwd(), manifest, work_item or "", args.task, _task_bytes)
         if _missing:
-            console.print(f"[red][engine] work item {escape(work_item)} is not ready for "
-                          f"'{escape(loop_stage.id)}'; missing:[/red]")
+            if work_item:
+                console.print(f"[red]\\[engine] work item {escape(work_item)} is not ready for "
+                              f"'{escape(loop_stage.id)}'; missing:[/red]")
+            else:
+                console.print(f"[red]\\[engine] task {escape(args.task)} is not ready for "
+                              f"'{escape(loop_stage.id)}'; missing:[/red]")
             for _m in _missing:
                 console.print(f"[red]  - {escape(_m)}[/red]")
             return 3
-        console.print(f"[blue][engine] work item {escape(work_item)}: prerequisites for "
+        console.print(f"[blue]\\[engine] work item {escape(work_item)}: prerequisites for "
                       f"'{escape(loop_stage.id)}' met[/blue]")
     elif work_item and not _tracked:
-        console.print(f"[yellow][engine] work item {escape(work_item)}: prompt is outside "
+        console.print(f"[yellow]\\[engine] work item {escape(work_item)}: prompt is outside "
                       f"ai/workspace/ — not tracked[/yellow]")
+    # change-b8c75bac (audit-14e05e35 L-08; NFR-04): checked before any state change.
+    if not args.max_iterations:
+        _cfg_max_iter = config["loop"].get("max_iterations")
+        if (isinstance(_cfg_max_iter, bool) or not isinstance(_cfg_max_iter, int)
+                or _cfg_max_iter <= 0):
+            console.print(f"[red]\\[engine] configuration error ({escape(args.config)}): "
+                          "loop.max_iterations: required as a positive integer "
+                          "unless --max-iterations is given[/red]")
+            return 1
     max_iter          = args.max_iterations or config["loop"]["max_iterations"]
     deadline          = time.monotonic() + args.duration * 3600 if args.duration else None
     phase_max_iter    = config["loop"].get("phase_max_iterations", max_iter)
@@ -2574,13 +2853,26 @@ async def main_async(args: argparse.Namespace) -> int:
     phase_duration_seconds = _phase_duration_min * 60 if _phase_duration_min else None
     # change-711a57d5 (audit-caab2052 M-06): MCP request read timeout. Checked
     # before setup_logging, so a refused run writes no state.
+    # change-b8c75bac (audit-5e8aea4f F-02; operator decision 2026-11-06): the
+    # shared validation with a maximum of 86400 s; the message names the file.
     mcp_timeout           = config["loop"].get("mcp_timeout_seconds")
     if mcp_timeout is None:
         mcp_timeout = 120.0
-    elif (isinstance(mcp_timeout, bool) or not isinstance(mcp_timeout, (int, float))
-          or not math.isfinite(mcp_timeout) or mcp_timeout <= 0):
-        # change-5e8aea4f (audit-711a57d5 F-03): nan and inf rejected
-        console.print("[red][engine] config error: loop.mcp_timeout_seconds: must be a positive number[/red]")
+    else:
+        try:
+            mcp_timeout = validate_timeout(mcp_timeout, "loop.mcp_timeout_seconds")
+        except ConfigError as e:
+            console.print(f"[red]\\[engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
+            return 1
+    # change-bae631c7 (audit-86c958dd F-02): per-model context windows, checked
+    # before any state is written.
+    try:
+        # change-f68d51c2 (audit-bae631c7 F-03): null blocks read as empty,
+        # other non-mappings refused, before the first read of either block
+        _check_config_blocks(config)
+        _validate_context_windows(config)
+    except ConfigError as e:
+        console.print(f"[red]\\[engine] configuration error ({escape(args.config)}): {escape(str(e))}[/red]")
         return 1
     model          = worker_b.model  # worker binding; used for banners and the context report
 
@@ -2614,17 +2906,41 @@ async def main_async(args: argparse.Namespace) -> int:
     # every exit after setup_logging logs 'engine end' and closes the client.
     rc = 1  # default: failure — ensures rc is defined even on unexpected exception
     mcp = None
+    # change-b8a6c445 (audit-caab2052 M-04, M-05): run record, written at the
+    # start of the try and again in the finally; a write failure is logged
+    # and never changes rc or the control flow.
+    _run_record: dict | None = None
+    _run_record_written = False
+    # change-86c958dd (audit-b8a6c445 F-01): exception in flight when the finally runs
+    _run_exc: BaseException | None = None
     try:
+        # change-b8a6c445 (audit-caab2052 M-04, M-05): start record
+        # change-86c958dd (audit-b8a6c445 F-08): built inside the guarded write
+        try:
+            _run_record = {
+                "mode": args.mode,
+                "task_file": os.path.abspath(args.task) if _task_bytes is not None else None,
+                "pid": os.getpid(),
+                "started": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+                "ended": None,
+                "rc": None,
+            }
+            _write_run_record(state_dir, _run_record)
+            _run_record_written = True
+        except Exception as e:
+            log.warning("run record not written: %s", e)
+
         # change-e58fd295: recipes come from the manifest's run types (FR-01-03)
         recipe_set  = _select_recipe_set(state_dir)
         try:
             _work_path, _rev_path = manifest.recipe_paths(recipe_set)
         except ManifestError as e:
-            console.print(f"[red][engine] manifest error: {escape(str(e))}[/red]")
-            return 1
+            console.print(f"[red]\\[engine] manifest error: {escape(str(e))}[/red]")
+            rc = 1  # change-86c958dd (audit-b8a6c445 F-01): rc assigned before return
+            return rc
         work_recipe = load_yaml(_work_path)
         rev_recipe  = load_yaml(_rev_path)
-        console.print(f"[blue][engine] governance model: {escape(manifest.name)} {escape(manifest.version)}; "
+        console.print(f"[blue]\\[engine] governance model: {escape(manifest.name)} {escape(manifest.version)}; "
                       f"recipe set: {recipe_set}[/blue]")
         log.info("governance model: %s %s; recipe set: %s (%s, %s)", manifest.name, manifest.version,
                  recipe_set, _work_path, _rev_path)
@@ -2652,25 +2968,27 @@ async def main_async(args: argparse.Namespace) -> int:
                     b.model,
                     timeout=readiness.get("timeout_seconds", 60.0),
                     interval=readiness.get("poll_interval_seconds", 2.0),
-                    echo=lambda msg, _r=b.role: console.print(f"[blue][engine] {_r}: {escape(msg)}[/blue]"),
+                    echo=lambda msg, _r=b.role: console.print(f"[blue]\\[engine] {_r}: {escape(msg)}[/blue]"),
                 )
             except (TimeoutError, ProviderError) as e:
                 write_state(state_dir, "BLOCKED.md",
                             f"# BLOCKED\n\n{b.role} provider '{b.provider_name}' not ready: {e}\n")
-                console.print(f"[red][engine] BLOCKED: {b.role} provider '{escape(b.provider_name)}' not ready: {escape(str(e))}[/red]")
+                console.print(f"[red]\\[engine] BLOCKED: {b.role} provider '{escape(b.provider_name)}' not ready: {escape(str(e))}[/red]")
                 log.error("provider not ready role=%s provider=%s: %s", b.role, b.provider_name, e)
-                return 1
+                rc = 1  # change-86c958dd (audit-b8a6c445 F-01): rc assigned before return
+                return rc
             _ready.add((b.provider_name, b.model))
 
         # Resolve context window per role using the four-tier chain
+        # (change-86c958dd, operator decision 2026-11-05: global, per-model, live, unresolved)
         context_windows: dict[str, int | None] = {}
         for b in (worker_b, reviewer_b):
             ctx = resolve_context_window(b.model, config, live_query=b.provider.live_context_window)
             context_windows[b.role] = ctx
             if ctx:
-                console.print(f"[blue][engine] context window ({b.role}): {ctx:,} tokens ({escape(b.model)})[/blue]")
+                console.print(f"[blue]\\[engine] context window ({b.role}): {ctx:,} tokens ({escape(b.model)})[/blue]")
             else:
-                console.print(f"[yellow][engine] context window ({b.role}): unknown — budget tracking disabled[/yellow]")
+                console.print(f"[yellow]\\[engine] context window ({b.role}): unknown — budget tracking disabled[/yellow]")
         context_window = context_windows["worker"]
 
         # Substitute {PROJECT_ROOT} placeholders in mcp_servers before connection
@@ -2689,26 +3007,28 @@ async def main_async(args: argparse.Namespace) -> int:
                 target_profile = extract_target_profile(raw, log)
                 if target_profile in ("engine", "ael"):  # "ael": legacy value in closed documents
                     console.print(
-                        "[red][engine] error: strict_tactical_brief enabled and target_profile is 'engine' "
+                        "[red]\\[engine] error: strict_tactical_brief enabled and target_profile is 'engine' "
                         "but no valid tactical_brief found in task file[/red]"
                     )
                     console.print(
-                        "[red][engine]        Author a YAML block with 'tactical_brief:' as root key, "
+                        "[red]\\[engine]        Author a YAML block with 'tactical_brief:' as root key, "
                         "or set strict_tactical_brief: false in config.yaml[/red]"
                     )
                     log.error(
                         "strict_tactical_brief: target_profile='engine' but no valid tactical_brief in %s",
                         args.task,
                     )
-                    return 1
+                    rc = 1  # change-86c958dd (audit-b8a6c445 F-01): rc assigned before return
+                    return rc
 
             task = brief if brief and not brief.startswith("#") else raw
         else:
             task = args.task or read_state(state_dir, "task.md")
 
         if not task:
-            console.print(f"[red][engine] error: no task provided (--task or {state_dir}/task.md)[/red]")
-            return 1
+            console.print(f"[red]\\[engine] error: no task provided (--task or {state_dir}/task.md)[/red]")
+            rc = 1  # change-86c958dd (audit-b8a6c445 F-01): rc assigned before return
+            return rc
 
         # change-bdc6820f: write scope from the T03 prompt's deliverables (FR-05-01)
         project_root = os.getcwd()
@@ -2719,7 +3039,7 @@ async def main_async(args: argparse.Namespace) -> int:
                 write_scope = S.build_write_scope(project_root, _deliverables,
                                                   manifest.writable_paths, state_dir)
         if write_scope is not None:
-            console.print(f"[blue][engine] write scope: {escape(write_scope.describe())}[/blue]")
+            console.print(f"[blue]\\[engine] write scope: {escape(write_scope.describe())}[/blue]")
             log.info("write scope: %s", write_scope.describe())
         else:
             log.info("write scope: project root (task is not a T03 prompt)")
@@ -2752,8 +3072,8 @@ async def main_async(args: argparse.Namespace) -> int:
         )
         if context_window:
             pct = (initial_tokens / context_window) * 100
-            console.print(f"[blue][engine] initial task: ~{initial_tokens:,} tokens ({pct:.1f}% of window)[/blue]")
-            console.print(f"[dim][engine] context report: {state_dir}/context-budget.md[/dim]")
+            console.print(f"[blue]\\[engine] initial task: ~{initial_tokens:,} tokens ({pct:.1f}% of window)[/blue]")
+            console.print(f"[dim]\\[engine] context report: {state_dir}/context-budget.md[/dim]")
 
         _run_started = time.time()  # change-e58fd295: BLOCKED.md written by this run
         if args.mode == "worker":
@@ -2761,7 +3081,7 @@ async def main_async(args: argparse.Namespace) -> int:
             _stale = os.path.join(state_dir, "work-complete.txt")
             if os.path.exists(_stale):
                 log.warning("clearing stale work-complete.txt from prior run")
-                console.print("[yellow][engine] clearing stale work-complete.txt from prior run[/yellow]")
+                console.print("[yellow]\\[engine] clearing stale work-complete.txt from prior run[/yellow]")
                 os.remove(_stale)
             rc, _, _ = await run_phase(worker_b.provider, mcp, worker_b.model, work_recipe, task, phase_max_iter,
                                        state_dir, log, phase_label="WORKER",
@@ -2779,7 +3099,7 @@ async def main_async(args: argparse.Namespace) -> int:
             _stale = os.path.join(state_dir, "work-complete.txt")
             if os.path.exists(_stale):
                 log.warning("clearing stale work-complete.txt from prior run")
-                console.print("[yellow][engine] clearing stale work-complete.txt from prior run[/yellow]")
+                console.print("[yellow]\\[engine] clearing stale work-complete.txt from prior run[/yellow]")
                 os.remove(_stale)
             # F16: Use consistent review task with runtime context (not the worker task)
             _review_task = (
@@ -2822,10 +3142,28 @@ async def main_async(args: argparse.Namespace) -> int:
                                 max_completion_tokens=max_completion_tokens,
                                 max_tool_result_chars=max_tool_result_chars)
             if rc == 0:
-                _archive_audit_artifacts(state_dir, args.task, log)
+                _archive_audit_artifacts(state_dir, args.task, log, project_root=project_root)
         _finish_run(args.mode, rc, state_dir, manifest, loop_stage, work_item,
                     _gate_outcomes if args.mode == "loop" else {}, _run_started, log)
+    except BaseException as exc:
+        # change-86c958dd (audit-b8a6c445 F-01): recorded in the end record, then re-raised
+        _run_exc = exc
+        raise
     finally:
+        # change-b8a6c445 (audit-caab2052 M-04, M-05): end record
+        if _run_record_written:
+            try:
+                _run_record["ended"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+                # change-86c958dd (audit-b8a6c445 F-01): rc null and the exception type
+                # when the run ends with an exception in flight
+                if _run_exc is not None:
+                    _run_record["rc"] = None
+                    _run_record["error"] = type(_run_exc).__name__
+                else:
+                    _run_record["rc"] = rc
+                _write_run_record(state_dir, _run_record)
+            except Exception as e:
+                log.warning("run record not written: %s", e)
         log.info("engine end rc=%d", rc)
         if mcp is not None:
             await mcp.close()

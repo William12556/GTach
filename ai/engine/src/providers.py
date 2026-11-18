@@ -50,6 +50,9 @@ _SECURITY = "/usr/bin/security"  # macOS Keychain CLI (change-7d953510)
 # change-711a57d5 (audit-caab2052 M-06): per-call model request bound, seconds;
 # providers.<name>.request_timeout_seconds overrides it.
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 300.0
+# change-b8c75bac (audit-5e8aea4f F-02; operator decision 2026-11-06): upper
+# bound for request_timeout_seconds and loop.mcp_timeout_seconds.
+MAX_TIMEOUT_SECONDS = 86400
 _KEYCHAIN_TIMEOUT = 10  # seconds; a locked Keychain or unanswered dialog blocks
 
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
@@ -227,7 +230,7 @@ class OpenAICompatProvider:
             raise ProviderError(f"model '{model}' is not available at {self.base_url}")
 
     def live_context_window(self, model: str) -> int | None:
-        """Tier 2 of context resolution: live query for kind 'omlx' only."""
+        """Tier 3 of context resolution: live query for kind 'omlx' only."""
         if self.kind == "omlx" and self.base_url:
             return query_omlx_context_window(model, self.base_url)
         return None
@@ -530,6 +533,28 @@ def _api_key(name: str, pcfg: dict, kind: str) -> str:
     return _resolve_api_key(name, pcfg, kind)[0]
 
 
+def validate_timeout(value: Any, field: str) -> float:
+    """
+    Validate a timeout setting in seconds (change-b8c75bac, audit-5e8aea4f F-02).
+
+    Returns float(value). Raises ConfigError naming field for a bool, a value
+    that is not an int or float, a value float() cannot convert (an int beyond
+    the float range), NaN, infinity, a value <= 0, or a value above
+    MAX_TIMEOUT_SECONDS.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ConfigError(f"{field}: must be a positive number")
+    try:
+        seconds = float(value)
+    except OverflowError:
+        raise ConfigError(f"{field}: must be a positive number") from None
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ConfigError(f"{field}: must be a positive number")
+    if seconds > MAX_TIMEOUT_SECONDS:
+        raise ConfigError(f"{field}: must not exceed {MAX_TIMEOUT_SECONDS} seconds")
+    return seconds
+
+
 def make_provider(name: str, pcfg: dict) -> Any:
     """Build one provider from its configuration block."""
     if not isinstance(pcfg, dict):
@@ -538,21 +563,33 @@ def make_provider(name: str, pcfg: dict) -> Any:
     if kind not in KINDS:
         raise ConfigError(f"providers.{name}.kind: '{kind}' is not one of {', '.join(KINDS)}")
     # change-711a57d5 (audit-caab2052 M-06): validated before the key lookup so
-    # the message appears whatever the key source.
+    # the message appears whatever the key source. change-b8c75bac
+    # (audit-5e8aea4f F-02): one validation with a maximum; the legacy omlx:
+    # value passes through here as providers.omlx.
     timeout = pcfg.get("request_timeout_seconds")
     if timeout is None:
         timeout = DEFAULT_REQUEST_TIMEOUT_SECONDS
-    elif (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
-          or not math.isfinite(timeout) or timeout <= 0):
-        # change-5e8aea4f (audit-711a57d5 F-03): nan and inf rejected
-        raise ConfigError(f"providers.{name}.request_timeout_seconds: must be a positive number")
+    else:
+        timeout = validate_timeout(timeout, f"providers.{name}.request_timeout_seconds")
     # change-5e8aea4f (audit-711a57d5 F-05): a key from env or Keychain is passed
     # as the provider's secret so its error text can be redacted.
     key, is_secret = _resolve_api_key(name, pcfg, kind)
     secret = key if is_secret else ""
     if kind == "anthropic":
+        # change-b8c75bac (audit-14e05e35 L-08; NFR-04): absent or None gives the
+        # default; otherwise a positive integer.
+        max_tokens = pcfg.get("max_tokens")
+        if max_tokens is None:
+            max_tokens = _ANTHROPIC_DEFAULT_MAX_TOKENS
+        else:
+            try:
+                max_tokens = 0 if isinstance(max_tokens, bool) else int(max_tokens)
+            except (TypeError, ValueError, OverflowError):
+                max_tokens = 0  # refused below
+            if max_tokens <= 0:
+                raise ConfigError(f"providers.{name}.max_tokens: must be a positive integer")
         return AnthropicProvider(api_key=key, secret=secret,
-                                 max_tokens=int(pcfg.get("max_tokens") or _ANTHROPIC_DEFAULT_MAX_TOKENS),
+                                 max_tokens=max_tokens,
                                  strict_tools=bool(pcfg.get("strict_tools", True)),
                                  base_url=pcfg.get("base_url"),
                                  timeout=timeout)
@@ -606,7 +643,7 @@ def build_role_bindings(config: dict, args: Any = None,
         for role in ROLES:
             model = cli_role[role] or omlx_cfg.get(f"{role}_model") or default
             if not model:
-                raise ConfigError(f"omlx.default_model: required when roles: is absent")
+                raise ConfigError("omlx.default_model: required when roles: is absent")
             bindings[role] = Binding(role, "omlx", provider_for("omlx"), model)
         return bindings
 
