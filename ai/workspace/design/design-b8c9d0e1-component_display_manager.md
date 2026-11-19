@@ -27,10 +27,10 @@ document_info:
   component: "DisplayManager"
   parent: "design-2c6b8e4d-domain_display.md"
   source_file: "src/gtach/display/manager.py"
-  version: "2.0"
-  date: "2026-11-13"
+  version: "2.1"
+  date: "2026-11-19"
   author: "William Watson"
-  status: "Implemented"
+  status: "Approved"
 ```
 
 - **Domain design:** [design-2c6b8e4d-domain_display.md](design-2c6b8e4d-domain_display.md)
@@ -46,7 +46,7 @@ document_info:
 Responsibilities:
 
 1. Run the frame loop on the thread `display` at `fps_limit` frames per second, with a heartbeat per frame.
-2. Draw the screens: splash, radial gauge, DISCONNECTED, Engine off, OPTIONS (menu, update, clear confirmation), acknowledgement; delegate setup screens to `SetupDisplayManager`.
+2. Draw the screens: splash, radial gauge (live, Engine off, disconnected), DISCONNECTED details panel, OPTIONS (menu, update, clear confirmation), acknowledgement; delegate setup screens to `SetupDisplayManager`.
 3. Consume RPM samples from `ThreadManager.message_queue`, smooth them, and select the colour band.
 4. Decide link loss and recovery, and the Engine off condition.
 5. Handle gestures passed on by `TouchHandler`, and button regions through `TouchEventCoordinator`.
@@ -69,7 +69,8 @@ class DisplayManager:
     LINK_LOSS_TIMEOUT = 2.0
     LINK_RECOVERY_SAMPLES = 2
     ENGINE_OFF_FRESHNESS_S = 15.0
-    ENGINE_OFF_TEXT = "Engine off"
+    ENGINE_OFF_TEXT = "Engine off"   # retained; not drawn since v2.1
+    ICON_TOUCH_SIZE = 144            # touch square of the centre symbol
 
     def __init__(self, thread_manager: ThreadManager,
                  terminal_restorer: Optional[TerminalRestorer] = None,
@@ -132,8 +133,8 @@ while not stopped:
     sleep the remainder of 1 / fps_limit
 ```
 
-- `_render_normal_modes()` first drains the sample queue (latest value kept), then draws DISCONNECTED, the gauge, OPTIONS or the acknowledgement, then the status indicator. The drain precedes the link test, so that samples are consumed and recovery is possible while DISCONNECTED is shown (issue-4d9e2f18).
-- `_current_view_key()` is `(mode, options sub-view, update status, disconnected, in setup mode, options page, engine off)`. Every state that decides which controls exist is part of the key.
+- `_render_normal_modes()` first drains the sample queue (latest value kept), then draws the DISCONNECTED details panel, the gauge (live, Engine off or disconnected), OPTIONS or the acknowledgement, then the status indicator. The drain precedes the link test, so that samples are consumed and recovery is possible while DISCONNECTED is shown (issue-4d9e2f18).
+- `_current_view_key()` is `(mode, options sub-view, update status, disconnected, details open, in setup mode, options page, engine off)`. Every state that decides which controls exist is part of the key.
 - An exception in a frame is logged with traceback, followed by a 0.1 s sleep.
 - `_enter_post_splash_mode()` enters ACKNOWLEDGEMENT when the current RPM bands and engine profile have not been acknowledged; otherwise the saved mode (RADIAL). A failure of the check resolves towards showing the notice.
 
@@ -154,7 +155,7 @@ while not stopped:
 - Tick marks and numerals per 1000 RPM; boundary marks at the band thresholds; the fill arc and the centre disc take the colour of the active band; the centre shows RPM / 1000 with one decimal.
 - **Conditioning:** the displayed value is an exponential moving average of the raw sample with a 150 ms time constant, computed from the measured interval.
 - **Bands:** six bands from the thresholds `idle_max`, `torque_start`, `caution_start`, `warning_start`, `danger_start` of `RPMBands`; band changes use a hysteresis of 75 RPM (at most 49 % of the narrowest band).
-- **Palette:** `DAY_PALETTE` or `NIGHT_PALETTE`; the choice is saved. A notice ("Day" or "Night") is shown for 2 s after a change.
+- **Palette:** `DAY_PALETTE` or `NIGHT_PALETTE`; the choice is saved. A notice ("Day" or "Night") is shown for 2 s after a change. `Palette` carries two symbol colours (§5.7): `symbol` (ignition key) and `alert` (information symbol).
 
 ### 5.3 Link loss and DISCONNECTED
 
@@ -167,7 +168,9 @@ while not stopped:
 | No sample yet, or the latest sample older than `LINK_LOSS_TIMEOUT` (2.0 s) | Lost; latch cleared |
 | Otherwise | Lost until `LINK_RECOVERY_SAMPLES` (2) samples have arrived within `LINK_LOSS_TIMEOUT` of one another |
 
-In RADIAL, a lost link without Engine off shows the DISCONNECTED screen: title, the failure cause, a reconnect indicator, and the buttons **Setup** (re-enter setup) and **Reset** (reboot the host). OPTIONS stays reachable by swipe.
+In RADIAL, a lost link without Engine off shows the gauge dimmed: track, ticks and numerals in `palette.line`, centre disc in `palette.track`, no fill arc, no readout, and the information symbol (§5.7) in the centre disc. The dimmed face keeps "no data" distinct from 0 RPM.
+
+A tap on the symbol (a centred `ICON_TOUCH_SIZE` square) sets `_disconnected_details_open` and shows the DISCONNECTED details panel: title, the failure cause, the reconnect indicator, and the buttons **Setup** (re-enter setup) and **Reset** (reboot the host). The panel keeps the black-on-yellow treatment. A tap outside the buttons, link recovery, Engine off or entry to OPTIONS clears `_disconnected_details_open`. OPTIONS stays reachable by swipe.
 
 ### 5.4 Engine off
 
@@ -184,8 +187,8 @@ Any failure, including an absent or raising callback, gives false, so the displa
 
 | Condition (RADIAL) | Screen | Status dot |
 |---|---|---|
-| Link lost and not engine off | DISCONNECTED | Red |
-| Engine off | Gauge at 0 RPM with the text "Engine off" in place of the readout; no buttons | Yellow |
+| Link lost and not engine off | Dimmed gauge with the information symbol; a tap opens the details panel | Red |
+| Engine off | Gauge at 0 RPM with the ignition-key symbol (§5.7) in place of the readout; no buttons | Yellow |
 | Link up, not yet confirmed | Gauge | Yellow |
 | Link confirmed | Gauge | Green |
 
@@ -202,11 +205,26 @@ Two pages of two buttons (the circular viewport admits two 72 px targets per pag
 | 1 | Bluetooth / Simulation mode | Toggles session-only synthetic RPM |
 | 1 | Debug: On / Off | Toggles runtime debug logging |
 
+The menu carries no title; the page indicator and the hint "Swipe up to return" provide orientation. The button layout is unchanged.
+
 Update view states: `checking`, `available` (**Install**, **Cancel**), `none`, `error` (**Back**), `pending`. **Install** stages the wheel with `updater.stage_pending()` and requests a restart; `bin/gtach-preflight.sh` installs it at the next start.
 
 ### 5.6 Acknowledgement
 
 A full-screen notice of the RPM thresholds, dismissed by a tap anywhere. Dismissal is persisted by `AcknowledgementStateManager`; a change of thresholds or profile shows it again.
+
+### 5.7 Symbols
+
+Symbols are drawn with pygame primitives; no image assets. Both are centred on (240, 240) inside the centre disc (r = 99).
+
+| Symbol | Shape | Colour | Day | Night |
+|---|---|---|---|---|
+| Information | Filled disc r = 40; "i" as a dot and a bar in black | `palette.alert` (amber) | (230, 160, 0) | (150, 105, 0) |
+| Ignition key | Ring bow, shaft and two teeth, line width 6 | `palette.symbol` (grey) | (150, 150, 150) | (120, 120, 120) |
+
+The key sits on the band 0 centre colour: day (0, 0, 89), night (0, 0, 59). Estimated contrast is about 6:1 (day) and 4.5:1 (night), to be confirmed on the device.
+
+Drawing code that is no longer called, such as the Engine off text path, is retained for later use. The reconnect indicator (`_draw_reconnect_spinner`) moves to the details panel unchanged.
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -222,8 +240,9 @@ A full-screen notice of the RPM thresholds, dismissed by a tap anywhere. Dismiss
 | Swipe up | as above, upward | OPTIONS | Return to the mode OPTIONS was entered from |
 | Swipe left / right | Movement ≥ swipe threshold, mostly horizontal | OPTIONS menu | Next / previous page, wrapping |
 | Tap | Movement below the threshold, shorter than `touch_long_press` | any | Button under the touch, if any |
+| Tap | as above | RADIAL, disconnected | On the information symbol: open the details panel. With the panel open, outside its buttons: close it |
 | Long press | Hold ≥ `touch_long_press` (default 1.0 s), movement below the threshold | RADIAL, not on a button | Toggle the day/night palette |
-| Hold on a button | as long press, starting on a button | any | Presses that button |
+| Hold on a button | as long press, starting on a button | any | Presses that button; this includes the information symbol, which then does not toggle the palette |
 
 - The swipe threshold is `TouchEventCoordinator.swipe_threshold` (50 px). Movement at or above it is a swipe whatever the duration (issue-2550e4ee).
 - A touch whose start is older than 10 s is discarded.
@@ -269,6 +288,9 @@ stateDiagram-v2
     ACKNOWLEDGEMENT --> RADIAL: tap
     state RADIAL {
         Gauge --> DISCONNECTED: link lost
+        DISCONNECTED --> Details: tap symbol
+        Details --> DISCONNECTED: tap outside buttons
+        Details --> Gauge: 2 samples within 2 s
         DISCONNECTED --> Gauge: 2 samples within 2 s
         DISCONNECTED --> EngineOff: adapter reports silent vehicle
         EngineOff --> Gauge: samples resume
@@ -277,7 +299,7 @@ stateDiagram-v2
     RADIAL --> OPTIONS: swipe down
     OPTIONS --> RADIAL: swipe up
     OPTIONS --> SETUP: Clear settings confirmed
-    RADIAL --> SETUP: Setup button on DISCONNECTED
+    RADIAL --> SETUP: Setup button on details panel
 ```
 
 [Return to Table of Contents](#table-of-contents)
@@ -306,6 +328,7 @@ stateDiagram-v2
 | 1.2 | 2026-05-27 | Renamed SETTINGS → OPTIONS throughout. Added naming note re source code identifier lag. Updated DisplayMode enum, mode transitions table, gesture methods, and render loop diagram. |
 | 1.3 | 2026-11-12 | §5.4: added Engine off condition — evaluation, precedence against DISCONNECTED, screen content, return to live. Other sections predate the current source (DIGITAL/GAUGE, long-press OPTIONS) and are not revised here (report-71ab3751-design-review) |
 | 2.0 | 2026-11-13 | Rewritten against the source: RADIAL as the only layout (DIGITAL removed), OPTIONS by vertical swipe with paging, palette toggle by long press, link loss and recovery, DISCONNECTED with Setup and Reset, update view, acknowledgement, injected callbacks; §5.4 Engine off kept from v1.3; gesture table taken over from the retired design-g1h2i3j4; links converted to GitHub slugs (proposal-f8d0064b WP4). |
+| 2.1 | 2026-11-19 | Engine off shown as a grey ignition-key symbol; DISCONNECTED shown as a dimmed gauge with an amber information symbol, details moved to a panel opened from it (§5.3, §5.4, §6.0, §8.0); new §5.7 Symbols with `Palette.symbol` and `Palette.alert`; OPTIONS title removed (§5.5); unused drawing code retained. Status Implemented → Approved pending implementation. |
 
 ---
 

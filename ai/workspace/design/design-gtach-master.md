@@ -90,7 +90,7 @@ Primary functions:
 
 1. Start, show the splash screen, and enter setup when no adapter is paired.
 2. Connect, initialise the adapter, poll RPM, and draw the gauge with colour bands from the engine profile.
-3. Show DISCONNECTED with the failure cause while the link is down, and "Engine off" while the adapter answers and the vehicle does not.
+3. Show a dimmed gauge with an information symbol while the link is down (failure cause on a details panel opened from the symbol), and an ignition-key symbol while the adapter answers and the vehicle does not.
 4. Offer OPTIONS: clear settings, check for updates, simulation mode, debug logging.
 5. Recover from a stalled critical thread by process restart.
 
@@ -196,7 +196,7 @@ tests/               pytest suite
 - **Start:** a forced transport (`tcp`, `serial`, `simtcp`) starts normal mode. `rfcomm` and `simbt` given explicitly always enter setup mode (`simbt` with `SimBluetoothPairing` and its own `devices-sim.yaml`). Without `--transport`, setup mode is entered when the device store has no primary device; otherwise normal mode.
 - **Normal mode:** create `DisplayManager`, inject callbacks, start the display (splash), select the transport, create `OBDProtocol`, start the watchdog, start the `transport` thread and the protocol.
 - **Setup mode:** create or reuse `DisplayManager`, create `SetupDisplayManager`; on completion `_on_setup_complete()` starts the transport and the protocol once (`adapter_pre_initialised` when the setup session reset the adapter).
-- **Re-entering setup** (from DISCONNECTED or Clear settings): stop `transport` and `obd_protocol` (2.0 s each), then setup mode again.
+- **Re-entering setup** (from the DISCONNECTED details panel or Clear settings): stop `transport` and `obd_protocol` (2.0 s each), then setup mode again.
 - **Shutdown order:** watchdog, setup manager, async workers, display, transport, protocol, thread manager. Each step is isolated. A 20 s backstop timer forces `os._exit(1)` if the orderly path overruns.
 - **Exit status:** 1 after a startup failure, a runtime error or a watchdog exit; 0 after SIGINT, SIGTERM or a requested restart. systemd restarts in every case.
 - **Logging control:** start-up records go to `start.log`, which is silenced once start-up completes; `toggle_debug_logging()` switches `debug.log` and fatal-error stack capture at runtime.
@@ -403,6 +403,7 @@ The thread status, transport state and screen flow diagrams are in the component
 | 2.1 | 2026-05-27 | §15.3: added gesture reference document cross-reference. |
 | 2.2 | 2026-05-27 | Renamed SETTINGS → OPTIONS in §8.3, §9.1.3, §13.4. Added OPTIONS transitions to §13.4 display mode flow. |
 | 3.0 | 2026-11-13 | Refreshed against the source: Linux-only runtime, simulated transports, single `config.yaml` under `GTACH_HOME`, four log files, watchdog with process restart, update with rollback, application controller design, current thread table; design document list updated for the retired and merged documents; state diagrams left to the component documents; links converted to GitHub slugs (proposal-f8d0064b WP4). |
+| 3.1 | 2026-11-19 | Display behaviour aligned with design-b8c9d0e1 v2.1: DISCONNECTED and Engine off shown as symbols on the gauge; DISCONNECTED details on a panel. |
 
 ---
 
