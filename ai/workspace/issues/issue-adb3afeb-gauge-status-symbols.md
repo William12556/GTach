@@ -17,7 +17,7 @@ issue_info:
   title: "Engine off and DISCONNECTED are shown as text and a full screen; design-b8c9d0e1 v2.1 shows them as symbols on the gauge"
   date: "2026-11-20"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "enhancement"
   iteration: 1

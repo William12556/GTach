@@ -104,6 +104,10 @@ class Palette:
     label: Tuple[int, int, int]
     bands: Tuple[Tuple[int, int, int], ...]
     band_centres: Tuple[Tuple[int, int, int], ...]
+    # Status symbols on the centre disc (change-adb3afeb): symbol is the
+    # Engine off key, alert the DISCONNECTED information disc.
+    symbol: Tuple[int, int, int]
+    alert: Tuple[int, int, int]
 
 
 # The day palette (change-5012004e). band_centres is the centre disc's
@@ -148,6 +152,8 @@ DAY_PALETTE = Palette(
         (89, 45, 0),  # 4 warning
         (89, 0, 0),  # 5 danger
     ),
+    symbol=(150, 150, 150),
+    alert=(230, 160, 0),
 )
 
 # Authored, not derived. Scaling the day palette would compress the band
@@ -180,6 +186,8 @@ NIGHT_PALETTE = Palette(
         (61, 26, 0),
         (70, 0, 0),
     ),
+    symbol=(120, 120, 120),
+    alert=(150, 105, 0),
 )
 
 
