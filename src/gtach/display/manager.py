@@ -45,6 +45,7 @@ from .models import (
     ConnectionStatus,
     DisplayConfig,
     DisplayMode,
+    Palette,
 )
 from .performance import PerformanceMonitor
 
@@ -102,10 +103,14 @@ class DisplayManager:
     LINK_RECOVERY_SAMPLES = 2
 
     # Engine off: the adapter's latest silent-vehicle reply must be no
-    # older than this, and the text replaces the RPM readout
-    # (issue-b29cbd71).
+    # older than this (issue-b29cbd71).
     ENGINE_OFF_FRESHNESS_S = 15.0
+    # Drawn only by the retained _draw_engine_off_text (change-adb3afeb).
     ENGINE_OFF_TEXT = "Engine off"
+
+    # Side of the square touch region over the DISCONNECTED information
+    # symbol, centred on the gauge (change-adb3afeb).
+    ICON_TOUCH_SIZE = 144
 
     def __init__(
         self,
@@ -125,6 +130,10 @@ class DisplayManager:
         self._vehicle_silent_callback: Optional[Callable[[], Optional[float]]] = None
         # _engine_off() result for the current frame; set at frame start.
         self._frame_engine_off = False
+        # The DISCONNECTED details panel is open. Written by touch
+        # callbacks and the display thread, read by the display thread;
+        # a single bool assignment (change-adb3afeb).
+        self._disconnected_details_open = False
         # Set by app.py
         self._debug_toggle_callback: Optional[Callable[[bool], None]] = None
         self._debug_logging_on = False  # Reflects current debug logging state
@@ -678,6 +687,16 @@ class DisplayManager:
                 # of the frame (issue-2550e4ee).
                 self._frame_link_lost = self._link_lost()
                 self._set_frame_engine_off(self._engine_off())
+                # The details panel exists only in the disconnected view
+                # (change-adb3afeb).
+                if self._disconnected_details_open and not self._disconnected_view():
+                    if not self._frame_link_lost:
+                        reason = "link recovered"
+                    elif self._frame_engine_off:
+                        reason = "engine off"
+                    else:
+                        reason = "mode change"
+                    self._close_disconnected_details(reason)
                 monitor = self.performance_monitor
                 setup_manager = self._setup_manager
 
@@ -996,20 +1015,49 @@ class DisplayManager:
             self.logger.info("Engine off cleared")
         self._frame_engine_off = engine_off
 
+    def _disconnected_view(self) -> bool:
+        """Whether this frame shows the disconnected view.
+
+        DISCONNECTED is a derived condition, not a DisplayMode: the link
+        is lost, Engine off does not pre-empt it, and the mode is RADIAL
+        (issue-4d9e2f18, change-adb3afeb).
+
+        Returns:
+            True when the gauge is drawn dimmed with the information
+            symbol, or the details panel in its place.
+        """
+        return (
+            self._frame_link_lost
+            and not self._frame_engine_off
+            and self.config.mode == DisplayMode.RADIAL
+        )
+
+    def _open_disconnected_details(self) -> None:
+        """Open the DISCONNECTED details panel (change-adb3afeb)."""
+        self._disconnected_details_open = True
+        self.logger.info("DISCONNECTED details opened")
+
+    def _close_disconnected_details(self, reason: str) -> None:
+        """Close the DISCONNECTED details panel (change-adb3afeb).
+
+        Args:
+            reason: Why it closed, for the log: tap, link recovered,
+                engine off or mode change.
+        """
+        self._disconnected_details_open = False
+        self.logger.info(f"DISCONNECTED details closed: {reason}")
+
     def _render_normal_modes(self) -> None:
         """Render the normal display modes for the current frame."""
         try:
             # Samples are consumed whatever is drawn, so a lost link can
-            # recover while the DISCONNECTED screen is shown.
+            # recover while the DISCONNECTED panel is shown.
             self._drain_samples()
 
-            # The DISCONNECTED screen replaces the gauge only; OPTIONS
-            # stays reachable while the link is down (issue-4d9e2f18).
-            if (
-                self._frame_link_lost
-                and not self._frame_engine_off
-                and self.config.mode == DisplayMode.RADIAL
-            ):
+            # The open details panel replaces the gauge; closed, the
+            # disconnected view draws the dimmed gauge below. OPTIONS
+            # stays reachable while the link is down (change-adb3afeb).
+            if self._disconnected_view() and self._disconnected_details_open:
                 self._render_disconnected()
                 return
 
@@ -1143,9 +1191,15 @@ class DisplayManager:
     def _draw_radial_mode(self) -> None:
         """Draw radial arc RPM display using rendering engine"""
         try:
-            # Engine off draws 0 RPM; simulation mode a synthetic RPM.
+            # Engine off and the disconnected view draw 0 RPM; simulation
+            # mode a synthetic RPM. getattr: hosts built without __init__
+            # lack the frame flags.
             engine_off = getattr(self, "_frame_engine_off", False)
-            if engine_off:
+            disconnected = (
+                bool(getattr(self, "_frame_link_lost", False))
+                and self._disconnected_view()
+            )
+            if engine_off or disconnected:
                 rpm: float = 0.0
             elif self._sim_mode:
                 rpm = int(3000 + 3000 * math.sin(time.time()))
@@ -1182,6 +1236,11 @@ class DisplayManager:
             # against it, went with the rim (issue-950128c0), so the
             # band colour is now read directly and unconditionally.
             centre_colour = palette.band_centres[active_band]
+            # The disconnected view dims the face: scale marks and label
+            # in palette.line, the disc in palette.track (change-adb3afeb).
+            scale_colour = palette.line if disconnected else palette.tick
+            if disconnected:
+                centre_colour = palette.track
 
             # Arc geometry constants. The arcs stop at r=232, where
             # they used to butt against the inner edge of the 12 px
@@ -1296,7 +1355,7 @@ class DisplayManager:
                 tick_end_y = center[1] + outer_radius * math.sin(angle_rad)
                 pygame.draw.line(
                     surface,
-                    palette.tick,
+                    scale_colour,
                     (tick_start_x, tick_start_y),
                     (tick_end_x, tick_end_y),
                     7,
@@ -1311,7 +1370,7 @@ class DisplayManager:
                         RenderTarget.BACK_BUFFER,
                         numeral,
                         tick_font,
-                        palette.tick,
+                        scale_colour,
                         (int(num_x), int(num_y)),
                         center=True,
                     )
@@ -1343,7 +1402,7 @@ class DisplayManager:
                     mark_end_y = center[1] + outer_radius * math.sin(angle_rad)
                     pygame.draw.line(
                         surface,
-                        color,
+                        palette.line if disconnected else color,
                         (mark_start_x, mark_start_y),
                         (mark_end_x, mark_end_y),
                         7,
@@ -1371,7 +1430,7 @@ class DisplayManager:
                     RenderTarget.BACK_BUFFER,
                     "RPM \u00d7 1000",
                     label_font,
-                    palette.label,
+                    palette.line if disconnected else palette.label,
                     (240, 420),
                     center=True,
                 )
@@ -1395,21 +1454,16 @@ class DisplayManager:
             # admits a 198 px chord, and three glyphs at 72 px measure
             # roughly 120 x 72. The RPM is clamped to max_rpm (at most
             # 9000) above, so the string is never wider than three glyphs.
+            #
+            # Engine off and the disconnected view show a symbol in place
+            # of the readout (change-adb3afeb).
             if engine_off:
-                # 177 px wide at this size; the disc admits 198 px.
-                engine_off_font = get_font_manager().get_font(
-                    TypographyConstants.FONT_RPM_MEDIUM
-                )
-                if engine_off_font:
-                    self.rendering_engine.render_text(
-                        RenderTarget.BACK_BUFFER,
-                        self.ENGINE_OFF_TEXT,
-                        engine_off_font,
-                        (255, 255, 255),
-                        center,
-                        center=True,
-                    )
-            readout_font = None if engine_off else get_font_manager().get_font(72)
+                self._draw_key_symbol(surface, palette)
+            elif disconnected:
+                self._draw_info_symbol(surface, palette)
+            readout_font = (
+                None if engine_off or disconnected else get_font_manager().get_font(72)
+            )
             if readout_font:
                 self.rendering_engine.render_text(
                     RenderTarget.BACK_BUFFER,
@@ -1445,6 +1499,67 @@ class DisplayManager:
         except Exception as e:
             self.logger.error(f"Radial display error: {e}", exc_info=True)
 
+    def _draw_engine_off_text(self, center: Tuple[int, int]) -> None:
+        """Draw ENGINE_OFF_TEXT centred on the gauge.
+
+        Not called: the key symbol replaced it. Kept for later use
+        (change-adb3afeb).
+
+        Args:
+            center: Centre of the text, normally the gauge centre.
+        """
+        # 177 px wide at this size; the disc admits 198 px.
+        engine_off_font = get_font_manager().get_font(
+            TypographyConstants.FONT_RPM_MEDIUM
+        )
+        if engine_off_font:
+            self.rendering_engine.render_text(
+                RenderTarget.BACK_BUFFER,
+                self.ENGINE_OFF_TEXT,
+                engine_off_font,
+                (255, 255, 255),
+                center,
+                center=True,
+            )
+
+    def _draw_info_symbol(self, surface: pygame.Surface, palette: Palette) -> None:
+        """Draw the DISCONNECTED information symbol in the centre disc.
+
+        An amber disc carrying a black 'i' (change-adb3afeb). A drawing
+        failure is logged and the rest of the gauge still draws.
+
+        Args:
+            surface: The back buffer.
+            palette: The palette read for this frame.
+        """
+        try:
+            pygame.draw.circle(surface, palette.alert, (240, 240), 40)
+            pygame.draw.circle(surface, (0, 0, 0), (240, 222), 5)
+            pygame.draw.rect(surface, (0, 0, 0), pygame.Rect(236, 232, 9, 27))
+        except Exception as e:
+            self.logger.error(f"Information symbol error: {e}", exc_info=True)
+
+    def _draw_key_symbol(self, surface: pygame.Surface, palette: Palette) -> None:
+        """Draw the Engine off ignition-key symbol in the centre disc.
+
+        A bow ring, a shaft and two teeth, spanning x 204 to 276
+        (change-adb3afeb). A drawing failure is logged and the rest of
+        the gauge still draws.
+
+        Args:
+            surface: The back buffer.
+            palette: The palette read for this frame.
+        """
+        try:
+            colour = palette.symbol
+            width = 6
+            pygame.draw.circle(surface, colour, (222, 240), 18, width)
+            pygame.draw.line(surface, colour, (240, 240), (276, 240), width)
+            pygame.draw.line(surface, colour, (264, 240), (264, 252), width)
+            pygame.draw.line(surface, colour, (274, 240), (274, 252), width)
+        except Exception as e:
+            self.logger.error(f"Key symbol error: {e}", exc_info=True)
+
     def _draw_options_mode(self) -> None:
         """Draw options interface — menu, update or confirm sub-view."""
         try:
@@ -1468,13 +1583,16 @@ class DisplayManager:
             would leave stale regions after an asynchronous change.
           - _options_view: selects menu or update sub-view.
           - disconnected: DISCONNECTED is NOT a DisplayMode. It is a
-            derived condition — _render_normal_modes shows that screen
-            in place of the gauge when the link is lost (issue-4d9e2f18).
-            Omitting it would mean the Setup and Reset buttons were
-            never registered when the link drops.
-            The mode gate _render_normal_modes applies is not repeated
+            derived condition — _disconnected_view() — under which the
+            gauge is drawn dimmed when the link is lost (issue-4d9e2f18).
+            Omitting it would mean the information region was never
+            registered when the link drops.
+            The mode gate _disconnected_view applies is not repeated
             here: config.mode is already a member, so no registration
             decision can change without this key changing.
+          - _disconnected_details_open: selects between the information
+            region and the panel's close, Setup and Reset regions
+            (change-adb3afeb).
           - _in_setup_mode: the setup subsystem owns its own regions.
             It is in the key so that leaving setup re-registers the
             normal view.
@@ -1488,7 +1606,7 @@ class DisplayManager:
 
         Returns:
             (mode, options sub-view, update status, disconnected,
-            in setup mode, options page, engine off).
+            details open, in setup mode, options page, engine off).
         """
         disconnected = self._frame_link_lost
         return (
@@ -1496,6 +1614,7 @@ class DisplayManager:
             self._options_view,
             self._update_status,
             disconnected,
+            self._disconnected_details_open,
             self._in_setup_mode,
             self._options_page,
             self._frame_engine_off,
@@ -1526,14 +1645,28 @@ class DisplayManager:
                 return  # no controls
 
             # DISCONNECTED takes precedence over the mode, mirroring
-            # _render_normal_modes (issue-4d9e2f18).
-            disconnected = (
-                self._frame_link_lost
-                and not self._frame_engine_off
-                and self.config.mode == DisplayMode.RADIAL
-            )
-            if disconnected:
-                self._register_disconnected_regions()
+            # _render_normal_modes (issue-4d9e2f18). Panel open: a
+            # full-screen close region registered first, so Setup and
+            # Reset lie above it in z-order. Panel closed: one region
+            # over the information symbol; a hold on it presses it
+            # rather than toggling the palette (change-adb3afeb).
+            if self._disconnected_view():
+                if self._disconnected_details_open:
+                    self.touch_coordinator.register_button_region(
+                        "disconnected_close",
+                        pygame.Rect(0, 0, 480, 480),
+                        TouchAction.NAVIGATION,
+                        lambda pos: self._close_disconnected_details("tap"),
+                    )
+                    self._register_disconnected_regions()
+                    return
+                size = self.ICON_TOUCH_SIZE
+                self.touch_coordinator.register_button_region(
+                    "disconnected_info",
+                    pygame.Rect(240 - size // 2, 240 - size // 2, size, size),
+                    TouchAction.NAVIGATION,
+                    lambda pos: self._open_disconnected_details(),
+                )
                 return
 
             if self.config.mode == DisplayMode.OPTIONS:
@@ -1911,17 +2044,6 @@ class DisplayManager:
         self.rendering_engine.clear_surface(
             RenderTarget.BACK_BUFFER, self._DISCONNECTED_BG_COLOUR
         )
-
-        font = get_title_display_font()
-        if font:
-            self.rendering_engine.render_text(
-                RenderTarget.BACK_BUFFER,
-                "Options",
-                font,
-                self._DISCONNECTED_TEXT_COLOUR,
-                (240, 100),
-                center=True,
-            )
 
         # Geometry is owned by _register_options_menu_regions, so the
         # drawn control and the registered region cannot diverge. Labels

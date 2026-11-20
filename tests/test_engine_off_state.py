@@ -450,7 +450,8 @@ class TestEngineOffCondition:
 
         assert manager._frame_engine_off is True
         assert drawn["disconnected"] == []
-        assert DisplayManager.ENGINE_OFF_TEXT in drawn["text"]
+        # The key symbol replaced the text (change-adb3afeb).
+        assert DisplayManager.ENGINE_OFF_TEXT not in drawn["text"]
         assert not [t for t in drawn["text"] if _is_readout(t)]
         assert _colour(ConnectionStatus.CONNECTING) in drawn["circles"]
 
@@ -460,7 +461,10 @@ class TestEngineOffCondition:
         _run_one_frame(manager)
 
         assert manager._frame_engine_off is False
-        assert drawn["disconnected"] == [1]
+        # Disconnected view with the details panel closed: dimmed gauge,
+        # not the panel (change-adb3afeb).
+        assert manager._disconnected_view() is True
+        assert drawn["disconnected"] == []
 
     def test_exactly_freshness_old_counts(self, manager, monkeypatch):
         now = 1000.0
@@ -547,8 +551,8 @@ class TestEngineOffCondition:
         manager._vehicle_silent_callback = lambda: None
         _run_one_frame(manager)
         disconnected_key = manager._current_view_key()
-        assert manager._disconnected_btn_setup is not None
-        assert manager.touch_coordinator._regions
+        # Panel closed: the information region only (change-adb3afeb).
+        assert list(manager.touch_coordinator._regions) == ["disconnected_info"]
 
         manager._vehicle_silent_callback = lambda: time.monotonic() - 1.0
         _run_one_frame(manager)

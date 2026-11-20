@@ -17,7 +17,7 @@ change_info:
   title: "Show Engine off and DISCONNECTED as symbols on the gauge; DISCONNECTED details on a tap-opened panel; remove the OPTIONS title"
   date: "2026-11-20"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
