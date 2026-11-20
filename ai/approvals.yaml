@@ -56,3 +56,6 @@ approvals:
   - { uuid: "c41037ea", stage: "change", date: "2026-11-13T11:10:01Z", blobs: { "change/change-c41037ea-update-version-ordering.md": "491d5fbdc32de2b7db8fa4d4de21f376748f6ef9" } }
   - { uuid: "c41037ea", stage: "prompt", date: "2026-11-13T11:10:07Z", blobs: { "prompt/prompt-c41037ea-update-version-ordering.md": "6c0ffbf013e1d749a26c46d906caa1a8c72b9d39" } }
   - { uuid: "c41037ea", stage: "accept", date: "2026-11-13T11:18:01Z", blobs: {  } }
+  - { uuid: "adb3afeb", stage: "change", date: "2026-11-20T06:36:51Z", blobs: { "change/change-adb3afeb-gauge-status-symbols.md": "01807f9943c8e70cf64ad1647d29c139fd9b882a" } }
+  - { uuid: "adb3afeb", stage: "prompt", date: "2026-11-20T06:36:54Z", blobs: { "prompt/prompt-adb3afeb-gauge-status-symbols.md": "5ab06371cfe7f301eb6b7c5203b14768d9374088" } }
+  - { uuid: "adb3afeb", stage: "change", date: "2026-11-20T06:37:04Z", blobs: { "change/change-adb3afeb-gauge-status-symbols.md": "c393f1763cc310d6b41595ebfccae5ee20941d90" } }
