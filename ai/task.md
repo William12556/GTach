@@ -19,6 +19,7 @@ outcome is recorded (a closed triple, or an explicit drop).
 | — | No tests for `utils/ack_state.py`; updater covered for version ordering and staging only | Deferred — after 1.0 | `audit-bce0d69a` L08 |
 | — | `bin/build.sh` accepts only X.Y.Z at its version prompt (a pre-release is kept with Enter); README §3.1 'Updates' installs the head of `main`, not the latest release | Deferred — after 1.0 | `audit-bce0d69a` L09 |
 | — | `pyproject.toml`: `project.license` table and license classifier are deprecated by setuptools (builds unsupported after 2027-02-18); classifier `Development Status :: 4 - Beta` | Deferred — after 1.0 and before 2027-02-18: SPDX `license = "MIT"`, `setuptools>=77`; owner decides the status classifier at 1.0.0 | `audit-bce0d69a` L05, L10 |
+| — | Status dot (240, 60) and, from v2.2, the reconnect indicator overlap the 4000 RPM tick and numeral on gauges with an 8000 RPM full scale (profiles `generic_turbo_4cyl`, `generic_na_4cyl`); `abarth_595_turismo` (7000) is clear | Open — not yet raised as a triple | `design-b8c9d0e1` §5.7 |
 
 ---
 

@@ -27,10 +27,10 @@ document_info:
   component: "DisplayManager"
   parent: "design-2c6b8e4d-domain_display.md"
   source_file: "src/gtach/display/manager.py"
-  version: "2.1"
-  date: "2026-11-19"
+  version: "2.2"
+  date: "2026-11-22"
   author: "William Watson"
-  status: "Implemented"
+  status: "Approved"
 ```
 
 - **Domain design:** [design-2c6b8e4d-domain_display.md](design-2c6b8e4d-domain_display.md)
@@ -168,9 +168,16 @@ while not stopped:
 | No sample yet, or the latest sample older than `LINK_LOSS_TIMEOUT` (2.0 s) | Lost; latch cleared |
 | Otherwise | Lost until `LINK_RECOVERY_SAMPLES` (2) samples have arrived within `LINK_LOSS_TIMEOUT` of one another |
 
-In RADIAL, a lost link without Engine off shows the gauge dimmed: track, ticks and numerals in `palette.line`, centre disc in `palette.track`, no fill arc, no readout, and the information symbol (§5.7) in the centre disc. The dimmed face keeps "no data" distinct from 0 RPM.
+In RADIAL, a lost link without Engine off shows the gauge dimmed: track, ticks and numerals in `palette.line`, centre disc in `palette.track`, no fill arc, no readout. The dimmed face keeps "no data" distinct from 0 RPM. The reconnect indicator (§5.7) turns around the status dot in both sub-states:
 
-A tap on the symbol (a centred `ICON_TOUCH_SIZE` square) sets `_disconnected_details_open` and shows the DISCONNECTED details panel: title, the failure cause, the reconnect indicator, and the buttons **Setup** (re-enter setup) and **Reset** (reboot the host). The panel keeps the black-on-yellow treatment. A tap outside the buttons, link recovery, Engine off or entry to OPTIONS clears `_disconnected_details_open`. OPTIONS stays reachable by swipe.
+| Sub-state | Condition | Centre disc | Status dot |
+|---|---|---|---|
+| Connecting | `_link_cause_callback()` returns no cause (None or empty) | Empty | Yellow |
+| Failed | A cause is returned, or the callback is absent or raises | Information symbol (§5.7) | Red |
+
+The transport clears the cause on every successful connect and sets it when a connect fails or the link is dropped, so startup and the first reconnect attempt show Connecting. The sub-state is evaluated once per frame (`_frame_connecting`) and fails towards Failed, so Setup and the cause stay one tap away whenever the cause cannot be read.
+
+A tap on the centre (a centred `ICON_TOUCH_SIZE` square, registered in both sub-states) sets `_disconnected_details_open` and shows the DISCONNECTED details panel: title, the failure cause, the reconnect indicator, and the buttons **Setup** (re-enter setup) and **Reset** (reboot the host). The panel keeps the black-on-yellow treatment. A tap outside the buttons, link recovery, Engine off or entry to OPTIONS clears `_disconnected_details_open`. OPTIONS stays reachable by swipe.
 
 ### 5.4 Engine off
 
@@ -187,7 +194,8 @@ Any failure, including an absent or raising callback, gives false, so the displa
 
 | Condition (RADIAL) | Screen | Status dot |
 |---|---|---|
-| Link lost and not engine off | Dimmed gauge with the information symbol; a tap opens the details panel | Red |
+| Link lost, not engine off, no failure cause | Dimmed gauge, reconnect indicator around the status dot; a tap on the centre opens the details panel | Yellow |
+| Link lost, not engine off, failure cause present | Dimmed gauge, information symbol, reconnect indicator around the status dot; a tap opens the details panel | Red |
 | Engine off | Gauge at 0 RPM with the ignition-key symbol (§5.7) in place of the readout; no buttons | Yellow |
 | Link up, not yet confirmed | Gauge | Yellow |
 | Link confirmed | Gauge | Green |
@@ -224,7 +232,16 @@ Symbols are drawn with pygame primitives; no image assets. Both are centred on (
 
 The key sits on the band 0 centre colour: day (0, 0, 89), night (0, 0, 59). Estimated contrast is about 6:1 (day) and 4.5:1 (night), to be confirmed on the device.
 
-Drawing code that is no longer called, such as the Engine off text path, is retained for later use. The reconnect indicator (`_draw_reconnect_spinner`) moves to the details panel unchanged.
+Drawing code that is no longer called, such as the Engine off text path, is retained for later use.
+
+**Reconnect indicator** (`_draw_reconnect_spinner`): eight dots on a ring of radius 26 around the status dot at (240, 60), dot radius 4, one rotation per retry period. Geometry is unchanged from the details panel. Only the colours depend on where it is drawn:
+
+| Where | Dim colour | Bright colour |
+|---|---|---|
+| Details panel | `_DISCONNECTED_BG_COLOUR` | `_DISCONNECTED_TEXT_COLOUR` |
+| Dimmed gauge | `palette.track` | `palette.tick` |
+
+On a gauge with an 8000 RPM full scale, the 4000 RPM tick and numeral lie under the status dot and the ring; this predates v2.2 for the dot and is recorded in `ai/task.md`.
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -288,6 +305,10 @@ stateDiagram-v2
     ACKNOWLEDGEMENT --> RADIAL: tap
     state RADIAL {
         Gauge --> DISCONNECTED: link lost
+        Gauge --> Connecting: link lost, no failure cause
+        Connecting --> DISCONNECTED: connect fails or link dropped
+        Connecting --> Gauge: 2 samples within 2 s
+        Connecting --> Details: tap centre
         DISCONNECTED --> Details: tap symbol
         Details --> DISCONNECTED: tap outside buttons
         Details --> Gauge: 2 samples within 2 s
@@ -329,6 +350,7 @@ stateDiagram-v2
 | 1.3 | 2026-11-12 | §5.4: added Engine off condition — evaluation, precedence against DISCONNECTED, screen content, return to live. Other sections predate the current source (DIGITAL/GAUGE, long-press OPTIONS) and are not revised here (report-71ab3751-design-review) |
 | 2.0 | 2026-11-13 | Rewritten against the source: RADIAL as the only layout (DIGITAL removed), OPTIONS by vertical swipe with paging, palette toggle by long press, link loss and recovery, DISCONNECTED with Setup and Reset, update view, acknowledgement, injected callbacks; §5.4 Engine off kept from v1.3; gesture table taken over from the retired design-g1h2i3j4; links converted to GitHub slugs (proposal-f8d0064b WP4). |
 | 2.1 | 2026-11-19 | Engine off shown as a grey ignition-key symbol; DISCONNECTED shown as a dimmed gauge with an amber information symbol, details moved to a panel opened from it (§5.3, §5.4, §6.0, §8.0); new §5.7 Symbols with `Palette.symbol` and `Palette.alert`; OPTIONS title removed (§5.5); unused drawing code retained. Status Implemented → Approved pending implementation; Implemented on 2026-11-22 (change-adb3afeb, ce1ef47). |
+| 2.2 | 2026-11-22 | §5.3: Connecting and Failed sub-states of the disconnected view, decided by the transport failure cause, failing towards Failed; reconnect indicator around the status dot on the dimmed gauge; yellow status dot while connecting. §5.4 table, §5.7 reconnect indicator and its colours, §8.0 Connecting state. Status Approved pending implementation. |
 
 ---
 
