@@ -30,7 +30,7 @@ document_info:
   version: "2.1"
   date: "2026-11-19"
   author: "William Watson"
-  status: "Approved"
+  status: "Implemented"
 ```
 
 - **Domain design:** [design-2c6b8e4d-domain_display.md](design-2c6b8e4d-domain_display.md)
@@ -328,7 +328,7 @@ stateDiagram-v2
 | 1.2 | 2026-05-27 | Renamed SETTINGS → OPTIONS throughout. Added naming note re source code identifier lag. Updated DisplayMode enum, mode transitions table, gesture methods, and render loop diagram. |
 | 1.3 | 2026-11-12 | §5.4: added Engine off condition — evaluation, precedence against DISCONNECTED, screen content, return to live. Other sections predate the current source (DIGITAL/GAUGE, long-press OPTIONS) and are not revised here (report-71ab3751-design-review) |
 | 2.0 | 2026-11-13 | Rewritten against the source: RADIAL as the only layout (DIGITAL removed), OPTIONS by vertical swipe with paging, palette toggle by long press, link loss and recovery, DISCONNECTED with Setup and Reset, update view, acknowledgement, injected callbacks; §5.4 Engine off kept from v1.3; gesture table taken over from the retired design-g1h2i3j4; links converted to GitHub slugs (proposal-f8d0064b WP4). |
-| 2.1 | 2026-11-19 | Engine off shown as a grey ignition-key symbol; DISCONNECTED shown as a dimmed gauge with an amber information symbol, details moved to a panel opened from it (§5.3, §5.4, §6.0, §8.0); new §5.7 Symbols with `Palette.symbol` and `Palette.alert`; OPTIONS title removed (§5.5); unused drawing code retained. Status Implemented → Approved pending implementation. |
+| 2.1 | 2026-11-19 | Engine off shown as a grey ignition-key symbol; DISCONNECTED shown as a dimmed gauge with an amber information symbol, details moved to a panel opened from it (§5.3, §5.4, §6.0, §8.0); new §5.7 Symbols with `Palette.symbol` and `Palette.alert`; OPTIONS title removed (§5.5); unused drawing code retained. Status Implemented → Approved pending implementation; Implemented on 2026-11-22 (change-adb3afeb, ce1ef47). |
 
 ---
 

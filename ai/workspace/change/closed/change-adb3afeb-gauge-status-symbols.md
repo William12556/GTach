@@ -17,7 +17,7 @@ change_info:
   title: "Show Engine off and DISCONNECTED as symbols on the gauge; DISCONNECTED details on a tap-opened panel; remove the OPTIONS title"
   date: "2026-11-20"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -212,11 +212,11 @@ implementation:
   deployment_notes: "bin/deploy.sh from the Mac clone after merge."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
+  implemented_date: "2026-11-20"
+  implemented_by: "Claude Code cloud session (PR #2, squash commit ce1ef47)"
+  verification_date: "2026-11-20"
+  verified_by: "Planner code review of PR #2; William Watson device test on gtach.local"
+  test_results: "pytest 843 passed; mypy and flake8 clean. Device test: all steps as expected. Swipe on the open panel enters OPTIONS and closes the panel (mode change)."
   issues_found: []
 
 traceability:
@@ -240,6 +240,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change."
+  - version: "1.1"
+    date: "2026-11-22"
+    author: "William Watson"
+    changes:
+      - "Implemented (ce1ef47); verified on the device; closed and moved to change/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -256,6 +261,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-20 | Initial change |
+| 1.1 | 2026-11-22 | Implemented (ce1ef47), verified on the device; closed and moved to closed/. |
 
 ---
 

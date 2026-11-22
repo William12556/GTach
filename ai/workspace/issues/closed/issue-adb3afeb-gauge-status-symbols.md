@@ -17,7 +17,7 @@ issue_info:
   title: "Engine off and DISCONNECTED are shown as text and a full screen; design-b8c9d0e1 v2.1 shows them as symbols on the gauge"
   date: "2026-11-20"
   reporter: "William Watson"
-  status: "resolved"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -88,15 +88,15 @@ resolution:
   target_date: ""
   approach: "change-adb3afeb"
   change_ref: "change-adb3afeb"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-20"
+  resolved_by: "change-adb3afeb"
+  fix_description: "Gauge status symbols, dimmed DISCONNECTED gauge with tap-opened details panel, OPTIONS title removed (PR #2, squash commit ce1ef47)."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-11-20"
+  verified_by: "William Watson (device test on gtach.local with the emulator)"
+  test_results: "pytest 843 passed; mypy and flake8 clean (report-adb3afeb). Device: live gauge, Engine off key, dimmed gauge and amber symbol, panel open and close, swipe to OPTIONS, recovery with the panel open, night palette, Setup and Reset all as expected. error.log for the session: no tracebacks."
+  closure_notes: "At startup the information symbol shows while GTach connects, because no sample counts as a lost link (design section 5.3). Expected under v2.1; addressed as new work (connecting spinner)."
 
 prevention:
   preventive_measures: ""
@@ -106,7 +106,7 @@ verification_enhanced:
   verification_steps:
     - "pytest tests/ passes."
     - "On gtach.local with the emulator: engineoff scenario shows the key symbol; emulator stopped shows the dimmed gauge and amber symbol; tap opens and closes the panel; Setup and Reset work from the panel; OPTIONS has no title; day and night palettes both legible."
-  verification_results: ""
+  verification_results: "See closure_notes and report-adb3afeb."
 
 traceability:
   design_refs:
@@ -130,6 +130,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue."
+  - version: "1.1"
+    date: "2026-11-22"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-adb3afeb (ce1ef47); verified on the device; closed and moved to issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -146,6 +151,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-20 | Initial issue |
+| 1.1 | 2026-11-22 | Resolved (ce1ef47), verified on the device; closed and moved to closed/. |
 
 ---
 

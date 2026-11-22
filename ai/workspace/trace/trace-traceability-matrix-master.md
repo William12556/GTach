@@ -63,7 +63,7 @@ Created: 2025 December 27
 | `DeviceStore` | `design-a6b7c8d9` | `src/gtach/comm/device_store.py` | `test_device_store_shared.py` |
 | `BluetoothDevice` | `design-a7b8c9d0` | `src/gtach/comm/models.py` | `test_bluetooth_device_conversion.py` |
 | `BluetoothPairing` | `design-7d3e9f5a` §4.0, `design-a3b4c5d6` | `src/gtach/comm/pairing.py`, `src/gtach/comm/system_bluetooth.py` | `test_setup_flow.py`, `test_obd_verify_busy_retry.py`, `test_medium_defects.py` |
-| `DisplayManager`, `TouchHandler` | `design-b8c9d0e1` | `src/gtach/display/manager.py`, `src/gtach/display/touch.py` | `test_disconnected_screen.py`, `test_engine_off_state.py`, `test_gauge_display_touch.py`, `test_rpm_signal_conditioning.py`, `test_touch_dispatch.py`, `test_setup_and_gauge.py` |
+| `DisplayManager`, `TouchHandler` | `design-b8c9d0e1` | `src/gtach/display/manager.py`, `src/gtach/display/touch.py` | `test_disconnected_screen.py`, `test_engine_off_state.py`, `test_gauge_status_symbols.py`, `test_gauge_display_touch.py`, `test_rpm_signal_conditioning.py`, `test_touch_dispatch.py`, `test_setup_and_gauge.py` |
 | `DisplayRenderingEngine` | `design-c9d0e1f2` | `src/gtach/display/rendering/` | `tests/display/rendering/` |
 | `TouchEventCoordinator` | `design-d0e1f2a3` | `src/gtach/display/input/` | `test_touch_dispatch.py`, `test_callbacks_outside_locks.py` |
 | `SplashScreen` | `design-f2a3b4c5` | `src/gtach/display/splash.py`, `src/gtach/display/graphics/` | `test_monotonic_durations.py` |
@@ -150,6 +150,7 @@ Triples and audits of run `f8d0064b`. Earlier work: see §1.0.
 |---|---|---|---|---|---|---|
 | `bce0d69a` | Audit | Release-readiness audit; 14 findings; remediation `c41037ea`, `b2077e6` (P04.12), `55bdbd1` | `design-9a1f3c7e` §4.3 | `src/gtach/utils/updater.py`, `src/gtach/comm/obd.py`, `bin/release.sh` | `test_update_version_ordering.py`, `test_rpm_reply_decoding.py`, `test_release_script.py` | Closed (`audit/closed/`) |
 | `c41037ea` | Issue, change, prompt | Update check orders pre-release versions (audit-bce0d69a H01) | `design-9a1f3c7e` §4.3 | `src/gtach/utils/updater.py` | `tests/test_update_version_ordering.py` | Closed, verified by unit tests |
+| `adb3afeb` | Issue, change, prompt | Gauge status symbols; DISCONNECTED details panel; OPTIONS title removed | `design-b8c9d0e1` v2.1 §5.3–5.7 | `src/gtach/display/manager.py`, `src/gtach/display/models.py` | `tests/test_gauge_status_symbols.py`, `tests/test_engine_off_state.py` | Closed, verified on the device |
 
 [Return to Table of Contents](#table-of-contents)
 
