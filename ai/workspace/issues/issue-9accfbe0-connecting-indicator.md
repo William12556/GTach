@@ -17,7 +17,7 @@ issue_info:
   title: "While GTach connects, the gauge shows the information symbol as if the connection had failed, and nothing shows that the app is still working"
   date: "2026-11-22"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -87,9 +87,9 @@ resolution:
   target_date: ""
   approach: "change-9accfbe0"
   change_ref: "change-9accfbe0"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-22"
+  resolved_by: "change-9accfbe0"
+  fix_description: "Per-frame Connecting sub-state in DisplayManager: no information symbol and a yellow status dot while no connect has failed, with the reconnect indicator turning around the dot on the dimmed gauge in the gauge palette's colours. Device test pending."
 
 verification:
   verified_date: ""

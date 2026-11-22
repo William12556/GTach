@@ -130,6 +130,10 @@ class DisplayManager:
         self._vehicle_silent_callback: Optional[Callable[[], Optional[float]]] = None
         # _engine_off() result for the current frame; set at frame start.
         self._frame_engine_off = False
+        # Whether the disconnected view shows Connecting rather than
+        # Failed for the current frame; set at frame start
+        # (change-9accfbe0).
+        self._frame_connecting = False
         # The DISCONNECTED details panel is open. Written by touch
         # callbacks and the display thread, read by the display thread;
         # a single bool assignment (change-adb3afeb).
@@ -687,6 +691,18 @@ class DisplayManager:
                 # of the frame (issue-2550e4ee).
                 self._frame_link_lost = self._link_lost()
                 self._set_frame_engine_off(self._engine_off())
+                # Which sub-state the disconnected view shows. One cause
+                # read per frame, logged on each transition while the
+                # view is shown (change-9accfbe0).
+                _disconnected = self._disconnected_view()
+                _connecting = _disconnected and self._link_connecting()
+                if _disconnected and _connecting != self._frame_connecting:
+                    self.logger.info(
+                        "Disconnected: connecting"
+                        if _connecting
+                        else "Disconnected: connect failed"
+                    )
+                self._frame_connecting = _connecting
                 # The details panel exists only in the disconnected view
                 # (change-adb3afeb).
                 if self._disconnected_details_open and not self._disconnected_view():
@@ -996,6 +1012,28 @@ class DisplayManager:
         except Exception:
             return False
 
+    def _link_connecting(self) -> bool:
+        """Whether no connect has failed yet, so the link is still coming up.
+
+        EVERY FAILURE PATH RETURNS False, so the display falls back to
+        Failed: Connecting is never shown without evidence from the
+        transport that no connect has failed (change-9accfbe0). An
+        absent callback or a raising one is therefore Failed, matching
+        _link_lost's treatment of an unavailable callback.
+
+        Returns:
+            True only when _link_cause_callback is set and returns a
+            falsy cause (None or an empty string).
+        """
+        cb = self._link_cause_callback
+        if cb is None:
+            return False
+        try:
+            return not cb()
+        except Exception as e:
+            self.logger.debug(f"Link cause callback failed: {e}", exc_info=True)
+            return False
+
     def _set_frame_engine_off(self, engine_off: bool) -> None:
         """Record this frame's engine-off state and act on a transition.
 
@@ -1069,6 +1107,15 @@ class DisplayManager:
                 self._draw_acknowledgement_mode()
             # Always draw status indicator
             self._draw_status_indicator()
+
+            # With the panel closed the dimmed gauge carries the
+            # reconnect indicator too, turning around the status dot in
+            # the gauge palette's colours (change-9accfbe0). The panel
+            # draws its own in _render_disconnected, above the early
+            # return.
+            if self._disconnected_view():
+                palette = self._palette
+                self._draw_reconnect_spinner(palette.track, palette.tick)
 
         except Exception as e:
             self.logger.error(f"Normal mode render error: {e}", exc_info=True)
@@ -1457,9 +1504,14 @@ class DisplayManager:
             #
             # Engine off and the disconnected view show a symbol in place
             # of the readout (change-adb3afeb).
+            #
+            # The information symbol marks a failed connect only: while
+            # the link is still coming up the dimmed face carries no
+            # symbol, and the status dot and the reconnect indicator
+            # show the activity (change-9accfbe0).
             if engine_off:
                 self._draw_key_symbol(surface, palette)
-            elif disconnected:
+            elif disconnected and not getattr(self, "_frame_connecting", False):
                 self._draw_info_symbol(surface, palette)
             readout_font = (
                 None if engine_off or disconnected else get_font_manager().get_font(72)
@@ -2634,8 +2686,12 @@ class DisplayManager:
     _SPINNER_DOT_RADIUS = 4
     _SPINNER_DOT_COUNT = 8
 
-    def _draw_reconnect_spinner(self) -> None:
-        """Draw a rotating ring of dots on the DISCONNECTED screen.
+    def _draw_reconnect_spinner(
+        self,
+        dim: Optional[Tuple[int, int, int]] = None,
+        bright: Optional[Tuple[int, int, int]] = None,
+    ) -> None:
+        """Draw a rotating ring of dots around the status dot.
 
         Replaces the retry-countdown arc formerly drawn here
         (issue-<pending>). The arc's geometry — a ring centred on the
@@ -2659,6 +2715,15 @@ class DisplayManager:
         back to ``_RETRY_ARC_DEFAULT_PERIOD``. One full rotation
         corresponds to one retry period, preserving the timing cue the
         arc gave without keeping its shape.
+
+        Drawn on the DISCONNECTED panel in the panel's colours, and on
+        the dimmed gauge in the gauge palette's (change-9accfbe0).
+
+        Args:
+            dim: Colour the trailing dots fade to; the panel background
+                when None.
+            bright: Colour of the leading dot; the panel text colour
+                when None.
         """
         try:
             period = self._RETRY_ARC_DEFAULT_PERIOD
@@ -2686,8 +2751,8 @@ class DisplayManager:
             phase = (time.monotonic() % period) / period
             lead = phase * self._SPINNER_DOT_COUNT
 
-            dim_colour = self._DISCONNECTED_BG_COLOUR
-            bright_colour = self._DISCONNECTED_TEXT_COLOUR
+            dim_colour = self._DISCONNECTED_BG_COLOUR if dim is None else dim
+            bright_colour = self._DISCONNECTED_TEXT_COLOUR if bright is None else bright
 
             for i in range(self._SPINNER_DOT_COUNT):
                 # Positions behind the lead fade toward the background
@@ -2731,7 +2796,12 @@ class DisplayManager:
             # Derived from the link (issue-4d9e2f18). CONNECTING is the
             # state between a transport that reports connected and the
             # samples that confirm data is flowing.
+            # A lost link with no failed connect behind it is still
+            # coming up, so it shows yellow rather than red
+            # (change-9accfbe0).
             if self._frame_engine_off:
+                status = ConnectionStatus.CONNECTING
+            elif self._frame_link_lost and self._frame_connecting:
                 status = ConnectionStatus.CONNECTING
             elif self._frame_link_lost:
                 status = ConnectionStatus.DISCONNECTED
