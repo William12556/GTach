@@ -61,3 +61,4 @@ approvals:
   - { uuid: "adb3afeb", stage: "change", date: "2026-11-20T06:37:04Z", blobs: { "change/change-adb3afeb-gauge-status-symbols.md": "c393f1763cc310d6b41595ebfccae5ee20941d90" } }
   - { uuid: "adb3afeb", stage: "accept", date: "2026-11-22T12:53:52Z", blobs: {  } }
   - { uuid: "9accfbe0", stage: "change", date: "2026-11-22T14:25:39Z", blobs: { "change/change-9accfbe0-connecting-indicator.md": "8cf08adf078a2d43ed57c799309b809e06ac89bd" } }
+  - { uuid: "9accfbe0", stage: "prompt", date: "2026-11-22T14:25:41Z", blobs: { "prompt/prompt-9accfbe0-connecting-indicator.md": "29ba1aaf3e3f2a7281dbdf8fd6f999a242fb2995" } }
