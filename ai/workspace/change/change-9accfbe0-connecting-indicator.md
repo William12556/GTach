@@ -17,7 +17,7 @@ change_info:
   title: "Split the disconnected view into Connecting and Failed; turn the reconnect indicator around the status dot on the dimmed gauge"
   date: "2026-11-22"
   author: "William Watson"
-  status: "approved"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -169,11 +169,11 @@ implementation:
   deployment_notes: "bin/deploy.sh from the Mac clone after merge."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
+  implemented_date: "2026-11-22"
+  implemented_by: "Claude Code session, branch change-9accfbe0-connecting-indicator"
   verification_date: ""
   verified_by: ""
-  test_results: ""
+  test_results: "SDL_VIDEODRIVER=dummy pytest tests/: 865 passed (843 before, 22 added). mypy src/: no new errors (9 pre-existing, none in manager.py). black, isort and flake8 clean. Device test pending."
   issues_found: []
 
 traceability:

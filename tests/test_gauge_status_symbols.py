@@ -51,7 +51,12 @@ class _StubTouchInterface:
 
 @pytest.fixture
 def manager(monkeypatch):
-    """A RADIAL DisplayManager with the link lost and no Engine off evidence."""
+    """A RADIAL DisplayManager with the link lost and no Engine off evidence.
+
+    A failure cause is set, so the disconnected view is Failed and draws
+    the information symbol; Connecting is covered by
+    tests/test_connecting_indicator.py (change-9accfbe0).
+    """
     monkeypatch.setattr(
         touch_interface_module, "create_touch_interface", _raise_runtime_error
     )
@@ -61,6 +66,7 @@ def manager(monkeypatch):
     dm._palette = DAY_PALETTE
     dm._link_connected_callback = lambda: True
     dm._vehicle_silent_callback = lambda: None
+    dm._link_cause_callback = lambda: "no route to host"
     return dm
 
 
