@@ -17,7 +17,7 @@ issue_info:
   title: "While GTach connects, the gauge shows the information symbol as if the connection had failed, and nothing shows that the app is still working"
   date: "2026-11-22"
   reporter: "William Watson"
-  status: "resolved"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -92,10 +92,10 @@ resolution:
   fix_description: "Per-frame Connecting sub-state in DisplayManager: no information symbol and a yellow status dot while no connect has failed, with the reconnect indicator turning around the dot on the dimmed gauge in the gauge palette's colours. Device test pending."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-11-23"
+  verified_by: "William Watson (device test on gtach.local with the emulator)"
+  test_results: "pytest 865 passed; mypy, black, isort and flake8 clean (report-9accfbe0). Device: deployed v1.0.0rc1 (merge 2715efa), service restarted, emulator stopped and started again. error.log shows the link transitions in the expected order and nothing after the reconnect; no DisplayManager traceback."
+  closure_notes: "The Disconnected: connecting / connect failed INFO lines could not be read back: a production run suppresses debug.log and closes start.log after startup, so they have no sink without --debug or the OPTIONS Debug toggle. Recorded in change-9accfbe0 issues_found. The visual checks in verification_enhanced were confirmed on the panel by the operator: everything looked proper."
 
 prevention:
   preventive_measures: ""
@@ -105,7 +105,7 @@ verification_enhanced:
   verification_steps:
     - "pytest tests/ passes."
     - "On gtach.local: at startup the yellow dot and turning indicator show, no symbol; with the emulator stopped, after the first failed connect the amber symbol and red dot show with the indicator turning; a tap on the centre opens the panel in both sub-states; recovery returns to the live gauge."
-  verification_results: ""
+  verification_results: "Confirmed on gtach.local 2026-11-23 by William Watson: all steps as expected on the panel — the yellow dot and turning indicator with no symbol while connecting, the amber symbol and red dot with the indicator still turning after the emulator was stopped, and recovery to the live gauge when it was started again."
 
 traceability:
   design_refs:
@@ -128,6 +128,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue."
+  - version: "1.1"
+    date: "2026-11-23"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-9accfbe0 (2715efa, PR #3); verified on the device; closed and moved to issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."

@@ -17,7 +17,7 @@ change_info:
   title: "Split the disconnected view into Connecting and Failed; turn the reconnect indicator around the status dot on the dimmed gauge"
   date: "2026-11-22"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -171,10 +171,11 @@ implementation:
 verification:
   implemented_date: "2026-11-22"
   implemented_by: "Claude Code session, branch change-9accfbe0-connecting-indicator"
-  verification_date: ""
-  verified_by: ""
-  test_results: "SDL_VIDEODRIVER=dummy pytest tests/: 865 passed (843 before, 22 added). mypy src/: no new errors (9 pre-existing, none in manager.py). black, isort and flake8 clean. Device test pending."
-  issues_found: []
+  verification_date: "2026-11-23"
+  verified_by: "William Watson (device test on gtach.local with the emulator); Claude Code session (deploy, link-state steps and log review)"
+  test_results: "SDL_VIDEODRIVER=dummy pytest tests/: 865 passed (843 before, 22 added). mypy src/: no new errors (9 pre-existing, none in manager.py). black, isort and flake8 clean. Device 2026-11-23, v1.0.0rc1 (merge 2715efa) on gtach.local: link transitions in the expected order from error.log — connect after the service restart, 'Transport endpoint is not connected' when the emulator was stopped, retries every ~6 s, silence from 16:42:40 after it was started again, so the reconnect succeeded. The operator confirmed the panel: all steps as expected, Connecting and Failed both as designed. No DisplayManager traceback and no 'Link cause callback failed' line; the 20 tracebacks in the session are RFCOMMTransport connect failures logged with exc_info by its own retry loop. The INFO transition lines could not be observed: the unit runs bare gtach, so debug.log is suppressed and start.log closes at startup (see issues_found)."
+  issues_found:
+    - "The INFO transition lines have no sink in a production run: debug.log is set to CRITICAL + 1 unless --debug (main.py:138), error.log is WARNING and above (main.py:154), start.log is closed after startup, and there is no StreamHandler, so journald carries only the pygame banner. Observing them needs the OPTIONS Debug toggle or --debug in the unit. Not a defect in this change; raise separately if the lines should be visible by default."
 
 traceability:
   design_updates:
@@ -197,6 +198,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change."
+  - version: "1.1"
+    date: "2026-11-23"
+    author: "William Watson"
+    changes:
+      - "Implemented (2715efa, PR #3); verified on the device; closed and moved to change/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
