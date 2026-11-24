@@ -1,22 +1,22 @@
-Created: 2026 November 24
-
 # Report: Simulation RPM Alignment — Implementation of prompt-0b3317b7
+
+Created: 2026 November 24
 
 ---
 
 ## Table of Contents
 
-- [1. Summary](<#1. summary>)
-- [2. What Was Changed](<#2. what was changed>)
-- [3. Changed Test Assertions](<#3. changed test assertions>)
-- [4. Testing](<#4. testing>)
-- [5. Deviations and Observations](<#5. deviations and observations>)
-- [6. T-Doc Disposition](<#6. t-doc disposition>)
-- [7. Version History](<#7. version history>)
+- [1.0 Summary](#10-summary)
+- [2.0 What Was Changed](#20-what-was-changed)
+- [3.0 Changed Test Assertions](#30-changed-test-assertions)
+- [4.0 Testing](#40-testing)
+- [5.0 Deviations and Observations](#50-deviations-and-observations)
+- [6.0 T-Doc Disposition](#60-t-doc-disposition)
+- [Version History](#version-history)
 
 ---
 
-## 1. Summary
+## 1.0 Summary
 
 `prompt-0b3317b7-sim-rpm-alignment.md` was implemented: C1–C5 of
 `change-0b3317b7`. A single module-level function
@@ -36,9 +36,11 @@ path.
 startup and OPTIONS simulation mode both sweep 800–6600 RPM in about 15 s)
 remains outstanding.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 2. What Was Changed
+## 2.0 What Was Changed
 
 | Item | File | Change |
 |---|---|---|
@@ -51,9 +53,11 @@ remains outstanding.
 `math` remains imported in `manager.py`; it is still used elsewhere in the
 module.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 3. Changed Test Assertions
+## 3.0 Changed Test Assertions
 
 | Test | Old | New |
 |---|---|---|
@@ -65,9 +69,11 @@ module.
 
 No unrelated assertion was changed or weakened.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 4. Testing
+## 4.0 Testing
 
 Environment: fresh `venv`, `pip install -e .[dev]`, Python 3.13, pygame
 2.6.1, `SDL_VIDEODRIVER=dummy`.
@@ -84,9 +90,11 @@ Environment: fresh `venv`, `pip install -e .[dev]`, Python 3.13, pygame
 - `mypy src/`: no issues. `black`, `isort`, `flake8`: clean on
   `sim_transport.py`, `manager.py`, `test_sim_transport.py`.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 5. Deviations and Observations
+## 5.0 Deviations and Observations
 
 1. **Fourth file touched.** `tests/test_rpm_signal_conditioning.py`
    (TC-015) asserted the old OPTIONS formula's value at t = 0
@@ -108,9 +116,11 @@ Environment: fresh `venv`, `pip install -e .[dev]`, Python 3.13, pygame
 4. **No `time.time()` in either sweep path.** The one remaining
    `time.time()` in `manager.py` (line 2940) is an unrelated timestamp.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 6. T-Doc Disposition
+## 6.0 T-Doc Disposition
 
 | T-Doc | Action |
 |---|---|
@@ -122,13 +132,16 @@ Outstanding (owners per change-0b3317b7): planner review of the pull
 request; device check on `gtach.local`; update of design-7d3e9f5a to name
 `sim_rpm`.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 7. Version History
+## Version History
 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-24 | Initial report |
+| 1.1 | 2026-11-24 | Layout conformed to README.md: title first, numbered sections, GitHub heading links, Return links |
 
 ---
 

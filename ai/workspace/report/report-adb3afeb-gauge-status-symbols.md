@@ -1,22 +1,22 @@
-Created: 2026 November 20
-
 # Report: Gauge Status Symbols — Implementation of prompt-adb3afeb
+
+Created: 2026 November 20
 
 ---
 
 ## Table of Contents
 
-- [1. Summary](<#1. summary>)
-- [2. What Was Changed](<#2. what was changed>)
-- [3. Swipe Starting on the Open Panel](<#3. swipe starting on the open panel>)
-- [4. Testing](<#4. testing>)
-- [5. Deviations and Observations](<#5. deviations and observations>)
-- [6. T-Doc Disposition](<#6. t-doc disposition>)
-- [7. Version History](<#7. version history>)
+- [1.0 Summary](#10-summary)
+- [2.0 What Was Changed](#20-what-was-changed)
+- [3.0 Swipe Starting on the Open Panel](#30-swipe-starting-on-the-open-panel)
+- [4.0 Testing](#40-testing)
+- [5.0 Deviations and Observations](#50-deviations-and-observations)
+- [6.0 T-Doc Disposition](#60-t-doc-disposition)
+- [Version History](#version-history)
 
 ---
 
-## 1. Summary
+## 1.0 Summary
 
 `prompt-adb3afeb-gauge-status-symbols.md` was implemented: EDIT A and
 EDIT B1–B10 of `change-adb3afeb`. Engine off now draws a grey ignition-key
@@ -36,9 +36,11 @@ live gauge draws as before.
 grey key contrast on the night band-0 disc, and the panel interaction on
 the touch panel remain the device check listed in the issue.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 2. What Was Changed
+## 2.0 What Was Changed
 
 Files: `src/gtach/display/models.py`, `src/gtach/display/manager.py`,
 `tests/test_engine_off_state.py`, `tests/test_gauge_status_symbols.py`
@@ -77,9 +79,11 @@ the sample drain, `_render_disconnected()`,
 acknowledgement screen, OPTIONS paging and buttons, setup screens and the
 swipe handlers.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 3. Swipe Starting on the Open Panel
+## 3.0 Swipe Starting on the Open Panel
 
 **Observed: OPTIONS is entered and the panel flag is cleared.** The panel
 is not closed by the swipe itself.
@@ -103,9 +107,11 @@ palette (`test_hold_on_symbol_opens_panel_not_palette`). A hold elsewhere
 on the dimmed gauge is a long press and toggles the palette, as on the
 live gauge.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 4. Testing
+## 4.0 Testing
 
 `SDL_VIDEODRIVER=dummy pytest tests/`: 843 passed, 0 failed.
 
@@ -142,9 +148,11 @@ Edge case `_reset_callback is None` is covered by
 `test_tap_opens_panel` (regions `disconnected_close`, `disconnected_setup`
 only).
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 5. Deviations and Observations
+## 5.0 Deviations and Observations
 
 1. **Two private helpers not listed in the element registry:**
    `_open_disconnected_details()` and `_close_disconnected_details(reason)`.
@@ -174,9 +182,11 @@ only).
    view, as it is for Engine off. Its result is not used for the disc
    colour there; the sticky band index steps toward 0.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 6. T-Doc Disposition
+## 6.0 T-Doc Disposition
 
 | Document | Action |
 |---|---|
@@ -184,13 +194,16 @@ only).
 | `change-adb3afeb-gauge-status-symbols.md` | Active; `status: "implemented"`. Pending device test. |
 | `issue-adb3afeb-gauge-status-symbols.md` | Active; `status: "resolved"`. Pending device test. |
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 7. Version History
+## Version History
 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-20 | Initial report |
+| 1.1 | 2026-11-24 | Layout conformed to README.md: title first, numbered sections, GitHub heading links, Return links |
 
 ---
 

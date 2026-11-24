@@ -1,21 +1,21 @@
-Created: 2026 November 22
-
 # Report: Connecting Indicator — Implementation of prompt-9accfbe0
+
+Created: 2026 November 22
 
 ---
 
 ## Table of Contents
 
-- [1. Summary](<#1. summary>)
-- [2. What Was Changed](<#2. what was changed>)
-- [3. Testing](<#3. testing>)
-- [4. Deviations and Observations](<#4. deviations and observations>)
-- [5. T-Doc Disposition](<#5. t-doc disposition>)
-- [6. Version History](<#6. version history>)
+- [1.0 Summary](#10-summary)
+- [2.0 What Was Changed](#20-what-was-changed)
+- [3.0 Testing](#30-testing)
+- [4.0 Deviations and Observations](#40-deviations-and-observations)
+- [5.0 T-Doc Disposition](#50-t-doc-disposition)
+- [Version History](#version-history)
 
 ---
 
-## 1. Summary
+## 1.0 Summary
 
 `prompt-9accfbe0-connecting-indicator.md` was implemented: C1–C7 of
 `change-9accfbe0`. The disconnected view now has two sub-states. While no
@@ -39,9 +39,11 @@ Engine off and simulation mode draw exactly as before.
 against the dimmed face in both palettes, and the Connecting-to-Failed
 transition on a real connect, remain the device check listed in the issue.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 2. What Was Changed
+## 2.0 What Was Changed
 
 Files: `src/gtach/display/manager.py`,
 `tests/test_connecting_indicator.py` (new),
@@ -65,9 +67,11 @@ centre region is still registered in both sub-states),
 colours, `_draw_info_symbol()`, `_draw_key_symbol()`, the sample drain and
 every other drawing path.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 3. Testing
+## 3.0 Testing
 
 `SDL_VIDEODRIVER=dummy pytest tests/`: 865 passed, 0 failed, 1 warning
 (pre-existing `pkg_resources` deprecation from pygame).
@@ -107,9 +111,11 @@ The `drawn` fixture records the information symbol, the panel render, the
 indicator's arguments and every status-dot `draw_circle`, so the sub-state
 is asserted through what is drawn rather than through the flag alone.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 4. Deviations and Observations
+## 4.0 Deviations and Observations
 
 1. **C3 is inline in the frame loop, not a `_set_frame_connecting` helper.**
    The change document specifies the assignment and the logging in the
@@ -143,9 +149,11 @@ is asserted through what is drawn rather than through the flag alone.
    panel's indicator; noted so the test's fixture is not mistaken for a
    workaround.
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 5. T-Doc Disposition
+## 5.0 T-Doc Disposition
 
 | Document | Action |
 |---|---|
@@ -153,13 +161,16 @@ is asserted through what is drawn rather than through the flag alone.
 | `change-9accfbe0-connecting-indicator.md` | Active; `status: "implemented"`, `implemented_date`, `implemented_by` and `test_results` filled. Pending device test. |
 | `issue-9accfbe0-connecting-indicator.md` | Active; `status: "resolved"`, `resolved_date`, `resolved_by` and `fix_description` filled. Pending device test. |
 
+[Return to Table of Contents](#table-of-contents)
+
 ---
 
-## 6. Version History
+## Version History
 
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-22 | Initial report |
+| 1.1 | 2026-11-24 | Layout conformed to README.md: title first, numbered sections, GitHub heading links, Return links |
 
 ---
 

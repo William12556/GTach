@@ -1,21 +1,21 @@
-Created: 2026 June 24
-
 # GTach — Claude Code Context
+
+Created: 2026 June 24
 
 ---
 
 ## Table of Contents
 
-[1.0 Project](<#1.0 project>)
-[2.0 Governance](<#2.0 governance>)
-[3.0 Technology Stack](<#3.0 technology stack>)
-[4.0 Core Development Rules](<#4.0 core development rules>)
-[5.0 Development Philosophy](<#5.0 development philosophy>)
-[6.0 Coding Best Practices](<#6.0 coding best practices>)
-[7.0 Formatting and Type Checking](<#7.0 formatting and type checking>)
-[8.0 Common Commands](<#8.0 common commands>)
-[9.0 Key Paths](<#9.0 key paths>)
-[Version History](<#version history>)
+- [1.0 Project](#10-project)
+- [2.0 Governance](#20-governance)
+- [3.0 Technology Stack](#30-technology-stack)
+- [4.0 Core Development Rules](#40-core-development-rules)
+- [5.0 Development Philosophy](#50-development-philosophy)
+- [6.0 Coding Best Practices](#60-coding-best-practices)
+- [7.0 Formatting and Type Checking](#70-formatting-and-type-checking)
+- [8.0 Common Commands](#80-common-commands)
+- [9.0 Key Paths](#90-key-paths)
+- [Version History](#version-history)
 
 ---
 
@@ -32,7 +32,7 @@ Real-time automotive RPM tachometer. Python package (`gtach`).
 - Install: `pip install -e .[dev]`  (Pi adds `.[pi]`)
 - Deploy: `bin/deploy.sh` (or `bin/build.sh` → `scp` → `bin/install.sh`); systemd service at `root@gtach.local`
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -53,7 +53,16 @@ Task invocation:
 Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc when finished. Leave the issue and change T-Docs active pending test results. Then, once you are finished, write a report of what you have done in ai/workspace/report/report-<uuid>-<name>.md.
 ```
 
-[Return to Table of Contents](<#table of contents>)
+Report and document layout (as `README.md`; GitHub Flavored Markdown):
+
+- Unnumbered H1 title, then `Created: <year> <month> <day>` below it.
+- `## Table of Contents`: flat bulleted list (`-`) of the H2 sections only, including Version History.
+- Number content sections `## 1.0 Summary`, `### 1.1 …`. Title, Table of Contents, References and Version History are unnumbered.
+- `---` between top-level sections. End each top-level section, except Version History, with `[Return to Table of Contents](#table-of-contents)`.
+- Heading links use GitHub slugs: lowercase, spaces to hyphens, punctuation except `-` and `_` removed (`1.0 Summary` → `#10-summary`). Never `<#…>` anchors or `[[…]]` wikilinks.
+- Version History is a table (Version, Date, Description). The copyright line follows a final `---`.
+
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -69,7 +78,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 | Logging | `start.log` (truncated at boot, always written) + `debug.log` (`RotatingFileHandler`, suppressed unless `--debug`) + error.log (WARNING and above, always on, 1 MB × 5, size rotation only) |
 | Hardware (Pi) | `RPi.GPIO`, `hyperpixel2r` (`.[pi]` extra; conditional import) |
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -88,7 +97,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 8. **Locks**: never call out while holding a lock — no callbacks, no calls into another component that may take a lock, no blocking I/O. Snapshot under the lock, act after releasing it (issue-e9216e17). A lock that exists to serialise access to one file may be held across that file's read or write (DeviceStore, change-453f0a80); it must still never be held across a callback or a call into another component.
 9. **Comments**: A comment states the current behaviour and at most one issue reference; history belongs in the change documents.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -102,7 +111,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 - **Reusability**: Create reusable components, subordinate to minimal-change scope.
 - **Less code = less debt**: Minimize code footprint.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -121,7 +130,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 - **Caveat**: Prefer functional or immutable style only where it improves clarity. GTach managers are
   stateful and lock-guarded; correctness of shared-state access takes precedence over functional form.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -132,7 +141,7 @@ Implement ai/workspace/prompt/prompt-<uuid>-<name>.md and close the prompt T-Doc
 - Fix order on failures: formatting → type errors → linting.
 - Optional handling: explicit `None` checks; narrow types before use.
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -164,7 +173,7 @@ gtach --transport simbt --debug
 ./bin/deploy.sh --stage
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -186,7 +195,7 @@ ai/workspace/
   report/           implementation reports
 ```
 
-[Return to Table of Contents](<#table of contents>)
+[Return to Table of Contents](#table-of-contents)
 
 ---
 
@@ -205,6 +214,7 @@ ai/workspace/
 | 1.7 | 2026-10-07 | §7 line length: 88 for black, isort and flake8 (change-e4ee50fd) |
 | 1.8 | 2026-10-07 | Rule 5: hyperpixel2r replaces gpiozero (removed by change-52653cd6) |
 | 1.9 | 2026-11-11 | Rule 9: comments state current behaviour (change-cfa4e617) |
+| 1.10 | 2026-11-24 | Layout conformed to README.md (title first, bulleted Table of Contents, GitHub heading links); §2.0: report and document layout rules |
 
 ---
 
