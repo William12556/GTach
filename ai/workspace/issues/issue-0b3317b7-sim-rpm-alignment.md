@@ -17,7 +17,7 @@ issue_info:
   title: "Startup simulation and OPTIONS simulation mode sweep RPM with different formulas, so the two modes behave differently"
   date: "2026-11-24"
   reporter: "William Watson"
-  status: "open"
+  status: "resolved"
   severity: "low"
   type: "enhancement"
   iteration: 1

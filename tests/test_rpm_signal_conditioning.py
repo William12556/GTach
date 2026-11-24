@@ -215,13 +215,13 @@ class TestRawValueRetained:
         host = _host()
         host._sim_mode = True
         host._condition_rpm(0.0)
-        clock[0] = 0.0  # sin(0) = 0, so the synthetic sample is 3000
+        clock[0] = 0.0  # sim_rpm(0) is the sweep midpoint, 3700
         host._rpm_last_ts = -1.0 / 60.0
 
         host._draw_radial_mode()
 
-        assert host._last_rpm == 3000
-        assert 0.0 < host._rpm_display < 3000.0
+        assert host._last_rpm == 3700
+        assert 0.0 < host._rpm_display < 3700.0
 
 
 def test_frame_counter_advanced_once_per_iteration():

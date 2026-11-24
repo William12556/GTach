@@ -20,12 +20,34 @@ from typing import Optional
 
 from .transport import OBDTransport, TransportState
 
+SIM_RPM_MIN = 800
+SIM_RPM_MAX = 6600
+SIM_RPM_PERIOD_S = 15.0
+
+
+def sim_rpm(t: float) -> float:
+    """Return the synthetic RPM sweep value for a time in seconds.
+
+    The single definition of the simulation sweep, used by SimTransport and
+    the DisplayManager simulation mode (change-0b3317b7). The sweep is a sine
+    wave from SIM_RPM_MIN to SIM_RPM_MAX with period SIM_RPM_PERIOD_S; t = 0
+    gives the midpoint, rising.
+
+    Args:
+        t: Time in seconds, on any monotonic base.
+
+    Returns:
+        float: RPM in [SIM_RPM_MIN, SIM_RPM_MAX].
+    """
+    half_span = (SIM_RPM_MAX - SIM_RPM_MIN) / 2
+    return SIM_RPM_MIN + half_span * (1 + math.sin(t * 2 * math.pi / SIM_RPM_PERIOD_S))
+
 
 class SimTransport(OBDTransport):
     """Simulation transport returning synthetic ELM327 responses.
 
     This transport allows full GTach application testing without hardware.
-    RPM values sweep from 800 to 6500 RPM on a ~60 second sine wave period.
+    RPM values sweep from 800 to 6600 RPM on a 15 second sine wave period.
     All standard ELM327 init commands return canonical responses.
     """
 
@@ -141,7 +163,7 @@ class SimTransport(OBDTransport):
             return "41 00 BE 3E B8 11"
 
         elif cmd == "010C":
-            # RPM query - sine wave 800-6500 RPM, 60 s period
+            # RPM query - sine wave 800-6600 RPM, 15 s period
             return self._compute_rpm_response()
 
         else:
@@ -154,11 +176,10 @@ class SimTransport(OBDTransport):
         Returns:
             str: ELM327-formatted RPM response (e.g., '41 0C 1A 2B').
         """
-        # Sine wave: 800 + 2850 * (1 + sin(t * 2π / 60)), range 800-6500
-        # RPM, 60 s period. t is elapsed time since construction, so the
-        # sweep starts at its midpoint (3650 RPM) and rises.
-        t = time.monotonic() - self._start_time
-        rpm = 800 + 2850 * (1 + math.sin(t * 2 * math.pi / 60.0))
+        # Sine wave from sim_rpm: range 800-6600 RPM, 15 s period. t is
+        # elapsed time since construction, so the sweep starts at its
+        # midpoint (3700 RPM) and rises.
+        rpm = sim_rpm(time.monotonic() - self._start_time)
 
         # Encode RPM as ELM327 hex: RPM = ((A * 256) + B) / 4
         # Therefore: A = (rpm * 4) >> 8, B = (rpm * 4) & 0xFF
