@@ -17,7 +17,7 @@ change_info:
   title: "One shared sim_rpm(t) sweep, 800-6600 RPM with a 15 s period, for startup simulation and OPTIONS simulation mode"
   date: "2026-11-24"
   author: "William Watson"
-  status: "proposed"
+  status: "implemented"
   priority: "low"
   iteration: 1
   coupled_docs:

@@ -1249,7 +1249,10 @@ class DisplayManager:
             if engine_off or disconnected:
                 rpm: float = 0.0
             elif self._sim_mode:
-                rpm = int(3000 + 3000 * math.sin(time.time()))
+                # Function-local: comm imports display (change-0b3317b7).
+                from ..comm.sim_transport import sim_rpm
+
+                rpm = int(sim_rpm(time.monotonic()))
                 self._last_rpm = rpm
                 rpm = self._condition_rpm(rpm)
             else:
