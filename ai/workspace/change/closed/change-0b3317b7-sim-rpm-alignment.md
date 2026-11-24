@@ -17,7 +17,7 @@ change_info:
   title: "One shared sim_rpm(t) sweep, 800-6600 RPM with a 15 s period, for startup simulation and OPTIONS simulation mode"
   date: "2026-11-24"
   author: "William Watson"
-  status: "implemented"
+  status: "verified"
   priority: "low"
   iteration: 1
   coupled_docs:
@@ -45,6 +45,9 @@ scope:
       change_type: "modify"
     - name: "SimTransport tests"
       file_path: "tests/test_sim_transport.py"
+      change_type: "modify"
+    - name: "Signal conditioning test TC-015 (added at implementation)"
+      file_path: "tests/test_rpm_signal_conditioning.py"
       change_type: "modify"
   affected_designs:
     - design_ref: "design-7d3e9f5a-domain_comm"
@@ -183,19 +186,20 @@ implementation:
   deployment_notes: "No configuration change."
 
 verification:
-  implemented_date: ""
-  implemented_by: ""
-  verification_date: ""
-  verified_by: ""
-  test_results: ""
-  issues_found: []
+  implemented_date: "2026-11-24"
+  implemented_by: "Claude Code session, branch claude/peaceful-heisenberg-90rhqh (squash merge f0dfeb1, PR #4)"
+  verification_date: "2026-11-24"
+  verified_by: "William Watson (device test on gtach.local); planner review of PR #4"
+  test_results: "pytest 874 passed; mypy, black, isort and flake8 clean (report-0b3317b7). Device 2026-11-24, squash merge f0dfeb1 on gtach.local: the operator confirmed the sweep runs 800-6600 RPM in 15 s."
+  issues_found:
+    - "Change-document gap, corrected at implementation: tests/test_rpm_signal_conditioning.py TC-015 (test_sim_mode_records_raw_then_conditions) asserted the old OPTIONS value at t = 0 (3000). It now asserts sim_rpm(0) = 3700; the intent of the test is unchanged. Accepted in planner review."
 
 traceability:
   design_updates:
     - design_ref: "design-7d3e9f5a-domain_comm"
       sections_updated:
         - "SimTransport description"
-      update_date: ""
+      update_date: "2026-11-24"
   related_changes:
     - change_ref: "change-72f95f73"
       relationship: "related"
@@ -211,6 +215,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial change."
+  - version: "1.1"
+    date: "2026-11-24"
+    author: "William Watson"
+    changes:
+      - "Implemented (f0dfeb1, PR #4); TC-015 recorded as a fifth affected file; design-7d3e9f5a updated; verified on the device; closed and moved to change/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -227,6 +236,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-24 | Initial change |
+| 1.1 | 2026-11-24 | Implemented, verified on the device and closed |
 
 ---
 

@@ -17,7 +17,7 @@ issue_info:
   title: "Startup simulation and OPTIONS simulation mode sweep RPM with different formulas, so the two modes behave differently"
   date: "2026-11-24"
   reporter: "William Watson"
-  status: "resolved"
+  status: "closed"
   severity: "low"
   type: "enhancement"
   iteration: 1
@@ -92,15 +92,15 @@ resolution:
   target_date: ""
   approach: "change-0b3317b7"
   change_ref: "change-0b3317b7"
-  resolved_date: ""
-  resolved_by: ""
-  fix_description: ""
+  resolved_date: "2026-11-24"
+  resolved_by: "change-0b3317b7"
+  fix_description: "One shared sim_rpm(t) in comm/sim_transport.py (800-6600 RPM, 15 s period), called by SimTransport and by the DisplayManager simulation mode with a monotonic time base."
 
 verification:
-  verified_date: ""
-  verified_by: ""
-  test_results: ""
-  closure_notes: ""
+  verified_date: "2026-11-24"
+  verified_by: "William Watson (device test on gtach.local)"
+  test_results: "pytest 874 passed; mypy, black, isort and flake8 clean (report-0b3317b7). Device 2026-11-24, squash merge f0dfeb1 on gtach.local: the operator confirmed the sweep runs 800-6600 RPM in 15 s."
+  closure_notes: "Resolved by change-0b3317b7 (PR #4)."
 
 prevention:
   preventive_measures: "One definition of the synthetic sweep, covered by a unit test."
@@ -110,7 +110,7 @@ verification_enhanced:
   verification_steps:
     - "pytest tests/ passes."
     - "On gtach.local: the simtcp startup sweep and the OPTIONS simulation mode both sweep 800-6600 RPM in about 15 s."
-  verification_results: ""
+  verification_results: "Confirmed on gtach.local 2026-11-24 by William Watson: RPM sweeps 800 to 6600 in 15 s."
 
 traceability:
   design_refs:
@@ -134,6 +134,11 @@ version_history:
     author: "William Watson"
     changes:
       - "Initial issue."
+  - version: "1.1"
+    date: "2026-11-24"
+    author: "William Watson"
+    changes:
+      - "Resolved by change-0b3317b7 (f0dfeb1, PR #4); verified on the device; closed and moved to issues/closed/."
 
 metadata:
   copyright: "Copyright (c) 2026 William Watson. MIT License."
@@ -150,6 +155,7 @@ metadata:
 | Version | Date | Description |
 |---|---|---|
 | 1.0 | 2026-11-24 | Initial issue |
+| 1.1 | 2026-11-24 | Resolved, verified on the device and closed |
 
 ---
 

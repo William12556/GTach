@@ -113,7 +113,7 @@ Domain patterns:
 
 Components without a Tier 3 document:
 
-- **`SimTransport`** overrides the whole `OBDTransport` skeleton. It answers the ELM327 initialisation commands and `010C` with a synthetic RPM sweep, and supports `drop_link()`. It serves both `simtcp` (forced, no setup) and `simbt` (through setup).
+- **`SimTransport`** overrides the whole `OBDTransport` skeleton. It answers the ELM327 initialisation commands and `010C` with a synthetic RPM sweep, and supports `drop_link()`. The sweep is defined once, by the module function `sim_rpm(t)` (800–6600 RPM, 15 s sine period); the display simulation mode calls the same function (change-0b3317b7). It serves both `simtcp` (forced, no setup) and `simbt` (through setup).
 - **`BluetoothPairing`** runs discovery in chunks of `DISCOVERY_CHUNK_S` with progress and device callbacks, classifies devices by name (`DeviceType`), and pairs by opening an RFCOMM socket on channel 1 and testing ELM327 communication. All blocking operations are bounded by timeouts and can be cancelled. Its use from setup mode is described in [design-a3b4c5d6](design-a3b4c5d6-component_display_setup_manager.md).
 - **`SimBluetoothPairing`** offers the same interface with four fake devices and a simulated pairing delay and failure rate.
 
@@ -241,6 +241,7 @@ Retired (in `closed/`): `design-d4e5f6a7-component_comm_bluetooth_manager` (repl
 | 1.1 | 2025-12-29 | Added Tier 3 component document cross-references |
 | 2.0 | 2026-03-24 | Transport abstraction redesign: replaced BluetoothManager/Bleak with OBDTransport ABC and three concrete transports (RFCOMM, Serial, TCP); updated §4–§9 to reflect new architecture |
 | 3.0 | 2026-11-13 | Refreshed against the source: module list including simulation, pairing and `system_bluetooth`; link supervision, failure causes and vehicle silent state; thread and inter-domain contracts; component detail moved to the Tier 3 documents; retired documents recorded; links converted to GitHub slugs (proposal-f8d0064b WP4). |
+| 3.1 | 2026-11-24 | `SimTransport`: sweep defined by `sim_rpm(t)`, shared with the display simulation mode (change-0b3317b7) |
 
 ---
 
