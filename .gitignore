@@ -57,4 +57,4 @@ project_information.md
 **/*.pm5s
 *.stl
 **/*.stl
-
+**/graphify-out
