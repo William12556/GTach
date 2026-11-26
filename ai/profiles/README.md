@@ -56,7 +56,7 @@ Select one profile per project. Copy the profile-specific `.gitignore` additions
 | Apple Silicon + MLX (Heterogeneous: Devstral worker / Magistral reviewer) | Worker and reviewer | [mlx_devstral_magistral_heterogeneous.md](mlx_devstral_magistral_heterogeneous.md) |
 | Mistral API (Mistral Medium 3.5) | Worker and reviewer | [mistral_api.md](mistral_api.md) |
 
-Planner is not prescribed. Any frontier model with sufficient reasoning capability is suitable. Claude Desktop is the preferred planner implementation.
+Planner is not prescribed. Any frontier model with sufficient reasoning capability is suitable. Claude Desktop is the planner that the framework has been used with; providers carry equal weight and none is preferred (proposal-5bcd46ad D-16).
 
 [Return to Table of Contents](#table-of-contents)
 
@@ -83,6 +83,7 @@ Planner is not prescribed. Any frontier model with sufficient reasoning capabili
 | 1.14 | 2026-10-02 | §4.0: added Mistral API profile (mistral_api.md) |
 | 1.15 | 2026-11-14 | §4.0: added Mistral Vibe manual profile (mistral-vibe.md) |
 | 1.16 | 2026-11-14 | §4.0: the Claude Desktop row no longer links to a file that is not distributed; it names the planner primer (change-541f5c58; audit-5bcd46ad L-12) |
+| 1.17 | 2026-11-25 | §4.0: planner statement aligned with proposal-5bcd46ad D-16; no provider preferred (report-b80f9e6e F-04) |
 
 ---
 

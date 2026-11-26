@@ -175,16 +175,17 @@ Each entry follows this structure:
 - **Type:** <criterion>
 - **Location:** line <N> (or range <N>–<M>)
 - **Description:** <precise, actionable observation>
-- **Severity:** <low | medium | high>
+- **Severity:** <critical | high | medium | low | info>
 ```
 
-Severity guidance:
+Severity guidance. Disposition follows governance P02.11:
 
-| Severity | Meaning | Action |
+| Severity | Meaning | Disposition |
 |---|---|---|
-| high | Security risk, data loss potential, or critical conformance violation | Create T06 issue immediately |
-| medium | Degraded quality; correctness or maintainability concern | Schedule for next iteration |
-| low | Style or documentation gap | Discretionary |
+| critical, high | Security risk, data loss potential, or critical conformance violation | Remediated before audit closure |
+| medium | Degraded quality; correctness or maintainability concern | Remediated before the next release |
+| low | Style or documentation gap | Recorded in the task register as deferred; a security-relevant low is treated as medium |
+| info | Observation without a defect | Recorded in the task register only when an action is recommended |
 
 Items with no findings are recorded as:
 
@@ -263,6 +264,7 @@ mv ai/workspace/audit/audit-<uuid>-<name>.md ai/workspace/audit/closed/
 | 1.6 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 | 1.7 | 2026-11-14 | §2.1: the `audit-uml.md` example uses a four-backtick outer fence, so the nested Mermaid fence no longer ends it (report-0419b48d). The copy in `ai/governance/software-engineering/doc/` aligned with `docs/guide-audit-loop.md` (it lacked the 1.4 edit of 2026-07-16) |
 | 1.8 | 2026-11-14 | Layout conformance with README.md v4.5: Table of Contents formatted as a bulleted list; Table of Contents lists the H2 sections only (dev/task.md work item 7a) |
+| 1.9 | 2026-11-25 | §6.0 severity scale and dispositions aligned with governance P02.4.1 and P02.11 (report-2d9784da F-01) |
 
 ---
 

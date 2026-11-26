@@ -312,9 +312,9 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Detection of protocol drift, documentation gaps, and process deviations
     - Establishment of quality baseline for continuous improvement
   - P02.2 Audit Triggers
-    - Milestone-based: Upon completion of major development phases
+    - Milestone-based: Upon completion of major development phases; an occasion for the human to request an ad-hoc audit (P02.10.2), not an automatic audit
     - Human-requested: Ad-hoc audits when compliance concerns arise
-    - Baseline: After initial code generation before production deployment
+    - Baseline: After initial code generation before production deployment; an occasion for the human to request an ad-hoc audit (P02.10.2), not an automatic audit
     - Verification: After implementation of a change that altered source code (P02.10.1)
     - Mode selection: Human-requested audits resolve to one of two modes — strategic (Planner) or tactical (engine audit loop) — per P02.9
   - P02.3 Audit Scope
@@ -359,7 +359,7 @@ python ai/engine/src/orchestrator.py --mode loop \
     - Planner: Disposes of medium, low and info findings per P02.11
   - P02.7 Audit Trail
     - Planner: Maintains chronological audit history
-    - Planner: Links related audits (initial → follow-up → closure)
+    - Planner: Links related audits (initial → verification → closure)
     - Planner: Preserves audit reports for process improvement analysis
   - P02.8 Audit Closure
     - P02.8.1 Closure Criteria
@@ -382,7 +382,7 @@ python ai/engine/src/orchestrator.py --mode loop \
     - P02.8.4 Reopening Closed Audits
       - Prohibited: Closed audits are immutable
       - New findings: Create new audit with reference to closed audit
-      - Follow-up verification: Covered by new audit cycle
+      - Verification of remediation: Covered by a new audit (P02.10.1)
 
   - P02.9 Audit Modes
     - Two audit modes satisfy this protocol; the human selects by trigger phrase (primer §4.1)
@@ -419,7 +419,8 @@ python ai/engine/src/orchestrator.py --mode loop \
 
   - P02.11 Triage and Stop Conditions
     - Disposition by severity:
-      - Critical, high: remediated before audit closure (P02.6, P02.8.1)
+      - Critical: remediated before audit closure (P02.6)
+      - High: remediated, or mitigated with documented human acceptance, before audit closure (P02.6, P02.8.1)
       - Medium: remediated before the next release
       - Security-relevant low: treated as medium
       - Other low: recorded in the task register (P00.20) as deferred; remediated when the affected code changes for another reason, or in a release batch
@@ -917,7 +918,7 @@ exclude_lines = [
     - Manage creation and lifecycle of T03 prompt documents
     - Facilitate planner → worker/reviewer code generation communication
   - P13.2 Prompt Creation
-    - Prompt documents are always worker/reviewer specific; prompt_info.target_profile declares which profile (engine, claude_code, or claude_omlx) a given prompt targets; the legacy value ael in closed documents is read as engine.
+    - Prompt documents are always worker/reviewer specific; prompt_info.target_profile declares which profile (engine, claude_code, claude_omlx, or mistral_vibe) a given prompt targets; the legacy value ael in closed documents is read as engine.
     - Planner: Reads template from ai/governance/software-engineering/templates/T03-prompt.md
     - Planner: Creates prompt documents from design documents (initial implementation, P04.1 exception) or from change documents (corrective/enhancement cycle) using T03 template
     - Planner: Saves prompts with naming format prompt-<uuid>-<name>.md in ai/workspace/prompt/
@@ -928,7 +929,7 @@ exclude_lines = [
     - Planner: Rewrites prompt documents in place when revisions required
     - Planner: Embeds complete design specifications and schema within prompt documents
     - Planner: Ensures prompt documents are self-contained requiring no external file references
-    - Planner: The following tactical_brief and context-budget directives apply only when prompt_info.target_profile is engine; tactical_brief is not consumed by claude_code or claude_omlx profiles and may be omitted for those
+    - Planner: The following tactical_brief and context-budget directives apply only when prompt_info.target_profile is engine; tactical_brief is not consumed by claude_code, claude_omlx or mistral_vibe profiles and may be omitted for those
     - Planner: Populates tactical_brief field with a concise prose engine task payload (~200-400 tokens); brief contains only: file(s) to modify, hard constraints, implementation steps, deliverable path(s), success criteria; all governance metadata omitted from brief
     - Planner: Calls omlx_model_status (mcp_omlx) for the configured model before authoring tactical_brief; a null or missing settings.max_context_window is treated as unresolved and the operator is warned, consistent with the resolver's own unknown-window handling
     - Planner: Reads context-budget.md (written automatically by the orchestrator at engine runtime) and adjusts brief size to fit within available context headroom
@@ -1309,6 +1310,7 @@ See [workflow.md](workflow.md).
 | 12.11 | 2026-11-11 | P10.2 .gitignore: removed ai/workspace/proposal/ and ai/workspace/proposal/closed/; added ai-local/. P10.6 layout comments aligned: proposal/ no longer marked excluded; ai-local/ marked excluded from git. Non-breaking. |
 | 12.12 | 2026-11-14 | Appendix A.5: the template schemas describe new documents; numbered `schema_type` values are valid for the checkers only (report-7e96c15c F-01). Non-breaking. |
 | 12.13 | 2026-11-18 | P02.10 audit classes (verification, ad-hoc) and P02.11 triage and stop conditions; P02.2 verification trigger; P02.4.1 info severity; P02.6 disposition per P02.11; P02.8.2 follow-up audit replaced by the verification audit; T08 1.5: optional `class`, `observations` and `info` findings. Non-breaking. |
+| 12.14 | 2026-11-25 | P02.2 milestone-based and baseline triggers are occasions for a human-requested ad-hoc audit; P02.11 high findings may be mitigated with documented human acceptance (P02.8.1); P02.7, P02.8.4 "follow-up" → verification; P13.2 `target_profile` value `mistral_vibe`; T08 1.6 `relationship` value `verification` replaces `follow_up` (report-2d9784da F-02, F-03; report-b80f9e6e F-01). Non-breaking. |
 
 ---
 [Return to Table of Contents](#table-of-contents)

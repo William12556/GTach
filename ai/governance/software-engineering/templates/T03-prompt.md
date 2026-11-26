@@ -23,7 +23,7 @@ prompt_info:
   id: ""  # prompt-<uuid> format
   task_type: ""  # code_generation, debug, refactor, optimization
   source_ref: ""  # design-<uuid> or change-<uuid>
-  target_profile: ""  # engine, claude_code, or claude_omlx — governs tactical_brief requirement
+  target_profile: ""  # engine, claude_code, claude_omlx, or mistral_vibe — governs tactical_brief requirement
   date: ""
   iteration: 1  # Increments with each debug cycle
   coupled_docs:
@@ -554,6 +554,7 @@ properties:
 | 1.14 | 2026-10-01 | Terminology: Strategic Domain → planner, Tactical Domain → worker and reviewer (change-155cc014) |
 | 1.15 | 2026-10-01 | Header comment: worker/reviewer compound (audit-14e05e35 L-05, change-82dbf16a) |
 | 1.16 | 2026-11-14 | Layout conformance with README.md v4.5: Return to Table of Contents links added (dev/task.md work item 7a) |
+| 1.17 | 2026-11-25 | `target_profile` value `mistral_vibe` (governance 12.14; report-b80f9e6e F-01) |
 
 ---
 

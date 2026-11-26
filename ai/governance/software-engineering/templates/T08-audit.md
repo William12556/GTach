@@ -78,7 +78,7 @@ traceability:
     - ""  # issues created from findings
   related_audits:
     - audit_ref: ""
-      relationship: ""  # follow_up, supersedes, related
+      relationship: ""  # verification, supersedes, related
 
 notes: ""
 
@@ -315,6 +315,7 @@ properties:
 | 1.3 | 2026-11-07 | change-e4428fd5: schema_type class word |
 | 1.4 | 2026-11-14 | Layout conformance with README.md v4.5: Return to Table of Contents links added (dev/task.md work item 7a) |
 | 1.5 | 2026-11-18 | Governance 12.13: optional `audit_info.class` (verification, ad_hoc), `info` findings and count, `observations` |
+| 1.6 | 2026-11-25 | Governance 12.14: `relationship` value `verification` replaces `follow_up` |
 
 ---
 

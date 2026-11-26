@@ -4,7 +4,7 @@
 
 model:
   name: software-engineering
-  version: "12.13"   # tracks governance.md
+  version: "12.14"   # tracks governance.md
 
 # Created under ai/workspace/ by bootstrap.sh and propagate.sh when absent.
 # Existing folders are never changed.

@@ -101,7 +101,7 @@ Vibe fulfils both the worker and reviewer roles in a single manual pass. There i
 
 **Procedure:**
 
-1. The planner authors and the human approves the T03 prompt per the standard workflow. The T03 template has no `target_profile` value for Vibe; use `claude_code`, the manual single-pass value. A `tactical_brief` is not required.
+1. The planner authors and the human approves the T03 prompt per the standard workflow. Set `target_profile: mistral_vibe` (governance P13.2). A `tactical_brief` is not required.
 2. Open a terminal in the project root and run `vibe`.
 3. Issue the following instruction, substituting the actual T03 file path:
 
@@ -185,6 +185,7 @@ The Mistral documentation site was not reachable from the session that wrote thi
 |---|---|---|
 | 1.0 | 2026-11-14 | Initial document (dev/task.md work item 7b; proposal-5bcd46ad OQ-01, D-16). Written from the Vibe documentation; not run against a project |
 | 1.1 | 2026-11-14 | §7.0: the empty `api_key_env_var` of the local-server example named as an example value (review remark) |
+| 1.2 | 2026-11-25 | §5.0 step 1: `target_profile: mistral_vibe` replaces `claude_code` (governance 12.14; report-b80f9e6e F-01) |
 
 ---
 
